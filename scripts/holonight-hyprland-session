@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+warn() {
+  printf 'holonight-hyprland-session: warning: %s\n' "$*" >&2
+}
+
+die() {
+  printf 'holonight-hyprland-session: error: %s\n' "$*" >&2
+  exit 1
+}
+
+have_command() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+import_environment() {
+  local vars=(
+    WAYLAND_DISPLAY
+    DISPLAY
+    XDG_CURRENT_DESKTOP
+    XDG_SESSION_DESKTOP
+    XDG_SESSION_TYPE
+    XDG_MENU_PREFIX
+    XDG_DATA_DIRS
+    XDG_CONFIG_DIRS
+    QT_QPA_PLATFORM
+    QT_QPA_PLATFORMTHEME
+    QT_STYLE_OVERRIDE
+  )
+
+  if have_command dbus-update-activation-environment; then
+    dbus-update-activation-environment --systemd "${vars[@]}" || \
+      warn "failed to import environment into D-Bus activation"
+  else
+    warn "dbus-update-activation-environment is not installed"
+  fi
+
+  if have_command systemctl; then
+    systemctl --user import-environment "${vars[@]}" || \
+      warn "failed to import environment into systemd user manager"
+  else
+    warn "systemctl is not installed"
+  fi
+}
+
+start_shell_service() {
+  if have_command systemctl; then
+    systemctl --user daemon-reload || \
+      warn "failed to reload systemd user units"
+    systemctl --user start holonight-shell.service || \
+      warn "failed to queue holonight-shell.service"
+  else
+    warn "systemctl is not installed; holonight-shell.service cannot be started automatically"
+  fi
+}
+
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-HoloNight:Hyprland}"
+export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-Hyprland}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-hyprland-}"
+
+have_command Hyprland || die "Hyprland was not found in PATH"
+
+import_environment
+
+mode="${HOLONIGHT_HYPRLAND_SESSION_MODE:-auto}"
+case "${mode}" in
+  auto)
+    if have_command uwsm; then
+      start_shell_service
+      exec uwsm start -e -D Hyprland hyprland.desktop
+    fi
+    exec Hyprland
+    ;;
+  uwsm)
+    have_command uwsm || die "HOLONIGHT_HYPRLAND_SESSION_MODE=uwsm was requested, but uwsm was not found in PATH"
+    start_shell_service
+    exec uwsm start -e -D Hyprland hyprland.desktop
+    ;;
+  direct)
+    exec Hyprland
+    ;;
+  *)
+    die "unknown HOLONIGHT_HYPRLAND_SESSION_MODE=${mode}; expected auto, uwsm, or direct"
+    ;;
+esac

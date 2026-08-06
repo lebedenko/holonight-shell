@@ -1,0 +1,24 @@
+import QtQuick.tooling 1.2
+
+Module {
+    Component {
+        name: "HolonightTheme"
+        prototype: "QObject"
+        exports: ["Holonight.Core/HolonightTheme 1.0"]
+        exportMetaObjectRevisions: [256]
+        isSingleton: true
+        Property { name: "themeFamilies"; type: "QVariantList"; isReadonly: true }
+        Property { name: "themeVariants"; type: "QVariantList"; isReadonly: true }
+        Method {
+            name: "accentOptionsForScheme"
+            type: "QVariantList"
+            Parameter { name: "scheme_id"; type: "QString" }
+        }
+        Method {
+            name: "accentColorForScheme"
+            type: "QColor"
+            Parameter { name: "scheme_id"; type: "QString" }
+            Parameter { name: "accent_id"; type: "QString" }
+        }
+    }
+}

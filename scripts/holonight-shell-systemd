@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+warn() {
+  printf 'holonight-shell-systemd: warning: %s\n' "$*" >&2
+}
+
+have_command() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+systemd_environment() {
+  systemctl --user show-environment 2>/dev/null || true
+}
+
+environment_value() {
+  local name="$1"
+  local output="$2"
+
+  printf '%s\n' "${output}" | sed -n "s/^${name}=//p" | head -n 1
+}
+
+import_runtime_environment() {
+  local output="$1"
+  local name
+  local value
+  local allowed=(
+    WAYLAND_DISPLAY
+    DISPLAY
+    XDG_CURRENT_DESKTOP
+    XDG_SESSION_DESKTOP
+    XDG_SESSION_TYPE
+    XDG_MENU_PREFIX
+    XDG_DATA_DIRS
+    XDG_CONFIG_DIRS
+    DBUS_SESSION_BUS_ADDRESS
+    HYPRLAND_INSTANCE_SIGNATURE
+    HYPRLAND_CMD
+    QT_QPA_PLATFORM
+    QT_QPA_PLATFORMTHEME
+    QT_STYLE_OVERRIDE
+  )
+
+  for name in "${allowed[@]}"; do
+    value="$(environment_value "${name}" "${output}")"
+    if [[ -n "${value}" ]]; then
+      export "${name}=${value}"
+    fi
+  done
+}
+
+wait_for_hyprland_environment() {
+  local timeout="${HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT:-60}"
+  local deadline=$((SECONDS + timeout))
+  local output
+  local wayland_display
+  local hyprland_signature
+
+  if ! have_command systemctl; then
+    warn "systemctl is not installed; starting with inherited environment"
+    return 0
+  fi
+
+  while (( SECONDS <= deadline )); do
+    output="$(systemd_environment)"
+    wayland_display="$(environment_value WAYLAND_DISPLAY "${output}")"
+    hyprland_signature="$(environment_value HYPRLAND_INSTANCE_SIGNATURE "${output}")"
+
+    if [[ -n "${wayland_display}" && -n "${hyprland_signature}" ]]; then
+      import_runtime_environment "${output}"
+      return 0
+    fi
+
+    sleep 0.2
+  done
+
+  warn "timed out waiting for WAYLAND_DISPLAY and HYPRLAND_INSTANCE_SIGNATURE in the systemd user environment"
+  return 1
+}
+
+wait_for_hyprland_environment
+exec holonight-shell "$@"

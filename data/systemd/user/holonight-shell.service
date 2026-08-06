@@ -1,0 +1,16 @@
+[Unit]
+Description=HoloNight Shell
+Documentation=https://github.com/lebedenko/holonight-shell
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/sh -lc 'exec holonight-shell-systemd'
+Restart=on-failure
+RestartSec=2s
+Slice=session-graphical.slice
+
+[Install]
+WantedBy=graphical-session.target

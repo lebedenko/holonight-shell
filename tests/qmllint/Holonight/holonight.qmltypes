@@ -1,0 +1,105 @@
+import QtQuick.tooling 1.2
+
+Module {
+    Component {
+        name: "HoloniightPalette"
+        prototype: "QObject"
+        exports: ["Holonight/HoloniightPalette 1.0"]
+        exportMetaObjectRevisions: [256]
+        isSingleton: true
+        Property { name: "background"; type: "QColor"; isReadonly: true }
+        Property { name: "surface"; type: "QColor"; isReadonly: true }
+        Property { name: "surfaceElevated"; type: "QColor"; isReadonly: true }
+        Property { name: "surfaceRaised"; type: "QColor"; isReadonly: true }
+        Property { name: "surfaceHover"; type: "QColor"; isReadonly: true }
+        Property { name: "surfaceVariant"; type: "QColor"; isReadonly: true }
+        Property { name: "textPrimary"; type: "QColor"; isReadonly: true }
+        Property { name: "textSecondary"; type: "QColor"; isReadonly: true }
+        Property { name: "textMuted"; type: "QColor"; isReadonly: true }
+        Property { name: "textDisabled"; type: "QColor"; isReadonly: true }
+        Property { name: "workspaceActive"; type: "QColor"; isReadonly: true }
+        Property { name: "workspaceOccupied"; type: "QColor"; isReadonly: true }
+        Property { name: "borderPassive"; type: "QColor"; isReadonly: true }
+        Property { name: "borderHover"; type: "QColor"; isReadonly: true }
+        Property { name: "borderFocus"; type: "QColor"; isReadonly: true }
+        Property { name: "borderActive"; type: "QColor"; isReadonly: true }
+        Property { name: "borderUrgent"; type: "QColor"; isReadonly: true }
+        Property { name: "onSurface"; type: "QColor"; isReadonly: true }
+        Property { name: "onSurfaceVariant"; type: "QColor"; isReadonly: true }
+        Property { name: "textSubtle"; type: "QColor"; isReadonly: true }
+        Property { name: "accentCyan"; type: "QColor"; isReadonly: true }
+        Property { name: "accentYellow"; type: "QColor"; isReadonly: true }
+        Property { name: "accentViolet"; type: "QColor"; isReadonly: true }
+        Property { name: "accentBlue"; type: "QColor"; isReadonly: true }
+        Property { name: "primary"; type: "QColor"; isReadonly: true }
+        Property { name: "success"; type: "QColor"; isReadonly: true }
+        Property { name: "warning"; type: "QColor"; isReadonly: true }
+        Property { name: "error"; type: "QColor"; isReadonly: true }
+        Method { name: "reload" }
+    }
+    Component {
+        name: "HnIconProvider"
+        prototype: "QObject"
+        exports: ["Holonight/HnIconProvider 1.0"]
+        exportMetaObjectRevisions: [256]
+        isSingleton: true
+        Method {
+            name: "sourceUrl"
+            type: "QString"
+            Parameter { name: "source"; type: "QUrl" }
+            Parameter { name: "size"; type: "int" }
+            Parameter { name: "color"; type: "QColor" }
+            Parameter { name: "highlight"; type: "QColor" }
+            Parameter { name: "positive"; type: "QColor" }
+            Parameter { name: "neutral"; type: "QColor" }
+            Parameter { name: "negative"; type: "QColor" }
+            Parameter { name: "palette_revision"; type: "int" }
+        }
+        Method {
+            name: "supportsSemanticColors"
+            type: "bool"
+            Parameter { name: "source"; type: "QUrl" }
+        }
+    }
+    Component {
+        name: "HnIcon"
+        prototype: "QQuickItem"
+        exports: ["Holonight/HnIcon 1.0"]
+        exportMetaObjectRevisions: [256]
+        Enum {
+            name: "IconState"
+            values: ["Normal", "Muted", "Disabled", "Active"]
+        }
+        Property { name: "source"; type: "QUrl" }
+        Property { name: "size"; type: "int" }
+        Property { name: "iconState"; type: "int" }
+        Property { name: "tinted"; type: "bool" }
+        Property { name: "normalColor"; type: "QColor" }
+        Property { name: "mutedColor"; type: "QColor" }
+        Property { name: "disabledColor"; type: "QColor" }
+        Property { name: "activeColor"; type: "QColor" }
+        Property { name: "resolvedColor"; type: "QColor"; isReadonly: true }
+    }
+    Component {
+        name: "HolonightTheme"
+        prototype: "QObject"
+        exports: ["Holonight/HolonightTheme 1.0"]
+        exportMetaObjectRevisions: [256]
+        isSingleton: true
+        Property { name: "themeFamilies"; type: "QVariantList"; isReadonly: true }
+        Property { name: "themeVariants"; type: "QVariantList"; isReadonly: true }
+        Method {
+            name: "accentOptionsForScheme"
+            type: "QVariantList"
+            isMethodConstant: true
+            Parameter { name: "scheme_id"; type: "QString" }
+        }
+        Method {
+            name: "accentColorForScheme"
+            type: "QColor"
+            isMethodConstant: true
+            Parameter { name: "scheme_id"; type: "QString" }
+            Parameter { name: "accent_id"; type: "QString" }
+        }
+    }
+}

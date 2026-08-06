@@ -1,0 +1,13 @@
+#pragma once
+
+#include <QStringList>
+#include <QUrl>
+
+inline QStringList holonightQmlModuleEntries(const QString& source_root) {
+  auto sourceUrl = [&source_root](const QString& path) {
+    return QUrl::fromLocalFile(source_root + QLatin1Char('/') + path).toString();
+  };
+  return QStringList{
+@HOLONIGHT_QML_TEST_ENTRIES@
+  };
+}

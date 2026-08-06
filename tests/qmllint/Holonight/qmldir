@@ -1,0 +1,5 @@
+module Holonight
+depends QtQuick
+typeinfo holonight.qmltypes
+singleton HnIconProvider 1.0 HnIconProvider.qml
+HnIcon 1.0 HnIcon.qml

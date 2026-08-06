@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">HoloNight media artwork placeholder</title>
+  <desc id="desc">An abstract sound horizon made from a circular signal path and spectrum bars.</desc>
+
+  <defs>
+    <linearGradient id="surface" x1="40" y1="24" x2="472" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#151a2d"/>
+      <stop offset="0.55" stop-color="#0d1222"/>
+      <stop offset="1" stop-color="#090d18"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="142" y1="154" x2="372" y2="366" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#35d9ff"/>
+      <stop offset="0.52" stop-color="#72a7ff"/>
+      <stop offset="1" stop-color="#ad6cff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(256 260) rotate(90) scale(190)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5ecfff" stop-opacity="0.18"/>
+      <stop offset="0.56" stop-color="#7d7cff" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#0b1020" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <clipPath id="tileClip">
+      <path d="M40 16H420L496 92V472L472 496H92L16 420V40L40 16Z"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#tileClip)">
+    <rect width="512" height="512" fill="url(#surface)"/>
+    <rect width="512" height="512" fill="url(#glow)"/>
+
+    <!-- restrained technical grid -->
+    <g fill="none" stroke="#91a5cd" stroke-opacity="0.07" stroke-width="1">
+      <path d="M64 128H448M64 256H448M64 384H448"/>
+      <path d="M128 64V448M256 64V448M384 64V448"/>
+      <circle cx="256" cy="256" r="160"/>
+      <circle cx="256" cy="256" r="112"/>
+    </g>
+
+    <!-- ambient glow beneath the signal -->
+    <circle cx="256" cy="256" r="116" fill="none" stroke="#59cfff" stroke-opacity="0.24" stroke-width="18" filter="url(#softGlow)"/>
+
+    <!-- broken orbital signal path -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M143 222A120 120 0 0 1 337 160" stroke="url(#accent)" stroke-width="5"/>
+      <path d="M369 204A120 120 0 0 1 347 340" stroke="url(#accent)" stroke-width="5"/>
+      <path d="M315 371A120 120 0 0 1 153 327" stroke="url(#accent)" stroke-width="5"/>
+      <path d="M132 292A120 120 0 0 1 132 258" stroke="url(#accent)" stroke-width="5"/>
+    </g>
+
+    <!-- static spectrum: neutral fallback, not an interactive control -->
+    <g fill="url(#accent)">
+      <rect x="160" y="244" width="12" height="24" rx="6" opacity="0.46"/>
+      <rect x="184" y="226" width="12" height="60" rx="6" opacity="0.58"/>
+      <rect x="208" y="202" width="12" height="108" rx="6" opacity="0.72"/>
+      <rect x="232" y="176" width="12" height="160" rx="6" opacity="0.9"/>
+      <rect x="256" y="152" width="12" height="208" rx="6"/>
+      <rect x="280" y="188" width="12" height="136" rx="6" opacity="0.88"/>
+      <rect x="304" y="214" width="12" height="84" rx="6" opacity="0.7"/>
+      <rect x="328" y="232" width="12" height="48" rx="6" opacity="0.56"/>
+      <rect x="352" y="246" width="12" height="20" rx="6" opacity="0.44"/>
+    </g>
+
+    <!-- signal nodes -->
+    <circle cx="143" cy="222" r="7" fill="#35d9ff"/>
+    <circle cx="347" cy="340" r="7" fill="#ad6cff"/>
+  </g>
+
+  <path d="M40 16H420L496 92V472L472 496H92L16 420V40L40 16Z" fill="none" stroke="url(#accent)" stroke-opacity="0.38" stroke-width="2"/>
+</svg>

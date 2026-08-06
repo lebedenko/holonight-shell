@@ -1,0 +1,8 @@
+#pragma once
+
+// Generated from apps/shell/version.h.in by CMake configure_file().
+// The version is the single source of truth in the top-level
+// project(holonight-shell VERSION ...) directive — do not hardcode it elsewhere.
+namespace holonight {
+inline constexpr const char* shellVersion = "@PROJECT_VERSION@";
+}  // namespace holonight

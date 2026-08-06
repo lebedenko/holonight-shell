@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  BUILD_TYPE: Debug
+
+permissions:
+  contents: write
+
+jobs:
+  # Build gate: the tag must compile, test, and lint cleanly before anything
+  # is published. Mirrors the CI `build-test` job (same container and steps).
+  build-gate:
+    name: Build gate
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: scripts/install-ci-dependencies.sh
+
+      - name: Checkout holonight-settings dependency
+        uses: actions/checkout
+        with:
+          repository: lebedenko/holonight-settings
+          path: holonight-settings-dep
+
+      - name: Build and install HolonightConfig dependency
+        run: |
+          cmake -S holonight-settings-dep -B holonight-settings-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_APP=OFF -DBUILD_TESTS=OFF
+          cmake --build holonight-settings-dep/build --parallel
+          cmake --install holonight-settings-dep/build --prefix /usr
+          rm -rf holonight-settings-dep
+
+      - name: Checkout holonight-qt dependency
+        uses: actions/checkout@v4
+        with:
+          repository: lebedenko/holonight-qt
+          path: holonight-qt-dep
+
+      - name: Build and install holonight-qt dependency
+        run: |
+          cmake -S holonight-qt-dep -B holonight-qt-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build holonight-qt-dep/build --parallel
+          cmake --install holonight-qt-dep/build --prefix /usr
+          rm -rf holonight-qt-dep
+
+      - name: Configure
+        run: >
+          cmake -B build -G Ninja -S .
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DBUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: dbus-run-session -- ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: QML lint
+        run: cmake --build build --target qml-lint
+
+  # Publish: only runs if the build gate passed. Packages a source tarball
+  # from the tag and creates the GitHub Release. Runs on the bare host runner
+  # (not the container) so the preinstalled `git` and `gh` CLI are available.
+  publish:
+    name: Publish release
+    needs: build-gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Create source tarball
+        run: >
+          git archive
+          --format=tar.gz
+          --prefix="holonight-shell-${VERSION}/"
+          -o "holonight-shell-${VERSION}.tar.gz"
+          HEAD
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${GITHUB_REF_NAME}"
+          "holonight-shell-${VERSION}.tar.gz"
+          --generate-notes

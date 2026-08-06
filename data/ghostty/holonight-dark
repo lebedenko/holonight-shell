@@ -1,0 +1,28 @@
+# HoloNight Dark for Ghostty
+# Generated from Holonight::tokensForScheme(ThemeSchemeKind::HoloNightDark).
+
+background = #0c1118
+foreground = #e7edf5
+
+cursor-color = #56d7ff
+cursor-text = #081018
+
+selection-background = #5ea2ff
+selection-foreground = #081018
+
+palette = 0=#1a222d
+palette = 1=#f06a84
+palette = 2=#74d88b
+palette = 3=#efc36b
+palette = 4=#5ea2ff
+palette = 5=#a88cff
+palette = 6=#56d7ff
+palette = 7=#dce6f2
+palette = 8=#4b5b70
+palette = 9=#ff8ca0
+palette = 10=#99f2a9
+palette = 11=#ffd98a
+palette = 12=#82baff
+palette = 13=#c3aeff
+palette = 14=#8ee8ff
+palette = 15=#ffffff

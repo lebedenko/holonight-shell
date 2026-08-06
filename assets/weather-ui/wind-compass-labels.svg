@@ -1,0 +1,9 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <style type="text/css" id="current-color-scheme">.ColorScheme-Text { color:#444444; }</style>
+  <g class="ColorScheme-Text" fill="currentColor" font-family="monospace" font-size="18" font-weight="700" text-anchor="middle">
+    <text x="90" y="41">N</text>
+    <text x="90" y="155">S</text>
+    <text x="34" y="96">W</text>
+    <text x="146" y="96">E</text>
+  </g>
+</svg>

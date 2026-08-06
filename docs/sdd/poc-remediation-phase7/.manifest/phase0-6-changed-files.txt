@@ -1,0 +1,155 @@
+# Phase 7 baseline manifest — files changed by Phases 0-6 remediation work
+# Commit range: 0b28776 (pre-Phase-0) .. cf76ba0 (Phase 6 tip)
+# All commits in range touching libs/ or apps/ (not only the 7 'remediate phase N' commits — other fixes landed interspersed):
+#   cf76ba0  fix: remediate phase 6 poc findings
+#   3fd9628  fix: remediate phase 5 poc findings
+#   7b861a4  fix: hide no-display default app candidates
+#   b082681  fix: resolve notification application metadata
+#   b204159  fix: improve sidebar notification rule visibility
+#   2372ef6  fix: remediate phase 4 poc findings
+#   acd9f3e  build: configure QML module policies
+#   a328c7e  fix: preserve disabled widget config
+#   fb25b90  feat: theme wind compass layers
+#   4c4726a  fix: remediate phase 3 poc blocking io
+#   a62d897  fix: remediate phase 2 poc issues
+#   0444cca  fix: satisfy tidy-container checks
+#   266457a  fix: restore workspace edge arrow active color
+#   1e6ff14  fix: remediate phase 1 poc issues
+#   d4f2310  fix: remediate phase 0 poc issues
+#
+# Changed files (git diff --stat 0b28776..cf76ba0 -- libs/ apps/):
+ apps/settings/CMakeLists.txt                       |   1 +
+ apps/settings/src/ConfigFileService.cpp            |   4 +-
+ apps/settings/src/FontListModel.cpp                |   5 +-
+ apps/settings/src/SettingsEditModel.cpp            |   8 +-
+ apps/settings/src/ThemeConfigFile.cpp              |  11 +-
+ apps/settings/src/ThemeConfigFile.h                |   1 +
+ apps/shell/CMakeLists.txt                          |   1 +
+ apps/shell/app/ShellApplication.cpp                |  28 +-
+ apps/shell/app/ShellApplication.h                  |  21 +-
+ apps/shell/qml/Controls/BarIcon.qml                |   4 +-
+ apps/shell/qml/Launcher/Launcher.qml               |  13 +-
+ apps/shell/qml/Launcher/LauncherActionRow.qml      |  21 ++
+ .../qml/Launcher/LauncherRightPanelBrowse.qml      |   1 +
+ .../qml/Launcher/LauncherRightPanelSearch.qml      |   6 +-
+ apps/shell/qml/Notifications/ToastActionBar.qml    |   1 +
+ .../qml/Popups/Network/WifiNetworkDelegate.qml     |   5 +
+ .../shell/qml/Popups/Weather/WeatherWindWidget.qml |  26 +-
+ apps/shell/qml/RightSidebar/SidebarContent.qml     |   7 +-
+ apps/shell/qml/RightSidebar/SidebarTabBar.qml      |   4 +
+ .../Tabs/Notifications/SidebarNotifications.qml    |  28 +-
+ .../qml/RightSidebar/Tabs/System/DefaultAppRow.qml |   4 +-
+ .../RightSidebar/Tabs/System/SidebarSessionBar.qml |  89 ------
+ apps/shell/qml/Topbar/ActiveWindowSection.qml      |   1 -
+ apps/shell/qml/Topbar/AudioWidget.qml              |   1 -
+ apps/shell/qml/Topbar/BatteryWidget.qml            |   1 -
+ apps/shell/qml/Topbar/ClockSection.qml             |   4 -
+ apps/shell/qml/Topbar/KeyboardLayoutWidget.qml     |   1 -
+ apps/shell/qml/Topbar/LogoSection.qml              |   1 -
+ apps/shell/qml/Topbar/NetworkWidget.qml            |   2 -
+ apps/shell/qml/Topbar/NotificationsWidget.qml      |   2 -
+ apps/shell/qml/Topbar/StatusPopupTriggerArea.qml   |  10 +-
+ apps/shell/qml/Topbar/StatusesSection.qml          |   1 -
+ apps/shell/qml/Topbar/TopBar.qml                   |   7 -
+ apps/shell/qml/Topbar/WeatherWidget.qml            |   4 -
+ apps/shell/qml/Topbar/WorkspaceEdgeArrow.qml       |  28 +-
+ apps/shell/qml/Topbar/WorkspacePill.qml            |   4 +-
+ apps/shell/qml/Topbar/WorkspaceSection.qml         |   1 -
+ apps/shell/qml/Tray/TrayItem.qml                   |   4 +-
+ apps/shell/qml/Widgets/StableDigitsText.qml        |   1 +
+ libs/holonight-config/src/ConfigParsers.cpp        |  88 +++---
+ libs/holonight-config/src/ConfigWriter.cpp         |  17 +-
+ libs/holonight-core/src/ExtWorkspaceManager.cpp    |   5 +-
+ libs/holonight-core/src/WorkspaceModel.cpp         |   3 +-
+ libs/holonight-platform/src/HyprlandIpc.cpp        |   7 +-
+ libs/holonight-platform/src/HyprlandIpcClient.cpp  |  10 +-
+ libs/holonight-platform/src/HyprlandIpcClient.h    |  10 +-
+ libs/holonight-services/CMakeLists.txt             |   1 -
+ libs/holonight-services/src/CalendarService.cpp    |  42 ++-
+ libs/holonight-services/src/CalendarService.h      |   4 +
+ libs/holonight-services/src/InhibitorModel.cpp     |   3 +
+ libs/holonight-services/src/InhibitorModel.h       |   2 +
+ .../src/LogindSessionResolver.cpp                  |  75 +++++
+ .../holonight-services/src/LogindSessionResolver.h |  20 ++
+ libs/holonight-services/src/SessionService.cpp     |  35 ++-
+ libs/holonight-services/src/SessionService.h       |   5 +
+ .../src/SuspendInhibitorService.h                  |   3 +
+ libs/holonight-services/src/SystemInfoService.cpp  |  95 +++++--
+ libs/holonight-services/src/SystemInfoService.h    |   6 +
+ libs/holonight-services/src/ThemeConfigPath.cpp    |  11 +
+ libs/holonight-services/src/ThemeConfigPath.h      |  12 +
+ libs/holonight-services/src/ThemeService.cpp       |  11 +-
+ libs/holonight-services/src/ThemeService.h         |   6 +
+ .../src/audio/AudioDeviceModel.cpp                 |   3 +-
+ libs/holonight-services/src/audio/AudioService.cpp |  17 +-
+ libs/holonight-services/src/audio/AudioService.h   |   9 +-
+ .../src/audio/AudioStreamModel.cpp                 |   3 +-
+ libs/holonight-services/src/audio/AudioTypes.h     |   2 +
+ .../src/audio/PulseAudioBackend.cpp                | 146 ++++++++--
+ .../src/audio/PulseAudioBackend.h                  |  25 +-
+ .../src/brightness/SysfsBackend.cpp                |  39 +--
+ .../src/calendar/CalDavProvider.cpp                |  93 ++-----
+ .../src/calendar/CalDavProvider.h                  |   2 +
+ .../src/calendar/CalendarCache.cpp                 |  87 +++++-
+ .../src/calendar/CalendarCache.h                   |  13 +-
+ .../src/calendar/CalendarEventModel.cpp            |   3 +-
+ .../src/calendar/CalendarSyncManager.cpp           |  36 ++-
+ .../src/calendar/CalendarSyncManager.h             |   5 +
+ .../src/calendar/HttpSyncClient.cpp                |  66 +++++
+ .../src/calendar/HttpSyncClient.h                  |  43 +++
+ .../src/calendar/IcsProvider.cpp                   |  34 +--
+ libs/holonight-services/src/calendar/IcsProvider.h |   2 +
+ .../src/calendar/LibsecretCredentialStorage.cpp    |  37 ++-
+ .../src/calendar/LibsecretCredentialStorage.h      |  14 +-
+ libs/holonight-services/src/idle/IdleService.cpp   |  39 +--
+ .../src/kde-compat/KdeCompatService.cpp            |  99 -------
+ .../src/kde-compat/KdeCompatService.h              |  46 ---
+ .../src/launcher/DesktopEntryCache.cpp             |   2 +-
+ .../src/launcher/DesktopEntryScanner.cpp           |  10 +-
+ .../src/launcher/DesktopEntryScanner.h             |   4 +
+ .../src/launcher/DesktopEntrySerializer.h          |   2 +
+ .../src/launcher/LauncherModel.cpp                 |  40 ++-
+ .../src/launcher/LauncherModel.h                   |   8 +
+ .../src/launcher/LauncherService.cpp               |  34 ++-
+ .../src/launcher/LauncherService.h                 |   8 +-
+ libs/holonight-services/src/mime/MimeService.cpp   | 181 ++++--------
+ .../src/network/NetworkManagerBackend.cpp          |   7 +-
+ .../src/network/WifiNetworkModel.cpp               |   3 +-
+ .../src/notifications/NotificationRuleModel.cpp    | 101 ++++++-
+ .../src/notifications/NotificationRuleModel.h      |  12 +-
+ .../src/notifications/NotificationRuleStore.cpp    |  68 ++++-
+ .../src/notifications/NotificationRuleStore.h      |  34 ++-
+ .../src/notifications/NotificationServer.cpp       |  57 ++--
+ .../src/notifications/NotificationServer.h         |   9 +
+ .../src/notifications/NotificationService.cpp      |   3 +-
+ .../src/portal/SettingsPortalBackend.cpp           |  13 +-
+ .../src/process/GuardedProcessRunner.cpp           |  84 ++++++
+ .../src/process/GuardedProcessRunner.h             |  26 ++
+ .../SessionIntegrationService.cpp                  | 307 ++++++++++++---------
+ .../SessionIntegrationService.h                    |  25 +-
+ .../src/session/HyprlandSessionBackend.cpp         |   4 +-
+ .../src/session/HyprlandSessionBackend.h           |   4 +-
+ libs/holonight-services/src/session/Locker.cpp     |  19 +-
+ libs/holonight-services/src/session/Locker.h       |   4 +-
+ .../src/session/LogindSessionBackend.h             |   6 +-
+ .../src/session/SessionBackend.cpp                 |  17 +-
+ .../src/session/SessionBackend.h                   |  16 +-
+ .../src/session/SessionCommandResult.h             |  19 ++
+ .../src/weather-icon/WeatherIconBridge.cpp         |  28 +-
+ libs/holonight-surfaces/CMakeLists.txt             |   2 -
+ libs/holonight-surfaces/src/DbusMenuItem.cpp       |   3 +-
+ libs/holonight-surfaces/src/PopupGeometry.cpp      |  17 --
+ libs/holonight-surfaces/src/PopupGeometry.h        |  10 -
+ libs/holonight-surfaces/src/ShellConstants.h       |   7 +-
+ libs/holonight-surfaces/src/SidebarManager.cpp     |  11 +
+ libs/holonight-surfaces/src/SidebarManager.h       |   3 +
+ .../src/SidebarSurfacePolicy.cpp                   |   2 -
+ libs/holonight-surfaces/src/SidebarSurfacePolicy.h |   1 -
+ .../holonight-surfaces/src/StatusPopupGeometry.cpp |   3 +-
+ libs/holonight-surfaces/src/TooltipSurface.cpp     |   3 +-
+ libs/holonight-surfaces/src/TrayItem.cpp           |  31 ++-
+ libs/holonight-surfaces/src/TrayItem.h             |  21 +-
+ libs/holonight-surfaces/src/TrayItemProperties.cpp |  10 +-
+ libs/holonight-surfaces/src/TrayMenuSurface.cpp    |   5 +-
+ libs/holonight-surfaces/src/TrayModel.cpp          |   3 +-
+ 134 files changed, 1887 insertions(+), 1096 deletions(-)

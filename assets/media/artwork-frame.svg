@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">HoloNight media artwork frame</title>
+  <desc id="desc">A transparent chamfered frame with a cyan, blue, and violet gradient.</desc>
+
+  <style id="current-color-scheme">
+    .ColorScheme-Highlight { color: #35d9ff; }
+    .ColorScheme-PositiveText { color: #72a7ff; }
+    .ColorScheme-NeutralText { color: #ad6cff; }
+  </style>
+  <defs>
+    <linearGradient id="accent" x1="142" y1="154" x2="372" y2="366" gradientUnits="userSpaceOnUse">
+      <stop class="ColorScheme-Highlight" offset="0" stop-color="currentColor"/>
+      <stop class="ColorScheme-PositiveText" offset="0.52" stop-color="currentColor"/>
+      <stop class="ColorScheme-NeutralText" offset="1" stop-color="currentColor"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M40 16H420L496 92V472L472 496H92L16 420V40L40 16Z" fill="none" stroke="url(#accent)" stroke-opacity="0.38" stroke-width="2"/>
+</svg>

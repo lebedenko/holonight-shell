@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1024"
+     height="1024"
+     viewBox="0 0 1024 1024"
+     role="img"
+     aria-labelledby="title description">
+  <title id="title">Holonight hexagonal H mark</title>
+  <desc id="description">
+    A blue-to-violet hexagonal outline surrounding a vertically symmetrical, stylized letter H.
+  </desc>
+
+  <defs>
+    <style type="text/css" id="current-color-scheme">
+      .ColorScheme-Text { color: #63c9ff; }
+      .ColorScheme-Highlight { color: #bd48f2; }
+    </style>
+
+    <linearGradient id="brand-gradient" x1="0.22" y1="0.08" x2="0.78" y2="0.92">
+      <stop class="ColorScheme-Text" offset="0" stop-color="currentColor"/>
+      <stop class="ColorScheme-Text" offset="0.42" stop-color="currentColor"/>
+      <stop class="ColorScheme-Highlight" offset="0.72" stop-color="currentColor"/>
+      <stop class="ColorScheme-Highlight" offset="1" stop-color="currentColor"/>
+    </linearGradient>
+
+    <linearGradient id="brand-highlight" x1="0" y1="0" x2="1" y2="1">
+      <stop class="ColorScheme-Text" offset="0" stop-color="currentColor" stop-opacity="0.72"/>
+      <stop class="ColorScheme-Text" offset="0.5" stop-color="currentColor" stop-opacity="0.18"/>
+      <stop class="ColorScheme-Highlight" offset="1" stop-color="currentColor" stop-opacity="0.48"/>
+    </linearGradient>
+
+    <filter id="edge-glow" x="-30%" y="-30%" width="160%" height="160%"
+            color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <path id="hexagon"
+          d="M 512,166 L 780,321 L 780,631 L 512,786 L 244,631 L 244,321 Z"/>
+  </defs>
+
+  <use xlink:href="#hexagon"
+       fill="none"
+       stroke="url(#brand-gradient)"
+       stroke-width="64"
+       stroke-linejoin="round"
+       filter="url(#edge-glow)"/>
+
+  <use xlink:href="#hexagon"
+       fill="none"
+       stroke="url(#brand-highlight)"
+       stroke-width="12"
+       stroke-linejoin="round"
+       opacity="0.58"/>
+
+  <g filter="url(#edge-glow)">
+    <path d="M 374,342
+             Q 374,322 394,310
+             L 437,285
+             Q 449,278 449,294
+             L 449,440
+             L 575,440
+             L 575,294
+             Q 575,278 587,285
+             L 630,310
+             Q 650,322 650,342
+             L 650,610
+             Q 650,630 630,642
+             L 587,667
+             Q 575,674 575,658
+             L 575,512
+             L 449,512
+             L 449,658
+             Q 449,674 437,667
+             L 394,642
+             Q 374,630 374,610 Z"
+          fill="url(#brand-gradient)"/>
+  </g>
+</svg>

@@ -1,0 +1,17 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style type="text/css" id="current-color-scheme">.ColorScheme-Text { color:#444444; }</style>
+  <defs>
+    <filter id="softGlow" x="-30" y="-30" width="240" height="240" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g class="ColorScheme-Text" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+    <path d="M90 16a74 74 0 0 1 63.22 112.49" filter="url(#softGlow)"/>
+    <path d="M126.5 154.36A74 74 0 0 1 18.08 107.44" opacity=".82"/>
+    <path d="M21.08 69.34A74 74 0 0 1 60.08 22.02" opacity=".92"/>
+  </g>
+</svg>
