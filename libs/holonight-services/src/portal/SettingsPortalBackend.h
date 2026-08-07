@@ -9,6 +9,8 @@
 #include <QStringList>
 #include <QVariantMap>
 
+#include <holonight/appearance.h>
+
 struct SettingsPortalAccentColor {
   double red{};
   double green{};
@@ -35,8 +37,9 @@ class SettingsPortalBackend : public QObject {
     friend bool operator!=(const Values& lhs, const Values& rhs) { return !(lhs == rhs); }
   };
 
-  explicit SettingsPortalBackend(QObject* parent = nullptr);
-  explicit SettingsPortalBackend(bool register_on_session_bus, QObject* parent = nullptr);
+  explicit SettingsPortalBackend(const Holonight::ResolvedAppearance& appearance, QObject* parent = nullptr);
+  SettingsPortalBackend(const Holonight::ResolvedAppearance& appearance, bool register_on_session_bus,
+                        QObject* parent = nullptr);
   ~SettingsPortalBackend() override;
 
   SettingsPortalBackend(const SettingsPortalBackend&) = delete;
@@ -52,7 +55,7 @@ class SettingsPortalBackend : public QObject {
   // NOLINTNEXTLINE(readability-identifier-naming)
   [[nodiscard]] Q_SCRIPTABLE QMap<QString, QVariantMap> ReadAll(const QStringList& namespaces) const;
 
-  void reloadFromThemeConfig();
+  void applyAppearance(const Holonight::ResolvedAppearance& appearance);
 
  Q_SIGNALS:
   // NOLINTNEXTLINE(readability-identifier-naming)
@@ -65,8 +68,7 @@ class SettingsPortalBackend : public QObject {
   void registerOnSessionBus();
   void applyValues(const Values& values, bool emit_changes);
 
-  [[nodiscard]] static Values readThemeConfig();
-  [[nodiscard]] static int colorSchemeForThemeConfig(const QString& scheme, const QString& mode);
+  [[nodiscard]] static Values valuesForAppearance(const Holonight::ResolvedAppearance& appearance);
   [[nodiscard]] static QDBusVariant variantForColorScheme(int color_scheme);
   [[nodiscard]] static QDBusVariant variantForAccentColor(const QColor& color);
   [[nodiscard]] static QVariantMap appearanceMap(const Values& values);

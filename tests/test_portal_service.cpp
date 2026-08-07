@@ -7,11 +7,7 @@
 #include <QDBusError>
 #include <QDBusPendingCallWatcher>
 #include <QDBusVariant>
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
 #include <QSignalSpy>
-#include <QTemporaryDir>
 #include <QTest>
 #include <QThread>
 
@@ -76,34 +72,12 @@ std::unique_ptr<NullPortalDBus> makeDbus(bool broker_present = true, const QStri
   return dbus;
 }
 
-class ScopedXdgConfigHome {
- public:
-  explicit ScopedXdgConfigHome(const QString& path) : previous_(qgetenv("XDG_CONFIG_HOME")) {
-    qputenv("XDG_CONFIG_HOME", path.toUtf8());
-  }
-  ~ScopedXdgConfigHome() {
-    if (previous_.isNull()) {
-      qunsetenv("XDG_CONFIG_HOME");
-    } else {
-      qputenv("XDG_CONFIG_HOME", previous_);
-    }
-  }
-
-  ScopedXdgConfigHome(const ScopedXdgConfigHome&) = delete;
-  ScopedXdgConfigHome& operator=(const ScopedXdgConfigHome&) = delete;
-  ScopedXdgConfigHome(ScopedXdgConfigHome&&) = delete;
-  ScopedXdgConfigHome& operator=(ScopedXdgConfigHome&&) = delete;
-
- private:
-  QByteArray previous_;
-};
-
-void writeThemeConfig(const QString& xdg_config_home, const QByteArray& content) {
-  const QString path = xdg_config_home + QStringLiteral("/holonight/theme.conf");
-  QDir().mkpath(QFileInfo(path).absolutePath());
-  QFile file{path};
-  ASSERT_TRUE(file.open(QIODevice::WriteOnly | QIODevice::Text));
-  file.write(content);
+Holonight::ResolvedAppearance makeAppearance(QString scheme, QString accent, Holonight::ColorMode color_mode) {
+  Holonight::ResolvedAppearance appearance;
+  appearance.scheme = std::move(scheme);
+  appearance.accent = std::move(accent);
+  appearance.color_mode = color_mode;
+  return appearance;
 }
 
 }  // namespace
@@ -327,26 +301,18 @@ TEST(PortalServiceTest, AccentColor_NotFound_RemainsInvalid) {
 
 // ─── Settings portal backend ─────────────────────────────────────────────────
 
-TEST(SettingsPortalBackendTest, ReadPublishesSchemeDerivedColorScheme) {
-  QTemporaryDir temp_dir;
-  ASSERT_TRUE(temp_dir.isValid());
-  const ScopedXdgConfigHome xdg(temp_dir.path());
-  writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-day\naccent=blue\nmode=light\n");
-
-  SettingsPortalBackend backend(false);
+TEST(SettingsPortalBackendTest, ReadPublishesResolvedColorScheme) {
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-day"), QStringLiteral("blue"), Holonight::ColorMode::Light), false);
 
   EXPECT_EQ(
       backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("color-scheme")).variant().toUInt(),
       2U);
 }
 
-TEST(SettingsPortalBackendTest, ReadUsesLightModeFallbackWhenSchemeIsAbsent) {
-  QTemporaryDir temp_dir;
-  ASSERT_TRUE(temp_dir.isValid());
-  const ScopedXdgConfigHome xdg(temp_dir.path());
-  writeThemeConfig(temp_dir.path(), "[appearance]\nmode=light\n");
-
-  SettingsPortalBackend backend(false);
+TEST(SettingsPortalBackendTest, ReadUsesInjectedResolvedColorMode) {
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("blue"), Holonight::ColorMode::Light), false);
 
   EXPECT_EQ(
       backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("color-scheme")).variant().toUInt(),
@@ -354,12 +320,8 @@ TEST(SettingsPortalBackendTest, ReadUsesLightModeFallbackWhenSchemeIsAbsent) {
 }
 
 TEST(SettingsPortalBackendTest, ReadAllPublishesAppearanceValues) {
-  QTemporaryDir temp_dir;
-  ASSERT_TRUE(temp_dir.isValid());
-  const ScopedXdgConfigHome xdg(temp_dir.path());
-  writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-dark\naccent=violet\nmode=dark\n");
-
-  SettingsPortalBackend backend(false);
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("violet"), Holonight::ColorMode::Dark), false);
   const QMap<QString, QVariantMap> all = backend.ReadAll({QStringLiteral("org.freedesktop.appearance")});
   const QVariantMap appearance = all.value(QStringLiteral("org.freedesktop.appearance"));
 
@@ -374,12 +336,8 @@ TEST(SettingsPortalBackendTest, ReadAllPublishesAppearanceValues) {
 }
 
 TEST(SettingsPortalBackendTest, DefaultAccentUsesSchemeNativeColor) {
-  QTemporaryDir temp_dir;
-  ASSERT_TRUE(temp_dir.isValid());
-  const ScopedXdgConfigHome xdg(temp_dir.path());
-  writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-latte\naccent=default\nmode=light\n");
-
-  SettingsPortalBackend backend(false);
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-latte"), QStringLiteral("default"), Holonight::ColorMode::Light), false);
   const QMap<QString, QVariantMap> all = backend.ReadAll({QStringLiteral("org.freedesktop.appearance")});
   const QVariantMap appearance = all.value(QStringLiteral("org.freedesktop.appearance"));
   const auto accent = appearance.value(QStringLiteral("accent-color"))
@@ -392,24 +350,20 @@ TEST(SettingsPortalBackendTest, DefaultAccentUsesSchemeNativeColor) {
   EXPECT_NEAR(accent.blue, 0xf5 / 255.0, 0.001);
 }
 
-TEST(SettingsPortalBackendTest, ReloadEmitsOnlyChangedSystemFacingValues) {
-  QTemporaryDir temp_dir;
-  ASSERT_TRUE(temp_dir.isValid());
-  const ScopedXdgConfigHome xdg(temp_dir.path());
-  writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-dark\naccent=cyan\nmode=dark\n");
-
-  SettingsPortalBackend backend(false);
+TEST(SettingsPortalBackendTest, ApplyAppearanceEmitsOnlyChangedSystemFacingValues) {
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("cyan"), Holonight::ColorMode::Dark), false);
   QSignalSpy changed_spy(&backend, &SettingsPortalBackend::SettingChanged);
 
-  writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-light\naccent=cyan\nmode=light\n");
-  backend.reloadFromThemeConfig();
+  backend.applyAppearance(
+      makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("cyan"), Holonight::ColorMode::Light));
 
   ASSERT_EQ(changed_spy.count(), 2);
   EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("color-scheme"));
   EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("accent-color"));
 
-  writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-light\naccent=yellow\nmode=light\n");
-  backend.reloadFromThemeConfig();
+  backend.applyAppearance(
+      makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("yellow"), Holonight::ColorMode::Light));
 
   ASSERT_EQ(changed_spy.count(), 1);
   EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("accent-color"));

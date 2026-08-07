@@ -16,7 +16,7 @@ Umbrella ACF-006 is `Ready`. Implementation started from Shell
 - [x] ACF6-05: Add `HoloNight::Config` and the pinned Qt projection dependency for canonical read-only appearance.
 - [x] ACF6-06: Refactor `AppearanceService` into the single validated appearance state/watcher with last-known-good
   rollback and precise signals.
-- [ ] ACF6-07: Remove ThemeService configuration loading and make portal/palette reload consume in-memory appearance.
+- [x] ACF6-07: Remove ThemeService configuration loading and make portal/palette reload consume in-memory appearance.
 - [ ] ACF6-08: Update Shell QML, tests, fakes, CMake, documentation, and install/package paths for the canonical role
   names and separate configuration domains.
 - [ ] ACF6-09: Add redacted security-boundary tests and record the linked credential-storage initiative without
@@ -58,3 +58,18 @@ before requesting ACF-006 `Done`. A local or unpublished commit is not a handoff
 - `task format-check`: passed.
 - `task architecture-check`: passed.
 - `task qmltypes-check`: passed after a complete Shell build; QML type metadata and module packaging checks passed.
+
+### 2026-08-07 — ACF6-07
+
+- Removed the `theme.conf` path resolver, watcher, parser, and their obsolete tests. `ThemeService` is now a thin
+  projection subscribed to `AppearanceService`.
+- `SettingsPortalBackend` accepts only injected resolved appearance values. Portal color scheme and catalog-resolved
+  accent changes are published before the related appearance revision; palette reload follows that revision.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_services
+  --gtest_filter='AppearanceIntegrationTest.*:SettingsPortalBackendTest.*'`: 10/10 tests passed for in-memory portal
+  projection, precise system-facing changes, notification ordering, revision-driven palette reload, and appearance
+  watcher behavior.
+- `rg -n "theme\\.conf|ThemeConfigPath|reloadFromThemeConfig" libs apps tests CMakeLists.txt Taskfile.yml`: no
+  matches.
+- `task format-check`, `task architecture-check`, and `task qmltypes-check`: passed; the latter completed a full Shell
+  build and verified QML type metadata and module packaging.

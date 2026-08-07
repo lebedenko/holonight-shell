@@ -120,7 +120,7 @@ ShellApplication::ShellApplication(QObject* parent)
       session_(new SessionService(this)),
       system_info_(new SystemInfoService(config_service_, this)),
       appearance_(new AppearanceService(this)),
-      theme_(new ThemeService(this)),
+      theme_(new ThemeService(appearance_, this)),
       weather_(new WeatherService(config_service_, this)),
       mpris_(new MprisService(this)),
       // Constructed here (well before rebuildWidgets() ever runs, per DESIGN.md §2.7/T-032) —

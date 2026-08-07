@@ -104,7 +104,6 @@ holonight_add_test_exe(test_holonight_services
   test_lid_state_monitor.cpp
   test_low_battery_monitor.cpp
   test_suspend_inhibitor_service.cpp
-  test_theme_config_path.cpp
   test_logind_session_resolver.cpp
   test_mpris_metadata.cpp
   test_mpris_selection.cpp

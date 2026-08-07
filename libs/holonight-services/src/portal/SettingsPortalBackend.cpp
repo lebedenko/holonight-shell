@@ -1,12 +1,9 @@
 #include "SettingsPortalBackend.h"
 
-#include "ThemeConfigPath.h"
-
 #include <QDBusConnection>
 #include <QDBusError>
 #include <QDBusMetaType>
 #include <QLoggingCategory>
-#include <QSettings>
 
 #include <algorithm>
 #include <holonight/theme_catalog.h>
@@ -20,26 +17,6 @@ constexpr auto kAppearanceNs = "org.freedesktop.appearance";
 constexpr auto kColorSchemeKey = "color-scheme";
 constexpr auto kAccentColorKey = "accent-color";
 
-QString normalizedMode(const QString& mode) {
-  const QString normalized = mode.trimmed().toLower();
-  if (normalized == QLatin1String("light")) {
-    return QStringLiteral("light");
-  }
-  return QStringLiteral("dark");
-}
-
-QString schemeForThemeConfig(const QString& scheme, const QString& mode) {
-  QString normalized = Holonight::normalizeSchemeId(scheme);
-  if (!normalized.isEmpty()) {
-    return normalized;
-  }
-  return normalizedMode(mode) == QLatin1String("light") ? QStringLiteral("holonight-light")
-                                                        : Holonight::defaultSchemeId();
-}
-
-QColor resolvedAccentColorForThemeConfig(const QString& scheme, const QString& accent) {
-  return Holonight::accentColorForScheme(scheme, accent);
-}
 }  // namespace
 
 QDBusArgument& operator<<(QDBusArgument& argument, const SettingsPortalAccentColor& color) {
@@ -56,12 +33,15 @@ const QDBusArgument& operator>>(const QDBusArgument& argument, SettingsPortalAcc
   return argument;
 }
 
-SettingsPortalBackend::SettingsPortalBackend(QObject* parent) : SettingsPortalBackend(true, parent) {}
+SettingsPortalBackend::SettingsPortalBackend(const Holonight::ResolvedAppearance& appearance, QObject* parent)
+    : SettingsPortalBackend(appearance, true, parent) {}
 
-SettingsPortalBackend::SettingsPortalBackend(bool register_on_session_bus, QObject* parent) : QObject(parent) {
+SettingsPortalBackend::SettingsPortalBackend(const Holonight::ResolvedAppearance& appearance,
+                                             bool register_on_session_bus, QObject* parent)
+    : QObject(parent) {
   qRegisterMetaType<SettingsPortalAccentColor>("SettingsPortalAccentColor");
   qDBusRegisterMetaType<SettingsPortalAccentColor>();
-  values_ = readThemeConfig();
+  values_ = valuesForAppearance(appearance);
   if (register_on_session_bus) {
     registerOnSessionBus();
   }
@@ -95,7 +75,9 @@ QMap<QString, QVariantMap> SettingsPortalBackend::ReadAll(const QStringList& nam
   return result;
 }
 
-void SettingsPortalBackend::reloadFromThemeConfig() { applyValues(readThemeConfig(), true); }
+void SettingsPortalBackend::applyAppearance(const Holonight::ResolvedAppearance& appearance) {
+  applyValues(valuesForAppearance(appearance), true);
+}
 
 void SettingsPortalBackend::registerOnSessionBus() {
   QDBusConnection bus = QDBusConnection::sessionBus();
@@ -132,24 +114,11 @@ void SettingsPortalBackend::applyValues(const Values& values, bool emit_changes)
   }
 }
 
-int SettingsPortalBackend::colorSchemeForThemeConfig(const QString& scheme, const QString& mode) {
-  const QString normalized = Holonight::normalizeSchemeId(scheme);
-  if (!normalized.isEmpty()) {
-    return Holonight::modeNameForScheme(normalized) == QLatin1String("light") ? kColorSchemeLight : kColorSchemeDark;
-  }
-  return normalizedMode(mode) == QLatin1String("light") ? kColorSchemeLight : kColorSchemeDark;
-}
-
-SettingsPortalBackend::Values SettingsPortalBackend::readThemeConfig() {
-  QSettings settings{resolveHolonightThemeConfigPaths().file_path, QSettings::IniFormat};
-  const QString scheme = settings.value(QStringLiteral("appearance/scheme")).toString();
-  const QString mode = settings.value(QStringLiteral("appearance/mode"), QStringLiteral("dark")).toString();
-  const QString resolved_scheme = schemeForThemeConfig(scheme, mode);
-
+SettingsPortalBackend::Values SettingsPortalBackend::valuesForAppearance(
+    const Holonight::ResolvedAppearance& appearance) {
   Values values;
-  values.color_scheme = colorSchemeForThemeConfig(scheme, mode);
-  values.accent_color = resolvedAccentColorForThemeConfig(
-      resolved_scheme, settings.value(QStringLiteral("appearance/accent")).toString());
+  values.color_scheme = appearance.color_mode == Holonight::ColorMode::Light ? kColorSchemeLight : kColorSchemeDark;
+  values.accent_color = Holonight::accentColorForScheme(appearance.scheme, appearance.accent);
   return values;
 }
 

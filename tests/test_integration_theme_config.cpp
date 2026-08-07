@@ -1,4 +1,6 @@
 #include "AppearanceService.h"
+#include "SettingsPortalBackend.h"
+#include "ThemeService.h"
 
 #include <QDir>
 #include <QFile>
@@ -117,6 +119,32 @@ TEST_F(AppearanceIntegrationTest, LiveReplacementEmitsPreciseSignalsBeforeRevisi
   EXPECT_EQ(revision_spy.count(), 1);
   EXPECT_EQ(appearance.revision(), 1);
   EXPECT_EQ(signal_order, (QStringList{QStringLiteral("uiFont"), QStringLiteral("revision")}));
+}
+
+TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionDrivenPaletteReload) {
+  writeAppearance(path, kCustomAppearance);
+  AppearanceService appearance;
+  QStringList signal_order;
+  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order]() { signal_order << "revision"; });
+  ThemeService theme(&appearance);
+  auto* portal = theme.findChild<SettingsPortalBackend*>();
+  ASSERT_NE(portal, nullptr);
+  QSignalSpy portal_spy(portal, &SettingsPortalBackend::SettingChanged);
+  QSignalSpy palette_spy(&theme, &ThemeService::paletteReloadRequested);
+  QObject::connect(portal, &SettingsPortalBackend::SettingChanged, [&signal_order]() { signal_order << "portal"; });
+  QObject::connect(&theme, &ThemeService::paletteReloadRequested, [&signal_order]() { signal_order << "palette"; });
+
+  QByteArray edited(kCustomAppearance);
+  edited.replace("scheme = \"holonight-dark\"", "scheme = \"holonight-day\"");
+  edited.replace("accent = \"blue\"", "accent = \"violet\"");
+  writeAppearance(path, edited);
+
+  QTRY_COMPARE_WITH_TIMEOUT(appearance.scheme(), QStringLiteral("holonight-day"), 2000);
+  ASSERT_GE(portal_spy.count(), 1);
+  EXPECT_EQ(palette_spy.count(), 1);
+  EXPECT_EQ(signal_order.first(), QStringLiteral("portal"));
+  EXPECT_EQ(signal_order.at(signal_order.size() - 2), QStringLiteral("revision"));
+  EXPECT_EQ(signal_order.last(), QStringLiteral("palette"));
 }
 
 TEST_F(AppearanceIntegrationTest, SemanticallyUnchangedReplacementDoesNotAdvanceRevision) {
