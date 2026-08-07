@@ -9,6 +9,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 add_library(holonight_shell_config STATIC
+    src/ConfigPath.cpp
     src/ConfigParsers.cpp
     src/ConfigWriter.cpp
 )

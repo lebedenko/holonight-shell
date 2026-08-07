@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QLoggingCategory>
 
+#include <holonight_shell_config/config_path.h>
 #include <holonight_shell_config/config_writer.h>
 
 Q_LOGGING_CATEGORY(lcConfig, "holonight.config")
@@ -34,12 +35,8 @@ ConfigService::~ConfigService() {
 ConfigService* ConfigService::instance() { return s_instance_; }
 
 void ConfigService::resolveConfigPath() {
-  QString xdg = qEnvironmentVariable("XDG_CONFIG_HOME");
-  if (xdg.isEmpty()) {
-    xdg = QDir::homePath() + QLatin1String("/.config");
-  }
-  config_dir_path_ = xdg + QLatin1String("/holonight");
-  config_path_ = config_dir_path_ + QLatin1String("/config.toml");
+  config_path_ = HoloNight::ShellConfig::resolveProductConfigPath();
+  config_dir_path_ = QFileInfo(config_path_).dir().path();
 }
 
 void ConfigService::ensureDirectoryExists() {

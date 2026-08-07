@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <holonight_shell_config/config_parsers.h>
+#include <holonight_shell_config/config_path.h>
 #include <holonight_shell_config/config_writer.h>
 
 namespace {
@@ -11,6 +12,26 @@ using HoloNight::ShellConfig::MissingDefaults;
 using HoloNight::ShellConfig::parseConfigTable;
 using HoloNight::ShellConfig::ProductConfig;
 using HoloNight::ShellConfig::ProductConfigWriter;
+using HoloNight::ShellConfig::resolveProductConfigPath;
+
+TEST(ShellConfigPackageTest, ProductPathPrefersXdgConfigHome) {
+  EXPECT_EQ(resolveProductConfigPath({{QStringLiteral("XDG_CONFIG_HOME"), QStringLiteral("/xdg")},
+                                      {QStringLiteral("HOME"), QStringLiteral("/home/test")}}),
+            QStringLiteral("/xdg/holonight/config.toml"));
+}
+
+TEST(ShellConfigPackageTest, ProductPathFallsBackToHomeConfig) {
+  EXPECT_EQ(resolveProductConfigPath({{QStringLiteral("XDG_CONFIG_HOME"), QString()},
+                                      {QStringLiteral("HOME"), QStringLiteral("/home/test")}}),
+            QStringLiteral("/home/test/.config/holonight/config.toml"));
+}
+
+TEST(ShellConfigPackageTest, ProductPathIsEmptyWithoutResolvableBase) {
+  EXPECT_TRUE(resolveProductConfigPath({}).isEmpty());
+  EXPECT_TRUE(
+      resolveProductConfigPath({{QStringLiteral("XDG_CONFIG_HOME"), QString()}, {QStringLiteral("HOME"), QString()}})
+          .isEmpty());
+}
 
 TEST(ShellConfigPackageTest, LegacyAppearanceTableIsInert) {
   const auto table = toml::parse(R"(
