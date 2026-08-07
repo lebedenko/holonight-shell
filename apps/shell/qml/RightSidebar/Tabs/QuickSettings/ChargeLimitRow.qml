@@ -15,7 +15,7 @@ HnSettingsRow {
         Text {
             text: BatteryService.chargeLimit + "%"
             color: HoloniightPalette.textMuted
-            font.family: AppearanceService.fixedFont
+            font.family: AppearanceService.monospaceFont
             font.pixelSize: 13
         }
     }

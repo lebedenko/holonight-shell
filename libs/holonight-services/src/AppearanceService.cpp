@@ -55,22 +55,18 @@ void AppearanceService::applyAppearance(const Holonight::ResolvedAppearance& app
   if (notify && previous.ui_font != appearance_.ui_font) emit uiFontChanged();
   if (notify && previous.monospace_font != appearance_.monospace_font) {
     emit monospaceFontChanged();
-    emit fixedFontChanged();
   }
   if (notify && previous.title_font != appearance_.title_font) emit titleFontChanged();
   if (notify && previous.display_font != appearance_.display_font) {
     emit displayFontChanged();
-    emit clockFontChanged();
   }
   if (notify && previous.ui_font_size != appearance_.ui_font_size) emit uiFontSizeChanged();
   if (notify && previous.monospace_font_size != appearance_.monospace_font_size) {
     emit monospaceFontSizeChanged();
-    emit fixedFontSizeChanged();
   }
   if (notify && previous.title_font_size != appearance_.title_font_size) emit titleFontSizeChanged();
   if (notify && previous.display_font_size != appearance_.display_font_size) {
     emit displayFontSizeChanged();
-    emit clockFontSizeChanged();
   }
   if (notify && previous.icon_theme != appearance_.icon_theme) emit iconThemeChanged();
   if (notify && previous.fallback_icon_theme != appearance_.fallback_icon_theme) emit fallbackIconThemeChanged();

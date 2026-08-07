@@ -81,8 +81,8 @@ BarSection {
                 id: tempText
                 text: root.ready ? Math.round(WeatherService.current.temperature) + "°C" : ""
                 color: root.ready ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
-                font.family: AppearanceService.clockFont
-                font.pixelSize: AppearanceService.clockFontSize
+                font.family: AppearanceService.displayFont
+                font.pixelSize: AppearanceService.displayFontSize
                 font.weight: Font.Normal
             }
 

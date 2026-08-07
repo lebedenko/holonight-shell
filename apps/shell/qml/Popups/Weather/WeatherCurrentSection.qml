@@ -63,7 +63,7 @@ Item {
                         text: WeatherService.hasData ? Math.round(WeatherService.current.temperature) : ""
                         color: WeatherService.hasData ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
                         font.pixelSize: 112
-                        font.family: AppearanceService.clockFont
+                        font.family: AppearanceService.displayFont
                         font.weight: Font.Thin
                     }
 
@@ -72,7 +72,7 @@ Item {
                         text: WeatherService.hasData ? "°C" : ""
                         color: tempText.color
                         font.pixelSize: 56
-                        font.family: AppearanceService.clockFont
+                        font.family: AppearanceService.displayFont
                         font.weight: Font.Thin
 
                         anchors.top: tempText.top

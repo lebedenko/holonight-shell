@@ -55,8 +55,8 @@ Item {
                 anchors.centerIn: parent
                 text: root.remainingText
                 color: HoloniightPalette.primary
-                fontFamily: AppearanceService.clockFont
-                pixelSize: Math.round(AppearanceService.clockFontSize * 2.0)
+                fontFamily: AppearanceService.displayFont
+                pixelSize: Math.round(AppearanceService.displayFontSize * 2.0)
             }
         }
 

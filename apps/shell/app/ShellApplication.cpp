@@ -187,7 +187,6 @@ void ShellApplication::registerQmlTypes() {
   reg(session_, "SessionService");
   reg(system_info_, "SystemInfoService");
   reg(appearance_, "AppearanceService");
-  reg(theme_, "ThemeService");
   reg(weather_, "WeatherService");
   reg(mpris_, "MprisService");
   reg(launcher_, "LauncherService");

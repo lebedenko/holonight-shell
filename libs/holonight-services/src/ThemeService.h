@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QObject>
-#include <QQmlEngine>
 
 class AppearanceService;
 class SettingsPortalBackend;
@@ -10,9 +9,6 @@ class SettingsPortalBackend;
 // AppearanceService remains the only canonical appearance state and filesystem watcher.
 class ThemeService : public QObject {
   Q_OBJECT
-  QML_ELEMENT
-  QML_SINGLETON
-
  public:
   explicit ThemeService(AppearanceService* appearance, QObject* parent = nullptr);
   ~ThemeService() override = default;

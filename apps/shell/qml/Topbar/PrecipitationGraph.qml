@@ -114,7 +114,7 @@ Canvas {
         }
 
         ctx.fillStyle = HoloniightPalette.textMuted
-        ctx.font = root.canvasFont(9, AppearanceService.fixedFont)
+        ctx.font = root.canvasFont(9, AppearanceService.monospaceFont)
         ctx.textAlign = "left"
         ctx.fillText(axisMax.toFixed(0), 0, yPos(axisMax) + 4)
         ctx.fillText((axisMax / 2).toFixed(axisMax > 5 ? 0 : 1), 0, yPos(axisMax / 2) + 4)

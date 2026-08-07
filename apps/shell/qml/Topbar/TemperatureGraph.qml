@@ -118,7 +118,7 @@ Canvas {
 
         // Y-axis labels at min / mid / max.
         ctx.fillStyle = HoloniightPalette.textMuted
-        ctx.font = root.canvasFont(9, AppearanceService.fixedFont)
+        ctx.font = root.canvasFont(9, AppearanceService.monospaceFont)
         ctx.textAlign = "left"
         ctx.fillText(maxT + "°", 0, yPos(maxT) + 4)
         ctx.fillText(midT + "°", 0, yPos(midT) + 4)

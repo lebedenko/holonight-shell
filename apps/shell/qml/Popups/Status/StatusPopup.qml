@@ -13,7 +13,7 @@ import "../../Utility" as Utility
 Item {
     id: root
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     // Injected from StatusPopupSurface::ensureSurface via setInitialProperties.
     required property string popupId

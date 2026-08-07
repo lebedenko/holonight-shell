@@ -11,7 +11,7 @@ Rectangle {
                   HoloniightPalette.accentCyan.b, 0.10)
         : "transparent"
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     MouseArea {
         anchors.fill: parent

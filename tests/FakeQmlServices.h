@@ -323,33 +323,57 @@ class FakeSystemInfoService : public QObject {
 
 class FakeAppearanceService : public QObject {
   Q_OBJECT
+  Q_PROPERTY(QString scheme READ scheme CONSTANT)
+  Q_PROPERTY(QString accent READ accent CONSTANT)
+  Q_PROPERTY(QString colorMode READ colorMode CONSTANT)
   Q_PROPERTY(QString uiFont READ uiFont CONSTANT)
-  Q_PROPERTY(QString fixedFont READ fixedFont CONSTANT)
-  Q_PROPERTY(QString clockFont READ clockFont CONSTANT)
+  Q_PROPERTY(QString monospaceFont READ monospaceFont CONSTANT)
   Q_PROPERTY(QString titleFont READ titleFont CONSTANT)
+  Q_PROPERTY(QString displayFont READ displayFont CONSTANT)
   Q_PROPERTY(int uiFontSize READ uiFontSize CONSTANT)
-  Q_PROPERTY(int fixedFontSize READ fixedFontSize CONSTANT)
-  Q_PROPERTY(int clockFontSize READ clockFontSize CONSTANT)
+  Q_PROPERTY(int monospaceFontSize READ monospaceFontSize CONSTANT)
   Q_PROPERTY(int titleFontSize READ titleFontSize CONSTANT)
+  Q_PROPERTY(int displayFontSize READ displayFontSize CONSTANT)
+  Q_PROPERTY(QString iconTheme READ iconTheme CONSTANT)
+  Q_PROPERTY(QString fallbackIconTheme READ fallbackIconTheme CONSTANT)
+  Q_PROPERTY(QString cursorTheme READ cursorTheme CONSTANT)
+  Q_PROPERTY(qreal layoutScale READ layoutScale CONSTANT)
+  Q_PROPERTY(QString shapeStyle READ shapeStyle CONSTANT)
+  Q_PROPERTY(qreal shapeScale READ shapeScale CONSTANT)
+  Q_PROPERTY(bool hasBaseRadius READ hasBaseRadius CONSTANT)
+  Q_PROPERTY(qreal baseRadius READ baseRadius CONSTANT)
+  Q_PROPERTY(bool hasBaseChamfer READ hasBaseChamfer CONSTANT)
+  Q_PROPERTY(qreal baseChamfer READ baseChamfer CONSTANT)
+  Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
   Q_PROPERTY(bool debugOverlays READ debugOverlays CONSTANT)
 
  public:
+  [[nodiscard]] QString scheme() const { return QStringLiteral("holonight-dark"); }
+  [[nodiscard]] QString accent() const { return QStringLiteral("blue"); }
+  [[nodiscard]] QString colorMode() const { return QStringLiteral("dark"); }
   [[nodiscard]] QString uiFont() const { return QStringLiteral("Sans"); }
-  [[nodiscard]] QString fixedFont() const { return QStringLiteral("Monospace"); }
-  [[nodiscard]] QString clockFont() const { return QStringLiteral("Sans"); }
+  [[nodiscard]] QString monospaceFont() const { return QStringLiteral("Monospace"); }
   [[nodiscard]] QString titleFont() const { return QStringLiteral("Sans"); }
+  [[nodiscard]] QString displayFont() const { return QStringLiteral("Sans"); }
   [[nodiscard]] int uiFontSize() const { return 12; }
-  [[nodiscard]] int fixedFontSize() const { return 12; }
-  [[nodiscard]] int clockFontSize() const { return 20; }
+  [[nodiscard]] int monospaceFontSize() const { return 12; }
   [[nodiscard]] int titleFontSize() const { return 8; }
+  [[nodiscard]] int displayFontSize() const { return 20; }
+  [[nodiscard]] QString iconTheme() const { return QStringLiteral("HoloNight"); }
+  [[nodiscard]] QString fallbackIconTheme() const { return QStringLiteral("hicolor"); }
+  [[nodiscard]] QString cursorTheme() const { return QStringLiteral("default"); }
+  [[nodiscard]] qreal layoutScale() const { return 1.0; }
+  [[nodiscard]] QString shapeStyle() const { return QStringLiteral("inherit"); }
+  [[nodiscard]] qreal shapeScale() const { return 1.0; }
+  [[nodiscard]] bool hasBaseRadius() const { return false; }
+  [[nodiscard]] qreal baseRadius() const { return 0.0; }
+  [[nodiscard]] bool hasBaseChamfer() const { return false; }
+  [[nodiscard]] qreal baseChamfer() const { return 0.0; }
+  [[nodiscard]] int revision() const { return 0; }
   [[nodiscard]] bool debugOverlays() const { return false; }
-};
-
-class FakeThemeService : public QObject {
-  Q_OBJECT
 
  Q_SIGNALS:
-  void paletteReloadRequested();
+  void revisionChanged();
 };
 
 class FakePopupSurface : public QObject {
@@ -1003,7 +1027,6 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SessionService", &session_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SystemInfoService", &system_info_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AppearanceService", &appearance_) >= 0 &&
-           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "ThemeService", &theme_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "NotificationService", &notifications_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "NotificationRuleModel", &notification_rules_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CalendarService", &calendar_) >= 0 &&
@@ -1053,7 +1076,6 @@ class FakeQmlServices {
   FakeSessionService session_;
   FakeSystemInfoService system_info_;
   FakeAppearanceService appearance_;
-  FakeThemeService theme_;
   FakeNotificationService notifications_;
   FakeNotificationRuleModel notification_rules_;
   FakeCalendarService calendar_;

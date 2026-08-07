@@ -191,8 +191,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.displayTitle
                     color: HoloniightPalette.textPrimary
-                    font.family: AppearanceService.clockFont
-                    font.pixelSize: Math.round(AppearanceService.clockFontSize * 1.25)
+                    font.family: AppearanceService.displayFont
+                    font.pixelSize: Math.round(AppearanceService.displayFontSize * 1.25)
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     maximumLineCount: 1
@@ -207,8 +207,8 @@ Item {
                 visible: root.artist.length > 0
                 text: root.artist
                 color: HoloniightPalette.textSecondary
-                font.family: AppearanceService.clockFont
-                font.pixelSize: Math.round(AppearanceService.clockFontSize * 0.8)
+                font.family: AppearanceService.displayFont
+                font.pixelSize: Math.round(AppearanceService.displayFontSize * 0.8)
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 maximumLineCount: 1
@@ -240,8 +240,8 @@ Item {
                     text: root.formatTime(root.positionUs)
                     color: HoloniightPalette.textDisabled
                     opacity: 0.72
-                    fontFamily: AppearanceService.clockFont
-                    pixelSize: Math.round(AppearanceService.clockFontSize * 0.7)
+                    fontFamily: AppearanceService.displayFont
+                    pixelSize: Math.round(AppearanceService.displayFontSize * 0.7)
                 }
 
                 StableDigitsText {
@@ -253,8 +253,8 @@ Item {
                     text: root.formatTime(root.lengthUs)
                     color: HoloniightPalette.textDisabled
                     opacity: 0.56
-                    fontFamily: AppearanceService.clockFont
-                    pixelSize: Math.round(AppearanceService.clockFontSize * 0.7)
+                    fontFamily: AppearanceService.displayFont
+                    pixelSize: Math.round(AppearanceService.displayFontSize * 0.7)
                 }
             }
         }

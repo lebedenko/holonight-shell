@@ -17,7 +17,7 @@ Umbrella ACF-006 is `Ready`. Implementation started from Shell
 - [x] ACF6-06: Refactor `AppearanceService` into the single validated appearance state/watcher with last-known-good
   rollback and precise signals.
 - [x] ACF6-07: Remove ThemeService configuration loading and make portal/palette reload consume in-memory appearance.
-- [ ] ACF6-08: Update Shell QML, tests, fakes, CMake, documentation, and install/package paths for the canonical role
+- [x] ACF6-08: Update Shell QML, tests, fakes, CMake, documentation, and install/package paths for the canonical role
   names and separate configuration domains.
 - [ ] ACF6-09: Add redacted security-boundary tests and record the linked credential-storage initiative without
   placing secrets in ACF artifacts.
@@ -73,3 +73,20 @@ before requesting ACF-006 `Done`. A local or unpublished commit is not a handoff
   matches.
 - `task format-check`, `task architecture-check`, and `task qmltypes-check`: passed; the latter completed a full Shell
   build and verified QML type metadata and module packaging.
+
+### 2026-08-07 — ACF6-08
+
+- Shell QML and its complete fake appearance singleton now use canonical `monospace` and `display` typography roles;
+  the temporary `fixed` and `clock` aliases were removed from the C++ and generated QML contracts.
+- `AppearanceReloadBridge` listens directly to `AppearanceService.revision`; the internal portal projection service
+  is no longer exported or faked as a QML singleton.
+- Active README/configuration documentation now records Shell ownership of `HoloNightShellConfig::Config`, the
+  independent `appearance.toml` and `config.toml` paths, and the complete v1 appearance document.
+- Complete debug build passed. `build/tests/test_holonight_qml`: 6/6 tests passed, including canonical module import
+  and topbar/tray/status loading with fake services.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_qml_harness`: 260/260 QML tests passed.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_services
+  --gtest_filter='AppearanceIntegrationTest.*:SettingsPortalBackendTest.*'`: 10/10 tests passed.
+- `task format-check`, `task architecture-check`, `task qml-lint`, and the updated `task qmltypes-check`: passed.
+  Generated metadata/package checks confirm `AppearanceService` and `AppearanceReloadBridge` are present and the
+  legacy aliases, `ThemeService`, and `ThemeReloadBridge` are absent.

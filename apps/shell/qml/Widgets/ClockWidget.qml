@@ -42,8 +42,8 @@ Item {
             Item {
                 id: timeContent
                 anchors.centerIn: parent
-                readonly property int bigPixelSize: Math.round(AppearanceService.clockFontSize * 4.0)
-                readonly property int smallPixelSize: Math.round(AppearanceService.clockFontSize * 2.0)
+                readonly property int bigPixelSize: Math.round(AppearanceService.displayFontSize * 4.0)
+                readonly property int smallPixelSize: Math.round(AppearanceService.displayFontSize * 2.0)
                 readonly property int secondsSpacing: 2
                 implicitWidth: bigTime.implicitWidth
                                 + (smallSeconds.visible ? timeContent.secondsSpacing + smallSeconds.implicitWidth : 0)
@@ -53,12 +53,12 @@ Item {
                 // baseline rather than their box bottoms (the larger font has the deeper descent).
                 FontMetrics {
                     id: bigMetrics
-                    font.family: AppearanceService.clockFont
+                    font.family: AppearanceService.displayFont
                     font.pixelSize: timeContent.bigPixelSize
                 }
                 FontMetrics {
                     id: smallMetrics
-                    font.family: AppearanceService.clockFont
+                    font.family: AppearanceService.displayFont
                     font.pixelSize: timeContent.smallPixelSize
                 }
 
@@ -68,7 +68,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.timeText
                     color: HoloniightPalette.primary
-                    fontFamily: AppearanceService.clockFont
+                    fontFamily: AppearanceService.displayFont
                     pixelSize: timeContent.bigPixelSize
                 }
 
@@ -83,7 +83,7 @@ Item {
                     anchors.bottomMargin: Math.round(bigMetrics.descent - smallMetrics.descent)
                     text: ":" + root.secondsText
                     color: HoloniightPalette.primary
-                    fontFamily: AppearanceService.clockFont
+                    fontFamily: AppearanceService.displayFont
                     pixelSize: timeContent.smallPixelSize
                 }
             }

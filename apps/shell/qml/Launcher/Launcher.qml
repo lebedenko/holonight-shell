@@ -12,7 +12,7 @@ import "../Utility" as Utility
 Item {
     id: root
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     focus: true
 
@@ -386,7 +386,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "↵"
                                 color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.fixedFont
+                                font.family: AppearanceService.monospaceFont
                                 font.pixelSize: 10
                             }
                         }
@@ -422,7 +422,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "Ctrl+↵"
                                 color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.fixedFont
+                                font.family: AppearanceService.monospaceFont
                                 font.pixelSize: 10
                             }
                         }
@@ -458,7 +458,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "↑↓"
                                 color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.fixedFont
+                                font.family: AppearanceService.monospaceFont
                                 font.pixelSize: 10
                             }
                         }

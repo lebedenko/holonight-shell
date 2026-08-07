@@ -11,7 +11,7 @@ Item {
     readonly property int primarySectionMargin: -12
     readonly property int statusSectionMargin: 0
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     // BarBackground {
     //     anchors.fill: parent

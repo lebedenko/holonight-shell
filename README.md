@@ -263,9 +263,16 @@ Each release publishes a source tarball; build from source as above.
 
 ## Architecture
 
-This repository builds `holonight-shell`. The standalone Settings GUI and shared TOML schema are owned by [`holonight-settings`](https://github.com/lebedenko/holonight-settings).
+This repository builds `holonight-shell` and owns the independently installable `HoloNightShellConfig::Config`
+product-configuration package. The standalone Settings GUI consumes that package rather than defining Shell's
+schema. Global appearance is a separate contract supplied by `HoloNight::Config`.
 
-`HolonightConfig::Config` is imported from the external `HolonightConfig` package and provides the shared configuration API. `holonight_platform` owns low-level Wayland, Hyprland IPC, and D-Bus helpers; `holonight_core` owns shared models, file-watching configuration service, and workspace/keyboard integration; `holonight_services` owns service adapters exposed to QML; `holonight_surfaces` owns layer-shell surfaces, tray UI plumbing, and narrow presentation orchestration over service state; `holonight_app` wires the shell runtime together from `apps/shell/app/`. `apps/shell/main.cpp` remains the shell executable entry point, and tests link the smallest target that covers each behavior.
+`holonight_platform` owns low-level Wayland, Hyprland IPC, and D-Bus helpers; `holonight_core` owns shared models,
+the product-configuration service, and workspace/keyboard integration; `holonight_services` owns service adapters
+exposed to QML; `holonight_surfaces` owns layer-shell surfaces, tray UI plumbing, and narrow presentation
+orchestration over service state; `holonight_app` wires the shell runtime together from `apps/shell/app/`.
+`apps/shell/main.cpp` remains the shell executable entry point, and tests link the smallest target that covers each
+behavior.
 
 QML is registered as the `HolonightShell` module with resource paths under `qrc:/HolonightShell/`. Shell QML files live under `apps/shell/qml/` and are registered by `apps/shell/CMakeLists.txt`. Shared QML components used by both binaries live under `qml/HoloNight/` and are registered as the `Holonight.Components` module — import with `import Holonight.Components`.
 
@@ -273,21 +280,13 @@ Wayland client code is generated from XML files in `protocols/` plus the system 
 
 ## Configuration
 
-On first run, `holonight-shell` creates `$XDG_CONFIG_HOME/holonight/config.toml` (default `~/.config/holonight/config.toml`) with default values. Edit the file while the shell is running — changes are detected and applied within 200 ms. If the file is invalid TOML, the previous values are kept and a warning is logged. See [`docs/config.md`](docs/config.md) for the current schema.
+Shell product behavior lives in `$XDG_CONFIG_HOME/holonight/config.toml`; global appearance lives independently in
+`$XDG_CONFIG_HOME/holonight/appearance.toml`. Both fall back below `~/.config` when `XDG_CONFIG_HOME` is unset and
+reload live without coupling their failure or save domains. See [`docs/config.md`](docs/config.md) for both schemas.
 
 Abbreviated example:
 
 ```toml
-[appearance]
-ui_font = "Inter"
-ui_font_size = 12
-fixed_font = "JetBrains Mono"
-fixed_font_size = 12
-clock_font = "Rajdhani"
-clock_font_size = 24
-title_font = "Audiowide"
-title_font_size = 8
-
 [bar.workspaces]
 count = 5  # accepted: 3-10
 

@@ -12,7 +12,7 @@ Item {
     required property string barMonitorName
     required property bool active
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     property bool ready: false
     property bool openDeferredUntilSized: false

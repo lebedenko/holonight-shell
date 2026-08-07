@@ -19,7 +19,7 @@ HnSearchField {
         Text {
             text: ">"
             color: HoloniightPalette.textPrimary
-            font.family: AppearanceService.fixedFont
+            font.family: AppearanceService.monospaceFont
             font.pixelSize: 22
             Accessible.ignored: true
         }

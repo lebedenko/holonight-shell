@@ -11,7 +11,7 @@ Item {
 
   required property string monitorName
 
-  Utility.ThemeReloadBridge {}
+  Utility.AppearanceReloadBridge {}
 
   readonly property int toastWidth: 430
   readonly property int toastSpacing: 10

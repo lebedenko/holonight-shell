@@ -110,7 +110,7 @@ Item {
                     id: speedText
                     text: root.hasData ? root.speedKmh : "—"
                     color: HoloniightPalette.textPrimary
-                    font.family: AppearanceService.clockFont
+                    font.family: AppearanceService.displayFont
                     font.pixelSize: 42
                     font.weight: Font.Thin
                 }

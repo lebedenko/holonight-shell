@@ -71,7 +71,7 @@ Item {
         Text {
             text: metricRow.value
             color: HoloniightPalette.textPrimary
-            font.family: AppearanceService.fixedFont
+            font.family: AppearanceService.monospaceFont
             font.pixelSize: 13
         }
     }
@@ -103,7 +103,7 @@ Item {
             Text {
                 text: BatteryService.percent
                 color: HoloniightPalette.textPrimary
-                font.family: AppearanceService.fixedFont
+                font.family: AppearanceService.monospaceFont
                 font.pixelSize: 46
                 font.weight: Font.Medium
             }
@@ -113,7 +113,7 @@ Item {
                 Layout.bottomMargin: 8
                 text: "%"
                 color: HoloniightPalette.textMuted
-                font.family: AppearanceService.fixedFont
+                font.family: AppearanceService.monospaceFont
                 font.pixelSize: 22
             }
         }

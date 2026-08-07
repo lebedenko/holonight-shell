@@ -50,8 +50,8 @@ BarSection {
             horizontalAlignment: Text.AlignRight
             color: HoloniightPalette.accentCyan
             text: Qt.formatDateTime(root.currentDateTime, "HH:mm")
-            font.family: AppearanceService.clockFont
-            font.pixelSize: AppearanceService.clockFontSize
+            font.family: AppearanceService.displayFont
+            font.pixelSize: AppearanceService.displayFontSize
             font.weight: Font.Light
         }
 

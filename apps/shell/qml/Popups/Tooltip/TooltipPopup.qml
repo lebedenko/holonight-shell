@@ -13,7 +13,7 @@ import "../../Utility" as Utility
 Item {
     id: root
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     readonly property bool hasNamedIcon: TooltipSurface.iconName.length > 0
     readonly property bool hasAudioIcon: TooltipSurface.iconName.startsWith("audio-volume-")

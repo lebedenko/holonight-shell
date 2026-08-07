@@ -16,7 +16,7 @@ import "../Utility" as Utility
 Item {
     id: root
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     // Set by BackgroundManager via setInitialProperties at creation and updated on live config reload
     // and on monitor hotplug re-indexing. "" => no wallpaper; the surface base shows through.

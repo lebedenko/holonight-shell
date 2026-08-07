@@ -1,38 +1,57 @@
 # Configuration
 
-`holonight-shell` reads TOML configuration from `$XDG_CONFIG_HOME/holonight/config.toml`. If `XDG_CONFIG_HOME`
-is unset, the default path is `~/.config/holonight/config.toml`.
+HoloNight uses two independent TOML documents below `$XDG_CONFIG_HOME/holonight` (or `~/.config/holonight` when
+`XDG_CONFIG_HOME` is unset):
 
-Palette appearance mode is intentionally separate from shell behavior config. Settings reads and writes it in
-`$XDG_CONFIG_HOME/holonight/theme.conf` (default `~/.config/holonight/theme.conf`) as:
+- `appearance.toml` owns global toolkit appearance and is read-only to Shell. `HOLONIGHT_APPEARANCE_FILE` may
+  replace its path for tests and controlled launches.
+- `config.toml` owns Shell product behavior. Appearance and legacy theme tables in this file are inert.
 
-```ini
-[appearance]
-mode=dark
+Missing appearance uses shared defaults without creating a file. A present invalid appearance is rejected as a
+complete document; during live reload Shell retains its last-known-good appearance.
+
+```toml
+version = 1
+
+[theme]
+scheme = "holonight-dark"
+accent = "blue"
+
+[typography]
+ui_family = "Inter"
+ui_size = 12
+monospace_family = "JetBrains Mono"
+monospace_size = 12
+title_family = "Audiowide"
+title_size = 10
+display_family = "Rajdhani"
+display_size = 24
+
+[icons]
+theme = "HoloNight"
+fallback = "Papirus"
+cursor = "default"
+
+[layout]
+scale = 1.0
+
+[shape]
+style = "inherit"
+scale = 1.0
+# base_radius and base_chamfer are optional
 ```
 
-Accepted mode values are `dark`, `light`, and `system`. Legacy `[theme]` sections in `config.toml` are ignored by
-the shell and are dropped the next time settings saves shell config.
+All displayed fields except the two shape base overrides are required in a persisted v1 appearance document.
+Unknown, missing, duplicate, incorrectly typed, and out-of-range fields reject the whole document.
 
-The file is created with defaults on first run. Missing keys are added back to the file with default values, which
-allows new settings to appear after upgrades. Invalid present values are corrected in memory only: type errors and
-non-positive font sizes use defaults, while bounded numeric values are clamped to the nearest accepted value. All
-inconsistencies are logged through `holonight.config`; the shell keeps running.
+Shell creates `config.toml` with product defaults on first run. Missing product keys use their defaults, allowing new
+settings to appear after upgrades. Invalid present product values are corrected in memory or clamped according to
+the field contract. Inconsistencies are logged through `holonight.config`; the shell keeps running.
 
 Changes are watched and reloaded after a 200 ms debounce. If the file contains invalid TOML, the previous valid
 configuration remains active.
 
 ```toml
-[appearance]
-ui_font = "Inter"
-ui_font_size = 12
-fixed_font = "JetBrains Mono"
-fixed_font_size = 12
-clock_font = "Rajdhani"
-clock_font_size = 24
-title_font = "Audiowide"
-title_font_size = 8
-
 [bar.workspaces]
 count = 5 # accepted: 3-10
 
@@ -167,14 +186,6 @@ requires Hyprland. Widget changes rebuild live; new monitors are picked up on ho
 
 | Key | Default | Accepted values |
 |---|---:|---|
-| `appearance.ui_font` | `"Inter"` | String |
-| `appearance.ui_font_size` | `12` | Positive integer |
-| `appearance.fixed_font` | `"JetBrains Mono"` | String |
-| `appearance.fixed_font_size` | `12` | Positive integer |
-| `appearance.clock_font` | `"Rajdhani"` | String |
-| `appearance.clock_font_size` | `24` | Positive integer |
-| `appearance.title_font` | `"Audiowide"` | String |
-| `appearance.title_font_size` | `8` | Positive integer |
 | `bar.workspaces.count` | `5` | Integer from `3` to `10` |
 | `bar.systemtray.max_items` | `3` | Integer from `2` to `5` |
 | `tray.icon_overrides.<name>.id` | unset | Stable SNI item id |

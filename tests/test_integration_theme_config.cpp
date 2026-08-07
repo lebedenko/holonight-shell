@@ -79,9 +79,6 @@ TEST_F(AppearanceIntegrationTest, StartupProjectsCompleteCanonicalAppearance) {
   EXPECT_EQ(appearance.monospaceFontSize(), 13);
   EXPECT_EQ(appearance.displayFont(), QStringLiteral("Orbitron"));
   EXPECT_EQ(appearance.displayFontSize(), 20);
-  EXPECT_EQ(appearance.fixedFont(), QStringLiteral("Inconsolata"));
-  EXPECT_EQ(appearance.clockFont(), QStringLiteral("Orbitron"));
-  EXPECT_EQ(appearance.clockFontSize(), 20);
   EXPECT_EQ(appearance.titleFont(), QStringLiteral("Exo"));
   EXPECT_EQ(appearance.titleFontSize(), 9);
   EXPECT_EQ(appearance.iconTheme(), QStringLiteral("HoloNight"));

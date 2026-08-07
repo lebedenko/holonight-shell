@@ -4,8 +4,6 @@ import Holonight.Core
 import HolonightShell
 
 Item {
-    id: root
-
     width: 0
     height: 0
     visible: false
@@ -13,9 +11,9 @@ Item {
     Component.onCompleted: HoloniightPalette.reload()
 
     Connections {
-        target: ThemeService
+        target: AppearanceService
 
-        function onPaletteReloadRequested() {
+        function onRevisionChanged() {
             HoloniightPalette.reload()
         }
     }

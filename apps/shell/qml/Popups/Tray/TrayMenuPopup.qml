@@ -11,7 +11,7 @@ import "../../Utility" as Utility
 Item {
     id: root
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     // Injected via QQmlContext from TrayMenuSurface.
     property var menuModel: null

@@ -8,7 +8,7 @@ import "../Utility" as Utility
 Item {
     id: root
 
-    Utility.ThemeReloadBridge {}
+    Utility.AppearanceReloadBridge {}
 
     required property string widgetType
     required property string barMonitorName

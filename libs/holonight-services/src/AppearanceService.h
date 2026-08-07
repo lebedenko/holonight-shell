@@ -33,11 +33,6 @@ class AppearanceService : public QObject {
   Q_PROPERTY(qreal baseChamfer READ baseChamfer NOTIFY baseChamferChanged)
   Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
 
-  // Compatibility aliases retained until canonical role names are adopted by Shell QML.
-  Q_PROPERTY(QString fixedFont READ monospaceFont NOTIFY fixedFontChanged)
-  Q_PROPERTY(QString clockFont READ displayFont NOTIFY clockFontChanged)
-  Q_PROPERTY(int fixedFontSize READ monospaceFontSize NOTIFY fixedFontSizeChanged)
-  Q_PROPERTY(int clockFontSize READ displayFontSize NOTIFY clockFontSizeChanged)
   Q_PROPERTY(bool debugOverlays READ debugOverlays CONSTANT)
 
  public:
@@ -56,14 +51,10 @@ class AppearanceService : public QObject {
   [[nodiscard]] QString monospaceFont() const { return appearance_.monospace_font; }
   [[nodiscard]] QString titleFont() const { return appearance_.title_font; }
   [[nodiscard]] QString displayFont() const { return appearance_.display_font; }
-  [[nodiscard]] QString fixedFont() const { return monospaceFont(); }
-  [[nodiscard]] QString clockFont() const { return displayFont(); }
   [[nodiscard]] int uiFontSize() const { return appearance_.ui_font_size; }
   [[nodiscard]] int monospaceFontSize() const { return appearance_.monospace_font_size; }
   [[nodiscard]] int titleFontSize() const { return appearance_.title_font_size; }
   [[nodiscard]] int displayFontSize() const { return appearance_.display_font_size; }
-  [[nodiscard]] int fixedFontSize() const { return monospaceFontSize(); }
-  [[nodiscard]] int clockFontSize() const { return displayFontSize(); }
   [[nodiscard]] QString iconTheme() const { return appearance_.icon_theme; }
   [[nodiscard]] QString fallbackIconTheme() const { return appearance_.fallback_icon_theme; }
   [[nodiscard]] QString cursorTheme() const { return appearance_.cursor_theme; }
@@ -99,11 +90,6 @@ class AppearanceService : public QObject {
   void baseRadiusChanged();
   void baseChamferChanged();
   void revisionChanged();
-
-  void fixedFontChanged();
-  void clockFontChanged();
-  void fixedFontSizeChanged();
-  void clockFontSizeChanged();
 
  private:
   void applyAppearance(const Holonight::ResolvedAppearance& appearance, int revision);

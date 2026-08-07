@@ -15,6 +15,7 @@ qmldir_file="${shell_module_dir}/qmldir"
 raw_qml_qrc="${build_root}/apps/shell/.qt/rcc/holonight-shell_raw_qml_0.qrc"
 
 required_types=(
+  "AppearanceService"
   "AudioService"
   "NotificationService"
   "WorkspaceModel"
@@ -51,7 +52,7 @@ fi
 echo "QML type metadata check passed."
 
 required_qml_entries=(
-  "ThemeReloadBridge 1.0 Utility/ThemeReloadBridge.qml"
+  "AppearanceReloadBridge 1.0 Utility/AppearanceReloadBridge.qml"
 )
 
 if [[ ! -s "${qmldir_file}" ]]; then
@@ -83,8 +84,8 @@ if [[ ! -s "${raw_qml_qrc}" ]]; then
   exit 1
 fi
 
-if ! grep -Fq 'alias="Utility/ThemeReloadBridge.qml"' "${raw_qml_qrc}"; then
-  echo "Shell QML resource map does not bundle Utility/ThemeReloadBridge.qml: ${raw_qml_qrc}" >&2
+if ! grep -Fq 'alias="Utility/AppearanceReloadBridge.qml"' "${raw_qml_qrc}"; then
+  echo "Shell QML resource map does not bundle Utility/AppearanceReloadBridge.qml: ${raw_qml_qrc}" >&2
   exit 1
 fi
 
