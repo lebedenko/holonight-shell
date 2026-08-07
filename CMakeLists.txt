@@ -183,6 +183,7 @@ endif()
 qt_policy(SET QTP0004 NEW)
 
 add_subdirectory(libs/holonight-platform)
+add_subdirectory(libs/holonight-shell-config)
 add_subdirectory(libs/holonight-core)
 add_subdirectory(libs/holonight-services)
 add_subdirectory(libs/holonight-surfaces)

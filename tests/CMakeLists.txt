@@ -50,6 +50,18 @@ target_link_libraries(test_holonight_core PRIVATE
   Qt6::Test
 )
 
+holonight_add_test_exe(test_holonight_shell_config
+  main.cpp
+  test_shell_config_package.cpp
+)
+target_link_libraries(test_holonight_shell_config PRIVATE
+  HoloNightShellConfig::Config
+  GTest::gtest
+  GTest::gmock
+  Qt6::Gui
+  Qt6::Test
+)
+
 # --- services tests (links holonight_services) ---
 holonight_add_test_exe(test_holonight_services
   main.cpp
@@ -101,7 +113,7 @@ holonight_add_test_exe(test_holonight_services
 )
 target_link_libraries(test_holonight_services PRIVATE
   holonight_services
-  HolonightQt::Config
+  HolonightQt::Appearance
   HolonightQt::Theme
   GTest::gtest
   GTest::gmock

@@ -5,6 +5,8 @@ vars:
   RELEASE_BUILD_DIR: build-release
   HOLONIGHT_QT_PREFIX: /tmp/holonight-qt-prefix
   HOLONIGHT_QT_DIR: /tmp/holonight-qt-prefix/lib/cmake/HolonightQt
+  HOLONIGHT_APPEARANCE_CONFIG_PREFIX: /tmp/holonight-config-prefix
+  HOLONIGHT_APPEARANCE_CONFIG_DIR: /tmp/holonight-config-prefix/lib/cmake/HoloNightConfig
   HOLONIGHT_SETTINGS_PREFIX: /tmp/holonight-settings-prefix
   HOLONIGHT_CONFIG_DIR: /tmp/holonight-settings-prefix/lib/cmake/HolonightConfig
   NPROC:
@@ -15,7 +17,7 @@ tasks:
     desc: Configure CMake (debug, no tests)
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   configure:release:
@@ -27,25 +29,32 @@ tasks:
           cmake -E echo "Removing stale {{.RELEASE_BUILD_DIR}} CMake cache from another source directory"
           cmake -E rm -rf "{{.RELEASE_BUILD_DIR}}"
         fi
-      - cmake -S . -B {{.RELEASE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}}
+      - cmake -S . -B {{.RELEASE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}}
 
   configure-tests:
     desc: Configure CMake with tests enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   configure-coverage:
     desc: Configure CMake with tests and coverage enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_SETTINGS_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}" -DHolonightConfig_DIR={{.HOLONIGHT_CONFIG_DIR}} -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   build:dependencies:
     desc: Build and install sibling dependencies
-    deps: [build:qt-dependency, build:settings-dependency]
+    deps: [build:appearance-config-dependency, build:qt-dependency, build:settings-dependency]
+
+  build:appearance-config-dependency:
+    desc: Build and install the canonical appearance configuration provider
+    cmds:
+      - cmake -S ../holonight-config -B ../holonight-config/build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF
+      - cmake --build ../holonight-config/build -j{{.NPROC}}
+      - cmake --install ../holonight-config/build --prefix {{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}
 
   build:settings-dependency:
     desc: Build and install the shared configuration package
@@ -131,6 +140,16 @@ tasks:
     cmds:
       - cmake --build {{.BUILD_DIR}} -j{{.NPROC}}
       - ctest --test-dir {{.BUILD_DIR}} --output-on-failure
+
+  test:shell-config-package:
+    desc: Build, install, and consume the standalone Shell product-config package
+    cmds:
+      - cmake -S libs/holonight-shell-config -B /tmp/holonight-shell-config-build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/tmp/holonight-shell-config-prefix
+      - cmake --build /tmp/holonight-shell-config-build -j{{.NPROC}}
+      - cmake --install /tmp/holonight-shell-config-build
+      - cmake -S tests/shell-config-package-consumer -B /tmp/holonight-shell-config-consumer-build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/tmp/holonight-shell-config-prefix
+      - cmake --build /tmp/holonight-shell-config-consumer-build -j{{.NPROC}}
+      - /tmp/holonight-shell-config-consumer-build/holonight-shell-config-consumer
 
   coverage:
     desc: Build with coverage and open HTML report
