@@ -57,8 +57,8 @@ There is no attempt to claim a cross-file atomic transaction. Each result is rep
 domain advances only its own saved snapshot.
 
 This boundary removes appearance from the credential-bearing transaction without prematurely designing secret
-migration. A separate security initiative will define secret-store ownership, migration, failure recovery, and
-service access.
+migration. The planned [Shell Credential Storage](../shell-credential-storage/README.md) initiative will define
+secret-store ownership, migration, failure recovery, and service access.
 
 ## Trade-offs
 

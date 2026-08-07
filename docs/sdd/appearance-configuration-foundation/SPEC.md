@@ -84,8 +84,9 @@ results. An appearance-only action in Settings must never parse or write `config
 reloads.
 
 `config.toml` currently includes credential and private-URL fields. Moving those values to a secret store affects
-service provisioning, user migration, and Settings UX, so it is assigned to a separate Shell-owned security
-initiative rather than expanded into ACF. Until that initiative lands:
+service provisioning, user migration, and Settings UX, so it is assigned to the separate Shell-owned
+[Shell Credential Storage](../shell-credential-storage/README.md) initiative rather than expanded into ACF. Until
+that initiative lands:
 
 - ACF documentation and tests use redacted fixtures only.
 - Diagnostics never include credential values or full authenticated URLs.

@@ -5,11 +5,13 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QMetaProperty>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 
 #include <gtest/gtest.h>
+#include <holonight/appearance_reader.h>
 
 namespace {
 
@@ -42,6 +44,14 @@ style = "rounded"
 scale = 1.5
 base_radius = 8.0
 base_chamfer = 3.0
+)";
+
+constexpr auto kRedactedProductConfig = R"([weather]
+api_key = "<redacted>"
+geo_api_key = "<redacted>"
+
+[calendar.ics.private]
+url = "https://example.invalid/calendar/<redacted>"
 )";
 
 void writeAppearance(const QString& path, const QByteArray& content) {
@@ -170,6 +180,57 @@ TEST_F(AppearanceIntegrationTest, InvalidLiveReplacementPreservesLastKnownGoodAp
   EXPECT_EQ(appearance.revision(), 0);
   EXPECT_EQ(ui_font_spy.count(), 0);
   EXPECT_EQ(revision_spy.count(), 0);
+}
+
+TEST_F(AppearanceIntegrationTest, AppearanceReloadDoesNotTouchProductConfig) {
+  writeAppearance(path, kCustomAppearance);
+  const QString product_path = directory.filePath(QStringLiteral("config.toml"));
+  writeAppearance(product_path, kRedactedProductConfig);
+  QFile product_file(product_path);
+  ASSERT_TRUE(product_file.open(QIODevice::ReadOnly | QIODevice::Text));
+  const QByteArray product_before = product_file.readAll();
+  product_file.close();
+
+  AppearanceService appearance;
+  QByteArray edited(kCustomAppearance);
+  edited.replace("accent = \"blue\"", "accent = \"violet\"");
+  writeAppearance(path, edited);
+
+  QTRY_COMPARE_WITH_TIMEOUT(appearance.accent(), QStringLiteral("violet"), 2000);
+  ASSERT_TRUE(product_file.open(QIODevice::ReadOnly | QIODevice::Text));
+  EXPECT_EQ(product_file.readAll(), product_before);
+}
+
+TEST_F(AppearanceIntegrationTest, PublicApiDoesNotExposeProductConfiguration) {
+  writeAppearance(path, kCustomAppearance);
+  AppearanceService appearance;
+  const QMetaObject* meta_object = appearance.metaObject();
+  const QStringList forbidden_fragments = {QStringLiteral("api"), QStringLiteral("credential"),
+                                           QStringLiteral("password"), QStringLiteral("url")};
+
+  for (int index = meta_object->propertyOffset(); index < meta_object->propertyCount(); ++index) {
+    const QString property_name = QString::fromLatin1(meta_object->property(index).name()).toLower();
+    for (const QString& fragment : forbidden_fragments) {
+      EXPECT_FALSE(property_name.contains(fragment)) << property_name.toStdString();
+    }
+  }
+}
+
+TEST_F(AppearanceIntegrationTest, InvalidAppearanceDiagnosticsDoNotEchoValues) {
+  constexpr auto kSyntheticCredentialMarker = "synthetic-credential-must-not-appear";
+  constexpr auto kSyntheticAuthenticatedUrl = "https://user:synthetic-token@example.invalid/private.ics";
+  QByteArray invalid(kCustomAppearance);
+  invalid.append(QByteArrayLiteral("\nproduct_api_key = \"") + kSyntheticCredentialMarker +
+                 QByteArrayLiteral("\"\nprivate_url = \"") + kSyntheticAuthenticatedUrl + QByteArrayLiteral("\"\n"));
+  writeAppearance(path, invalid);
+
+  Holonight::AppearanceReader reader(path);
+
+  ASSERT_FALSE(reader.diagnostics().isEmpty());
+  for (const Holonight::AppearanceDiagnostic& diagnostic : reader.diagnostics()) {
+    EXPECT_FALSE(diagnostic.message.contains(QString::fromLatin1(kSyntheticCredentialMarker)));
+    EXPECT_FALSE(diagnostic.message.contains(QString::fromLatin1(kSyntheticAuthenticatedUrl)));
+  }
 }
 
 }  // namespace

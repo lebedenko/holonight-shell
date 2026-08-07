@@ -19,7 +19,7 @@ Umbrella ACF-006 is `Ready`. Implementation started from Shell
 - [x] ACF6-07: Remove ThemeService configuration loading and make portal/palette reload consume in-memory appearance.
 - [x] ACF6-08: Update Shell QML, tests, fakes, CMake, documentation, and install/package paths for the canonical role
   names and separate configuration domains.
-- [ ] ACF6-09: Add redacted security-boundary tests and record the linked credential-storage initiative without
+- [x] ACF6-09: Add redacted security-boundary tests and record the linked credential-storage initiative without
   placing secrets in ACF artifacts.
 - [ ] ACF6-10: Run standalone package, format, tidy, architecture, QML lint/types, full CTest, and manual Hyprland
   verification; publish the provider commit for Settings handoff.
@@ -90,3 +90,17 @@ before requesting ACF-006 `Done`. A local or unpublished commit is not a handoff
 - `task format-check`, `task architecture-check`, `task qml-lint`, and the updated `task qmltypes-check`: passed.
   Generated metadata/package checks confirm `AppearanceService` and `AppearanceReloadBridge` are present and the
   legacy aliases, `ThemeService`, and `ThemeReloadBridge` are absent.
+
+### 2026-08-07 — ACF6-09
+
+- Added redacted boundary coverage proving an accepted appearance reload leaves the adjacent Shell product document
+  byte-for-byte unchanged and that the public appearance meta-object exposes no credential, password, URL, or API
+  properties.
+- Invalid appearance documents containing synthetic credential-shaped unknown fields produce diagnostics without
+  echoing their values or the complete authenticated example URL.
+- Recorded the planned Shell-owned [Shell Credential Storage](../shell-credential-storage/README.md) initiative for
+  secret-store ownership, migration, failure recovery, service access, and Settings UX.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_services
+  --gtest_filter='AppearanceIntegrationTest.*'`: 8/8 tests passed.
+- `task format-check` and `git diff --check`: passed; the ACF security artifacts contain only explicit redaction
+  markers, synthetic sentinels, and reserved `example.invalid` URLs.
