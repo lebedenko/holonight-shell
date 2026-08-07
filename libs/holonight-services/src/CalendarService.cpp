@@ -120,8 +120,9 @@ void CalendarService::onCalendarConfigChanged() {
     return;
   }
 
-  const QString new_day =
-      (config->calendarConfig().week_start_day == WeekStartDay::Sunday) ? QStringLiteral("Sun") : QStringLiteral("Mon");
+  const QString new_day = (config->calendarConfig().week_start_day == HoloNight::ShellConfig::WeekStartDay::Sunday)
+                              ? QStringLiteral("Sun")
+                              : QStringLiteral("Mon");
   if (new_day != week_start_day_) {
     week_start_day_ = new_day;
     emit weekStartDayChanged();

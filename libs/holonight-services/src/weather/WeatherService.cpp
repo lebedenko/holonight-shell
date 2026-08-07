@@ -264,7 +264,7 @@ void WeatherService::applyConfig() {
     setConfigured(false);
     return;
   }
-  const WeatherConfig& cfg = config_->weather();
+  const HoloNight::ShellConfig::WeatherConfig& cfg = config_->weather();
   api_key_ = cfg.api_key;
   geo_api_key_ = cfg.geo_api_key;
   configured_city_ = cfg.city;
@@ -279,7 +279,7 @@ bool WeatherService::computeConfigured() const {
   if (config_ == nullptr || api_key_.isEmpty()) {
     return false;
   }
-  const WeatherConfig& cfg = config_->weather();
+  const HoloNight::ShellConfig::WeatherConfig& cfg = config_->weather();
   const bool has_coords = cfg.latitude.has_value() && cfg.longitude.has_value();
   return has_coords || !geo_api_key_.isEmpty();
 }
@@ -301,7 +301,7 @@ void WeatherService::resolveLocation() {
   if (config_ == nullptr) {
     return;
   }
-  const WeatherConfig& cfg = config_->weather();
+  const HoloNight::ShellConfig::WeatherConfig& cfg = config_->weather();
   if (cfg.latitude.has_value() && cfg.longitude.has_value()) {
     lat_ = *cfg.latitude;
     lon_ = *cfg.longitude;

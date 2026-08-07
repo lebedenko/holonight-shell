@@ -39,7 +39,7 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   Q_OBJECT
 
  public:
-  MprisWidgetManager(LayerShell& shell, WidgetDefinition definition, int margin, int index,
+  MprisWidgetManager(LayerShell& shell, HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
                      QList<QStringList> position_blockers, MonitorOccupancyService* occupancy, MprisService* mpris,
                      MprisArtworkCache* artwork_cache, QObject* parent = nullptr);
 
@@ -101,7 +101,7 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   [[nodiscard]] bool pausedTimedOutNow() const;
   [[nodiscard]] QString widgetLabel() const;
 
-  WidgetDefinition definition_;
+  HoloNight::ShellConfig::WidgetDefinition definition_;
   int margin_;
   int index_;
   QList<QStringList> position_blockers_;

@@ -11,6 +11,8 @@
 #include <QIcon>
 #include <QLoggingCategory>
 
+using namespace HoloNight::ShellConfig;
+
 Q_LOGGING_CATEGORY(lcTrayModel, "holonight.tray.model")
 
 namespace {

@@ -368,9 +368,9 @@ TEST(SettingsPortalBackendTest, ReadAllPublishesAppearanceValues) {
                           .value<QDBusVariant>()
                           .variant()
                           .value<SettingsPortalAccentColor>();
-  EXPECT_NEAR(accent.red, 0xbb / 255.0, 0.001);
-  EXPECT_NEAR(accent.green, 0x9a / 255.0, 0.001);
-  EXPECT_NEAR(accent.blue, 0xf7 / 255.0, 0.001);
+  EXPECT_NEAR(accent.red, 0x9a / 255.0, 0.001);
+  EXPECT_NEAR(accent.green, 0x8c / 255.0, 0.001);
+  EXPECT_NEAR(accent.blue, 0xff / 255.0, 0.001);
 }
 
 TEST(SettingsPortalBackendTest, DefaultAccentUsesSchemeNativeColor) {
@@ -404,8 +404,9 @@ TEST(SettingsPortalBackendTest, ReloadEmitsOnlyChangedSystemFacingValues) {
   writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-light\naccent=cyan\nmode=light\n");
   backend.reloadFromThemeConfig();
 
-  ASSERT_EQ(changed_spy.count(), 1);
+  ASSERT_EQ(changed_spy.count(), 2);
   EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("color-scheme"));
+  EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("accent-color"));
 
   writeThemeConfig(temp_dir.path(), "[appearance]\nscheme=holonight-light\naccent=yellow\nmode=light\n");
   backend.reloadFromThemeConfig();

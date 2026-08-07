@@ -38,6 +38,8 @@
 #include "OsdController.h"
 #include "OsdSurface.h"
 #include "PortalService.h"
+
+using namespace HoloNight::ShellConfig;
 #include "PowerProfilesService.h"
 #include "RecentAppsTracker.h"
 #include "ScreenSaverAdaptor.h"
@@ -117,7 +119,7 @@ ShellApplication::ShellApplication(QObject* parent)
       power_profiles_(new PowerProfilesService(this)),
       session_(new SessionService(this)),
       system_info_(new SystemInfoService(config_service_, this)),
-      appearance_(new AppearanceService(config_service_, this)),
+      appearance_(new AppearanceService(this)),
       theme_(new ThemeService(this)),
       weather_(new WeatherService(config_service_, this)),
       mpris_(new MprisService(this)),

@@ -33,7 +33,7 @@ OsdSurface::OsdSurface(QObject* parent) : QObject(parent) {
 
 OsdSurface::~OsdSurface() { destroySurface(); }
 
-void OsdSurface::setPosition(WidgetPosition position) {
+void OsdSurface::setPosition(HoloNight::ShellConfig::WidgetPosition position) {
   if (position_ == position) {
     return;
   }

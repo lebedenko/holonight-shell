@@ -15,7 +15,8 @@ class NotificationStore : public QObject {
   Q_OBJECT
 
  public:
-  explicit NotificationStore(const NotificationHistoryConfig& config, QObject* parent = nullptr);
+  explicit NotificationStore(const HoloNight::ShellConfig::NotificationHistoryConfig& config,
+                             QObject* parent = nullptr);
   ~NotificationStore() override = default;
 
   NotificationStore(const NotificationStore&) = delete;
@@ -31,7 +32,7 @@ class NotificationStore : public QObject {
   // already in flight the snapshot is buffered and written when the current one
   // completes (dirty-flag serialization).
   void persist(QList<NotificationHistoryItem> snapshot);
-  void updateConfig(const NotificationHistoryConfig& config);
+  void updateConfig(const HoloNight::ShellConfig::NotificationHistoryConfig& config);
 
   [[nodiscard]] QString historyFilePath() const { return file_path_; }
 
@@ -45,7 +46,7 @@ class NotificationStore : public QObject {
   void launchWrite(QList<NotificationHistoryItem> snapshot);
   void ensureDirectoryExists();
 
-  NotificationHistoryConfig config_;
+  HoloNight::ShellConfig::NotificationHistoryConfig config_;
   QString file_path_;
   bool write_in_flight_{false};
   bool write_dirty_{false};

@@ -55,7 +55,7 @@ class TrayModel : public QAbstractListModel {
   void updateItem(const QString& key, const TrayItem& updated);
 
   void setMenuSurface(TrayMenuSurface* surface);
-  void updateTrayIconOverrides(const TrayIconOverridesConfig& overrides);
+  void updateTrayIconOverrides(const HoloNight::ShellConfig::TrayIconOverridesConfig& overrides);
 
   [[nodiscard]] const TrayItem* itemForKey(const QString& key) const;
   [[nodiscard]] QImage imageForKey(const QString& key, bool attention = false) const;
@@ -80,7 +80,7 @@ class TrayModel : public QAbstractListModel {
   mutable QReadWriteLock image_state_lock_;
   int revision_{0};
   int max_visible_{3};
-  TrayIconOverridesConfig tray_icon_overrides_;
+  HoloNight::ShellConfig::TrayIconOverridesConfig tray_icon_overrides_;
   DbusMenuClient* menu_client_{nullptr};
   TrayMenuSurface* menu_surface_{nullptr};
 };

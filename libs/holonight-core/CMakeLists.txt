@@ -20,7 +20,7 @@ add_library(holonight_core STATIC
 )
 
 target_link_libraries(holonight_core PUBLIC
-    HolonightConfig::Config
+    HoloNightShellConfig::Config
     holonight_platform
     Qt6::Core
     Qt6::Qml

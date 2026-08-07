@@ -3,7 +3,7 @@
 #include <QLoggingCategory>
 
 #include <algorithm>
-#include <holonight_config/config_structs.h>
+#include <holonight_shell_config/config_structs.h>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -159,7 +159,8 @@ void OsdController::setEnabled(bool enabled) {
 }
 
 void OsdController::setTimeoutMs(int timeout_ms) {
-  const int clamped = std::clamp(timeout_ms, OsdConfig::kMinTimeoutMs, OsdConfig::kMaxTimeoutMs);
+  const int clamped = std::clamp(timeout_ms, HoloNight::ShellConfig::OsdConfig::kMinTimeoutMs,
+                                 HoloNight::ShellConfig::OsdConfig::kMaxTimeoutMs);
   if (clamped != timeout_ms) {
     qCWarning(lcOsd) << "osd.timeout" << timeout_ms << "ms is out of range; using" << clamped << "ms";
   }

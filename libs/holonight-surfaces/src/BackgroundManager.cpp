@@ -15,7 +15,8 @@ QString BackgroundManager::imageUrlForScreen(QScreen* screen) const {
   // Resolve the wallpaper for this monitor and convert to a file:// URL for QML Image.source. A bare
   // absolute path would be resolved against the component's qrc base URL and fail; empty stays empty
   // (the "no wallpaper" sentinel for Background.qml).
-  const QString path = BackgroundConfig::imageForMonitor(config_service_->background().images, index);
+  const QString path =
+      HoloNight::ShellConfig::BackgroundConfig::imageForMonitor(config_service_->background().images, index);
   return path.isEmpty() ? QString{} : QUrl::fromLocalFile(path).toString();
 }
 

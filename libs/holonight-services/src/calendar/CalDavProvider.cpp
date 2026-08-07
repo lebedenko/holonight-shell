@@ -159,7 +159,8 @@ SyncError makeConnectError(const QString& account, const QString& detail) {
 
 }  // namespace
 
-CalDavProvider::CalDavProvider(CalendarCaldavAccountConfig config, const LibsecretCredentialStorage* credentials)
+CalDavProvider::CalDavProvider(HoloNight::ShellConfig::CalendarCaldavAccountConfig config,
+                               const LibsecretCredentialStorage* credentials)
     : config_(std::move(config)), credentials_(credentials), http_client_(config_.account_name) {}
 
 QString CalDavProvider::basicAuthHeader(const QString& username, const QString& password) {

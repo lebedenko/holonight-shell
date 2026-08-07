@@ -17,6 +17,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 
+using namespace HoloNight::ShellConfig;
+
 namespace {
 
 constexpr auto kVlc = "org.mpris.MediaPlayer2.vlc";

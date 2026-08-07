@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <utility>
 
+using namespace HoloNight::ShellConfig;
+
 Q_LOGGING_CATEGORY(lcMprisWidget, "holonight.widgets.mpris")
 
 namespace {

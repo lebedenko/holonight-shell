@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+using namespace HoloNight::ShellConfig;
+
 namespace {
 
 QImage imageWithColor(const QColor& color) {

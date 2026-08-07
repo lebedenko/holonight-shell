@@ -166,7 +166,7 @@ class NotificationService : public QAbstractListModel {
   QList<NotificationHistoryItem> history_;
   int unread_count_{0};
   NotificationStore* store_{nullptr};
-  NotificationHistoryConfig history_config_;
+  HoloNight::ShellConfig::NotificationHistoryConfig history_config_;
 
   uint32_t next_id_{1};
   int default_timeout_ms_{5000};

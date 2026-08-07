@@ -16,6 +16,8 @@
 #include <QUrl>
 #include <QVariantMap>
 
+using namespace HoloNight::ShellConfig;
+
 #include <utility>
 
 Q_LOGGING_CATEGORY(lcWidgets, "holonight.widgets")

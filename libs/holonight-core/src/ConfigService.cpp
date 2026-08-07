@@ -5,6 +5,8 @@
 #include <QFileInfo>
 #include <QLoggingCategory>
 
+#include <holonight_shell_config/config_writer.h>
+
 Q_LOGGING_CATEGORY(lcConfig, "holonight.config")
 
 ConfigService* ConfigService::s_instance_ = nullptr;
@@ -56,7 +58,7 @@ void ConfigService::loadOrCreateConfig() {
 }
 
 void ConfigService::writeConfig() {
-  if (!ConfigWriter::write(ParsedConfig{}, config_path_)) {
+  if (!HoloNight::ShellConfig::ProductConfigWriter::write(HoloNight::ShellConfig::ProductConfig{}, config_path_)) {
     qCWarning(lcConfig) << "Failed to write default config:" << config_path_;
   }
 }
@@ -83,11 +85,11 @@ void ConfigService::parseFile() {
     return;
   }
 
-  MissingDefaults missing;
-  const ParsedConfig parsed = parseConfigTable(table, missing);
+  HoloNight::ShellConfig::MissingDefaults missing;
+  const HoloNight::ShellConfig::ProductConfig parsed = HoloNight::ShellConfig::parseConfigTable(table, missing);
 
   if (missing.any()) {
-    if (writeMissingDefaults(config_path_, missing)) {
+    if (HoloNight::ShellConfig::writeMissingDefaults(config_path_, missing)) {
       qCInfo(lcConfig) << "Wrote missing config keys back to:" << config_path_;
     }
   }
@@ -96,11 +98,7 @@ void ConfigService::parseFile() {
   qCInfo(lcConfig) << "Config loaded from" << config_path_;
 }
 
-void ConfigService::applyParsedConfig(const ParsedConfig& parsed) {
-  if (parsed.appearance != appearance_) {
-    appearance_ = parsed.appearance;
-    emit appearanceChanged();
-  }
+void ConfigService::applyParsedConfig(const HoloNight::ShellConfig::ProductConfig& parsed) {
   if (parsed.bar_workspaces != bar_workspaces_) {
     bar_workspaces_ = parsed.bar_workspaces;
     emit barWorkspacesChanged();

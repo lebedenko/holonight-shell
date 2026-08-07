@@ -16,7 +16,7 @@
 #include <QUrl>
 
 #include <array>
-#include <holonight_config/config_parsers.h>
+#include <holonight_shell_config/config_parsers.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -120,7 +120,7 @@ void SystemInfoService::readOsRelease() {
 
 bool SystemInfoService::applyLogoConfigOverride(const QHash<QString, QString>& os_release) {
   if (config_ != nullptr) {
-    const LogoConfig& logo_cfg = config_->logo();
+    const HoloNight::ShellConfig::LogoConfig& logo_cfg = config_->logo();
 
     // Step 1: file override.
     if (!logo_cfg.file.isEmpty()) {
@@ -130,8 +130,8 @@ bool SystemInfoService::applyLogoConfigOverride(const QHash<QString, QString>& o
         logo_tinted_ = false;
         return true;
       }
-      qCWarning(lcConfigParsers) << "Logo file override not readable:" << logo_cfg.file
-                                 << "— falling back to next resolution step";
+      qCWarning(HoloNight::ShellConfig::lcConfigParsers)
+          << "Logo file override not readable:" << logo_cfg.file << "— falling back to next resolution step";
       // fall through to step 2/3, NOT the invalid path (REQ-NF-001)
     }
 

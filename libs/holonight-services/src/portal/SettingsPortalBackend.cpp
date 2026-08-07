@@ -9,7 +9,6 @@
 #include <QSettings>
 
 #include <algorithm>
-#include <holonight/theme/themeresolver.h>
 #include <holonight/theme_catalog.h>
 
 Q_LOGGING_CATEGORY(lcSettingsPortalBackend, "holonight.portal.settingsbackend")
@@ -39,10 +38,7 @@ QString schemeForThemeConfig(const QString& scheme, const QString& mode) {
 }
 
 QColor resolvedAccentColorForThemeConfig(const QString& scheme, const QString& accent) {
-  Holonight::ThemeConfig config = Holonight::ThemeConfig::defaults();
-  config.scheme = scheme;
-  config.accent = accent;
-  return Holonight::ThemeResolver::resolve(config).primary;
+  return Holonight::accentColorForScheme(scheme, accent);
 }
 }  // namespace
 

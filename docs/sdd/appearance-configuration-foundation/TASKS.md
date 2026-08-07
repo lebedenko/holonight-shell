@@ -12,8 +12,8 @@ Umbrella ACF-006 is `Ready`. Implementation started from Shell
   public names.
 - [x] ACF6-03: Remove appearance/theme fields, missing-default flags, serialization, documentation, and fixtures from
   the Shell product contract.
-- [ ] ACF6-04: Adopt the Shell-owned product package in `ConfigService` and remove its appearance API/signals.
-- [ ] ACF6-05: Add `HoloNight::Config` and the pinned Qt projection dependency for canonical read-only appearance.
+- [x] ACF6-04: Adopt the Shell-owned product package in `ConfigService` and remove its appearance API/signals.
+- [x] ACF6-05: Add `HoloNight::Config` and the pinned Qt projection dependency for canonical read-only appearance.
 - [ ] ACF6-06: Refactor `AppearanceService` into the single validated appearance state/watcher with last-known-good
   rollback and precise signals.
 - [ ] ACF6-07: Remove ThemeService configuration loading and make portal/palette reload consume in-memory appearance.
@@ -37,3 +37,13 @@ before requesting ACF-006 `Done`. A local or unpublished commit is not a handoff
   sections are inert and absent from canonical writes.
 - `rg -n "AppearanceConfig|\\[appearance\\]|\\[theme\\]|ui_font|transparency|blur_strength"
   libs/holonight-shell-config --glob '!**/CMakeLists.txt'`: no matches.
+
+### 2026-08-07 — ACF6-04 and ACF6-05
+
+- `cmake --build build -j32`: passed for the complete Shell and test suite.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_core
+  --gtest_filter='ConfigServiceTest.*:BackgroundConfigTest.*:LogoConfigTest.*'`: 48/48 tests passed.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_services
+  --gtest_filter='AppearanceIntegrationTest.*'`: 3/3 tests passed for startup projection, narrow live notification,
+  and invalid-replacement last-known-good retention.
+- Shell no longer finds, stages, includes, or links the Settings-owned `HolonightConfig` package.

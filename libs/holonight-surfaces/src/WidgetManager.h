@@ -27,7 +27,7 @@ class WidgetManager : public PerMonitorLayerManager {
   Q_OBJECT
 
  public:
-  WidgetManager(LayerShell& shell, WidgetDefinition definition, int margin, int index,
+  WidgetManager(LayerShell& shell, HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
                 QList<QStringList> position_blockers, MonitorOccupancyService* occupancy, QObject* parent = nullptr);
 
  protected:
@@ -60,7 +60,7 @@ class WidgetManager : public PerMonitorLayerManager {
   // Short human label for collision/error logging (TTE title, or "clock@<position>").
   [[nodiscard]] QString widgetLabel() const;
 
-  WidgetDefinition definition_;
+  HoloNight::ShellConfig::WidgetDefinition definition_;
   int margin_;
   int index_;
   // Monitor filters of earlier widgets sharing this widget's position; an entry matches a monitor when

@@ -6,7 +6,7 @@
 
 class IcsProvider final : public ICalendarProvider {
  public:
-  explicit IcsProvider(CalendarIcsAccountConfig config);
+  explicit IcsProvider(HoloNight::ShellConfig::CalendarIcsAccountConfig config);
   ~IcsProvider() override = default;
 
   IcsProvider(const IcsProvider&) = delete;
@@ -30,6 +30,6 @@ class IcsProvider final : public ICalendarProvider {
 
   friend class IcsProviderTest;
 
-  CalendarIcsAccountConfig config_;
+  HoloNight::ShellConfig::CalendarIcsAccountConfig config_;
   HttpSyncClient http_client_;
 };

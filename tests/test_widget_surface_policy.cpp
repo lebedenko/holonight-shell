@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+using namespace HoloNight::ShellConfig;
+
 namespace {
 
 using Surface = QtWayland::zwlr_layer_surface_v1;

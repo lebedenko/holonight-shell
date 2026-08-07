@@ -6,6 +6,8 @@
 
 #include <algorithm>
 
+using namespace HoloNight::ShellConfig;
+
 namespace {
 constexpr int kWidgetWidth = 460;
 constexpr int kWidgetHeight = 200;

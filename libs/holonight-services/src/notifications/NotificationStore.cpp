@@ -232,7 +232,7 @@ std::optional<QJsonArray> parseHistoryEntries(const QByteArray& data) {
 
 }  // namespace
 
-NotificationStore::NotificationStore(const NotificationHistoryConfig& config, QObject* parent)
+NotificationStore::NotificationStore(const HoloNight::ShellConfig::NotificationHistoryConfig& config, QObject* parent)
     : QObject(parent), config_(config), file_path_(resolveHistoryFilePath()) {}
 
 QList<NotificationHistoryItem> NotificationStore::load() {
@@ -281,7 +281,9 @@ void NotificationStore::persist(QList<NotificationHistoryItem> snapshot) {
   launchWrite(std::move(snapshot));
 }
 
-void NotificationStore::updateConfig(const NotificationHistoryConfig& config) { config_ = config; }
+void NotificationStore::updateConfig(const HoloNight::ShellConfig::NotificationHistoryConfig& config) {
+  config_ = config;
+}
 
 void NotificationStore::launchWrite(QList<NotificationHistoryItem> snapshot) {
   ensureDirectoryExists();

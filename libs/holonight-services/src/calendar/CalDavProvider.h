@@ -9,7 +9,8 @@
 
 class CalDavProvider final : public ICalendarProvider {
  public:
-  explicit CalDavProvider(CalendarCaldavAccountConfig config, const LibsecretCredentialStorage* credentials);
+  explicit CalDavProvider(HoloNight::ShellConfig::CalendarCaldavAccountConfig config,
+                          const LibsecretCredentialStorage* credentials);
   ~CalDavProvider() override = default;
 
   CalDavProvider(const CalDavProvider&) = delete;
@@ -40,7 +41,7 @@ class CalDavProvider final : public ICalendarProvider {
   // Builds the Authorization: Basic header value for this account.
   [[nodiscard]] static QString basicAuthHeader(const QString& username, const QString& password);
 
-  CalendarCaldavAccountConfig config_;
+  HoloNight::ShellConfig::CalendarCaldavAccountConfig config_;
   const LibsecretCredentialStorage* credentials_;
   HttpSyncClient http_client_;
 };

@@ -5,9 +5,8 @@
 #include <QString>
 #include <QTimer>
 
-#include <holonight_config/config_parsers.h>
-#include <holonight_config/config_structs.h>
-#include <holonight_config/config_writer.h>
+#include <holonight_shell_config/config_parsers.h>
+#include <holonight_shell_config/config_structs.h>
 
 class ConfigService : public QObject {
   Q_OBJECT
@@ -24,23 +23,25 @@ class ConfigService : public QObject {
   // Returns nullptr if ConfigService was never constructed (e.g. in unit tests).
   static ConfigService* instance();
 
-  [[nodiscard]] const AppearanceConfig& appearance() const { return appearance_; }
-  [[nodiscard]] const BarWorkspacesConfig& barWorkspaces() const { return bar_workspaces_; }
-  [[nodiscard]] const BarSystemTrayConfig& barSystemTray() const { return bar_system_tray_; }
-  [[nodiscard]] const TrayIconOverridesConfig& trayIconOverrides() const { return tray_icon_overrides_; }
-  [[nodiscard]] const BackgroundConfig& background() const { return background_; }
-  [[nodiscard]] const WeatherConfig& weather() const { return weather_; }
-  [[nodiscard]] const NotificationsConfig& notifications() const { return notifications_; }
-  [[nodiscard]] const NotificationHistoryConfig& notificationHistory() const { return notification_history_; }
-  [[nodiscard]] const WidgetsConfig& widgets() const { return widgets_; }
-  [[nodiscard]] CalendarConfig calendarConfig() const { return calendar_config_; }
-  [[nodiscard]] const LogoConfig& logo() const { return logo_; }
-  [[nodiscard]] const OsdConfig& osd() const { return osd_; }
+  [[nodiscard]] const HoloNight::ShellConfig::BarWorkspacesConfig& barWorkspaces() const { return bar_workspaces_; }
+  [[nodiscard]] const HoloNight::ShellConfig::BarSystemTrayConfig& barSystemTray() const { return bar_system_tray_; }
+  [[nodiscard]] const HoloNight::ShellConfig::TrayIconOverridesConfig& trayIconOverrides() const {
+    return tray_icon_overrides_;
+  }
+  [[nodiscard]] const HoloNight::ShellConfig::BackgroundConfig& background() const { return background_; }
+  [[nodiscard]] const HoloNight::ShellConfig::WeatherConfig& weather() const { return weather_; }
+  [[nodiscard]] const HoloNight::ShellConfig::NotificationsConfig& notifications() const { return notifications_; }
+  [[nodiscard]] const HoloNight::ShellConfig::NotificationHistoryConfig& notificationHistory() const {
+    return notification_history_;
+  }
+  [[nodiscard]] const HoloNight::ShellConfig::WidgetsConfig& widgets() const { return widgets_; }
+  [[nodiscard]] HoloNight::ShellConfig::CalendarConfig calendarConfig() const { return calendar_config_; }
+  [[nodiscard]] const HoloNight::ShellConfig::LogoConfig& logo() const { return logo_; }
+  [[nodiscard]] const HoloNight::ShellConfig::OsdConfig& osd() const { return osd_; }
 
   [[nodiscard]] QString configFilePath() const { return config_path_; }
 
  Q_SIGNALS:
-  void appearanceChanged();
   void barWorkspacesChanged();
   void barSystemTrayChanged();
   void trayIconOverridesChanged();
@@ -66,24 +67,23 @@ class ConfigService : public QObject {
   void writeConfig();
   void startWatcher();
 
-  void applyParsedConfig(const ParsedConfig& parsed);
+  void applyParsedConfig(const HoloNight::ShellConfig::ProductConfig& parsed);
 
   static ConfigService* s_instance_;
 
   QString config_path_;
   QString config_dir_path_;
-  AppearanceConfig appearance_;
-  BarWorkspacesConfig bar_workspaces_;
-  BarSystemTrayConfig bar_system_tray_;
-  TrayIconOverridesConfig tray_icon_overrides_;
-  BackgroundConfig background_;
-  WeatherConfig weather_;
-  NotificationsConfig notifications_;
-  NotificationHistoryConfig notification_history_;
-  WidgetsConfig widgets_;
-  CalendarConfig calendar_config_;
-  LogoConfig logo_;
-  OsdConfig osd_;
+  HoloNight::ShellConfig::BarWorkspacesConfig bar_workspaces_;
+  HoloNight::ShellConfig::BarSystemTrayConfig bar_system_tray_;
+  HoloNight::ShellConfig::TrayIconOverridesConfig tray_icon_overrides_;
+  HoloNight::ShellConfig::BackgroundConfig background_;
+  HoloNight::ShellConfig::WeatherConfig weather_;
+  HoloNight::ShellConfig::NotificationsConfig notifications_;
+  HoloNight::ShellConfig::NotificationHistoryConfig notification_history_;
+  HoloNight::ShellConfig::WidgetsConfig widgets_;
+  HoloNight::ShellConfig::CalendarConfig calendar_config_;
+  HoloNight::ShellConfig::LogoConfig logo_;
+  HoloNight::ShellConfig::OsdConfig osd_;
   QFileSystemWatcher watcher_;
   QTimer debounce_timer_;
   bool watcher_active_{false};

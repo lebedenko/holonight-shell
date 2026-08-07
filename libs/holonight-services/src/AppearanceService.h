@@ -4,8 +4,7 @@
 #include <QQmlEngine>
 #include <QString>
 
-class ConfigService;
-struct AppearanceConfig;
+#include <holonight/appearance_reader.h>
 
 class AppearanceService : public QObject {
   Q_OBJECT
@@ -22,7 +21,7 @@ class AppearanceService : public QObject {
   Q_PROPERTY(bool debugOverlays READ debugOverlays CONSTANT)
 
  public:
-  explicit AppearanceService(ConfigService* config, QObject* parent = nullptr);
+  explicit AppearanceService(QObject* parent = nullptr);
   ~AppearanceService() override = default;
 
   AppearanceService(const AppearanceService&) = delete;
@@ -51,7 +50,7 @@ class AppearanceService : public QObject {
   void titleFontSizeChanged();
 
  private:
-  void applyAppearance(const AppearanceConfig& cfg);
+  void applyAppearance(const Holonight::ResolvedAppearance& appearance);
 
   QString ui_font_;
   QString fixed_font_;
@@ -62,4 +61,5 @@ class AppearanceService : public QObject {
   int clock_font_size_{0};
   int title_font_size_{0};
   bool debug_overlays_{false};
+  Holonight::AppearanceReader reader_;
 };

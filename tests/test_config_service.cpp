@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+using namespace HoloNight::ShellConfig;
+
 // Helper: set XDG_CONFIG_HOME to a temp dir, return the expected config path.
 static QString setTempXdg(const QTemporaryDir& tmp) {
   qputenv("XDG_CONFIG_HOME", tmp.path().toUtf8());
@@ -41,14 +43,6 @@ TEST_F(ConfigServiceTest, CreatesDefaultFileOnFirstRun) {
 
 TEST_F(ConfigServiceTest, DefaultValuesMatchStructDefaults) {
   ConfigService svc;
-  EXPECT_EQ(svc.appearance().ui_font, QStringLiteral("Inter"));
-  EXPECT_EQ(svc.appearance().ui_font_size, 12);
-  EXPECT_EQ(svc.appearance().fixed_font, QStringLiteral("JetBrains Mono"));
-  EXPECT_EQ(svc.appearance().fixed_font_size, 12);
-  EXPECT_EQ(svc.appearance().clock_font, QStringLiteral("Rajdhani"));
-  EXPECT_EQ(svc.appearance().clock_font_size, 24);
-  EXPECT_EQ(svc.appearance().title_font, QStringLiteral("Audiowide"));
-  EXPECT_EQ(svc.appearance().title_font_size, 8);
   EXPECT_EQ(svc.barWorkspaces().count, 5);
   EXPECT_EQ(svc.barSystemTray().max_items, 3);
   EXPECT_EQ(svc.widgets().margin, 32);
@@ -78,8 +72,6 @@ TEST_F(ConfigServiceTest, LoadsCompleteConfigFile) {
                   "max_items = 4\n");
 
   ConfigService svc;
-  EXPECT_EQ(svc.appearance().ui_font, QStringLiteral("Fira Code"));
-  EXPECT_EQ(svc.appearance().ui_font_size, 14);
   EXPECT_EQ(svc.barWorkspaces().count, 7);
   EXPECT_EQ(svc.barSystemTray().max_items, 4);
 }
@@ -91,17 +83,13 @@ TEST_F(ConfigServiceTest, PartialFileGetsMissingKeysFilledIn) {
                   "ui_font_size = 14\n");
 
   ConfigService svc;
-  // Present values are loaded.
-  EXPECT_EQ(svc.appearance().ui_font, QStringLiteral("Fira Code"));
-  EXPECT_EQ(svc.appearance().ui_font_size, 14);
-  // Missing values default.
-  EXPECT_EQ(svc.appearance().clock_font, QStringLiteral("Rajdhani"));
+  // Missing product values default.
   EXPECT_EQ(svc.barWorkspaces().count, 5);
   // File should now contain all keys (written back).
   QFile written(config_path);
   ASSERT_TRUE(written.open(QIODevice::ReadOnly | QIODevice::Text));
   const QString content = QString::fromUtf8(written.readAll());
-  EXPECT_TRUE(content.contains(QLatin1String("clock_font")));
+  EXPECT_FALSE(content.contains(QLatin1String("clock_font")));
   EXPECT_FALSE(content.contains(QLatin1String("[theme]")));
   EXPECT_TRUE(content.contains(QLatin1String("[bar.workspaces]")));
   EXPECT_TRUE(content.contains(QLatin1String("count = 5 # accepted: 3-10")));
@@ -128,8 +116,6 @@ TEST_F(ConfigServiceTest, InvalidPresentValuesAreCorrectedInMemoryButNotRewritte
 
   ConfigService svc;
 
-  EXPECT_EQ(svc.appearance().ui_font_size, 12);
-  EXPECT_EQ(svc.appearance().fixed_font_size, 12);
   EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig::kMaxCount);
   EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig::kMinMaxItems);
 
@@ -147,14 +133,13 @@ TEST_F(ConfigServiceTest, CorruptTomlUsesDefaults) {
 
   ConfigService svc;
   // Must not crash; values are defaults.
-  EXPECT_EQ(svc.appearance().ui_font, QStringLiteral("Inter"));
   EXPECT_EQ(svc.barWorkspaces().count, 5);
 }
 
 TEST_F(ConfigServiceTest, MissingFileDoesNotCrash) {
   // File does not exist; ConfigService must create it and proceed.
   ConfigService svc;
-  EXPECT_EQ(svc.appearance().ui_font, QStringLiteral("Inter"));
+  EXPECT_EQ(svc.barWorkspaces().count, 5);
 }
 
 TEST_F(ConfigServiceTest, InstanceGetterReturnsConstructedPointer) {
@@ -229,7 +214,6 @@ TEST_F(ConfigServiceTest, LegacyThemeSectionChangesDoNotEmitShellConfigSignals) 
                   "accent = \"cyan\"\n");
 
   ConfigService svc;
-  QSignalSpy appearance_spy(&svc, &ConfigService::appearanceChanged);
   QSignalSpy workspace_spy(&svc, &ConfigService::barWorkspacesChanged);
 
   writeTempConfig(config_path,
@@ -239,7 +223,6 @@ TEST_F(ConfigServiceTest, LegacyThemeSectionChangesDoNotEmitShellConfigSignals) 
                   "accent = \"violet\"\n");
   QMetaObject::invokeMethod(&svc, "parseFile", Qt::DirectConnection);
 
-  EXPECT_EQ(appearance_spy.count(), 0);
   EXPECT_EQ(workspace_spy.count(), 0);
 }
 
@@ -293,49 +276,6 @@ TEST_F(ConfigServiceTest, WorkspaceCountAtBoundaryIsNotClamped) {
 // T-024: Signal emission on first load
 // ---------------------------------------------------------------------------
 
-TEST_F(ConfigServiceTest, AppearanceChangedEmittedOnFirstLoad) {
-  writeTempConfig(config_path,
-                  "[appearance]\n"
-                  "ui_font = \"Fira Code\"\n"
-                  "ui_font_size = 14\n"
-                  "fixed_font = \"JetBrains Mono\"\n"
-                  "fixed_font_size = 12\n"
-                  "clock_font = \"Rajdhani\"\n"
-                  "clock_font_size = 24\n"
-                  "title_font = \"Audiowide\"\n"
-                  "title_font_size = 8\n"
-                  "[bar.workspaces]\n"
-                  "count = 5\n"
-                  "[bar.systemtray]\n"
-                  "max_items = 3\n");
-
-  ConfigService svc;
-  QSignalSpy spy_appearance(&svc, &ConfigService::appearanceChanged);
-  QSignalSpy spy_workspaces(&svc, &ConfigService::barWorkspacesChanged);
-  QSignalSpy spy_tray(&svc, &ConfigService::barSystemTrayChanged);
-
-  // Reload by writing a different value and triggering parseFile via slot.
-  writeTempConfig(config_path,
-                  "[appearance]\n"
-                  "ui_font = \"Orbitron\"\n"
-                  "ui_font_size = 14\n"
-                  "fixed_font = \"JetBrains Mono\"\n"
-                  "fixed_font_size = 12\n"
-                  "clock_font = \"Rajdhani\"\n"
-                  "clock_font_size = 24\n"
-                  "title_font = \"Audiowide\"\n"
-                  "title_font_size = 8\n"
-                  "[bar.workspaces]\n"
-                  "count = 5\n"
-                  "[bar.systemtray]\n"
-                  "max_items = 3\n");
-  // Directly invoke parseFile via a public-enough path: use the file-changed signal by calling the slot.
-  QMetaObject::invokeMethod(&svc, "parseFile", Qt::DirectConnection);
-  EXPECT_EQ(spy_appearance.count(), 1);
-  EXPECT_EQ(spy_workspaces.count(), 0);
-  EXPECT_EQ(spy_tray.count(), 0);
-}
-
 TEST_F(ConfigServiceTest, BarWorkspacesChangedEmittedWhenCountDiffers) {
   writeTempConfig(config_path,
                   "[bar.workspaces]\n"
@@ -377,16 +317,12 @@ TEST_F(ConfigServiceTest, CorruptReloadPreservesLastGoodValues) {
                   "max_items = 4\n");
 
   ConfigService svc;
-  ASSERT_EQ(svc.appearance().ui_font, QStringLiteral("Fira Code"));
   ASSERT_EQ(svc.barWorkspaces().count, 6);
 
   // Now corrupt the file and reload.
   writeTempConfig(config_path, "[[[ broken ]]]\n");
-  QSignalSpy spy_appearance(&svc, &ConfigService::appearanceChanged);
   QMetaObject::invokeMethod(&svc, "parseFile", Qt::DirectConnection);
 
-  EXPECT_EQ(spy_appearance.count(), 0);
-  EXPECT_EQ(svc.appearance().ui_font, QStringLiteral("Fira Code"));
   EXPECT_EQ(svc.barWorkspaces().count, 6);
 }
 
@@ -407,7 +343,6 @@ TEST_F(ConfigServiceTest, SignalsNotEmittedWhenValuesUnchanged) {
                   "max_items = 3\n");
 
   ConfigService svc;
-  QSignalSpy spy_a(&svc, &ConfigService::appearanceChanged);
   QSignalSpy spy_w(&svc, &ConfigService::barWorkspacesChanged);
   QSignalSpy spy_t(&svc, &ConfigService::barSystemTrayChanged);
   QSignalSpy spy_o(&svc, &ConfigService::trayIconOverridesChanged);
@@ -417,7 +352,6 @@ TEST_F(ConfigServiceTest, SignalsNotEmittedWhenValuesUnchanged) {
   // Re-parse the same file — values unchanged, no signals.
   QMetaObject::invokeMethod(&svc, "parseFile", Qt::DirectConnection);
 
-  EXPECT_EQ(spy_a.count(), 0);
   EXPECT_EQ(spy_w.count(), 0);
   EXPECT_EQ(spy_t.count(), 0);
   EXPECT_EQ(spy_o.count(), 0);

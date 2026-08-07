@@ -14,6 +14,8 @@
 
 #include <gtest/gtest.h>
 
+using namespace HoloNight::ShellConfig;
+
 namespace {
 
 void writeFile(const QString& path, const QByteArray& content) {

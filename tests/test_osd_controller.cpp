@@ -17,11 +17,13 @@
 
 #include <chrono>
 #include <gtest/gtest.h>
-#include <holonight_config/config_structs.h>
+#include <holonight_shell_config/config_structs.h>
 #include <memory>
 #include <type_traits>
 #include <utility>
 #include <variant>
+
+using namespace HoloNight::ShellConfig;
 
 // A source with no service behind it: tests drive it directly. Shared by every OsdController
 // test below, so the controller is exercised without PulseAudio, sysfs, or Hyprland IPC.

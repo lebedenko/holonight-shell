@@ -7,7 +7,7 @@
 #include <QQmlEngine>
 #include <QString>
 
-#include <holonight_config/config_structs.h>  // WidgetPosition
+#include <holonight_shell_config/config_structs.h>
 
 struct wl_surface;
 class QQuickView;
@@ -42,7 +42,7 @@ class OsdSurface : public QObject {
 
   // Applied to a live surface immediately, so a config reload repositions the OSD without waiting
   // for the next event (REQ-C-005/C-006, REQ-C-011).
-  void setPosition(WidgetPosition position);
+  void setPosition(HoloNight::ShellConfig::WidgetPosition position);
 
   // Creates (or keeps) the OSD surface on the given output. Deferred until the layer-shell global
   // is bound. Safe to call repeatedly for the same monitor (REQ-F-012).
@@ -96,7 +96,7 @@ class OsdSurface : public QObject {
   int applied_height_ = -1;
   bool pending_show_ = false;
   QString pending_screen_;
-  WidgetPosition position_{WidgetPosition::CenterBottom};
+  HoloNight::ShellConfig::WidgetPosition position_{HoloNight::ShellConfig::WidgetPosition::CenterBottom};
 
   // Last content pushed, kept current whether or not a view exists at the time, so a rebuild has
   // something to replay immediately.

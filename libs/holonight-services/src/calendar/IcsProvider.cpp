@@ -26,7 +26,7 @@ QString decodeBody(const QByteArray& body) {
 
 }  // namespace
 
-IcsProvider::IcsProvider(CalendarIcsAccountConfig config)
+IcsProvider::IcsProvider(HoloNight::ShellConfig::CalendarIcsAccountConfig config)
     : config_(std::move(config)), http_client_(config_.account_name) {}
 
 std::expected<QByteArray, SyncError> IcsProvider::httpGet() const {
