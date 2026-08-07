@@ -21,7 +21,7 @@ Umbrella ACF-006 is `Ready`. Implementation started from Shell
   names and separate configuration domains.
 - [x] ACF6-09: Add redacted security-boundary tests and record the linked credential-storage initiative without
   placing secrets in ACF artifacts.
-- [ ] ACF6-10: Run standalone package, format, tidy, architecture, QML lint/types, full CTest, and manual Hyprland
+- [x] ACF6-10: Run standalone package, format, tidy, architecture, QML lint/types, full CTest, and manual Hyprland
   verification; publish the provider commit for Settings handoff.
 
 ## Completion evidence
@@ -104,3 +104,17 @@ before requesting ACF-006 `Done`. A local or unpublished commit is not a handoff
   --gtest_filter='AppearanceIntegrationTest.*'`: 8/8 tests passed.
 - `task format-check` and `git diff --check`: passed; the ACF security artifacts contain only explicit redaction
   markers, synthetic sentinels, and reserved `example.invalid` URLs.
+
+### 2026-08-08 — ACF6-10
+
+- Published provider implementation `7fbb2af` against `holonight-config@81b01d3` and
+  `holonight-qt@6f591cb`.
+- `task test:shell-config-package`: passed standalone configure, build, install, installed-consumer build, and
+  consumer execution.
+- `task test`: 1,126/1,126 CTest entries passed in 77.15 seconds; one environment-dependent monitor test was
+  intentionally skipped.
+- `task tidy`, `task format-check`, `task architecture-check`, `task qml-lint`, and `task qmltypes-check`: passed;
+  QML metadata and module packaging checks passed.
+- Manual Hyprland verification passed: Shell startup and surfaces remained visually correct; live
+  `appearance.toml` accent changes propagated without restart; the staged canonical QML provider supplied
+  `HnMetrics`; weather graphs opened without invalid-font warnings; and no obsolete font-signal warnings remained.
