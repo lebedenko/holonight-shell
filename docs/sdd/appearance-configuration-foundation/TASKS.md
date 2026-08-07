@@ -14,7 +14,7 @@ Umbrella ACF-006 is `Ready`. Implementation started from Shell
   the Shell product contract.
 - [x] ACF6-04: Adopt the Shell-owned product package in `ConfigService` and remove its appearance API/signals.
 - [x] ACF6-05: Add `HoloNight::Config` and the pinned Qt projection dependency for canonical read-only appearance.
-- [ ] ACF6-06: Refactor `AppearanceService` into the single validated appearance state/watcher with last-known-good
+- [x] ACF6-06: Refactor `AppearanceService` into the single validated appearance state/watcher with last-known-good
   rollback and precise signals.
 - [ ] ACF6-07: Remove ThemeService configuration loading and make portal/palette reload consume in-memory appearance.
 - [ ] ACF6-08: Update Shell QML, tests, fakes, CMake, documentation, and install/package paths for the canonical role
@@ -47,3 +47,14 @@ before requesting ACF-006 `Done`. A local or unpublished commit is not a handoff
   --gtest_filter='AppearanceIntegrationTest.*'`: 3/3 tests passed for startup projection, narrow live notification,
   and invalid-replacement last-known-good retention.
 - Shell no longer finds, stages, includes, or links the Settings-owned `HolonightConfig` package.
+
+### 2026-08-07 — ACF6-06
+
+- `AppearanceService` projects the complete resolved appearance contract, retains temporary compatibility aliases,
+  and publishes precise property signals before one accepted revision notification.
+- `QT_QPA_PLATFORM=offscreen build/tests/test_holonight_services
+  --gtest_filter='AppearanceIntegrationTest.*'`: 4/4 tests passed for complete startup projection, precise signal and
+  revision ordering, semantically unchanged replacement, and invalid-replacement last-known-good retention.
+- `task format-check`: passed.
+- `task architecture-check`: passed.
+- `task qmltypes-check`: passed after a complete Shell build; QML type metadata and module packaging checks passed.

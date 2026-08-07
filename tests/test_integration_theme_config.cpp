@@ -33,11 +33,13 @@ fallback = "Papirus"
 cursor = "default"
 
 [layout]
-scale = 1.0
+scale = 1.25
 
 [shape]
-style = "inherit"
-scale = 1.0
+style = "rounded"
+scale = 1.5
+base_radius = 8.0
+base_chamfer = 3.0
 )";
 
 void writeAppearance(const QString& path, const QByteArray& content) {
@@ -61,25 +63,48 @@ class AppearanceIntegrationTest : public ::testing::Test {
   void TearDown() override { qunsetenv("HOLONIGHT_APPEARANCE_FILE"); }
 };
 
-TEST_F(AppearanceIntegrationTest, StartupReadsCanonicalTypography) {
+TEST_F(AppearanceIntegrationTest, StartupProjectsCompleteCanonicalAppearance) {
   writeAppearance(path, kCustomAppearance);
 
   AppearanceService appearance;
 
+  EXPECT_EQ(appearance.scheme(), QStringLiteral("holonight-dark"));
+  EXPECT_EQ(appearance.accent(), QStringLiteral("blue"));
+  EXPECT_EQ(appearance.colorMode(), QStringLiteral("dark"));
   EXPECT_EQ(appearance.uiFont(), QStringLiteral("Fira Code"));
   EXPECT_EQ(appearance.uiFontSize(), 14);
+  EXPECT_EQ(appearance.monospaceFont(), QStringLiteral("Inconsolata"));
+  EXPECT_EQ(appearance.monospaceFontSize(), 13);
+  EXPECT_EQ(appearance.displayFont(), QStringLiteral("Orbitron"));
+  EXPECT_EQ(appearance.displayFontSize(), 20);
   EXPECT_EQ(appearance.fixedFont(), QStringLiteral("Inconsolata"));
   EXPECT_EQ(appearance.clockFont(), QStringLiteral("Orbitron"));
   EXPECT_EQ(appearance.clockFontSize(), 20);
   EXPECT_EQ(appearance.titleFont(), QStringLiteral("Exo"));
   EXPECT_EQ(appearance.titleFontSize(), 9);
+  EXPECT_EQ(appearance.iconTheme(), QStringLiteral("HoloNight"));
+  EXPECT_EQ(appearance.fallbackIconTheme(), QStringLiteral("Papirus"));
+  EXPECT_EQ(appearance.cursorTheme(), QStringLiteral("default"));
+  EXPECT_DOUBLE_EQ(appearance.layoutScale(), 1.25);
+  EXPECT_EQ(appearance.shapeStyle(), QStringLiteral("rounded"));
+  EXPECT_DOUBLE_EQ(appearance.shapeScale(), 1.5);
+  EXPECT_TRUE(appearance.hasBaseRadius());
+  EXPECT_DOUBLE_EQ(appearance.baseRadius(), 8.0);
+  EXPECT_TRUE(appearance.hasBaseChamfer());
+  EXPECT_DOUBLE_EQ(appearance.baseChamfer(), 3.0);
+  EXPECT_EQ(appearance.revision(), 0);
 }
 
-TEST_F(AppearanceIntegrationTest, LiveReplacementUpdatesTypographyAndEmitsNarrowSignals) {
+TEST_F(AppearanceIntegrationTest, LiveReplacementEmitsPreciseSignalsBeforeRevision) {
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
   QSignalSpy ui_font_spy(&appearance, &AppearanceService::uiFontChanged);
   QSignalSpy title_font_spy(&appearance, &AppearanceService::titleFontChanged);
+  QSignalSpy icon_theme_spy(&appearance, &AppearanceService::iconThemeChanged);
+  QSignalSpy revision_spy(&appearance, &AppearanceService::revisionChanged);
+  QStringList signal_order;
+  QObject::connect(&appearance, &AppearanceService::uiFontChanged, [&signal_order]() { signal_order << "uiFont"; });
+  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order]() { signal_order << "revision"; });
 
   QByteArray edited(kCustomAppearance);
   edited.replace("ui_family = \"Fira Code\"", "ui_family = \"Cascadia Code\"");
@@ -88,18 +113,38 @@ TEST_F(AppearanceIntegrationTest, LiveReplacementUpdatesTypographyAndEmitsNarrow
   QTRY_COMPARE_WITH_TIMEOUT(appearance.uiFont(), QStringLiteral("Cascadia Code"), 2000);
   EXPECT_EQ(ui_font_spy.count(), 1);
   EXPECT_EQ(title_font_spy.count(), 0);
+  EXPECT_EQ(icon_theme_spy.count(), 0);
+  EXPECT_EQ(revision_spy.count(), 1);
+  EXPECT_EQ(appearance.revision(), 1);
+  EXPECT_EQ(signal_order, (QStringList{QStringLiteral("uiFont"), QStringLiteral("revision")}));
 }
 
-TEST_F(AppearanceIntegrationTest, InvalidLiveReplacementPreservesLastKnownGoodTypography) {
+TEST_F(AppearanceIntegrationTest, SemanticallyUnchangedReplacementDoesNotAdvanceRevision) {
+  writeAppearance(path, kCustomAppearance);
+  AppearanceService appearance;
+  QSignalSpy revision_spy(&appearance, &AppearanceService::revisionChanged);
+
+  writeAppearance(path, kCustomAppearance);
+  QTest::qWait(300);
+
+  EXPECT_EQ(appearance.revision(), 0);
+  EXPECT_EQ(revision_spy.count(), 0);
+}
+
+TEST_F(AppearanceIntegrationTest, InvalidLiveReplacementPreservesLastKnownGoodAppearance) {
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
   QSignalSpy ui_font_spy(&appearance, &AppearanceService::uiFontChanged);
+  QSignalSpy revision_spy(&appearance, &AppearanceService::revisionChanged);
 
   writeAppearance(path, QByteArrayLiteral("not valid = ["));
   QTest::qWait(300);
 
   EXPECT_EQ(appearance.uiFont(), QStringLiteral("Fira Code"));
+  EXPECT_EQ(appearance.shapeStyle(), QStringLiteral("rounded"));
+  EXPECT_EQ(appearance.revision(), 0);
   EXPECT_EQ(ui_font_spy.count(), 0);
+  EXPECT_EQ(revision_spy.count(), 0);
 }
 
 }  // namespace
