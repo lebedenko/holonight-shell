@@ -8,9 +8,9 @@ Canvas {
 
     readonly property int displaySeconds: 24 * 60 * 60
 
-    function canvasFont(pixelSize, family) {
+    function canvasFont(pixelSize, family, fallbackFamily) {
         const escapedFamily = String(family).replace(/\\/g, "\\\\").replace(/'/g, "\\'")
-        return pixelSize + "px '" + escapedFamily + "'"
+        return pixelSize + "px '" + escapedFamily + "', " + fallbackFamily
     }
 
     readonly property var points: {
@@ -118,7 +118,7 @@ Canvas {
 
         // Y-axis labels at min / mid / max.
         ctx.fillStyle = HoloniightPalette.textMuted
-        ctx.font = root.canvasFont(9, AppearanceService.monospaceFont)
+        ctx.font = root.canvasFont(9, AppearanceService.monospaceFont, "monospace")
         ctx.textAlign = "left"
         ctx.fillText(maxT + "°", 0, yPos(maxT) + 4)
         ctx.fillText(midT + "°", 0, yPos(midT) + 4)
@@ -139,7 +139,7 @@ Canvas {
 
     Connections {
         target: AppearanceService
-        function onFixedFontChanged() { root.requestPaint() }
+        function onMonospaceFontChanged() { root.requestPaint() }
     }
 
     Component.onCompleted: root.requestPaint()

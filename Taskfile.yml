@@ -80,6 +80,9 @@ tasks:
   run:
     desc: Build and run holonight-shell
     deps: [build]
+    env:
+      QML_IMPORT_PATH: "{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml"
+      QML2_IMPORT_PATH: "{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml"
     cmds:
       - ./{{.BUILD_DIR}}/holonight-shell
 

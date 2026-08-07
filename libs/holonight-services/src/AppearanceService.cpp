@@ -89,5 +89,6 @@ void AppearanceService::applyAppearance(const Holonight::ResolvedAppearance& app
     revision_ = revision;
     emit revisionChanged();
   }
-  qCInfo(lcAppearance) << "Appearance applied: scheme=" << appearance_.scheme << "revision=" << revision_;
+  qCInfo(lcAppearance) << "Appearance applied: scheme=" << appearance_.scheme << "accent=" << appearance_.accent
+                       << "revision=" << revision_;
 }

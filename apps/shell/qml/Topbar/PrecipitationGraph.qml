@@ -10,9 +10,9 @@ Canvas {
 
     readonly property int displaySeconds: 24 * 60 * 60
 
-    function canvasFont(pixelSize, family) {
+    function canvasFont(pixelSize, family, fallbackFamily) {
         const escapedFamily = String(family).replace(/\\/g, "\\\\").replace(/'/g, "\\'")
-        return pixelSize + "px '" + escapedFamily + "'"
+        return pixelSize + "px '" + escapedFamily + "', " + fallbackFamily
     }
 
     readonly property var points: {
@@ -89,7 +89,7 @@ Canvas {
             ctx.fillStyle = Qt.rgba(HoloniightPalette.textMuted.r,
                                     HoloniightPalette.textMuted.g,
                                     HoloniightPalette.textMuted.b, 0.48)
-            ctx.font = root.canvasFont(12, AppearanceService.uiFont)
+            ctx.font = root.canvasFont(12, AppearanceService.uiFont, "sans-serif")
             ctx.textAlign = "center"
             ctx.fillText("No precipitation expected", leftPad + plotW / 2, topPad + plotH / 2 + 4)
         }
@@ -114,7 +114,7 @@ Canvas {
         }
 
         ctx.fillStyle = HoloniightPalette.textMuted
-        ctx.font = root.canvasFont(9, AppearanceService.monospaceFont)
+        ctx.font = root.canvasFont(9, AppearanceService.monospaceFont, "monospace")
         ctx.textAlign = "left"
         ctx.fillText(axisMax.toFixed(0), 0, yPos(axisMax) + 4)
         ctx.fillText((axisMax / 2).toFixed(axisMax > 5 ? 0 : 1), 0, yPos(axisMax / 2) + 4)
@@ -136,7 +136,7 @@ Canvas {
     Connections {
         target: AppearanceService
         function onUiFontChanged() { root.requestPaint() }
-        function onFixedFontChanged() { root.requestPaint() }
+        function onMonospaceFontChanged() { root.requestPaint() }
     }
 
     Component.onCompleted: root.requestPaint()
