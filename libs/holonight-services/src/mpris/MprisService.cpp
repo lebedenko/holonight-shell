@@ -477,22 +477,54 @@ void MprisService::applyActiveSnapshot(  // NOLINT(readability-function-cognitiv
   }
   active_position_ = position_mark_us_;
 
-  if (has_changed) emit hasActivePlayerChanged();
-  if (title_changed) emit activeTitleChanged();
-  if (artist_changed) emit activeArtistChanged();
-  if (identity_changed) emit activeIdentityChanged();
-  if (desktop_changed) emit activeDesktopEntryChanged();
-  if (status_changed) emit activePlaybackStatusChanged();
-  if (next_changed) emit canGoNextChanged();
-  if (previous_changed) emit canGoPreviousChanged();
-  if (play_changed) emit canPlayChanged();
-  if (pause_changed) emit canPauseChanged();
-  if (control_changed) emit canControlChanged();
-  if (album_changed) emit activeAlbumChanged();
-  if (art_changed) emit activeArtUrlChanged();
-  if (length_changed) emit activeLengthChanged();
-  if (seek_changed) emit activeCanSeekChanged();
-  if (activePosition() != position_before) emit activePositionChanged();
+  if (has_changed) {
+    emit hasActivePlayerChanged();
+  }
+  if (title_changed) {
+    emit activeTitleChanged();
+  }
+  if (artist_changed) {
+    emit activeArtistChanged();
+  }
+  if (identity_changed) {
+    emit activeIdentityChanged();
+  }
+  if (desktop_changed) {
+    emit activeDesktopEntryChanged();
+  }
+  if (status_changed) {
+    emit activePlaybackStatusChanged();
+  }
+  if (next_changed) {
+    emit canGoNextChanged();
+  }
+  if (previous_changed) {
+    emit canGoPreviousChanged();
+  }
+  if (play_changed) {
+    emit canPlayChanged();
+  }
+  if (pause_changed) {
+    emit canPauseChanged();
+  }
+  if (control_changed) {
+    emit canControlChanged();
+  }
+  if (album_changed) {
+    emit activeAlbumChanged();
+  }
+  if (art_changed) {
+    emit activeArtUrlChanged();
+  }
+  if (length_changed) {
+    emit activeLengthChanged();
+  }
+  if (seek_changed) {
+    emit activeCanSeekChanged();
+  }
+  if (activePosition() != position_before) {
+    emit activePositionChanged();
+  }
   if (has_changed || title_changed || artist_changed || identity_changed || desktop_changed || status_changed ||
       next_changed || previous_changed || play_changed || pause_changed || control_changed || album_changed ||
       art_changed || length_changed || seek_changed || track_changed) {

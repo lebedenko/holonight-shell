@@ -100,8 +100,8 @@ int readInt(toml::node_view<const toml::node> node, int def_val, const char* key
                                << def_val;
     return def_val;
   }
-  const int64_t clamped_value = std::clamp(*opt, static_cast<int64_t>((std::numeric_limits<int>::min)()),
-                                           static_cast<int64_t>((std::numeric_limits<int>::max)()));
+  const int64_t clamped_value = std::clamp(*opt, static_cast<int64_t>(std::numeric_limits<int>::min()),
+                                           static_cast<int64_t>(std::numeric_limits<int>::max()));
   return static_cast<int>(clamped_value);
 }
 
