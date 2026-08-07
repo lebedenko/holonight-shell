@@ -22,7 +22,7 @@ Controls.Popup {
     surfaceRole: HnSurfaceRole.Popup
     fillColor: HoloniightPalette.surfaceRaised
     borderColor: HoloniightPalette.borderPassive
-    borderWidth: HoloniightPalette.borderWidth
+    borderWidth: HnMetrics.borderWidth
   }
 
   ColumnLayout {

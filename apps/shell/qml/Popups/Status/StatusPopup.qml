@@ -45,7 +45,7 @@ Item {
     readonly property color panelFillColor: HoloniightPalette.surfaceRaised
     readonly property color panelBorderColor: HoloniightPalette.borderPassive
     readonly property color panelAccentColor: HoloniightPalette.accentCyan
-    readonly property real panelBorderWidth: HoloniightPalette.borderWidth
+    readonly property real panelBorderWidth: HnMetrics.borderWidth
 
     // Panel body geometry within the (padded) surface.
     readonly property int panelLeft: root.glowPadding

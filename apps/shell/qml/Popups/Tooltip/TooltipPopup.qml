@@ -86,7 +86,7 @@ Item {
         surfaceRole: HnSurfaceRole.Tooltip
         fillColor: HoloniightPalette.surfaceRaised
         borderColor: root.tooltipBorderColor
-        borderWidth: HoloniightPalette.borderWidth
+        borderWidth: HnMetrics.borderWidth
     }
 
     Row {

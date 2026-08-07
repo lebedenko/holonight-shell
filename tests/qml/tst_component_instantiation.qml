@@ -218,7 +218,7 @@ TestCase {
         compare(popup.panelChamferedCorners, HnCornerMask.TopRight | HnCornerMask.BottomLeft)
         compare(popup.panelFillColor, HoloniightPalette.surfaceRaised)
         compare(popup.panelBorderColor, HoloniightPalette.borderPassive)
-        compare(popup.panelBorderWidth, HoloniightPalette.borderWidth)
+        compare(popup.panelBorderWidth, HnMetrics.borderWidth)
     }
 
     function test_wifi_password_dialog_uses_semantic_popup_frame() {
@@ -227,7 +227,7 @@ TestCase {
         compare(dialog.background.surfaceRole, HnSurfaceRole.Popup)
         compare(dialog.background.fillColor, HoloniightPalette.surfaceRaised)
         compare(dialog.background.borderColor, HoloniightPalette.borderPassive)
-        compare(dialog.background.borderWidth, HoloniightPalette.borderWidth)
+        compare(dialog.background.borderWidth, HnMetrics.borderWidth)
     }
 
     function test_audio_tab_sidebar_exposes_expected_tabs() {

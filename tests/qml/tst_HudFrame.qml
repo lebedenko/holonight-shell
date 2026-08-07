@@ -36,7 +36,7 @@ TestCase {
         frame.variant = HudFrame.Sidebar
         compare(frame.surfaceRole, HnSurfaceRole.Panel)
         compare(frame.frameFill, HoloniightPalette.surfaceRaised)
-        compare(frame.strokeWidth, HoloniightPalette.borderWidth)
+        compare(frame.strokeWidth, HnMetrics.borderWidth)
     }
 
     function test_semantic_radius_and_explicit_override() {

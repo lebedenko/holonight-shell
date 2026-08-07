@@ -17,7 +17,7 @@ Item {
     property real cornerRadius: NaN
     property color frameFill: root.defaultFrameFill
     property color frameStroke: root.defaultFrameStroke
-    property real strokeWidth: HoloniightPalette.borderWidth
+    property real strokeWidth: HnMetrics.borderWidth
     property real strokeOpacity: root.defaultStrokeOpacity
     property real innerShadowOpacity: root.variant === HudFrame.Section ? 0.34 : 0.42
     property real innerHighlightOpacity: root.variant === HudFrame.Section ? 0.08 : 0.12

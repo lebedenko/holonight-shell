@@ -107,7 +107,7 @@ Item {
         surfaceRole: HnSurfaceRole.Menu
         fillColor: HoloniightPalette.surfaceRaised
         borderColor: HoloniightPalette.borderPassive
-        borderWidth: HoloniightPalette.borderWidth
+        borderWidth: HnMetrics.borderWidth
     }
 
     ListView {

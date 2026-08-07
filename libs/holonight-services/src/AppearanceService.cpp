@@ -3,6 +3,8 @@
 #include <QCoreApplication>
 #include <QLoggingCategory>
 
+#include <functional>
+
 Q_LOGGING_CATEGORY(lcAppearance, "holonight.appearance")
 
 namespace {
@@ -31,6 +33,14 @@ QString shapeStyleName(Holonight::ResolvedShapeStyle style) {
   Q_UNREACHABLE_RETURN({});
 }
 
+template <typename Value, typename Signal>
+void emitIfChanged(bool notify, const Value& previous, const Value& current, AppearanceService* service,
+                   Signal signal) {
+  if (notify && previous != current) {
+    std::invoke(signal, service);
+  }
+}
+
 }  // namespace
 
 AppearanceService::AppearanceService(QObject* parent) : QObject(parent) {
@@ -49,33 +59,30 @@ void AppearanceService::applyAppearance(const Holonight::ResolvedAppearance& app
   const bool notify = initialized_;
   appearance_ = appearance;
 
-  if (notify && previous.scheme != appearance_.scheme) emit schemeChanged();
-  if (notify && previous.accent != appearance_.accent) emit accentChanged();
-  if (notify && previous.color_mode != appearance_.color_mode) emit colorModeChanged();
-  if (notify && previous.ui_font != appearance_.ui_font) emit uiFontChanged();
-  if (notify && previous.monospace_font != appearance_.monospace_font) {
-    emit monospaceFontChanged();
-  }
-  if (notify && previous.title_font != appearance_.title_font) emit titleFontChanged();
-  if (notify && previous.display_font != appearance_.display_font) {
-    emit displayFontChanged();
-  }
-  if (notify && previous.ui_font_size != appearance_.ui_font_size) emit uiFontSizeChanged();
-  if (notify && previous.monospace_font_size != appearance_.monospace_font_size) {
-    emit monospaceFontSizeChanged();
-  }
-  if (notify && previous.title_font_size != appearance_.title_font_size) emit titleFontSizeChanged();
-  if (notify && previous.display_font_size != appearance_.display_font_size) {
-    emit displayFontSizeChanged();
-  }
-  if (notify && previous.icon_theme != appearance_.icon_theme) emit iconThemeChanged();
-  if (notify && previous.fallback_icon_theme != appearance_.fallback_icon_theme) emit fallbackIconThemeChanged();
-  if (notify && previous.cursor_theme != appearance_.cursor_theme) emit cursorThemeChanged();
-  if (notify && previous.layout_scale != appearance_.layout_scale) emit layoutScaleChanged();
-  if (notify && previous.shape_style != appearance_.shape_style) emit shapeStyleChanged();
-  if (notify && previous.shape_scale != appearance_.shape_scale) emit shapeScaleChanged();
-  if (notify && previous.base_radius != appearance_.base_radius) emit baseRadiusChanged();
-  if (notify && previous.base_chamfer != appearance_.base_chamfer) emit baseChamferChanged();
+  emitIfChanged(notify, previous.scheme, appearance_.scheme, this, &AppearanceService::schemeChanged);
+  emitIfChanged(notify, previous.accent, appearance_.accent, this, &AppearanceService::accentChanged);
+  emitIfChanged(notify, previous.color_mode, appearance_.color_mode, this, &AppearanceService::colorModeChanged);
+  emitIfChanged(notify, previous.ui_font, appearance_.ui_font, this, &AppearanceService::uiFontChanged);
+  emitIfChanged(notify, previous.monospace_font, appearance_.monospace_font, this,
+                &AppearanceService::monospaceFontChanged);
+  emitIfChanged(notify, previous.title_font, appearance_.title_font, this, &AppearanceService::titleFontChanged);
+  emitIfChanged(notify, previous.display_font, appearance_.display_font, this, &AppearanceService::displayFontChanged);
+  emitIfChanged(notify, previous.ui_font_size, appearance_.ui_font_size, this, &AppearanceService::uiFontSizeChanged);
+  emitIfChanged(notify, previous.monospace_font_size, appearance_.monospace_font_size, this,
+                &AppearanceService::monospaceFontSizeChanged);
+  emitIfChanged(notify, previous.title_font_size, appearance_.title_font_size, this,
+                &AppearanceService::titleFontSizeChanged);
+  emitIfChanged(notify, previous.display_font_size, appearance_.display_font_size, this,
+                &AppearanceService::displayFontSizeChanged);
+  emitIfChanged(notify, previous.icon_theme, appearance_.icon_theme, this, &AppearanceService::iconThemeChanged);
+  emitIfChanged(notify, previous.fallback_icon_theme, appearance_.fallback_icon_theme, this,
+                &AppearanceService::fallbackIconThemeChanged);
+  emitIfChanged(notify, previous.cursor_theme, appearance_.cursor_theme, this, &AppearanceService::cursorThemeChanged);
+  emitIfChanged(notify, previous.layout_scale, appearance_.layout_scale, this, &AppearanceService::layoutScaleChanged);
+  emitIfChanged(notify, previous.shape_style, appearance_.shape_style, this, &AppearanceService::shapeStyleChanged);
+  emitIfChanged(notify, previous.shape_scale, appearance_.shape_scale, this, &AppearanceService::shapeScaleChanged);
+  emitIfChanged(notify, previous.base_radius, appearance_.base_radius, this, &AppearanceService::baseRadiusChanged);
+  emitIfChanged(notify, previous.base_chamfer, appearance_.base_chamfer, this, &AppearanceService::baseChamferChanged);
 
   initialized_ = true;
   if (revision_ != revision) {
