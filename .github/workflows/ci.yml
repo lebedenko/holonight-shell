@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Checkout holonight-settings dependency
-        uses: actions/checkout
+        uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-settings
           path: holonight-settings-dep
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Checkout holonight-settings dependency
-        uses: actions/checkout
+        uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-settings
           path: holonight-settings-dep
