@@ -3,5 +3,5 @@ Name=HoloNight (Hyprland)
 Comment=Hyprland session with HoloNight desktop integration
 Exec=holonight-hyprland-session
 TryExec=Hyprland
-DesktopNames=HoloNight;Hyprland
+DesktopNames=Hyprland
 Type=Application

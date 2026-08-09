@@ -15,7 +15,7 @@ make_fake() {
   chmod +x "${fake_bin}/${name}"
 }
 
-make_fake Hyprland 'printf "hyprland cursor=%s path=%s config=%s platformtheme=%s quickstyle=%s styleoverride=%s\\ndesktop=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" "${XDG_CURRENT_DESKTOP-}" >>"${TEST_LOG}"'
+make_fake Hyprland 'printf "hyprland cursor=%s path=%s config=%s configdirs=%s platformtheme=%s quickstyle=%s styleoverride=%s\\ndesktop=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${XDG_CONFIG_DIRS-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" "${XDG_CURRENT_DESKTOP-}" >>"${TEST_LOG}"'
 make_fake uwsm 'printf "uwsm %s cursor=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "$*" "${XCURSOR_THEME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
 make_fake dbus-update-activation-environment 'printf "dbus %s cursor=%s\\n" "$*" "${XCURSOR_THEME-}" >>"${TEST_LOG}"'
 make_fake systemctl '
@@ -56,8 +56,8 @@ env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root
   XDG_CONFIG_HOME="${test_root}/xdg" HOLONIGHT_APPEARANCE_FILE="${test_root}/override.toml" \
   HOLONIGHT_HYPRLAND_SESSION_MODE=direct "${source_dir}/scripts/holonight-hyprland-session"
 assert_contains "adapter query --appearance ${test_root}/override.toml --field cursor-theme"
-assert_contains "hyprland cursor=CanonicalCursor path=${test_root}/override.toml config=${test_root}/xdg platformtheme=holonight quickstyle=Holonight styleoverride="
-assert_contains "desktop=HoloNight:Hyprland"
+assert_contains "hyprland cursor=CanonicalCursor path=${test_root}/override.toml config=${test_root}/xdg configdirs=/usr/share/holonight/xdg:/etc/xdg platformtheme=holonight quickstyle=Holonight styleoverride="
+assert_contains "desktop=Hyprland"
 grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME'
 grep -F 'systemctl --user import-environment' "${log_file}" | grep -Fq 'QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME'
 
@@ -65,7 +65,7 @@ grep -F 'systemctl --user import-environment' "${log_file}" | grep -Fq 'QT_QPA_P
 env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
   QT_QPA_PLATFORMTHEME=UserPlatform QT_QUICK_CONTROLS_STYLE=UserQuick QT_STYLE_OVERRIDE=UserWidgets \
   HOLONIGHT_HYPRLAND_SESSION_MODE=direct "${source_dir}/scripts/holonight-hyprland-session"
-assert_contains "hyprland cursor=CanonicalCursor path= config= platformtheme=UserPlatform quickstyle=UserQuick styleoverride=UserWidgets"
+assert_contains "hyprland cursor=CanonicalCursor path= config= configdirs=/usr/share/holonight/xdg:/etc/xdg platformtheme=UserPlatform quickstyle=UserQuick styleoverride=UserWidgets"
 if grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'QT_STYLE_OVERRIDE'; then
   printf 'QT_STYLE_OVERRIDE must not be imported\n' >&2
   exit 1
@@ -75,13 +75,13 @@ fi
 env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
   XDG_CURRENT_DESKTOP=Hyprland HOLONIGHT_HYPRLAND_SESSION_MODE=direct \
   "${source_dir}/scripts/holonight-hyprland-session"
-assert_contains "desktop=HoloNight:Hyprland"
+assert_contains "desktop=Hyprland"
 
 : >"${log_file}"
 env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
   XDG_CURRENT_DESKTOP=HoloNight:Sway HOLONIGHT_HYPRLAND_SESSION_MODE=direct \
   "${source_dir}/scripts/holonight-hyprland-session"
-assert_contains "desktop=HoloNight:Sway"
+assert_contains "desktop=Hyprland"
 
 : >"${log_file}"
 env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
@@ -94,19 +94,19 @@ for mode in fail empty multiline control oversized; do
   env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" ADAPTER_MODE="${mode}" \
     XCURSOR_THEME=Inherited HOLONIGHT_HYPRLAND_SESSION_MODE=direct \
     "${source_dir}/scripts/holonight-hyprland-session"
-  grep -Fq "hyprland cursor=Inherited path= config= platformtheme=holonight quickstyle=Holonight" "${log_file}"
+  grep -Fq "hyprland cursor=Inherited path= config= configdirs=/usr/share/holonight/xdg:/etc/xdg platformtheme=holonight quickstyle=Holonight" "${log_file}"
 done
 
 mv "${fake_bin}/holonight-appearance-adapter" "${fake_bin}/adapter-away"
 : >"${log_file}"
 XCURSOR_THEME=Inherited run_session direct
-grep -Fq "hyprland cursor=Inherited path= config= platformtheme=holonight quickstyle=Holonight" "${log_file}"
+grep -Fq "hyprland cursor=Inherited path= config= configdirs=/usr/share/holonight/xdg:/etc/xdg platformtheme=holonight quickstyle=Holonight" "${log_file}"
 mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 
 : >"${log_file}"
 run_session uwsm
 assert_contains "adapter query --appearance ${test_root}/home/.config/holonight/appearance.toml --field cursor-theme"
-assert_contains "uwsm start -e -D HoloNight:Hyprland hyprland.desktop cursor=CanonicalCursor platformtheme=holonight quickstyle=Holonight styleoverride="
+assert_contains "uwsm start -e -D Hyprland hyprland.desktop cursor=CanonicalCursor platformtheme=holonight quickstyle=Holonight styleoverride="
 
 : >"${log_file}"
 FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=sig\nXCURSOR_THEME=ManagerCursor\nXDG_CONFIG_HOME=/manager/config\nHOLONIGHT_APPEARANCE_FILE=/manager/appearance.toml\nQT_QPA_PLATFORMTHEME=holonight\nQT_QUICK_CONTROLS_STYLE=Holonight\nQT_STYLE_OVERRIDE=Unsupported' \

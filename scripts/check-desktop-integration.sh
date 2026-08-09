@@ -230,20 +230,25 @@ if have_command busctl && busctl --user status org.freedesktop.impl.portal.deskt
   status INFO "HoloNight portal accent-color: ${portal_accent:-unavailable}"
 fi
 
-holonight_desktop_configured=false
+hyprland_desktop_configured=false
 IFS=':' read -r -a current_desktops <<<"${XDG_CURRENT_DESKTOP:-}"
 for desktop in "${current_desktops[@]}"; do
-  if [[ "${desktop,,}" == "holonight" ]]; then
-    holonight_desktop_configured=true
+  if [[ "${desktop,,}" == "hyprland" ]]; then
+    hyprland_desktop_configured=true
     break
   fi
 done
 
-if [[ "${holonight_desktop_configured}" == true ]]; then
-  status OK "XDG_CURRENT_DESKTOP includes HoloNight for portal routing"
+if [[ "${hyprland_desktop_configured}" == true ]]; then
+  status OK "XDG_CURRENT_DESKTOP identifies Hyprland"
 else
-  status WARN "XDG_CURRENT_DESKTOP does not include HoloNight; holonight-portals.conf will not be selected"
+  status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland"
 fi
+
+case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
+  *:/usr/share/holonight/xdg:*) status OK "HoloNight portal routing layer is active" ;;
+  *) status WARN "HoloNight portal routing layer is absent from XDG_CONFIG_DIRS" ;;
+esac
 
 holonight_portal_file=""
 holonight_portals_conf=""

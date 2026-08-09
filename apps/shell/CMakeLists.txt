@@ -222,3 +222,8 @@ install(
     FILES ${PROJECT_SOURCE_DIR}/data/xdg-desktop-portal/holonight-portals.conf
     DESTINATION ${CMAKE_INSTALL_DATADIR}/xdg-desktop-portal
 )
+
+install(
+    FILES ${PROJECT_SOURCE_DIR}/data/xdg/xdg-desktop-portal/hyprland-portals.conf
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/holonight/xdg/xdg-desktop-portal
+)

@@ -93,14 +93,14 @@ start_shell_service() {
   fi
 }
 
-case ":${XDG_CURRENT_DESKTOP:-}:" in
-  *:HoloNight:*) ;;
-  ::) export XDG_CURRENT_DESKTOP="HoloNight:Hyprland" ;;
-  *) export XDG_CURRENT_DESKTOP="HoloNight:${XDG_CURRENT_DESKTOP}" ;;
-esac
+export XDG_CURRENT_DESKTOP="Hyprland"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-Hyprland}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-hyprland-}"
+case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
+  *:/usr/share/holonight/xdg:*) ;;
+  *) export XDG_CONFIG_DIRS="/usr/share/holonight/xdg:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
+esac
 export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
 export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
 
@@ -114,14 +114,14 @@ case "${mode}" in
   auto)
     if have_command uwsm; then
       start_shell_service
-      exec uwsm start -e -D HoloNight:Hyprland hyprland.desktop
+      exec uwsm start -e -D Hyprland hyprland.desktop
     fi
     exec Hyprland
     ;;
   uwsm)
     have_command uwsm || die "HOLONIGHT_HYPRLAND_SESSION_MODE=uwsm was requested, but uwsm was not found in PATH"
     start_shell_service
-    exec uwsm start -e -D HoloNight:Hyprland hyprland.desktop
+    exec uwsm start -e -D Hyprland hyprland.desktop
     ;;
   direct)
     exec Hyprland

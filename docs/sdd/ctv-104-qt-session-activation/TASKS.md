@@ -5,8 +5,8 @@
 - [x] Import and recover both supported Qt activation variables.
 - [x] Stop importing or recovering `QT_STYLE_OVERRIDE` and diagnose it when present.
 - [x] Extend deterministic direct, UWSM, service-wrapper, CLI, and in-Shell regression coverage.
-- [x] Ensure an inherited compositor desktop identifier cannot suppress HoloNight portal routing.
-- [x] Preserve the HoloNight desktop identity across the exclusive UWSM handoff and display-manager metadata.
+- [x] Route HoloNight Settings without replacing the Hyprland compositor identity.
+- [x] Preserve the Hyprland desktop identity across the exclusive UWSM handoff and display-manager metadata.
 - [x] Export the Settings backend's scriptable invokables and cover them on an isolated real D-Bus session.
 
 ## Verification
