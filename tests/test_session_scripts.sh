@@ -106,7 +106,7 @@ mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 : >"${log_file}"
 run_session uwsm
 assert_contains "adapter query --appearance ${test_root}/home/.config/holonight/appearance.toml --field cursor-theme"
-assert_contains "uwsm start -e -D Hyprland hyprland.desktop cursor=CanonicalCursor platformtheme=holonight quickstyle=Holonight styleoverride="
+assert_contains "uwsm start -e -D HoloNight:Hyprland hyprland.desktop cursor=CanonicalCursor platformtheme=holonight quickstyle=Holonight styleoverride="
 
 : >"${log_file}"
 FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=sig\nXCURSOR_THEME=ManagerCursor\nXDG_CONFIG_HOME=/manager/config\nHOLONIGHT_APPEARANCE_FILE=/manager/appearance.toml\nQT_QPA_PLATFORMTHEME=holonight\nQT_QUICK_CONTROLS_STYLE=Holonight\nQT_STYLE_OVERRIDE=Unsupported' \

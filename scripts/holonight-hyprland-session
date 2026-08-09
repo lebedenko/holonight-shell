@@ -114,14 +114,14 @@ case "${mode}" in
   auto)
     if have_command uwsm; then
       start_shell_service
-      exec uwsm start -e -D Hyprland hyprland.desktop
+      exec uwsm start -e -D HoloNight:Hyprland hyprland.desktop
     fi
     exec Hyprland
     ;;
   uwsm)
     have_command uwsm || die "HOLONIGHT_HYPRLAND_SESSION_MODE=uwsm was requested, but uwsm was not found in PATH"
     start_shell_service
-    exec uwsm start -e -D Hyprland hyprland.desktop
+    exec uwsm start -e -D HoloNight:Hyprland hyprland.desktop
     ;;
   direct)
     exec Hyprland

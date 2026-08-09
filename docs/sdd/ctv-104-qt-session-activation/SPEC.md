@@ -18,6 +18,8 @@ pre-existing value remains in the launching process and is reported as unsupport
 
 The session bootstrap always includes `HoloNight` in the colon-separated `XDG_CURRENT_DESKTOP` value. An inherited
 desktop list is preserved after the HoloNight entry so compositor/toolkit identification remains available.
+The installed display-manager entry advertises both desktop names, and the UWSM handoff passes
+`HoloNight:Hyprland` explicitly because exclusive (`-e`) UWSM activation otherwise replaces the wrapper environment.
 
 ## Diagnostics
 
