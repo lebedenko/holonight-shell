@@ -24,23 +24,25 @@ jobs:
       - name: Install dependencies
         run: scripts/install-ci-dependencies.sh
 
-      - name: Checkout holonight-settings dependency
+      - name: Checkout HoloNightConfig dependency
         uses: actions/checkout@v4
         with:
-          repository: lebedenko/holonight-settings
-          path: holonight-settings-dep
+          repository: lebedenko/holonight-config
+          ref: 5cd36ec9986801c4b831527a38e7b7414b9a1312
+          path: holonight-config-dep
 
       - name: Build and install HolonightConfig dependency
         run: |
-          cmake -S holonight-settings-dep -B holonight-settings-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_APP=OFF -DBUILD_TESTS=OFF
-          cmake --build holonight-settings-dep/build --parallel
-          cmake --install holonight-settings-dep/build --prefix /usr
-          rm -rf holonight-settings-dep
+          cmake -S holonight-config-dep -B holonight-config-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build holonight-config-dep/build --parallel
+          cmake --install holonight-config-dep/build --prefix /usr
+          rm -rf holonight-config-dep
 
       - name: Checkout holonight-qt dependency
         uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-qt
+          ref: e30ff79e723595ba6193b6621a85a881559ffcc6
           path: holonight-qt-dep
 
       - name: Build and install holonight-qt dependency
