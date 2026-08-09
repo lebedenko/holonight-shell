@@ -15,7 +15,7 @@ make_fake() {
   chmod +x "${fake_bin}/${name}"
 }
 
-make_fake Hyprland 'printf "hyprland cursor=%s path=%s config=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
+make_fake Hyprland 'printf "hyprland cursor=%s path=%s config=%s platformtheme=%s quickstyle=%s styleoverride=%s\\ndesktop=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" "${XDG_CURRENT_DESKTOP-}" >>"${TEST_LOG}"'
 make_fake uwsm 'printf "uwsm %s cursor=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "$*" "${XCURSOR_THEME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
 make_fake dbus-update-activation-environment 'printf "dbus %s cursor=%s\\n" "$*" "${XCURSOR_THEME-}" >>"${TEST_LOG}"'
 make_fake systemctl '
@@ -57,6 +57,7 @@ env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root
   HOLONIGHT_HYPRLAND_SESSION_MODE=direct "${source_dir}/scripts/holonight-hyprland-session"
 assert_contains "adapter query --appearance ${test_root}/override.toml --field cursor-theme"
 assert_contains "hyprland cursor=CanonicalCursor path=${test_root}/override.toml config=${test_root}/xdg platformtheme=holonight quickstyle=Holonight styleoverride="
+assert_contains "desktop=HoloNight:Hyprland"
 grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME'
 grep -F 'systemctl --user import-environment' "${log_file}" | grep -Fq 'QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME'
 
@@ -69,6 +70,18 @@ if grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'QT_STYLE_OVERRIDE'; then
   printf 'QT_STYLE_OVERRIDE must not be imported\n' >&2
   exit 1
 fi
+
+: >"${log_file}"
+env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
+  XDG_CURRENT_DESKTOP=Hyprland HOLONIGHT_HYPRLAND_SESSION_MODE=direct \
+  "${source_dir}/scripts/holonight-hyprland-session"
+assert_contains "desktop=HoloNight:Hyprland"
+
+: >"${log_file}"
+env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
+  XDG_CURRENT_DESKTOP=HoloNight:Sway HOLONIGHT_HYPRLAND_SESSION_MODE=direct \
+  "${source_dir}/scripts/holonight-hyprland-session"
+assert_contains "desktop=HoloNight:Sway"
 
 : >"${log_file}"
 env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \

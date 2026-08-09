@@ -86,9 +86,10 @@ void SettingsPortalBackend::registerOnSessionBus() {
     return;
   }
 
-  registered_ = bus.registerService(QLatin1String(kServiceName)) &&
-                bus.registerObject(QLatin1String(kObjectPath), this,
-                                   QDBusConnection::ExportScriptableSlots | QDBusConnection::ExportScriptableSignals);
+  registered_ =
+      bus.registerService(QLatin1String(kServiceName)) &&
+      bus.registerObject(QLatin1String(kObjectPath), this,
+                         QDBusConnection::ExportScriptableInvokables | QDBusConnection::ExportScriptableSignals);
   if (!registered_) {
     qCWarning(lcSettingsPortalBackend) << "Failed to register Settings portal backend:" << bus.lastError().message();
     bus.unregisterObject(QLatin1String(kObjectPath));

@@ -5,13 +5,16 @@
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusError>
+#include <QDBusInterface>
 #include <QDBusPendingCallWatcher>
+#include <QDBusReply>
 #include <QDBusVariant>
 #include <QSignalSpy>
 #include <QTest>
 #include <QThread>
 
 #include <chrono>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <memory>
 
@@ -308,6 +311,23 @@ TEST(SettingsPortalBackendTest, ReadPublishesResolvedColorScheme) {
   EXPECT_EQ(
       backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("color-scheme")).variant().toUInt(),
       2U);
+}
+
+TEST(SettingsPortalBackendTest, ExportsReadMethodsOnSessionBus) {
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("blue"), Holonight::ColorMode::Dark), true);
+  if (!backend.registered()) {
+    GTEST_SKIP() << "HoloNight portal service is already owned on the test session bus";
+  }
+
+  QDBusInterface introspection(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"),
+                               QString::fromLatin1(kPortalPath), QStringLiteral("org.freedesktop.DBus.Introspectable"),
+                               QDBusConnection::sessionBus());
+  const QDBusReply<QString> reply = introspection.call(QStringLiteral("Introspect"));
+
+  ASSERT_TRUE(reply.isValid()) << reply.error().message().toStdString();
+  EXPECT_THAT(reply.value().toStdString(), testing::HasSubstr("<method name=\"Read\">"));
+  EXPECT_THAT(reply.value().toStdString(), testing::HasSubstr("<method name=\"ReadAll\">"));
 }
 
 TEST(SettingsPortalBackendTest, ReadUsesInjectedResolvedColorMode) {

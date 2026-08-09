@@ -93,7 +93,11 @@ start_shell_service() {
   fi
 }
 
-export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-HoloNight:Hyprland}"
+case ":${XDG_CURRENT_DESKTOP:-}:" in
+  *:HoloNight:*) ;;
+  ::) export XDG_CURRENT_DESKTOP="HoloNight:Hyprland" ;;
+  *) export XDG_CURRENT_DESKTOP="HoloNight:${XDG_CURRENT_DESKTOP}" ;;
+esac
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-Hyprland}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-hyprland-}"
