@@ -30,6 +30,8 @@ constexpr std::array kRequiredEnvironment{
     "XDG_MENU_PREFIX", "XDG_DATA_DIRS",       "XDG_CONFIG_DIRS",     "DBUS_SESSION_BUS_ADDRESS",
 };
 
+constexpr auto kHoloNightPortalService = "org.freedesktop.impl.portal.desktop.holonight";
+
 constexpr std::array kDesktopEnvironment{
     "XDG_CURRENT_DESKTOP",
     "XDG_SESSION_DESKTOP",
@@ -149,6 +151,7 @@ SessionIntegrationService::~SessionIntegrationService() {
 
 void SessionIntegrationService::refresh() {
   if (refresh_in_progress_) {
+    refresh_pending_ = true;
     return;
   }
   setRefreshInProgress(true);
@@ -188,7 +191,21 @@ void SessionIntegrationService::refresh() {
     watcher->deleteLater();
     setRefreshInProgress(false);
     emit diagnosticsChanged();
+    if (std::exchange(refresh_pending_, false)) {
+      refresh();
+    }
   });
+}
+
+void SessionIntegrationService::setExpectedCursorTheme(QString cursor_theme) {
+  {
+    const QMutexLocker locker(&expected_cursor_mutex_);
+    if (expected_cursor_theme_ == cursor_theme) {
+      return;
+    }
+    expected_cursor_theme_ = std::move(cursor_theme);
+  }
+  refresh();
 }
 
 void SessionIntegrationService::setPostRebuildRefreshCallbacks(std::function<void()> refresh_mime_roles,
@@ -253,6 +270,20 @@ QVariantList SessionIntegrationService::addProcessEnvironmentDiagnostics() const
         value.isEmpty() ? QStringLiteral("The shell process is missing this desktop-session variable.")
                         : QStringLiteral("The shell process has this desktop-session variable.")));
   }
+  const QString active_cursor = envValue(QStringLiteral("XCURSOR_THEME"));
+  QString expected_cursor;
+  {
+    const QMutexLocker locker(&expected_cursor_mutex_);
+    expected_cursor = expected_cursor_theme_;
+  }
+  const bool cursor_matches = !expected_cursor.isEmpty() && active_cursor == expected_cursor;
+  rows.append(
+      addDiagnostic(QStringLiteral("cursor-theme"), QStringLiteral("Session cursor theme"),
+                    cursor_matches ? QStringLiteral("ok") : QStringLiteral("warning"),
+                    active_cursor.isEmpty() ? QStringLiteral("native fallback") : active_cursor,
+                    expected_cursor.isEmpty() ? QStringLiteral("canonical cursor unavailable") : expected_cursor,
+                    cursor_matches ? QStringLiteral("The active session cursor matches canonical appearance.")
+                                   : QStringLiteral("The canonical cursor will apply after a session restart.")));
   return rows;
 }
 
@@ -463,10 +494,16 @@ QVariantList SessionIntegrationService::addMimeDiagnostics() const {
 
 QVariantList SessionIntegrationService::addPortalAndDesktopServiceDiagnostics() const {
   if (!bus_probe_->isConnected()) {
-    return {addDiagnostic(QStringLiteral("dbus-session-services"), QStringLiteral("D-Bus desktop services"),
-                          QStringLiteral("error"), QStringLiteral("session bus unavailable"),
-                          QStringLiteral("session bus connected"),
-                          QStringLiteral("Portal and desktop service ownership could not be queried."))};
+    return {
+        addDiagnostic(QStringLiteral("dbus-session-services"), QStringLiteral("D-Bus desktop services"),
+                      QStringLiteral("error"), QStringLiteral("session bus unavailable"),
+                      QStringLiteral("session bus connected"),
+                      QStringLiteral("Portal and desktop service ownership could not be queried.")),
+        addDiagnostic(QStringLiteral("holonight-settings-portal"), QStringLiteral("HoloNight Settings portal"),
+                      QStringLiteral("warning"), QStringLiteral("unavailable"),
+                      QStringLiteral("org.freedesktop.impl.portal.desktop.holonight is owned by HoloNight Shell"),
+                      QStringLiteral("Session bus is disconnected; native toolkit appearance remains available.")),
+    };
   }
 
   QVariantList rows;
@@ -479,8 +516,24 @@ QVariantList SessionIntegrationService::addPortalAndDesktopServiceDiagnostics() 
                                 ? QStringLiteral("xdg-desktop-portal is not available on the session bus.")
                                 : QStringLiteral("Portal broker is owned on the session bus.")));
 
-  QStringList portal_backends;
   const QStringList names = bus_probe_->registeredNames();
+  const QString holonight_portal_owner = bus_probe_->ownerForName(QString::fromLatin1(kHoloNightPortalService));
+  const bool holonight_portal_registered = names.contains(QString::fromLatin1(kHoloNightPortalService));
+  QString holonight_portal_observed = QStringLiteral("missing");
+  if (!holonight_portal_owner.isEmpty()) {
+    holonight_portal_observed = QStringLiteral("owned by %1").arg(holonight_portal_owner);
+  } else if (holonight_portal_registered) {
+    holonight_portal_observed = QStringLiteral("unavailable");
+  }
+  rows.append(addDiagnostic(
+      QStringLiteral("holonight-settings-portal"), QStringLiteral("HoloNight Settings portal"),
+      !holonight_portal_owner.isEmpty() ? QStringLiteral("ok") : QStringLiteral("warning"), holonight_portal_observed,
+      QStringLiteral("org.freedesktop.impl.portal.desktop.holonight is owned by HoloNight Shell"),
+      !holonight_portal_owner.isEmpty()
+          ? QStringLiteral("HoloNight Shell is publishing the Settings portal.")
+          : QStringLiteral("Start HoloNight Shell; native toolkit appearance remains available as fallback.")));
+
+  QStringList portal_backends;
   for (const QString& name : names) {
     if (name.startsWith(QStringLiteral("org.freedesktop.impl.portal."))) {
       portal_backends.append(name);

@@ -156,7 +156,11 @@ ShellApplication::ShellApplication(QObject* parent)
       portal_service_(new PortalService(this)),
       suspend_inhibitor_service_(new SuspendInhibitorService(this)),
       screen_saver_adaptor_(new ScreenSaverAdaptor(idle_service_, this)),
-      control_server_(new ControlServer(this)) {}
+      control_server_(new ControlServer(this)) {
+  session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme());
+  connect(appearance_, &AppearanceService::cursorThemeChanged, this,
+          [this]() { session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme()); });
+}
 
 ShellApplication::~ShellApplication() = default;
 

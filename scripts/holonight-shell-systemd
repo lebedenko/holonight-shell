@@ -39,6 +39,9 @@ import_runtime_environment() {
     QT_QPA_PLATFORM
     QT_QPA_PLATFORMTHEME
     QT_STYLE_OVERRIDE
+    XCURSOR_THEME
+    XDG_CONFIG_HOME
+    HOLONIGHT_APPEARANCE_FILE
   )
 
   for name in "${allowed[@]}"; do

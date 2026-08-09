@@ -1,5 +1,9 @@
 include(GoogleTest)
 
+add_test(NAME test_session_scripts
+  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_session_scripts.sh ${CMAKE_SOURCE_DIR}
+)
+
 # Helper: define a test executable with common settings.
 function(holonight_add_test_exe name)
   add_executable(${name} ${ARGN})

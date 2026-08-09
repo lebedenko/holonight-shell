@@ -65,6 +65,14 @@ xdg_config_home() {
   printf '%s\n' "${XDG_CONFIG_HOME:-${HOME}/.config}"
 }
 
+appearance_file() {
+  if [[ -n "${HOLONIGHT_APPEARANCE_FILE:-}" ]]; then
+    printf '%s\n' "${HOLONIGHT_APPEARANCE_FILE}"
+  else
+    printf '%s/holonight/appearance.toml\n' "$(xdg_config_home)"
+  fi
+}
+
 xdg_config_dirs() {
   local dirs="${XDG_CONFIG_DIRS:-/etc/xdg}"
   printf '%s' "${dirs}"
@@ -147,17 +155,43 @@ for name in \
   XDG_MENU_PREFIX \
   XDG_DATA_DIRS \
   XDG_CONFIG_DIRS \
+  XDG_CONFIG_HOME \
+  HOLONIGHT_APPEARANCE_FILE \
+  XCURSOR_THEME \
   DBUS_SESSION_BUS_ADDRESS; do
   print_var "${name}"
 done
 
 if have_command systemctl; then
   systemd_environment="$(systemctl --user show-environment 2>/dev/null || true)"
-  for name in XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX DBUS_SESSION_BUS_ADDRESS; do
+  for name in XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX DBUS_SESSION_BUS_ADDRESS \
+    XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE XCURSOR_THEME; do
     print_systemd_var "${name}" "${systemd_environment}"
   done
 else
   status INFO "systemctl is not installed; cannot inspect systemd user environment"
+fi
+
+section "Canonical cursor"
+canonical_appearance="$(appearance_file)"
+status INFO "canonical appearance file: ${canonical_appearance}"
+if have_command holonight-appearance-adapter; then
+  canonical_cursor="$(holonight-appearance-adapter query --appearance "${canonical_appearance}" --field cursor-theme 2>/dev/null || true)"
+  if [[ -z "${canonical_cursor}" || "${canonical_cursor}" == *$'\n'* || ${#canonical_cursor} -gt 4096 || "${canonical_cursor}" =~ [[:cntrl:]] ]]; then
+    status WARN "canonical cursor query failed; native/inherited cursor fallback remains active"
+  elif [[ "${XCURSOR_THEME:-}" == "${canonical_cursor}" ]]; then
+    status OK "active XCURSOR_THEME matches canonical cursor ${canonical_cursor}"
+  else
+    status WARN "active XCURSOR_THEME=${XCURSOR_THEME:-native fallback}; canonical=${canonical_cursor}; session restart required"
+  fi
+else
+  status INFO "holonight-appearance-adapter is unavailable; native/inherited cursor fallback remains active"
+fi
+
+if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+  status OK "D-Bus activation import source is available in the process environment"
+else
+  status WARN "D-Bus activation import source is unavailable"
 fi
 
 section "Portals"
@@ -166,6 +200,15 @@ print_bus_owner org.freedesktop.impl.portal.desktop.holonight
 print_bus_owner org.freedesktop.impl.portal.desktop.hyprland
 print_bus_owner org.freedesktop.impl.portal.desktop.gtk
 print_bus_owner org.freedesktop.impl.portal.desktop.kde
+
+if have_command busctl && busctl --user status org.freedesktop.impl.portal.desktop.holonight >/dev/null 2>&1; then
+  portal_scheme="$(busctl --user call org.freedesktop.impl.portal.desktop.holonight /org/freedesktop/portal/desktop \
+    org.freedesktop.impl.portal.Settings Read ss org.freedesktop.appearance color-scheme 2>/dev/null || true)"
+  portal_accent="$(busctl --user call org.freedesktop.impl.portal.desktop.holonight /org/freedesktop/portal/desktop \
+    org.freedesktop.impl.portal.Settings Read ss org.freedesktop.appearance accent-color 2>/dev/null || true)"
+  status INFO "HoloNight portal color-scheme: ${portal_scheme:-unavailable}"
+  status INFO "HoloNight portal accent-color: ${portal_accent:-unavailable}"
+fi
 
 holonight_desktop_configured=false
 IFS=':' read -r -a current_desktops <<<"${XDG_CURRENT_DESKTOP:-}"
@@ -299,6 +342,9 @@ else
 fi
 
 section "Suggested next actions"
+status INFO "portal color/accent changes are live for consumers that observe Settings signals"
+status INFO "GTK settings and application-native preferences may require an application relaunch"
+status INFO "cursor environment changes require a full session restart"
 status INFO "login entry: select HoloNight (Hyprland)"
 status INFO "bootstrap script: holonight-hyprland-session"
 status INFO "force direct mode: HOLONIGHT_HYPRLAND_SESSION_MODE=direct holonight-hyprland-session"

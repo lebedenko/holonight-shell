@@ -27,6 +27,9 @@ import_environment() {
     QT_QPA_PLATFORM
     QT_QPA_PLATFORMTHEME
     QT_STYLE_OVERRIDE
+    XCURSOR_THEME
+    XDG_CONFIG_HOME
+    HOLONIGHT_APPEARANCE_FILE
   )
 
   if have_command dbus-update-activation-environment; then
@@ -42,6 +45,41 @@ import_environment() {
   else
     warn "systemctl is not installed"
   fi
+}
+
+resolve_appearance_file() {
+  if [[ -n "${HOLONIGHT_APPEARANCE_FILE:-}" ]]; then
+    printf '%s\n' "${HOLONIGHT_APPEARANCE_FILE}"
+  elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+    printf '%s/holonight/appearance.toml\n' "${XDG_CONFIG_HOME}"
+  elif [[ -n "${HOME:-}" ]]; then
+    printf '%s/.config/holonight/appearance.toml\n' "${HOME}"
+  else
+    return 1
+  fi
+}
+
+load_cursor_theme() {
+  local appearance_file
+  local output
+
+  if ! have_command holonight-appearance-adapter; then
+    warn "holonight-appearance-adapter is not installed; preserving inherited XCURSOR_THEME"
+    return 0
+  fi
+  if ! appearance_file="$(resolve_appearance_file)"; then
+    warn "canonical appearance path is unavailable; preserving inherited XCURSOR_THEME"
+    return 0
+  fi
+  if ! output="$(holonight-appearance-adapter query --appearance "${appearance_file}" --field cursor-theme)"; then
+    warn "cursor theme query failed; preserving inherited XCURSOR_THEME"
+    return 0
+  fi
+  if [[ -z "${output}" || ${#output} -gt 4096 || "${output}" == *$'\n'* || "${output}" =~ [[:cntrl:]] ]]; then
+    warn "cursor theme query returned invalid output; preserving inherited XCURSOR_THEME"
+    return 0
+  fi
+  export XCURSOR_THEME="${output}"
 }
 
 start_shell_service() {
@@ -62,6 +100,7 @@ export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-hyprland-}"
 
 have_command Hyprland || die "Hyprland was not found in PATH"
 
+load_cursor_theme
 import_environment
 
 mode="${HOLONIGHT_HYPRLAND_SESSION_MODE:-auto}"

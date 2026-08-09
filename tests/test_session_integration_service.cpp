@@ -136,11 +136,14 @@ class DelayTimeline {
   DelayTimeline() { clock_.start(); }
 
   void delayOncePerThread(int delay_ms) {
-    thread_local bool delayed = false;
-    if (delayed) {
-      return;
+    QThread* thread = QThread::currentThread();
+    {
+      const QMutexLocker locker(&mutex_);
+      if (delayed_threads_.contains(thread)) {
+        return;
+      }
+      delayed_threads_.insert(thread);
     }
-    delayed = true;
     const qint64 start = clock_.elapsed();
     QThread::msleep(delay_ms);
     const qint64 end = clock_.elapsed();
@@ -157,6 +160,7 @@ class DelayTimeline {
   QElapsedTimer clock_;
   mutable QMutex mutex_;
   QVector<Interval> intervals_;
+  QSet<QThread*> delayed_threads_;
 };
 
 bool anyIntervalsOverlap(const QVector<DelayTimeline::Interval>& intervals) {
@@ -532,8 +536,10 @@ TEST(SessionIntegrationServiceTest, ReportsPortalAndDesktopDbusOwners) {
   bus->owners.insert(QStringLiteral("org.freedesktop.ScreenSaver"), QStringLiteral(":1.11"));
   bus->owners.insert(QStringLiteral("org.freedesktop.Notifications"), QStringLiteral(":1.12"));
   bus->owners.insert(QStringLiteral("org.kde.StatusNotifierWatcher"), QStringLiteral(":1.13"));
+  bus->owners.insert(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"), QStringLiteral(":1.14"));
   bus->names = {QStringLiteral("org.freedesktop.impl.portal.desktop.hyprland"),
-                QStringLiteral("org.freedesktop.impl.portal.desktop.gtk")};
+                QStringLiteral("org.freedesktop.impl.portal.desktop.gtk"),
+                QStringLiteral("org.freedesktop.impl.portal.desktop.holonight")};
   SessionIntegrationService service = makeService(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {});
 
   refreshAndWait(service);
@@ -550,6 +556,73 @@ TEST(SessionIntegrationServiceTest, ReportsPortalAndDesktopDbusOwners) {
                 .value(QStringLiteral("status"))
                 .toString(),
             QStringLiteral("ok"));
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("holonight-settings-portal"))
+                .value(QStringLiteral("status"))
+                .toString(),
+            QStringLiteral("ok"));
+}
+
+TEST(SessionIntegrationServiceTest, ReportsMissingHoloNightSettingsPortal) {
+  QTemporaryDir temp;
+  ASSERT_TRUE(temp.isValid());
+  auto runner = std::make_unique<FakeCommandRunner>();
+  auto bus = std::make_unique<FakeBusProbe>();
+  SessionIntegrationService service = makeService(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {});
+
+  refreshAndWait(service);
+
+  const QVariantMap row = findDiagnostic(service.diagnostics(), QStringLiteral("holonight-settings-portal"));
+  EXPECT_EQ(row.value(QStringLiteral("status")).toString(), QStringLiteral("warning"));
+  EXPECT_EQ(row.value(QStringLiteral("observed")).toString(), QStringLiteral("missing"));
+}
+
+TEST(SessionIntegrationServiceTest, ReportsMatchingAndRestartRequiredCursorThemes) {
+  QTemporaryDir temp;
+  ASSERT_TRUE(temp.isValid());
+  QProcessEnvironment env = baseEnvironment(temp.path());
+  env.insert(QStringLiteral("XCURSOR_THEME"), QStringLiteral("ActiveCursor"));
+  auto runner = std::make_unique<FakeCommandRunner>();
+  auto bus = std::make_unique<FakeBusProbe>();
+  SessionIntegrationService service = makeService(std::move(runner), std::move(bus), env, {});
+
+  QSignalSpy first_refresh(&service, &SessionIntegrationService::diagnosticsChanged);
+  service.setExpectedCursorTheme(QStringLiteral("ActiveCursor"));
+  ASSERT_TRUE(first_refresh.wait(2000));
+  EXPECT_EQ(
+      findDiagnostic(service.diagnostics(), QStringLiteral("cursor-theme")).value(QStringLiteral("status")).toString(),
+      QStringLiteral("ok"));
+
+  QSignalSpy second_refresh(&service, &SessionIntegrationService::diagnosticsChanged);
+  service.setExpectedCursorTheme(QStringLiteral("NextCursor"));
+  ASSERT_TRUE(second_refresh.wait(2000));
+  const QVariantMap mismatch = findDiagnostic(service.diagnostics(), QStringLiteral("cursor-theme"));
+  EXPECT_EQ(mismatch.value(QStringLiteral("status")).toString(), QStringLiteral("warning"));
+  EXPECT_EQ(mismatch.value(QStringLiteral("expected")).toString(), QStringLiteral("NextCursor"));
+  EXPECT_THAT(mismatch.value(QStringLiteral("detail")).toString().toStdString(), testing::HasSubstr("session restart"));
+}
+
+TEST(SessionIntegrationServiceTest, CursorChangeQueuesFollowUpDuringRefresh) {
+  constexpr int kDelayMs = 100;
+  const ThreadPoolCapacityGuard pool_guard(7);
+  QTemporaryDir temp;
+  ASSERT_TRUE(temp.isValid());
+  auto timeline = std::make_shared<DelayTimeline>();
+  auto runner = std::make_unique<DelayingCommandRunner>(timeline, kDelayMs);
+  auto bus = std::make_unique<DelayingBusProbe>(timeline, kDelayMs);
+  SessionIntegrationService service(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {});
+
+  QSignalSpy spy(&service, &SessionIntegrationService::diagnosticsChanged);
+  service.refresh();
+  service.setExpectedCursorTheme(QStringLiteral("QueuedCursor"));
+  ASSERT_TRUE(spy.wait(2000));
+  if (spy.count() < 2) {
+    ASSERT_TRUE(spy.wait(2000));
+  }
+  EXPECT_GE(spy.count(), 2);
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("cursor-theme"))
+                .value(QStringLiteral("expected"))
+                .toString(),
+            QStringLiteral("QueuedCursor"));
 }
 
 TEST(SessionIntegrationServiceTest, ClassifiesUnavailableSessionBusAsError) {
@@ -566,6 +639,10 @@ TEST(SessionIntegrationServiceTest, ClassifiesUnavailableSessionBusAsError) {
   EXPECT_EQ(row.value(QStringLiteral("status")).toString(), QStringLiteral("error"));
   EXPECT_EQ(row.value(QStringLiteral("observed")).toString(), QStringLiteral("session bus unavailable"));
   EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("portal-broker")), QVariantMap{});
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("holonight-settings-portal"))
+                .value(QStringLiteral("observed"))
+                .toString(),
+            QStringLiteral("unavailable"));
   EXPECT_EQ(service.overallStatus(), QStringLiteral("error"));
 }
 

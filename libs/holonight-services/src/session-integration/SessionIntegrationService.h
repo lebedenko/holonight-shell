@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QFutureWatcher>
+#include <QMutex>
 #include <QObject>
 #include <QProcessEnvironment>
 #include <QQmlEngine>
@@ -97,6 +98,7 @@ class SessionIntegrationService : public QObject {
   [[nodiscard]] bool rebuildInProgress() const { return rebuild_in_progress_; }
 
   void setPostRebuildRefreshCallbacks(std::function<void()> refresh_mime_roles, std::function<void()> refresh_launcher);
+  void setExpectedCursorTheme(QString cursor_theme);
 
   Q_INVOKABLE void refresh();
   Q_INVOKABLE void rebuildApplicationCaches();
@@ -138,6 +140,9 @@ class SessionIntegrationService : public QObject {
   QString overall_status_{QStringLiteral("ok")};
   QVariantList diagnostics_;
   bool refresh_in_progress_{false};
+  bool refresh_pending_{false};
+  QString expected_cursor_theme_;
+  mutable QMutex expected_cursor_mutex_;
   bool rebuild_in_progress_{false};
   QFutureWatcher<QList<QFuture<QVariantList>>>* refresh_watcher_{nullptr};
 };
