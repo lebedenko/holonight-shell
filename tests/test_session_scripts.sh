@@ -15,8 +15,8 @@ make_fake() {
   chmod +x "${fake_bin}/${name}"
 }
 
-make_fake Hyprland 'printf "hyprland cursor=%s path=%s config=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" >>"${TEST_LOG}"'
-make_fake uwsm 'printf "uwsm %s cursor=%s\\n" "$*" "${XCURSOR_THEME-}" >>"${TEST_LOG}"'
+make_fake Hyprland 'printf "hyprland cursor=%s path=%s config=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
+make_fake uwsm 'printf "uwsm %s cursor=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "$*" "${XCURSOR_THEME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
 make_fake dbus-update-activation-environment 'printf "dbus %s cursor=%s\\n" "$*" "${XCURSOR_THEME-}" >>"${TEST_LOG}"'
 make_fake systemctl '
 if [[ "$*" == "--user show-environment" ]]; then
@@ -24,7 +24,7 @@ if [[ "$*" == "--user show-environment" ]]; then
 else
   printf "systemctl %s cursor=%s\\n" "$*" "${XCURSOR_THEME-}" >>"${TEST_LOG}"
 fi'
-make_fake holonight-shell 'printf "shell cursor=%s path=%s config=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" >>"${TEST_LOG}"'
+make_fake holonight-shell 'printf "shell cursor=%s path=%s config=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
 make_fake sleep ':'
 
 make_adapter() {
@@ -56,9 +56,19 @@ env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root
   XDG_CONFIG_HOME="${test_root}/xdg" HOLONIGHT_APPEARANCE_FILE="${test_root}/override.toml" \
   HOLONIGHT_HYPRLAND_SESSION_MODE=direct "${source_dir}/scripts/holonight-hyprland-session"
 assert_contains "adapter query --appearance ${test_root}/override.toml --field cursor-theme"
-assert_contains "hyprland cursor=CanonicalCursor path=${test_root}/override.toml config=${test_root}/xdg"
-grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'XCURSOR_THEME XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE'
-grep -F 'systemctl --user import-environment' "${log_file}" | grep -Fq 'XCURSOR_THEME XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE'
+assert_contains "hyprland cursor=CanonicalCursor path=${test_root}/override.toml config=${test_root}/xdg platformtheme=holonight quickstyle=Holonight styleoverride="
+grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME'
+grep -F 'systemctl --user import-environment' "${log_file}" | grep -Fq 'QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME'
+
+: >"${log_file}"
+env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
+  QT_QPA_PLATFORMTHEME=UserPlatform QT_QUICK_CONTROLS_STYLE=UserQuick QT_STYLE_OVERRIDE=UserWidgets \
+  HOLONIGHT_HYPRLAND_SESSION_MODE=direct "${source_dir}/scripts/holonight-hyprland-session"
+assert_contains "hyprland cursor=CanonicalCursor path= config= platformtheme=UserPlatform quickstyle=UserQuick styleoverride=UserWidgets"
+if grep -F 'dbus --systemd' "${log_file}" | grep -Fq 'QT_STYLE_OVERRIDE'; then
+  printf 'QT_STYLE_OVERRIDE must not be imported\n' >&2
+  exit 1
+fi
 
 : >"${log_file}"
 env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
@@ -71,24 +81,24 @@ for mode in fail empty multiline control oversized; do
   env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" ADAPTER_MODE="${mode}" \
     XCURSOR_THEME=Inherited HOLONIGHT_HYPRLAND_SESSION_MODE=direct \
     "${source_dir}/scripts/holonight-hyprland-session"
-  assert_contains "hyprland cursor=Inherited path= config="
+  grep -Fq "hyprland cursor=Inherited path= config= platformtheme=holonight quickstyle=Holonight" "${log_file}"
 done
 
 mv "${fake_bin}/holonight-appearance-adapter" "${fake_bin}/adapter-away"
 : >"${log_file}"
 XCURSOR_THEME=Inherited run_session direct
-assert_contains "hyprland cursor=Inherited path= config="
+grep -Fq "hyprland cursor=Inherited path= config= platformtheme=holonight quickstyle=Holonight" "${log_file}"
 mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 
 : >"${log_file}"
 run_session uwsm
 assert_contains "adapter query --appearance ${test_root}/home/.config/holonight/appearance.toml --field cursor-theme"
-assert_contains "uwsm start -e -D Hyprland hyprland.desktop cursor=CanonicalCursor"
+assert_contains "uwsm start -e -D Hyprland hyprland.desktop cursor=CanonicalCursor platformtheme=holonight quickstyle=Holonight styleoverride="
 
 : >"${log_file}"
-FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=sig\nXCURSOR_THEME=ManagerCursor\nXDG_CONFIG_HOME=/manager/config\nHOLONIGHT_APPEARANCE_FILE=/manager/appearance.toml' \
+FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=sig\nXCURSOR_THEME=ManagerCursor\nXDG_CONFIG_HOME=/manager/config\nHOLONIGHT_APPEARANCE_FILE=/manager/appearance.toml\nQT_QPA_PLATFORMTHEME=holonight\nQT_QUICK_CONTROLS_STYLE=Holonight\nQT_STYLE_OVERRIDE=Unsupported' \
   env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
   "${source_dir}/scripts/holonight-shell-systemd"
-assert_contains "shell cursor=ManagerCursor path=/manager/appearance.toml config=/manager/config"
+assert_contains "shell cursor=ManagerCursor path=/manager/appearance.toml config=/manager/config platformtheme=holonight quickstyle=Holonight styleoverride="
 
 printf 'session script tests passed\n'

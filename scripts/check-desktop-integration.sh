@@ -157,6 +157,9 @@ for name in \
   XDG_CONFIG_DIRS \
   XDG_CONFIG_HOME \
   HOLONIGHT_APPEARANCE_FILE \
+  QT_QPA_PLATFORMTHEME \
+  QT_QUICK_CONTROLS_STYLE \
+  QT_STYLE_OVERRIDE \
   XCURSOR_THEME \
   DBUS_SESSION_BUS_ADDRESS; do
   print_var "${name}"
@@ -165,11 +168,28 @@ done
 if have_command systemctl; then
   systemd_environment="$(systemctl --user show-environment 2>/dev/null || true)"
   for name in XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX DBUS_SESSION_BUS_ADDRESS \
-    XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE XCURSOR_THEME; do
+    XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME; do
     print_systemd_var "${name}" "${systemd_environment}"
   done
 else
   status INFO "systemctl is not installed; cannot inspect systemd user environment"
+fi
+
+section "Qt activation"
+if [[ "${QT_QPA_PLATFORMTHEME:-}" == "holonight" ]]; then
+  status OK "QT_QPA_PLATFORMTHEME=holonight"
+else
+  status WARN "QT_QPA_PLATFORMTHEME=${QT_QPA_PLATFORMTHEME:-missing}; expected holonight or an explicit user override"
+fi
+if [[ "${QT_QUICK_CONTROLS_STYLE:-}" == "Holonight" ]]; then
+  status OK "QT_QUICK_CONTROLS_STYLE=Holonight"
+else
+  status WARN "QT_QUICK_CONTROLS_STYLE=${QT_QUICK_CONTROLS_STYLE:-missing}; expected Holonight or an explicit user override"
+fi
+if [[ -n "${QT_STYLE_OVERRIDE:-}" ]]; then
+  status WARN "QT_STYLE_OVERRIDE=${QT_STYLE_OVERRIDE} is unsupported as a global HoloNight session setting"
+else
+  status OK "QT_STYLE_OVERRIDE is unset"
 fi
 
 section "Canonical cursor"

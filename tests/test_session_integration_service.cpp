@@ -89,6 +89,8 @@ QProcessEnvironment baseEnvironment(const QString& root) {
              root + QStringLiteral("/config-a:") + root + QStringLiteral("/config-b"));
   env.insert(QStringLiteral("XDG_CACHE_HOME"), root + QStringLiteral("/cache"));
   env.insert(QStringLiteral("DBUS_SESSION_BUS_ADDRESS"), QStringLiteral("unix:path=/tmp/bus"));
+  env.insert(QStringLiteral("QT_QPA_PLATFORMTHEME"), QStringLiteral("holonight"));
+  env.insert(QStringLiteral("QT_QUICK_CONTROLS_STYLE"), QStringLiteral("Holonight"));
   return env;
 }
 
@@ -287,6 +289,76 @@ TEST(SessionIntegrationServiceTest, ReportsProcessEnvironmentRows) {
                 .value(QStringLiteral("status"))
                 .toString(),
             QStringLiteral("ok"));
+}
+
+TEST(SessionIntegrationServiceTest, ReportsQtActivationDefaultsAndUnsupportedStyleOverride) {
+  QTemporaryDir temp;
+  ASSERT_TRUE(temp.isValid());
+  QProcessEnvironment env = baseEnvironment(temp.path());
+  env.insert(QStringLiteral("QT_STYLE_OVERRIDE"), QStringLiteral("Fusion"));
+  auto runner = std::make_unique<FakeCommandRunner>();
+  auto bus = std::make_unique<FakeBusProbe>();
+  SessionIntegrationService service = makeService(std::move(runner), std::move(bus), env, {});
+
+  refreshAndWait(service);
+
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("qt-activation-qt-qpa-platformtheme"))
+                .value(QStringLiteral("status"))
+                .toString(),
+            QStringLiteral("ok"));
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("qt-activation-qt-quick-controls-style"))
+                .value(QStringLiteral("status"))
+                .toString(),
+            QStringLiteral("ok"));
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("qt-style-override"))
+                .value(QStringLiteral("status"))
+                .toString(),
+            QStringLiteral("warning"));
+}
+
+TEST(SessionIntegrationServiceTest, ReportsMissingAndMismatchedQtActivation) {
+  QTemporaryDir temp;
+  ASSERT_TRUE(temp.isValid());
+  QProcessEnvironment env = baseEnvironment(temp.path());
+  env.remove(QStringLiteral("QT_QPA_PLATFORMTHEME"));
+  env.insert(QStringLiteral("QT_QUICK_CONTROLS_STYLE"), QStringLiteral("Material"));
+  auto runner = std::make_unique<FakeCommandRunner>();
+  auto bus = std::make_unique<FakeBusProbe>();
+  SessionIntegrationService service = makeService(std::move(runner), std::move(bus), env, {});
+
+  refreshAndWait(service);
+
+  const QVariantMap platform =
+      findDiagnostic(service.diagnostics(), QStringLiteral("qt-activation-qt-qpa-platformtheme"));
+  const QVariantMap controls =
+      findDiagnostic(service.diagnostics(), QStringLiteral("qt-activation-qt-quick-controls-style"));
+  EXPECT_EQ(platform.value(QStringLiteral("status")).toString(), QStringLiteral("warning"));
+  EXPECT_EQ(platform.value(QStringLiteral("observed")).toString(), QStringLiteral("missing"));
+  EXPECT_EQ(controls.value(QStringLiteral("status")).toString(), QStringLiteral("warning"));
+  EXPECT_EQ(controls.value(QStringLiteral("observed")).toString(), QStringLiteral("Material"));
+}
+
+TEST(SessionIntegrationServiceTest, ReportsQtActivationMissingFromSystemdEnvironment) {
+  QTemporaryDir temp;
+  ASSERT_TRUE(temp.isValid());
+  auto runner = std::make_unique<FakeCommandRunner>();
+  runner->executables.insert(QStringLiteral("systemctl"));
+  runner->results.insert(
+      QStringLiteral("systemctl --user show-environment"),
+      {.exit_code = 0, .stdout_text = QStringLiteral("WAYLAND_DISPLAY=wayland-1\n"), .stderr_text = {}});
+  auto bus = std::make_unique<FakeBusProbe>();
+  SessionIntegrationService service = makeService(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {});
+
+  refreshAndWait(service);
+
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("systemd-env-qt-qpa-platformtheme"))
+                .value(QStringLiteral("status"))
+                .toString(),
+            QStringLiteral("warning"));
+  EXPECT_EQ(findDiagnostic(service.diagnostics(), QStringLiteral("systemd-env-qt-quick-controls-style"))
+                .value(QStringLiteral("observed"))
+                .toString(),
+            QStringLiteral("missing"));
 }
 
 TEST(SessionIntegrationServiceTest, ReportsMissingSystemdDesktopEnvironmentAsWarning) {

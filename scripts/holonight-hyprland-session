@@ -26,7 +26,7 @@ import_environment() {
     XDG_CONFIG_DIRS
     QT_QPA_PLATFORM
     QT_QPA_PLATFORMTHEME
-    QT_STYLE_OVERRIDE
+    QT_QUICK_CONTROLS_STYLE
     XCURSOR_THEME
     XDG_CONFIG_HOME
     HOLONIGHT_APPEARANCE_FILE
@@ -97,6 +97,8 @@ export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-HoloNight:Hyprland}"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-Hyprland}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-hyprland-}"
+export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
+export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
 
 have_command Hyprland || die "Hyprland was not found in PATH"
 

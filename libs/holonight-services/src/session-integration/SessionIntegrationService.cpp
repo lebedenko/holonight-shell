@@ -284,6 +284,27 @@ QVariantList SessionIntegrationService::addProcessEnvironmentDiagnostics() const
                     expected_cursor.isEmpty() ? QStringLiteral("canonical cursor unavailable") : expected_cursor,
                     cursor_matches ? QStringLiteral("The active session cursor matches canonical appearance.")
                                    : QStringLiteral("The canonical cursor will apply after a session restart.")));
+  const std::array qt_activation{
+      std::pair{QStringLiteral("QT_QPA_PLATFORMTHEME"), QStringLiteral("holonight")},
+      std::pair{QStringLiteral("QT_QUICK_CONTROLS_STYLE"), QStringLiteral("Holonight")},
+  };
+  for (const auto& [name, expected] : qt_activation) {
+    const QString value = envValue(name);
+    const bool matches = value == expected;
+    rows.append(addDiagnostic(
+        QStringLiteral("qt-activation-%1").arg(name.toLower().replace(QLatin1Char('_'), QLatin1Char('-'))),
+        QStringLiteral("Qt activation %1").arg(name), matches ? QStringLiteral("ok") : QStringLiteral("warning"),
+        value.isEmpty() ? QStringLiteral("missing") : value, expected,
+        matches ? QStringLiteral("The HoloNight Qt session default is active.")
+                : QStringLiteral("The value is missing or is an explicit non-HoloNight override.")));
+  }
+  const QString style_override = envValue(QStringLiteral("QT_STYLE_OVERRIDE"));
+  rows.append(addDiagnostic(
+      QStringLiteral("qt-style-override"), QStringLiteral("Global Qt style override"),
+      style_override.isEmpty() ? QStringLiteral("ok") : QStringLiteral("warning"),
+      style_override.isEmpty() ? QStringLiteral("unset") : style_override, QStringLiteral("unset"),
+      style_override.isEmpty() ? QStringLiteral("No unsupported global widget-style override is active.")
+                               : QStringLiteral("QT_STYLE_OVERRIDE is unsupported as a global HoloNight setting.")));
   return rows;
 }
 
@@ -308,7 +329,12 @@ QVariantList SessionIntegrationService::addSystemdEnvironmentDiagnostics() const
   }
 
   const QHash<QString, QString> systemd_env = parseEnvironmentOutput(result.stdout_text);
-  for (const auto* variable : kRequiredEnvironment) {
+  constexpr std::array kImportedEnvironment{
+      "WAYLAND_DISPLAY",      "XDG_CURRENT_DESKTOP",     "XDG_SESSION_DESKTOP", "XDG_SESSION_TYPE",
+      "XDG_MENU_PREFIX",      "XDG_DATA_DIRS",           "XDG_CONFIG_DIRS",     "DBUS_SESSION_BUS_ADDRESS",
+      "QT_QPA_PLATFORMTHEME", "QT_QUICK_CONTROLS_STYLE",
+  };
+  for (const auto* variable : kImportedEnvironment) {
     const QString name = QString::fromLatin1(variable);
     const QString process_value = envValue(name);
     const QString systemd_value = systemd_env.value(name);
