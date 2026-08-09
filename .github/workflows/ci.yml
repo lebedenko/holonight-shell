@@ -43,7 +43,7 @@ jobs:
         run: |
           cmake -S holonight-qt-dep -B holonight-qt-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build holonight-qt-dep/build --parallel
-          cmake --install holonight-qt-dep/build --prefix /usr
+          cmake --install holonight-qt-dep/build --prefix /tmp/holonight-qt-prefix
           rm -rf holonight-qt-dep
 
       - name: Architecture checks
@@ -54,6 +54,7 @@ jobs:
           cmake -B build -G Ninja -S .
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix
           -DBUILD_TESTS=ON
 
       - name: Build
@@ -101,7 +102,7 @@ jobs:
         run: |
           cmake -S holonight-qt-dep -B holonight-qt-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build holonight-qt-dep/build --parallel
-          cmake --install holonight-qt-dep/build --prefix /usr
+          cmake --install holonight-qt-dep/build --prefix /tmp/holonight-qt-prefix
           rm -rf holonight-qt-dep
 
       - name: Configure
@@ -109,6 +110,7 @@ jobs:
           cmake -B build -G Ninja -S .
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix
           -DBUILD_TESTS=ON
 
       - name: Format check
