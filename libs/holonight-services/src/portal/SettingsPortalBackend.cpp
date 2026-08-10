@@ -16,6 +16,7 @@ constexpr auto kObjectPath = "/org/freedesktop/portal/desktop";
 constexpr auto kAppearanceNs = "org.freedesktop.appearance";
 constexpr auto kColorSchemeKey = "color-scheme";
 constexpr auto kAccentColorKey = "accent-color";
+constexpr auto kNotFoundError = "org.freedesktop.portal.Error.NotFound";
 
 }  // namespace
 
@@ -56,6 +57,9 @@ SettingsPortalBackend::~SettingsPortalBackend() {
 
 QDBusVariant SettingsPortalBackend::Read(const QString& portal_namespace, const QString& key) const {
   if (portal_namespace != QLatin1String(kAppearanceNs)) {
+    if (calledFromDBus()) {
+      sendErrorReply(QLatin1String(kNotFoundError), QStringLiteral("Requested setting namespace not found"));
+    }
     return {};
   }
   if (key == QLatin1String(kColorSchemeKey)) {
@@ -63,6 +67,9 @@ QDBusVariant SettingsPortalBackend::Read(const QString& portal_namespace, const 
   }
   if (key == QLatin1String(kAccentColorKey)) {
     return variantForAccentColor(values_.accent_color);
+  }
+  if (calledFromDBus()) {
+    sendErrorReply(QLatin1String(kNotFoundError), QStringLiteral("Requested setting not found"));
   }
   return {};
 }

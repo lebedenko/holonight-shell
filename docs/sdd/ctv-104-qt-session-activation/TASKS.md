@@ -8,6 +8,7 @@
 - [x] Route HoloNight Settings without replacing the Hyprland compositor identity.
 - [x] Preserve the Hyprland desktop identity across the exclusive UWSM handoff and display-manager metadata.
 - [x] Export the Settings backend's scriptable invokables and cover them on an isolated real D-Bus session.
+- [x] Return a prompt portal `NotFound` error for unsupported Settings keys instead of an unmarshalable null variant.
 
 ## Verification
 

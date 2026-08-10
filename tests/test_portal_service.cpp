@@ -330,6 +330,23 @@ TEST(SettingsPortalBackendTest, ExportsReadMethodsOnSessionBus) {
   EXPECT_THAT(reply.value().toStdString(), testing::HasSubstr("<method name=\"ReadAll\">"));
 }
 
+TEST(SettingsPortalBackendTest, UnknownSettingReturnsNotFoundOnSessionBus) {
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("blue"), Holonight::ColorMode::Dark), true);
+  if (!backend.registered()) {
+    GTEST_SKIP() << "HoloNight portal service is already owned on the test session bus";
+  }
+
+  QDBusInterface settings(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"),
+                          QString::fromLatin1(kPortalPath), QStringLiteral("org.freedesktop.impl.portal.Settings"),
+                          QDBusConnection::sessionBus());
+  const QDBusReply<QDBusVariant> reply =
+      settings.call(QStringLiteral("Read"), QStringLiteral("org.freedesktop.appearance"), QStringLiteral("contrast"));
+
+  ASSERT_FALSE(reply.isValid());
+  EXPECT_EQ(reply.error().name(), QStringLiteral("org.freedesktop.portal.Error.NotFound"));
+}
+
 TEST(SettingsPortalBackendTest, ReadUsesInjectedResolvedColorMode) {
   SettingsPortalBackend backend(
       makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("blue"), Holonight::ColorMode::Light), false);

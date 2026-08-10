@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QDBusArgument>
+#include <QDBusContext>
 #include <QDBusVariant>
 #include <QMap>
 #include <QObject>
@@ -22,7 +23,7 @@ Q_DECLARE_METATYPE(SettingsPortalAccentColor)
 QDBusArgument& operator<<(QDBusArgument& argument, const SettingsPortalAccentColor& color);
 const QDBusArgument& operator>>(const QDBusArgument& argument, SettingsPortalAccentColor& color);
 
-class SettingsPortalBackend : public QObject {
+class SettingsPortalBackend : public QObject, protected QDBusContext {
   Q_OBJECT
   Q_CLASSINFO("D-Bus Interface", "org.freedesktop.impl.portal.Settings")
 
