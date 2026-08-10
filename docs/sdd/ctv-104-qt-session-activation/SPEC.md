@@ -18,8 +18,10 @@ pre-existing value remains in the launching process and is reported as unsupport
 
 The session bootstrap keeps `XDG_CURRENT_DESKTOP=Hyprland`, including across the exclusive UWSM handoff, because
 Hyprland and its portal backend require that compositor identity. It prepends a HoloNight-owned XDG configuration
-layer which routes only `org.freedesktop.impl.portal.Settings` to the HoloNight backend while retaining the normal
-Hyprland and GTK portal fallbacks. Existing `XDG_CONFIG_DIRS` entries are preserved.
+layer which keeps GTK as the complete `org.freedesktop.impl.portal.Settings` compatibility provider and HoloNight as
+its fallback while retaining the normal Hyprland and GTK portal defaults. Existing `XDG_CONFIG_DIRS` entries are
+preserved. HoloNight synchronizes the standardized dark/light preference through GSettings; selecting its narrower
+backend ahead of GTK would hide toolkit-specific settings required by Firefox, libadwaita, and other consumers.
 
 ## Diagnostics
 

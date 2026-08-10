@@ -10,6 +10,8 @@
 - [x] Export the Settings backend's scriptable invokables and cover them on an isolated real D-Bus session.
 - [x] Return a prompt portal `NotFound` error for unsupported Settings keys instead of an unmarshalable null variant.
 - [x] Publish standardized normal `contrast` and `reduced-motion` defaults and log genuinely unsupported keys.
+- [x] Keep the complete GTK Settings backend ahead of the narrower HoloNight backend so toolkit-specific settings
+  remain available; track standardized accent composition in the CTV-401 survey instead of masking compatibility.
 
 ## Verification
 
