@@ -340,11 +340,36 @@ TEST(SettingsPortalBackendTest, UnknownSettingReturnsNotFoundOnSessionBus) {
   QDBusInterface settings(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"),
                           QString::fromLatin1(kPortalPath), QStringLiteral("org.freedesktop.impl.portal.Settings"),
                           QDBusConnection::sessionBus());
-  const QDBusReply<QDBusVariant> reply =
-      settings.call(QStringLiteral("Read"), QStringLiteral("org.freedesktop.appearance"), QStringLiteral("contrast"));
+  const QDBusReply<QDBusVariant> reply = settings.call(
+      QStringLiteral("Read"), QStringLiteral("org.freedesktop.appearance"), QStringLiteral("unsupported-setting"));
 
   ASSERT_FALSE(reply.isValid());
   EXPECT_EQ(reply.error().name(), QStringLiteral("org.freedesktop.portal.Error.NotFound"));
+}
+
+TEST(SettingsPortalBackendTest, PublishesStandardAccessibilityDefaults) {
+  SettingsPortalBackend backend(
+      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("blue"), Holonight::ColorMode::Dark), false);
+
+  EXPECT_EQ(backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("contrast")).variant().toUInt(),
+            0U);
+  EXPECT_EQ(
+      backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("reduced-motion")).variant().toUInt(),
+      0U);
+
+  const auto all = backend.ReadAll({QStringLiteral("org.freedesktop.appearance")});
+  EXPECT_EQ(all.value(QStringLiteral("org.freedesktop.appearance"))
+                .value(QStringLiteral("contrast"))
+                .value<QDBusVariant>()
+                .variant()
+                .toUInt(),
+            0U);
+  EXPECT_EQ(all.value(QStringLiteral("org.freedesktop.appearance"))
+                .value(QStringLiteral("reduced-motion"))
+                .value<QDBusVariant>()
+                .variant()
+                .toUInt(),
+            0U);
 }
 
 TEST(SettingsPortalBackendTest, ReadUsesInjectedResolvedColorMode) {

@@ -16,6 +16,8 @@ constexpr auto kObjectPath = "/org/freedesktop/portal/desktop";
 constexpr auto kAppearanceNs = "org.freedesktop.appearance";
 constexpr auto kColorSchemeKey = "color-scheme";
 constexpr auto kAccentColorKey = "accent-color";
+constexpr auto kContrastKey = "contrast";
+constexpr auto kReducedMotionKey = "reduced-motion";
 constexpr auto kNotFoundError = "org.freedesktop.portal.Error.NotFound";
 
 }  // namespace
@@ -57,6 +59,7 @@ SettingsPortalBackend::~SettingsPortalBackend() {
 
 QDBusVariant SettingsPortalBackend::Read(const QString& portal_namespace, const QString& key) const {
   if (portal_namespace != QLatin1String(kAppearanceNs)) {
+    qCWarning(lcSettingsPortalBackend) << "Unsupported portal setting namespace requested:" << portal_namespace << key;
     if (calledFromDBus()) {
       sendErrorReply(QLatin1String(kNotFoundError), QStringLiteral("Requested setting namespace not found"));
     }
@@ -68,6 +71,10 @@ QDBusVariant SettingsPortalBackend::Read(const QString& portal_namespace, const 
   if (key == QLatin1String(kAccentColorKey)) {
     return variantForAccentColor(values_.accent_color);
   }
+  if (key == QLatin1String(kContrastKey) || key == QLatin1String(kReducedMotionKey)) {
+    return QDBusVariant{QVariant::fromValue(0U)};
+  }
+  qCWarning(lcSettingsPortalBackend) << "Unsupported portal setting requested:" << portal_namespace << key;
   if (calledFromDBus()) {
     sendErrorReply(QLatin1String(kNotFoundError), QStringLiteral("Requested setting not found"));
   }
@@ -145,5 +152,7 @@ QVariantMap SettingsPortalBackend::appearanceMap(const Values& values) {
   QVariantMap map;
   map.insert(QLatin1String(kColorSchemeKey), QVariant::fromValue(variantForColorScheme(values.color_scheme)));
   map.insert(QLatin1String(kAccentColorKey), QVariant::fromValue(variantForAccentColor(values.accent_color)));
+  map.insert(QLatin1String(kContrastKey), QVariant::fromValue(QDBusVariant{QVariant::fromValue(0U)}));
+  map.insert(QLatin1String(kReducedMotionKey), QVariant::fromValue(QDBusVariant{QVariant::fromValue(0U)}));
   return map;
 }
