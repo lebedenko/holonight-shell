@@ -26,6 +26,7 @@ else
 fi'
 make_fake holonight-shell 'printf "shell cursor=%s path=%s config=%s platformtheme=%s quickstyle=%s styleoverride=%s\\n" "${XCURSOR_THEME-}" "${HOLONIGHT_APPEARANCE_FILE-}" "${XDG_CONFIG_HOME-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" >>"${TEST_LOG}"'
 make_fake sleep ':'
+ln -s /usr/bin/bash "${fake_bin}/bash"
 
 make_adapter() {
   make_fake holonight-appearance-adapter '
@@ -99,7 +100,8 @@ done
 
 mv "${fake_bin}/holonight-appearance-adapter" "${fake_bin}/adapter-away"
 : >"${log_file}"
-XCURSOR_THEME=Inherited run_session direct
+env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" XCURSOR_THEME=Inherited \
+  HOLONIGHT_HYPRLAND_SESSION_MODE=direct /usr/bin/bash "${source_dir}/scripts/holonight-hyprland-session"
 grep -Fq "hyprland cursor=Inherited path= config= configdirs=/usr/share/holonight/xdg:/etc/xdg platformtheme=holonight quickstyle=Holonight" "${log_file}"
 mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 
