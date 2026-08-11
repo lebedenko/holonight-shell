@@ -188,6 +188,31 @@ TEST(SessionServiceTest, HyprlandDelegatesLogoutToHyprctl) {
   EXPECT_EQ(runner.lastArgs(), (QStringList{QStringLiteral("dispatch"), QStringLiteral("exit")}));
 }
 
+TEST(SessionServiceTest, UwsmManagedHyprlandDelegatesLogoutToUwsm) {
+  FakeProcessEnvironment env;
+  env.setExecutable(QStringLiteral("uwsm"), QStringLiteral("/usr/bin/uwsm"));
+  env.setUserServiceActive(QStringLiteral("wayland-wm@hyprland.desktop.service"), true);
+  SpyCommandRunner runner;
+  SessionService service(std::make_unique<HyprlandSessionBackend>(&env, &runner));
+
+  service.logout();
+
+  EXPECT_EQ(runner.lastProgram(), QStringLiteral("uwsm"));
+  EXPECT_EQ(runner.lastArgs(), QStringList{QStringLiteral("stop")});
+}
+
+TEST(SessionServiceTest, UwsmUnavailableFallsBackToHyprctl) {
+  FakeProcessEnvironment env;
+  env.setUserServiceActive(QStringLiteral("wayland-wm@hyprland.desktop.service"), true);
+  SpyCommandRunner runner;
+  SessionService service(std::make_unique<HyprlandSessionBackend>(&env, &runner));
+
+  service.logout();
+
+  EXPECT_EQ(runner.lastProgram(), QStringLiteral("hyprctl"));
+  EXPECT_EQ(runner.lastArgs(), (QStringList{QStringLiteral("dispatch"), QStringLiteral("exit")}));
+}
+
 TEST(SessionServiceTest, PowerActionsDelegateToSystemctl) {
   FakeProcessEnvironment env;
   SpyCommandRunner runner;
@@ -225,6 +250,19 @@ TEST(SessionServiceTest, HyprlandCapabilities) {
   EXPECT_TRUE(service.logoutSupported());
   EXPECT_TRUE(service.lockerAvailable());
   EXPECT_EQ(service.lockerName(), QStringLiteral("hyprlock"));
+}
+
+TEST(SessionServiceTest, DeclaredHyprlandDesktopSelectsHyprlandBeforeInstanceExists) {
+  const QByteArray previous_desktop = qgetenv("XDG_CURRENT_DESKTOP");
+  const QByteArray previous_instance = qgetenv("HYPRLAND_INSTANCE_SIGNATURE");
+  qputenv("XDG_CURRENT_DESKTOP", "HoloNight:Hyprland");
+  qunsetenv("HYPRLAND_INSTANCE_SIGNATURE");
+
+  SessionService service;
+
+  EXPECT_EQ(service.backendName(), QStringLiteral("hyprland"));
+  qputenv("XDG_CURRENT_DESKTOP", previous_desktop);
+  qputenv("HYPRLAND_INSTANCE_SIGNATURE", previous_instance);
 }
 
 TEST(SessionServiceTest, LogindBackendLogoutIsNoOpAndUnsupported) {

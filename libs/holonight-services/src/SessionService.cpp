@@ -6,9 +6,15 @@
 #include "session/ProcessEnvironment.h"
 #include "session/SessionBackend.h"
 
+#include <algorithm>
+
 namespace {
 std::unique_ptr<SessionBackend> makeBackend(const ProcessEnvironment* env, CommandRunner* runner) {
-  if (!qEnvironmentVariableIsEmpty("HYPRLAND_INSTANCE_SIGNATURE")) {
+  const QStringList desktops = qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(QChar(':'), Qt::SkipEmptyParts);
+  const bool declares_hyprland = std::ranges::any_of(desktops, [](const QString& desktop) {
+    return desktop.compare(QStringLiteral("Hyprland"), Qt::CaseInsensitive) == 0;
+  });
+  if (!qEnvironmentVariableIsEmpty("HYPRLAND_INSTANCE_SIGNATURE") || declares_hyprland) {
     return std::make_unique<HyprlandSessionBackend>(env, runner);
   }
   return std::make_unique<LogindSessionBackend>(env, runner);

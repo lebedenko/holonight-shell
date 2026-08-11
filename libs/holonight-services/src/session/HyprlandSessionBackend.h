@@ -2,8 +2,8 @@
 
 #include "SessionBackend.h"
 
-// Session backend for Hyprland. The only compositor-specific behaviour is logout, which is
-// dispatched through hyprctl. Power actions and the lock strategy are inherited from the base.
+// Session backend for Hyprland. UWSM owns logout when its compositor unit is active; direct
+// sessions dispatch exit through hyprctl. Power actions and locking are inherited from the base.
 class HyprlandSessionBackend final : public SessionBackend {
  public:
   HyprlandSessionBackend(const ProcessEnvironment* env, CommandRunner* runner);
@@ -13,4 +13,7 @@ class HyprlandSessionBackend final : public SessionBackend {
 
   [[nodiscard]] bool logoutSupported() const override { return true; }
   [[nodiscard]] QString backendName() const override { return QStringLiteral("hyprland"); }
+
+ private:
+  const ProcessEnvironment* env_;
 };
