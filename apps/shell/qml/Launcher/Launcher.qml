@@ -232,7 +232,7 @@ Item {
                                 text: "BEST MATCH"
                                 color: HoloniightPalette.accentViolet
                                 font.family: AppearanceService.uiFont
-                                font.pixelSize: 11
+                                font.pointSize: 8.25
                                 font.weight: Font.Medium
                                 font.letterSpacing: 1.2
                             }
@@ -253,7 +253,7 @@ Item {
                                 text: sectionDelegate.section
                                 color: HoloniightPalette.accentViolet
                                 font.family: AppearanceService.uiFont
-                                font.pixelSize: 11
+                                font.pointSize: 8.25
                                 font.weight: Font.Medium
                                 font.letterSpacing: 1.2
                                 visible: sectionDelegate.section.length > 0
@@ -387,7 +387,7 @@ Item {
                                 text: "↵"
                                 color: HoloniightPalette.textSecondary
                                 font.family: AppearanceService.monospaceFont
-                                font.pixelSize: 10
+                                font.pointSize: 7.5
                             }
                         }
 
@@ -395,7 +395,7 @@ Item {
                             text: "Launch"
                             color: HoloniightPalette.textSecondary
                             font.family: AppearanceService.uiFont
-                            font.pixelSize: 11
+                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -423,7 +423,7 @@ Item {
                                 text: "Ctrl+↵"
                                 color: HoloniightPalette.textSecondary
                                 font.family: AppearanceService.monospaceFont
-                                font.pixelSize: 10
+                                font.pointSize: 7.5
                             }
                         }
 
@@ -431,7 +431,7 @@ Item {
                             text: "Launch in Terminal"
                             color: HoloniightPalette.textSecondary
                             font.family: AppearanceService.uiFont
-                            font.pixelSize: 11
+                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -459,7 +459,7 @@ Item {
                                 text: "↑↓"
                                 color: HoloniightPalette.textSecondary
                                 font.family: AppearanceService.monospaceFont
-                                font.pixelSize: 10
+                                font.pointSize: 7.5
                             }
                         }
 
@@ -467,7 +467,7 @@ Item {
                             text: "Navigate"
                             color: HoloniightPalette.textSecondary
                             font.family: AppearanceService.uiFont
-                            font.pixelSize: 11
+                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -495,7 +495,7 @@ Item {
                                 text: "Esc"
                                 color: HoloniightPalette.textSecondary
                                 font.family: AppearanceService.uiFont
-                                font.pixelSize: 10
+                                font.pointSize: 7.5
                             }
                         }
 
@@ -503,7 +503,7 @@ Item {
                             text: "Close"
                             color: HoloniightPalette.textSecondary
                             font.family: AppearanceService.uiFont
-                            font.pixelSize: 11
+                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }

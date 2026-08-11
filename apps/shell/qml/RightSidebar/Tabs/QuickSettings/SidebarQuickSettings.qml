@@ -32,7 +32,7 @@ Item {
                 anchors.verticalCenter: keepAwake.verticalCenter
                 text: "Keep Awake"
                 color: HoloniightPalette.textPrimary
-                font.pixelSize: 14
+                font.pointSize: 10.5
                 font.weight: Font.Medium
             }
         }

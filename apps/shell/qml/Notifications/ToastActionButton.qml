@@ -42,7 +42,7 @@ Item {
       color: root.accentColor
       elide: Text.ElideRight
       horizontalAlignment: Text.AlignHCenter
-      font.pixelSize: 12
+      font.pointSize: 9
       font.weight: Font.Medium
     }
   }

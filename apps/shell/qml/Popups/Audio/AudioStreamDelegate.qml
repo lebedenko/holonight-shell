@@ -88,7 +88,7 @@ HnListDelegate {
         horizontalAlignment: Text.AlignRight
         text: root.volumePct + "%"
         color: HoloniightPalette.textMuted
-        font.pixelSize: 13
+        font.pointSize: 9.75
       }
     }
   }

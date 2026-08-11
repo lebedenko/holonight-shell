@@ -51,7 +51,7 @@ BarSection {
             color: HoloniightPalette.accentCyan
             text: Qt.formatDateTime(root.currentDateTime, "HH:mm")
             font.family: AppearanceService.displayFont
-            font.pixelSize: AppearanceService.displayFontSize
+            font.pointSize: AppearanceService.displayFontSize * 0.75
             font.weight: Font.Light
         }
 
@@ -62,7 +62,7 @@ BarSection {
             color: HoloniightPalette.accentViolet
             opacity: 0.6
             text: Qt.formatDateTime(root.currentDateTime, "ddd d MMM").toUpperCase()
-            font.pixelSize: 10
+            font.pointSize: 7.5
         }
     }
 

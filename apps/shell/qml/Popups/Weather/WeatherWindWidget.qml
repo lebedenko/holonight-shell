@@ -111,7 +111,7 @@ Item {
                     text: root.hasData ? root.speedKmh : "—"
                     color: HoloniightPalette.textPrimary
                     font.family: AppearanceService.displayFont
-                    font.pixelSize: 42
+                    font.pointSize: 31.5
                     font.weight: Font.Thin
                 }
                 Text {
@@ -119,7 +119,7 @@ Item {
                     text: root.hasData ? "km/h" : ""
                     color: HoloniightPalette.textMuted
                     font.family: AppearanceService.uiFont
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                 }
             }
 
@@ -127,7 +127,7 @@ Item {
                 text: root.hasData ? root.directionCode : "—"
                 color: HoloniightPalette.accentViolet
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 17
+                font.pointSize: 12.75
                 font.weight: Font.Medium
             }
 
@@ -136,7 +136,7 @@ Item {
                 text: root.hasData ? "From " + root.directionLabel : ""
                 color: HoloniightPalette.textMuted
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 11
+                font.pointSize: 8.25
                 elide: Text.ElideRight
             }
 
@@ -145,7 +145,7 @@ Item {
                 text: root.hasData && root.gustKmh > 0 ? "gusts " + root.gustKmh + " km/h" : ""
                 color: HoloniightPalette.textSecondary
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 10
+                font.pointSize: 7.5
                 elide: Text.ElideRight
             }
         }

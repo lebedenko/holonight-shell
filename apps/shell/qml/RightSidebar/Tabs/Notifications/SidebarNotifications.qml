@@ -26,7 +26,7 @@ Item {
         Text {
             text: "Do Not Disturb"
             color: HoloniightPalette.textPrimary
-            font.pixelSize: 14
+            font.pointSize: 10.5
             font.weight: Font.Medium
             Layout.fillWidth: true
             Layout.bottomMargin: 4
@@ -85,7 +85,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "🔕"
-                        font.pixelSize: 18
+                        font.pointSize: 13.5
                     }
                 }
 
@@ -105,7 +105,7 @@ Item {
                 Text {
                     text: NotificationService.dndEnabled ? "On — non-critical muted" : "Off"
                     color: NotificationService.dndEnabled ? HoloniightPalette.error : HoloniightPalette.textPrimary
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     font.weight: Font.Medium
 
                     Behavior on color {
@@ -116,7 +116,7 @@ Item {
                 Text {
                     text: "Critical alerts always break through"
                     color: HoloniightPalette.textSecondary
-                    font.pixelSize: 11
+                    font.pointSize: 8.25
                 }
             }
         }
@@ -138,7 +138,7 @@ Item {
             Text {
                 text: "⚠"
                 color: HoloniightPalette.error
-                font.pixelSize: 14
+                font.pointSize: 10.5
             }
 
             Text {
@@ -146,7 +146,7 @@ Item {
                     + (NotificationService.daemonConflictOwner !== "" ? NotificationService.daemonConflictOwner : "unknown")
                     + "\nStop this service to enable HoloNight notifications."
                 color: HoloniightPalette.textPrimary
-                font.pixelSize: 12
+                font.pointSize: 9
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -164,7 +164,7 @@ Item {
         Text {
             text: "App Notifications"
             color: HoloniightPalette.textPrimary
-            font.pixelSize: 14
+            font.pointSize: 10.5
             font.weight: Font.Medium
             Layout.fillWidth: true
         }

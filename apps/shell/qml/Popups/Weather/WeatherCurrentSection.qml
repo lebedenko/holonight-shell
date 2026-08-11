@@ -62,7 +62,7 @@ Item {
                         id: tempText
                         text: WeatherService.hasData ? Math.round(WeatherService.current.temperature) : ""
                         color: WeatherService.hasData ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
-                        font.pixelSize: 112
+                        font.pointSize: 84
                         font.family: AppearanceService.displayFont
                         font.weight: Font.Thin
                     }
@@ -71,7 +71,7 @@ Item {
                         id: tempUnitText
                         text: WeatherService.hasData ? "°C" : ""
                         color: tempText.color
-                        font.pixelSize: 56
+                        font.pointSize: 42
                         font.family: AppearanceService.displayFont
                         font.weight: Font.Thin
 
@@ -83,7 +83,7 @@ Item {
                 Text {
                     text: WeatherService.hasData ? WeatherService.current.condition.toUpperCase() : ""
                     color: HoloniightPalette.accentViolet
-                    font.pixelSize: 16
+                    font.pointSize: 12
                     font.family: AppearanceService.uiFont
                     font.weight: Font.Medium
                     elide: Text.ElideRight
@@ -106,7 +106,7 @@ Item {
                         ? "Feels like " + Math.round(WeatherService.current.feelsLike) + "°C"
                         : ""
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 12
+                    font.pointSize: 9
                     font.family: AppearanceService.uiFont
                     font.weight: Font.Light
                 }

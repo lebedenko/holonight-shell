@@ -34,7 +34,7 @@ Controls.Popup {
       Layout.fillWidth: true
       text: root.ssid
       color: HoloniightPalette.textPrimary
-      font.pixelSize: 16
+      font.pointSize: 12
       font.bold: true
       elide: Text.ElideRight
     }

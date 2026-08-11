@@ -176,7 +176,7 @@ BarSection {
                 anchors.centerIn: parent
                 text: root.expanded ? "x" : "+" + root.overflowCount
                 color: overflowHover.hovered ? HoloniightPalette.accentCyan : HoloniightPalette.textSecondary
-                font.pixelSize: 12
+                font.pointSize: 9
                 font.weight: Font.DemiBold
             }
 

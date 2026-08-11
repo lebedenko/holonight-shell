@@ -78,7 +78,7 @@ Item {
           text: root.channelLabel
           textFormat: Text.PlainText
           color: HoloniightPalette.textMuted
-          font.pixelSize: 13
+          font.pointSize: 9.75
         }
 
         Item {
@@ -90,7 +90,7 @@ Item {
           text: root.valueText
           textFormat: Text.PlainText
           color: root.muted ? HoloniightPalette.textDisabled : HoloniightPalette.textPrimary
-          font.pixelSize: 13
+          font.pointSize: 9.75
           font.bold: true
         }
       }

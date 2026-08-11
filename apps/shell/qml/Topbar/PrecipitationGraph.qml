@@ -10,9 +10,9 @@ Canvas {
 
     readonly property int displaySeconds: 24 * 60 * 60
 
-    function canvasFont(pixelSize, family, fallbackFamily) {
+    function canvasFont(fontSize, family, fallbackFamily) {
         const escapedFamily = String(family).replace(/\\/g, "\\\\").replace(/'/g, "\\'")
-        return pixelSize + "px '" + escapedFamily + "', " + fallbackFamily
+        return fontSize + "px '" + escapedFamily + "', " + fallbackFamily
     }
 
     readonly property var points: {

@@ -71,7 +71,7 @@ HnListDelegate {
         text: qsTr("%1%").arg(root.strength)
         color: root.signalQualityColor
         horizontalAlignment: Text.AlignRight
-        font.pixelSize: 14
+        font.pointSize: 10.5
         font.weight: root.connected ? Font.Medium : Font.Normal
       }
 

@@ -72,7 +72,7 @@ HnListDelegate {
           anchors.centerIn: parent
           text: qsTr("DEFAULT")
           color: root.accentColor
-          font.pixelSize: 10
+          font.pointSize: 7.5
           font.bold: true
         }
       }
@@ -130,7 +130,7 @@ HnListDelegate {
         horizontalAlignment: Text.AlignRight
         text: root.volumePct + "%"
         color: HoloniightPalette.textMuted
-        font.pixelSize: 13
+        font.pointSize: 9.75
       }
     }
   }

@@ -61,7 +61,7 @@ BarSection {
             text: "// ACTIVE WINDOW"
             color: HoloniightPalette.borderActive
             font.family: AppearanceService.titleFont
-            font.pixelSize: AppearanceService.titleFontSize
+            font.pointSize: AppearanceService.titleFontSize * 0.75
         }
 
         Row {

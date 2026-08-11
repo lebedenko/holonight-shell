@@ -114,7 +114,7 @@ Column {
                         ? qsTr("Now")
                         : Qt.formatTime(new Date(card.modelData.timestamp * 1000), "HH:mm")
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 14
+                    font.pointSize: 10.5
                     font.family: AppearanceService.uiFont
                 }
 
@@ -136,7 +136,7 @@ Column {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Math.round(card.modelData.temperature) + "°C"
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 16
+                    font.pointSize: 12
                     font.family: AppearanceService.uiFont
                     font.weight: Font.DemiBold
                 }
@@ -157,7 +157,7 @@ Column {
                     Text {
                         text: Math.round(card.modelData.pop * 100) + "%"
                         color: HoloniightPalette.accentBlue
-                        font.pixelSize: 10
+                        font.pointSize: 7.5
                         font.family: AppearanceService.uiFont
                     }
                 }

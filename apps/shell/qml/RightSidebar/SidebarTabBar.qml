@@ -222,7 +222,7 @@ Item {
                         ? SystemInfoService.realName
                         : (SystemInfoService.userName !== "" ? SystemInfoService.userName : "Alex")
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }
@@ -241,7 +241,7 @@ Item {
                     Text {
                         text: "Online"
                         color: HoloniightPalette.textSecondary
-                        font.pixelSize: 11
+                        font.pointSize: 8.25
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -302,7 +302,7 @@ Item {
                 contentItem: Text {
                     text: lockItem.text
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
@@ -319,7 +319,7 @@ Item {
                 contentItem: Text {
                     text: logoutItem.text
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
@@ -336,7 +336,7 @@ Item {
                 contentItem: Text {
                     text: rebootItem.text
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
@@ -353,7 +353,7 @@ Item {
                 contentItem: Text {
                     text: shutdownItem.text
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {

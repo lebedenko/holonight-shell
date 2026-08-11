@@ -229,7 +229,7 @@ ColumnLayout {
                     text: "UPCOMING"
                     color: HoloniightPalette.accentBlue
                     font.family: AppearanceService.titleFont
-                    font.pixelSize: AppearanceService.titleFontSize
+                    font.pointSize: AppearanceService.titleFontSize * 0.75
                     font.bold: true
                     font.letterSpacing: 0.8
                 }
@@ -240,7 +240,7 @@ ColumnLayout {
 
                 Text {
                     text: "View all ›"
-                    font.pixelSize: 11
+                    font.pointSize: 8.25
                     color: viewAllArea.containsMouse ? HoloniightPalette.accentCyan : HoloniightPalette.accentBlue
 
                     MouseArea {
@@ -276,7 +276,7 @@ ColumnLayout {
                     Text {
                         Layout.fillWidth: true
                         text: "Calendar connection error"
-                        font.pixelSize: 11
+                        font.pointSize: 8.25
                         color: HoloniightPalette.warning
                         elide: Text.ElideRight
                     }
@@ -284,7 +284,7 @@ ColumnLayout {
                     Text {
                         Layout.fillWidth: true
                         text: CalendarService.lastError
-                        font.pixelSize: 9
+                        font.pointSize: 6.75
                         color: HoloniightPalette.textSecondary
                         elide: Text.ElideRight
                         visible: CalendarService.lastError !== ""
@@ -302,7 +302,7 @@ ColumnLayout {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     text: "No connection — showing cached events"
-                    font.pixelSize: 9
+                    font.pointSize: 6.75
                     color: HoloniightPalette.textSecondary
                 }
             }
@@ -322,7 +322,7 @@ ColumnLayout {
                 Text {
                     anchors.centerIn: parent
                     text: "No upcoming events"
-                    font.pixelSize: 11
+                    font.pointSize: 8.25
                     color: HoloniightPalette.textSecondary
                 }
             }
@@ -394,7 +394,7 @@ ColumnLayout {
 
                                         Text {
                                             text: eventRow.isAllDay ? "All day" : Qt.formatTime(eventRow.startTime, "hh:mm")
-                                            font.pixelSize: 18
+                                            font.pointSize: 13.5
                                             font.bold: true
                                             font.family: AppearanceService.uiFont
                                             color: HoloniightPalette.textPrimary
@@ -403,7 +403,7 @@ ColumnLayout {
 
                                         Text {
                                             text: eventRow.eventState.text
-                                            font.pixelSize: 11
+                                            font.pointSize: 8.25
                                             font.bold: eventRow.eventState.isHighlighted
                                             font.family: AppearanceService.uiFont
                                             color: eventRow.eventState.color
@@ -419,7 +419,7 @@ ColumnLayout {
 
                                         Text {
                                             text: eventRow.title
-                                            font.pixelSize: 14
+                                            font.pointSize: 10.5
                                             font.bold: true
                                             font.family: AppearanceService.uiFont
                                             color: HoloniightPalette.textPrimary
@@ -457,7 +457,7 @@ ColumnLayout {
 
                                                 Text {
                                                     text: eventRow._duration
-                                                    font.pixelSize: 11
+                                                    font.pointSize: 8.25
                                                     font.family: AppearanceService.uiFont
                                                     color: HoloniightPalette.textMuted
                                                 }
@@ -490,7 +490,7 @@ ColumnLayout {
 
                                                 Text {
                                                     text: eventRow.location
-                                                    font.pixelSize: 11
+                                                    font.pointSize: 8.25
                                                     font.family: AppearanceService.uiFont
                                                     color: HoloniightPalette.textMuted
                                                     elide: Text.ElideRight

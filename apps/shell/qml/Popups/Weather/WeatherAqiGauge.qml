@@ -86,7 +86,7 @@ Item {
         text: root.aqi >= 1 && root.aqi <= 5 ? root.aqi : "—"
         color: root.accentColor
         font.family: AppearanceService.monospaceFont
-        font.pixelSize: Math.max(9, Math.round(Math.min(root.width, root.height) * 0.3))
+        font.pointSize: Math.max(9, Math.round(Math.min(root.width, root.height) * 0.3)) * 0.75
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

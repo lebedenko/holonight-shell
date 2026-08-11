@@ -86,7 +86,7 @@ BarSection {
                 elide: Text.ElideRight
                 color: root.emphasisColor
                 font.family: AppearanceService.uiFont
-                font.pixelSize: AppearanceService.uiFontSize
+                font.pointSize: AppearanceService.uiFontSize * 0.75
             }
 
             Rectangle {

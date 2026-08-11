@@ -63,7 +63,7 @@ Item {
         Text {
             text: "Default Applications"
             color: HoloniightPalette.textPrimary
-            font.pixelSize: 14
+            font.pointSize: 10.5
             font.weight: Font.Medium
             Layout.fillWidth: true
             Layout.bottomMargin: 4
@@ -143,7 +143,7 @@ Item {
                 Text {
                     text: qsTr("Session Integration")
                     color: HoloniightPalette.textPrimary
-                    font.pixelSize: 14
+                    font.pointSize: 10.5
                     font.weight: Font.Medium
                     Layout.fillWidth: true
                 }
@@ -169,7 +169,7 @@ Item {
                 visible: root.failingDiagnostics.length === 0
                 text: qsTr("No failing desktop-session checks.")
                 color: HoloniightPalette.textMuted
-                font.pixelSize: 12
+                font.pointSize: 9
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
@@ -196,7 +196,7 @@ Item {
                     Text {
                         text: root.cacheGuidance(modelData)
                         color: HoloniightPalette.textMuted
-                        font.pixelSize: 11
+                        font.pointSize: 8.25
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
@@ -205,7 +205,7 @@ Item {
                         visible: modelData["command"] !== undefined && modelData["command"] !== ""
                         text: modelData["command"] ?? ""
                         color: HoloniightPalette.textSecondary
-                        font.pixelSize: 10
+                        font.pointSize: 7.5
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
@@ -221,7 +221,7 @@ Item {
                     text: SessionIntegrationService.refreshInProgress ? qsTr("Refreshing") : qsTr("Refresh")
                     enabled: !SessionIntegrationService.refreshInProgress
                              && !SessionIntegrationService.rebuildInProgress
-                    font.pixelSize: 12
+                    font.pointSize: 9
                     Layout.preferredWidth: 92
                     Layout.preferredHeight: 28
                     onClicked: SessionIntegrationService.refresh()
@@ -248,7 +248,7 @@ Item {
                     id: rebuildBtn
                     text: SessionIntegrationService.rebuildInProgress ? qsTr("Rebuilding") : qsTr("Rebuild")
                     enabled: !SessionIntegrationService.rebuildInProgress
-                    font.pixelSize: 12
+                    font.pointSize: 9
                     Layout.preferredWidth: 92
                     Layout.preferredHeight: 28
                     onClicked: SessionIntegrationService.rebuildApplicationCaches()

@@ -192,7 +192,7 @@ Item {
                     text: root.displayTitle
                     color: HoloniightPalette.textPrimary
                     font.family: AppearanceService.displayFont
-                    font.pixelSize: Math.round(AppearanceService.displayFontSize * 1.25)
+                    font.pointSize: Math.round(AppearanceService.displayFontSize * 1.25) * 0.75
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     maximumLineCount: 1
@@ -208,7 +208,7 @@ Item {
                 text: root.artist
                 color: HoloniightPalette.textSecondary
                 font.family: AppearanceService.displayFont
-                font.pixelSize: Math.round(AppearanceService.displayFontSize * 0.8)
+                font.pointSize: Math.round(AppearanceService.displayFontSize * 0.8) * 0.75
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 maximumLineCount: 1
@@ -241,7 +241,7 @@ Item {
                     color: HoloniightPalette.textDisabled
                     opacity: 0.72
                     fontFamily: AppearanceService.displayFont
-                    pixelSize: Math.round(AppearanceService.displayFontSize * 0.7)
+                    pointSize: Math.round(AppearanceService.displayFontSize * 0.7) * 0.75
                 }
 
                 StableDigitsText {
@@ -254,7 +254,7 @@ Item {
                     color: HoloniightPalette.textDisabled
                     opacity: 0.56
                     fontFamily: AppearanceService.displayFont
-                    pixelSize: Math.round(AppearanceService.displayFontSize * 0.7)
+                    pointSize: Math.round(AppearanceService.displayFontSize * 0.7) * 0.75
                 }
             }
         }

@@ -20,7 +20,7 @@ HnSearchField {
             text: ">"
             color: HoloniightPalette.textPrimary
             font.family: AppearanceService.monospaceFont
-            font.pixelSize: 22
+            font.pointSize: 16.5
             Accessible.ignored: true
         }
     }

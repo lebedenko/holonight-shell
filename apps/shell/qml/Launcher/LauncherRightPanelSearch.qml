@@ -47,7 +47,7 @@ Item {
             text: "FILTERS"
             color: HoloniightPalette.accentViolet
             font.family: AppearanceService.uiFont
-            font.pixelSize: 11
+            font.pointSize: 8.25
             font.weight: Font.Medium
             font.letterSpacing: 1.2
         }
@@ -90,7 +90,7 @@ Item {
             text: "SELECTED"
             color: HoloniightPalette.accentViolet
             font.family: AppearanceService.uiFont
-            font.pixelSize: 11
+            font.pointSize: 8.25
             font.weight: Font.Medium
             font.letterSpacing: 1.2
             visible: LauncherService.selectedEntryName.length > 0
@@ -118,7 +118,7 @@ Item {
                 text: LauncherService.selectedEntryName
                 color: HoloniightPalette.textPrimary
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 14
+                font.pointSize: 10.5
                 font.weight: Font.Medium
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
@@ -132,7 +132,7 @@ Item {
             text: lastUsedText
             color: HoloniightPalette.textSecondary
             font.family: AppearanceService.uiFont
-            font.pixelSize: 11
+            font.pointSize: 8.25
 
             readonly property string lastUsedText: {
                 const df = LauncherService.selectedEntryDesktopFile
@@ -169,7 +169,7 @@ Item {
                     text: actionDelegate.modelData.name || ""
                     color: actionItemArea.containsMouse ? HoloniightPalette.accentCyan : HoloniightPalette.textPrimary
                     font.family: AppearanceService.uiFont
-                    font.pixelSize: 12
+                    font.pointSize: 9
                     elide: Text.ElideRight
                 }
 

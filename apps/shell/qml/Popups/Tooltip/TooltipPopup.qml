@@ -165,7 +165,7 @@ Item {
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
-                font.pixelSize: 12
+                font.pointSize: 9
                 lineHeight: 0.92
             }
         }

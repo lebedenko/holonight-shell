@@ -78,7 +78,7 @@ Column {
                                 ? "Tomorrow"
                                 : Qt.formatDate(new Date(dayCard.entry.date * 1000), "ddd"))
                         color: HoloniightPalette.textPrimary
-                        font.pixelSize: 13
+                        font.pointSize: 9.75
                         font.family: AppearanceService.uiFont
                     }
 
@@ -111,7 +111,7 @@ Column {
                                 ? Math.round(WeatherService.current.temperature) + "°C"
                                 : ""
                             color: HoloniightPalette.textPrimary
-                            font.pixelSize: 18
+                            font.pointSize: 13.5
                             font.family: AppearanceService.uiFont
                             font.weight: Font.DemiBold
                         }
@@ -125,7 +125,7 @@ Column {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: dayCard.index > 0 ? Math.round(dayCard.entry.tempMax) + "°C" : ""
                                 color: HoloniightPalette.textPrimary
-                                font.pixelSize: 14
+                                font.pointSize: 10.5
                                 font.family: AppearanceService.uiFont
                             }
 
@@ -133,7 +133,7 @@ Column {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: dayCard.index > 0 ? Math.round(dayCard.entry.tempMin) + "°C" : ""
                                 color: HoloniightPalette.textMuted
-                                font.pixelSize: 12
+                                font.pointSize: 9
                                 font.family: AppearanceService.uiFont
                                 opacity: 0.8
                             }
@@ -158,7 +158,7 @@ Column {
                                 ? Math.round(root.remainingDayPop * 100) + "%"
                                 : Math.round(dayCard.entry.pop * 100) + "%"
                             color: HoloniightPalette.accentBlue
-                            font.pixelSize: 10
+                            font.pointSize: 7.5
                             font.family: AppearanceService.uiFont
                         }
                     }

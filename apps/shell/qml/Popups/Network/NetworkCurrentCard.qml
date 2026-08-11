@@ -46,7 +46,7 @@ Item {
       Layout.fillWidth: true
       text: qsTr("CURRENT CONNECTION")
       color: HoloniightPalette.accentBlue
-      font.pixelSize: 12
+      font.pointSize: 9
       font.weight: Font.DemiBold
       elide: Text.ElideRight
     }
@@ -88,7 +88,7 @@ Item {
                 ? NetworkService.activeConnectionName
                 : (NetworkService.online ? qsTr("Connected") : qsTr("No active connection"))
           color: NetworkService.online ? HoloniightPalette.textPrimary : HoloniightPalette.textSecondary
-          font.pixelSize: 18
+          font.pointSize: 13.5
           font.weight: Font.Medium
           elide: Text.ElideRight
         }
@@ -99,7 +99,7 @@ Item {
           Layout.fillWidth: true
           text: root.connectionSubtitle()
           color: NetworkService.vpnActive ? HoloniightPalette.accentViolet : HoloniightPalette.textMuted
-          font.pixelSize: 14
+          font.pointSize: 10.5
           elide: Text.ElideRight
         }
       }
@@ -130,7 +130,7 @@ Item {
           }
           text: qsTr("%1%").arg(NetworkService.strength)
           color: NetworkService.online ? HoloniightPalette.accentCyan : HoloniightPalette.textSecondary
-          font.pixelSize: 18
+          font.pointSize: 13.5
           font.weight: Font.Medium
         }
       }
@@ -243,7 +243,7 @@ Item {
         width: parent.width
         text: tile.label
         color: HoloniightPalette.accentBlue
-        font.pixelSize: 10
+        font.pointSize: 7.5
         font.weight: Font.DemiBold
         elide: Text.ElideRight
       }
@@ -252,7 +252,7 @@ Item {
         width: parent.width
         text: tile.value
         color: HoloniightPalette.textSecondary
-        font.pixelSize: 12
+        font.pointSize: 9
         elide: Text.ElideRight
       }
     }

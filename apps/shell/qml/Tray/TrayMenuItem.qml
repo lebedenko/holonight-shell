@@ -99,7 +99,7 @@ Item {
         text: root.label
         color: root.itemEnabled ? HoloniightPalette.textPrimary : HoloniightPalette.textSecondary
         opacity: root.itemEnabled ? 1.0 : 0.58
-        font.pixelSize: 13
+        font.pointSize: 9.75
         visible: !root.isSeparator
         elide: Text.ElideRight
         anchors {
@@ -116,7 +116,7 @@ Item {
         id: submenuArrow
         text: "›"
         color: HoloniightPalette.textSecondary
-        font.pixelSize: 16
+        font.pointSize: 12
         opacity: 0.8
         visible: !root.isSeparator && root.hasSubmenu
         anchors {

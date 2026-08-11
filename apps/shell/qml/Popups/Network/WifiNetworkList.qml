@@ -38,7 +38,7 @@ Item {
       return qsTr("No Wi-Fi networks found")
     }
     color: NetworkService.available && NetworkService.wifiEnabled ? HoloniightPalette.textSecondary : HoloniightPalette.error
-    font.pixelSize: 14
+    font.pointSize: 10.5
     wrapMode: Text.Wrap
     visible: !listView.visible
   }

@@ -47,7 +47,7 @@ Item {
           visible: !AudioService.available
           text: qsTr("Audio service unavailable")
           color: HoloniightPalette.textSecondary
-          font.pixelSize: 16
+          font.pointSize: 12
         }
 
         ColumnLayout {
@@ -60,7 +60,7 @@ Item {
             Layout.fillWidth: true
             text: root.sectionTitles[root.currentTab]
             color: HoloniightPalette.textPrimary
-            font.pixelSize: 18
+            font.pointSize: 13.5
             font.bold: true
           }
 

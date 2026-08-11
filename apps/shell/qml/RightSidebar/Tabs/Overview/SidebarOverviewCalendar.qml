@@ -65,7 +65,7 @@ ColumnLayout {
         text: "// CALENDAR"
         color: HoloniightPalette.borderActive
         font.family: AppearanceService.titleFont
-        font.pixelSize: AppearanceService.titleFontSize
+        font.pointSize: AppearanceService.titleFontSize * 0.75
         font.letterSpacing: 0.8
     }
 
@@ -77,7 +77,7 @@ ColumnLayout {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: root.monthLabel(root.viewYear, root.viewMonth)
-            font.pixelSize: 13
+            font.pointSize: 9.75
             font.bold: true
             color: HoloniightPalette.textPrimary
         }
@@ -98,7 +98,7 @@ ColumnLayout {
                 Text {
                     anchors.centerIn: parent
                     text: "‹"
-                    font.pixelSize: 14
+                    font.pointSize: 10.5
                     color: HoloniightPalette.textPrimary
                 }
 
@@ -130,7 +130,7 @@ ColumnLayout {
                 Text {
                     anchors.centerIn: parent
                     text: "›"
-                    font.pixelSize: 14
+                    font.pointSize: 10.5
                     color: HoloniightPalette.textPrimary
                 }
 
@@ -170,7 +170,7 @@ ColumnLayout {
                 width: dayHeaderRow.width / 7
                 horizontalAlignment: Text.AlignHCenter
                 text: modelData.toUpperCase()
-                font.pixelSize: 10
+                font.pointSize: 7.5
                 color: HoloniightPalette.accentBlue
             }
         }
@@ -231,7 +231,7 @@ ColumnLayout {
                         horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
                         text: modelData.day
-                        font.pixelSize: 12
+                        font.pointSize: 9
                         font.bold: modelData.isToday && root.viewIsCurrentMonth
                         opacity: modelData.isCurrentMonth ? 1.0 : 0.45
                         color: !modelData.isCurrentMonth

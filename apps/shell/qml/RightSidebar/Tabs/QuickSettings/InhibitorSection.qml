@@ -14,7 +14,7 @@ ColumnLayout {
         text: qsTr("Sleep inhibitors")
         color: HoloniightPalette.textPrimary
         font.family: AppearanceService.uiFont
-        font.pixelSize: 12
+        font.pointSize: 9
         font.weight: Font.Medium
         opacity: 0.7
         Layout.fillWidth: true
@@ -33,7 +33,7 @@ ColumnLayout {
                 text: inhibitorRow.who
                 color: HoloniightPalette.textPrimary
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 12
+                font.pointSize: 9
                 font.weight: Font.Medium
                 elide: Text.ElideRight
                 Layout.preferredWidth: 100
@@ -43,7 +43,7 @@ ColumnLayout {
                 text: inhibitorRow.why
                 color: HoloniightPalette.textMuted
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 12
+                font.pointSize: 9
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }

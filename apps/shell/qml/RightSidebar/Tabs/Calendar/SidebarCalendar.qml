@@ -12,6 +12,6 @@ Item {
         anchors.centerIn: parent
         text: "Calendar"
         color: HoloniightPalette.textPrimary
-        font.pixelSize: 14
+        font.pointSize: 10.5
     }
 }

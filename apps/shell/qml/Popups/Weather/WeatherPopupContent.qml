@@ -30,7 +30,7 @@ Item {
     component SectionLabel: Text {
         color: HoloniightPalette.accentBlue
         font.family: AppearanceService.titleFont
-        font.pixelSize: AppearanceService.titleFontSize
+        font.pointSize: AppearanceService.titleFontSize * 0.75
         font.capitalization: Font.AllUppercase
     }
 
@@ -68,7 +68,7 @@ Item {
                     text: WeatherService.locationLabel
                     color: HoloniightPalette.textSecondary
                     font.family: AppearanceService.uiFont
-                    font.pixelSize: AppearanceService.titleFontSize
+                    font.pointSize: AppearanceService.titleFontSize * 0.75
                     elide: Text.ElideRight
                 }
 
@@ -182,7 +182,7 @@ Item {
                                 Text {
                                     text: "SUNRISE"
                                     color: HoloniightPalette.textSecondary
-                                    font.pixelSize: 9
+                                    font.pointSize: 6.75
                                     font.family: AppearanceService.uiFont
                                 }
                                 Text {
@@ -190,7 +190,7 @@ Item {
                                         ? Qt.formatTime(new Date(WeatherService.current.sunrise * 1000), "HH:mm")
                                         : "—"
                                     color: HoloniightPalette.textPrimary
-                                    font.pixelSize: 13
+                                    font.pointSize: 9.75
                                     font.family: AppearanceService.uiFont
                                 }
                             }
@@ -214,7 +214,7 @@ Item {
                                 Text {
                                     text: "SUNSET"
                                     color: HoloniightPalette.textSecondary
-                                    font.pixelSize: 9
+                                    font.pointSize: 6.75
                                     font.family: AppearanceService.uiFont
                                 }
                                 Text {
@@ -222,7 +222,7 @@ Item {
                                         ? Qt.formatTime(new Date(WeatherService.current.sunset * 1000), "HH:mm")
                                         : "—"
                                     color: HoloniightPalette.textPrimary
-                                    font.pixelSize: 13
+                                    font.pointSize: 9.75
                                     font.family: AppearanceService.uiFont
                                 }
                             }
@@ -262,7 +262,7 @@ Item {
                             Text {
                                 text: "MOON"
                                 color: HoloniightPalette.textSecondary
-                                font.pixelSize: 9
+                                font.pointSize: 6.75
                                 font.family: AppearanceService.uiFont
                             }
                             Text {
@@ -273,7 +273,7 @@ Item {
                                     return WeatherIconBridge.moonPhaseDescription(mp);
                                 }
                                 color: HoloniightPalette.textPrimary
-                                font.pixelSize: 13
+                                font.pointSize: 9.75
                                 font.family: AppearanceService.uiFont
                             }
                         }
@@ -304,7 +304,7 @@ Item {
                             Text {
                                 text: "AIR QUALITY"
                                 color: HoloniightPalette.textSecondary
-                                font.pixelSize: 9
+                                font.pointSize: 6.75
                                 font.family: AppearanceService.uiFont
                             }
                             Text {
@@ -317,7 +317,7 @@ Item {
                                     return "Not available"
                                 }
                                 color: HoloniightPalette.textPrimary
-                                font.pixelSize: 13
+                                font.pointSize: 9.75
                                 font.family: AppearanceService.uiFont
                             }
                         }
@@ -384,14 +384,14 @@ Item {
                     Layout.fillWidth: true
                     text: "Updated: " + root.updateTime()
                     color: HoloniightPalette.accentBlue
-                    font.pixelSize: 11
+                    font.pointSize: 8.25
                     font.family: AppearanceService.uiFont
                 }
 
                 Text {
                     text: "Source: OpenWeather"
                     color: HoloniightPalette.accentBlue
-                    font.pixelSize: 11
+                    font.pointSize: 8.25
                     font.family: AppearanceService.uiFont
                     horizontalAlignment: Text.AlignRight
                 }

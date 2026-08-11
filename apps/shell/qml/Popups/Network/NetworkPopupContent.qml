@@ -39,7 +39,7 @@ Item {
       visible: NetworkService.lastError.length > 0
       text: NetworkService.lastError
       color: NetworkService.lastError === qsTr("Password required") ? HoloniightPalette.textSecondary : HoloniightPalette.error
-      font.pixelSize: 12
+      font.pointSize: 9
       elide: Text.ElideRight
     }
 
@@ -64,7 +64,7 @@ Item {
         Layout.fillWidth: true
         text: qsTr("WI-FI NETWORKS")
         color: HoloniightPalette.accentBlue
-        font.pixelSize: 12
+        font.pointSize: 9
         font.weight: Font.DemiBold
         elide: Text.ElideRight
       }
@@ -100,7 +100,7 @@ Item {
             color: !NetworkService.available || !NetworkService.wifiEnabled || NetworkService.scanning
                    ? HoloniightPalette.textSecondary
                    : rescanHover.hovered ? HoloniightPalette.accentCyan : HoloniightPalette.textSecondary
-            font.pixelSize: 12
+            font.pointSize: 9
             font.weight: Font.Medium
           }
         }
@@ -142,7 +142,7 @@ Item {
       Layout.fillWidth: true
       text: qsTr("ACTIONS")
       color: HoloniightPalette.accentBlue
-      font.pixelSize: 12
+      font.pointSize: 9
       font.weight: Font.DemiBold
       elide: Text.ElideRight
     }
@@ -162,7 +162,7 @@ Item {
             .arg(NetworkService.activeConnectionName.length > 0 ? NetworkService.activeConnectionName : qsTr("Unknown"))
             .arg(NetworkService.activeIp4Address.length > 0 ? NetworkService.activeIp4Address : qsTr("Unavailable"))
       color: HoloniightPalette.textSecondary
-      font.pixelSize: 12
+      font.pointSize: 9
       elide: Text.ElideRight
     }
   }

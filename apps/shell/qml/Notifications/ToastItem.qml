@@ -229,7 +229,7 @@ Item {
         elide: Text.ElideRight
         maximumLineCount: 1
         font.weight: Font.DemiBold
-        font.pixelSize: 14
+        font.pointSize: 10.5
       }
 
       Text {
@@ -241,7 +241,7 @@ Item {
         wrapMode: Text.WordWrap
         maximumLineCount: root.actionList.length > 0 ? 2 : 3
         elide: Text.ElideRight
-        font.pixelSize: 12
+        font.pointSize: 9
         lineHeight: 0.98
       }
     }
@@ -262,7 +262,7 @@ Item {
         color: HoloniightPalette.textSecondary
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignRight
-        font.pixelSize: 11
+        font.pointSize: 8.25
       }
 
       Item {

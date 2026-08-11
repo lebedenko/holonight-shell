@@ -69,14 +69,14 @@ ColumnLayout {
         text: "// NOTIFICATIONS"
         color: HoloniightPalette.borderActive
         font.family: AppearanceService.titleFont
-        font.pixelSize: AppearanceService.titleFontSize
+        font.pointSize: AppearanceService.titleFontSize * 0.75
         Layout.bottomMargin: 6
     }
 
     Text {
         visible: root.groupedNotifs.length === 0
         text: "No new notifications"
-        font.pixelSize: 12
+        font.pointSize: 9
         color: HoloniightPalette.textMuted
         Layout.alignment: Qt.AlignHCenter
         Layout.topMargin: 8
@@ -131,7 +131,7 @@ ColumnLayout {
 
                             anchors.centerIn: parent
                             text: notifRow.notif.unreadCount
-                            font.pixelSize: 9
+                            font.pointSize: 6.75
                             font.bold: true
                             color: HoloniightPalette.surface
                         }
@@ -151,7 +151,7 @@ ColumnLayout {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: "+" + root.notificationOverflowCount + " notifications"
-            font.pixelSize: 11
+            font.pointSize: 8.25
             color: HoloniightPalette.textSecondary
         }
 
@@ -161,7 +161,7 @@ ColumnLayout {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "View all"
-            font.pixelSize: 11
+            font.pointSize: 8.25
             color: viewAllMouseArea.containsMouse
                    ? HoloniightPalette.accentCyan
                    : HoloniightPalette.textMuted

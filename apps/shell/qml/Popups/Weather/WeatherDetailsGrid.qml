@@ -93,7 +93,7 @@ Column {
             width: 90
             text: cell.label
             color: HoloniightPalette.textPrimary
-            font.pixelSize: 13
+            font.pointSize: 9.75
             font.family: AppearanceService.uiFont
         }
 
@@ -103,7 +103,7 @@ Column {
             width: 90
             text: cell.value
             color: HoloniightPalette.textMuted
-            font.pixelSize: 13
+            font.pointSize: 9.75
             font.family: AppearanceService.uiFont
             horizontalAlignment: Text.AlignRight
             elide: Text.ElideRight

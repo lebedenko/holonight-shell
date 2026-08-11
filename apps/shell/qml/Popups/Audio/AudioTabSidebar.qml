@@ -29,7 +29,7 @@ Item {
       Layout.bottomMargin: 8
       text: qsTr("AUDIO")
       color: HoloniightPalette.textSecondary
-      font.pixelSize: 11
+      font.pointSize: 8.25
       font.bold: true
     }
 

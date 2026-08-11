@@ -64,7 +64,7 @@ Item {
             text: metricRow.label
             color: HoloniightPalette.textSecondary
             font.family: AppearanceService.uiFont
-            font.pixelSize: 13
+            font.pointSize: 9.75
             elide: Text.ElideRight
         }
 
@@ -72,7 +72,7 @@ Item {
             text: metricRow.value
             color: HoloniightPalette.textPrimary
             font.family: AppearanceService.monospaceFont
-            font.pixelSize: 13
+            font.pointSize: 9.75
         }
     }
 
@@ -87,7 +87,7 @@ Item {
             text: qsTr("BATTERY")
             color: HoloniightPalette.accentBlue
             font.family: AppearanceService.uiFont
-            font.pixelSize: 11
+            font.pointSize: 8.25
             font.weight: Font.DemiBold
             font.letterSpacing: 2
         }
@@ -104,7 +104,7 @@ Item {
                 text: BatteryService.percent
                 color: HoloniightPalette.textPrimary
                 font.family: AppearanceService.monospaceFont
-                font.pixelSize: 46
+                font.pointSize: 34.5
                 font.weight: Font.Medium
             }
 
@@ -114,7 +114,7 @@ Item {
                 text: "%"
                 color: HoloniightPalette.textMuted
                 font.family: AppearanceService.monospaceFont
-                font.pixelSize: 22
+                font.pointSize: 16.5
             }
         }
 
@@ -146,7 +146,7 @@ Item {
             text: root.timeText.length > 0 ? (root.stateLabel + " · " + root.timeText) : root.stateLabel
             color: HoloniightPalette.textMuted
             font.family: AppearanceService.uiFont
-            font.pixelSize: 13
+            font.pointSize: 9.75
         }
 
         Rectangle {
@@ -181,7 +181,7 @@ Item {
             text: root.hoveredCaption
             color: HoloniightPalette.accentCyan
             font.family: AppearanceService.uiFont
-            font.pixelSize: 13
+            font.pointSize: 9.75
             font.weight: Font.Medium
         }
 

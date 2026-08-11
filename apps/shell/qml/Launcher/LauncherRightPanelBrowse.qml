@@ -31,7 +31,7 @@ Item {
                 text: qsTr("RECENT")
                 color: HoloniightPalette.accentViolet
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 11
+                font.pointSize: 8.25
                 font.weight: Font.Medium
                 font.letterSpacing: 1.2
                 Layout.fillWidth: true
@@ -103,7 +103,7 @@ Item {
                 text: qsTr("CATEGORIES")
                 color: HoloniightPalette.accentViolet
                 font.family: AppearanceService.uiFont
-                font.pixelSize: 11
+                font.pointSize: 8.25
                 font.weight: Font.Medium
                 font.letterSpacing: 1.2
                 Layout.fillWidth: true

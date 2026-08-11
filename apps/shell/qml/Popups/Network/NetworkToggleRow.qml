@@ -26,7 +26,7 @@ RowLayout {
     Layout.fillWidth: true
     text: qsTr("NETWORK")
     color: HoloniightPalette.textPrimary
-    font.pixelSize: 16
+    font.pointSize: 12
     font.weight: Font.DemiBold
     elide: Text.ElideRight
   }

@@ -44,7 +44,7 @@ Item {
     Text {
       text: qsTr("Master Volume")
       color: HoloniightPalette.textPrimary
-      font.pixelSize: 14
+      font.pointSize: 10.5
       font.bold: true
     }
 
@@ -62,7 +62,7 @@ Item {
       horizontalAlignment: Text.AlignRight
       text: root.masterVolume + "%"
       color: HoloniightPalette.textMuted
-      font.pixelSize: 14
+      font.pointSize: 10.5
     }
   }
 }

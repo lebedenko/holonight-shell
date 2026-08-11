@@ -82,7 +82,7 @@ BarSection {
                 text: root.ready ? Math.round(WeatherService.current.temperature) + "°C" : ""
                 color: root.ready ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
                 font.family: AppearanceService.displayFont
-                font.pixelSize: AppearanceService.displayFontSize
+                font.pointSize: AppearanceService.displayFontSize * 0.75
                 font.weight: Font.Normal
             }
 
@@ -91,7 +91,7 @@ BarSection {
                 text: root.ready ? root.shortCondition(WeatherService.current.condition).toUpperCase() : ""
                 color: HoloniightPalette.accentViolet
                 opacity: 0.6
-                font.pixelSize: 10
+                font.pointSize: 7.5
                 font.letterSpacing: 0.5
                 elide: Text.ElideRight
                 maximumLineCount: 1

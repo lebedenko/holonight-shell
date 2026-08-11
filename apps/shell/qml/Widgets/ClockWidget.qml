@@ -42,8 +42,8 @@ Item {
             Item {
                 id: timeContent
                 anchors.centerIn: parent
-                readonly property int bigPixelSize: Math.round(AppearanceService.displayFontSize * 4.0)
-                readonly property int smallPixelSize: Math.round(AppearanceService.displayFontSize * 2.0)
+                readonly property real bigPointSize: Math.round(AppearanceService.displayFontSize * 4.0) * 0.75
+                readonly property real smallPointSize: Math.round(AppearanceService.displayFontSize * 2.0) * 0.75
                 readonly property int secondsSpacing: 2
                 implicitWidth: bigTime.implicitWidth
                                 + (smallSeconds.visible ? timeContent.secondsSpacing + smallSeconds.implicitWidth : 0)
@@ -54,12 +54,12 @@ Item {
                 FontMetrics {
                     id: bigMetrics
                     font.family: AppearanceService.displayFont
-                    font.pixelSize: timeContent.bigPixelSize
+                    font.pointSize: timeContent.bigPointSize
                 }
                 FontMetrics {
                     id: smallMetrics
                     font.family: AppearanceService.displayFont
-                    font.pixelSize: timeContent.smallPixelSize
+                    font.pointSize: timeContent.smallPointSize
                 }
 
                 StableDigitsText {
@@ -69,10 +69,10 @@ Item {
                     text: root.timeText
                     color: HoloniightPalette.primary
                     fontFamily: AppearanceService.displayFont
-                    pixelSize: timeContent.bigPixelSize
+                    pointSize: timeContent.bigPointSize
                 }
 
-                // Seconds (with a ":" prefix) at half the time's pixel size, lifted by the descent
+                // Seconds (with a ":" prefix) at half the time's point size, lifted by the descent
                 // difference so its baseline lines up with the big digits — one continuous "HH:mm:ss".
                 StableDigitsText {
                     id: smallSeconds
@@ -84,7 +84,7 @@ Item {
                     text: ":" + root.secondsText
                     color: HoloniightPalette.primary
                     fontFamily: AppearanceService.displayFont
-                    pixelSize: timeContent.smallPixelSize
+                    pointSize: timeContent.smallPointSize
                 }
             }
         }
@@ -95,7 +95,7 @@ Item {
             text: root.dateText
             color: HoloniightPalette.textSecondary
             font.family: AppearanceService.uiFont
-            font.pixelSize: AppearanceService.uiFontSize
+            font.pointSize: AppearanceService.uiFontSize * 0.75
         }
     }
 }

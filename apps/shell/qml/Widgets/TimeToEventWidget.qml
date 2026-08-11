@@ -24,7 +24,7 @@ Item {
             text: root.titleText
             color: HoloniightPalette.textMuted
             font.family: AppearanceService.uiFont
-            font.pixelSize: Math.round(AppearanceService.uiFontSize * 2.0)
+            font.pointSize: Math.round(AppearanceService.uiFontSize * 2.0) * 0.75
             font.capitalization: Font.AllUppercase
             font.letterSpacing: 2
         }
@@ -56,7 +56,7 @@ Item {
                 text: root.remainingText
                 color: HoloniightPalette.primary
                 fontFamily: AppearanceService.displayFont
-                pixelSize: Math.round(AppearanceService.displayFontSize * 2.0)
+                pointSize: Math.round(AppearanceService.displayFontSize * 2.0) * 0.75
             }
         }
 
@@ -66,7 +66,7 @@ Item {
             text: root.deadlineLabel
             color: HoloniightPalette.textSecondary
             font.family: AppearanceService.uiFont
-            font.pixelSize: AppearanceService.uiFontSize
+            font.pointSize: AppearanceService.uiFontSize * 0.75
         }
     }
 }
