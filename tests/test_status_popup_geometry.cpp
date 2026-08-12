@@ -5,7 +5,8 @@
 #include <gtest/gtest.h>
 
 TEST(StatusPopupGeometry, SizePoliciesCoverKnownPopupKinds) {
-  EXPECT_EQ(statusPopupSizePolicy(QStringLiteral("audio")).preferred_content_size, QSize(900, 600));
+  EXPECT_EQ(statusPopupSizePolicy(QStringLiteral("audio")).minimum_content_size, QSize(600, 480));
+  EXPECT_EQ(statusPopupSizePolicy(QStringLiteral("audio")).preferred_content_size, QSize(780, 820));
   EXPECT_EQ(statusPopupSizePolicy(QStringLiteral("audio")).overflow_mode, StatusPopupOverflowMode::InternalList);
   EXPECT_EQ(statusPopupSizePolicy(QStringLiteral("network")).preferred_content_size, QSize(600, 866));
   EXPECT_EQ(statusPopupSizePolicy(QStringLiteral("network")).overflow_mode, StatusPopupOverflowMode::InternalList);

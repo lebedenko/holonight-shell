@@ -38,6 +38,7 @@ Item {
 
   // Track
   Rectangle {
+    objectName: "audioVolumeSliderTrack"
     anchors.verticalCenter: parent.verticalCenter
     x: root.trackLeft
     width: root.trackSpan
@@ -48,6 +49,7 @@ Item {
 
   // Fill
   Rectangle {
+    objectName: "audioVolumeSliderFill"
     anchors.verticalCenter: parent.verticalCenter
     x: root.trackLeft
     width: root.trackSpan * (root.displayValue / 100.0)
@@ -58,6 +60,7 @@ Item {
 
   // Thumb
   Rectangle {
+    objectName: "audioVolumeSliderThumb"
     width: root.thumbRadius * 2
     height: root.thumbRadius * 2
     radius: root.thumbRadius

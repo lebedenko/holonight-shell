@@ -228,6 +228,69 @@ class FakePulseAudioSystem : public PulseAudioSystem {
   void pa_operation_unref(pa_operation*) override {}
   pa_context_state_t pa_context_get_state(const pa_context*) override { return context_state; }
   int pa_context_errno(const pa_context*) override { return 0; }
+
+  pa_stream* mock_stream = reinterpret_cast<pa_stream*>(0x5555);
+  int stream_new_calls = 0;
+  pa_sample_spec last_stream_sample_spec{};
+  pa_stream_notify_cb_t stream_state_cb = nullptr;
+  void* stream_state_userdata = nullptr;
+  pa_stream_request_cb_t stream_read_cb = nullptr;
+  void* stream_read_userdata = nullptr;
+  int stream_connect_record_calls = 0;
+  int stream_connect_record_result = 0;
+  QString last_stream_connect_record_device;
+  pa_stream_flags_t last_stream_connect_record_flags{};
+  pa_stream_state_t stream_state = PA_STREAM_UNCONNECTED;
+  const void* stream_peek_data = nullptr;
+  size_t stream_peek_bytes = 0;
+  int stream_peek_result = 0;
+  int stream_drop_calls = 0;
+  int stream_disconnect_calls = 0;
+  int stream_unref_calls = 0;
+  std::vector<QString> stream_call_log;
+
+  pa_stream* pa_stream_new(pa_context*, const char*, const pa_sample_spec* ss, const pa_channel_map*) override {
+    stream_new_calls++;
+    if (ss != nullptr) {
+      last_stream_sample_spec = *ss;
+    }
+    return mock_stream;
+  }
+  void pa_stream_set_state_callback(pa_stream*, pa_stream_notify_cb_t cb, void* userdata) override {
+    stream_call_log.push_back(cb == nullptr ? QStringLiteral("clear_state_cb") : QStringLiteral("set_state_cb"));
+    stream_state_cb = cb;
+    stream_state_userdata = userdata;
+  }
+  void pa_stream_set_read_callback(pa_stream*, pa_stream_request_cb_t cb, void* userdata) override {
+    stream_call_log.push_back(cb == nullptr ? QStringLiteral("clear_read_cb") : QStringLiteral("set_read_cb"));
+    stream_read_cb = cb;
+    stream_read_userdata = userdata;
+  }
+  int pa_stream_connect_record(pa_stream*, const char* dev, const pa_buffer_attr*, pa_stream_flags_t flags) override {
+    stream_connect_record_calls++;
+    last_stream_connect_record_device = QString::fromUtf8(dev != nullptr ? dev : "");
+    last_stream_connect_record_flags = flags;
+    return stream_connect_record_result;
+  }
+  int pa_stream_peek(pa_stream*, const void** data, size_t* bytes) override {
+    *data = stream_peek_data;
+    *bytes = stream_peek_bytes;
+    return stream_peek_result;
+  }
+  int pa_stream_drop(pa_stream*) override {
+    stream_drop_calls++;
+    return 0;
+  }
+  int pa_stream_disconnect(pa_stream*) override {
+    stream_call_log.push_back(QStringLiteral("disconnect"));
+    stream_disconnect_calls++;
+    return 0;
+  }
+  void pa_stream_unref(pa_stream*) override {
+    stream_call_log.push_back(QStringLiteral("unref"));
+    stream_unref_calls++;
+  }
+  pa_stream_state_t pa_stream_get_state(const pa_stream*) override { return stream_state; }
 };
 // NOLINTEND(readability-named-parameter,readability-identifier-length,cppcoreguidelines-pro-type-reinterpret-cast)
 
@@ -722,5 +785,596 @@ TEST(PulseAudioBackend, SynchronousConnectFailuresReachRetryCeiling) {
   }
 
   PulseAudioBackend::resetReconnectBackoffSchedule();
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+// ============================================================
+// T-009: classifyBusType() and metadata extraction
+// ============================================================
+
+TEST(ClassifyBusType, HdmiFormFactorIsDigital) {
+  pa_proplist* proplist = pa_proplist_new();
+  pa_proplist_sets(proplist, PA_PROP_DEVICE_FORM_FACTOR, "hdmi");
+  EXPECT_EQ(classifyBusType(proplist, QStringLiteral("alsa_output.pci"), QString()), QStringLiteral("Digital"));
+  pa_proplist_free(proplist);
+}
+
+TEST(ClassifyBusType, DeviceNameContainingSpdifIsDigital) {
+  pa_proplist* proplist = pa_proplist_new();
+  EXPECT_EQ(classifyBusType(proplist, QStringLiteral("alsa_output.spdif-surround"), QString()),
+            QStringLiteral("Digital"));
+  pa_proplist_free(proplist);
+}
+
+TEST(ClassifyBusType, BluetoothBusIsBluetooth) {
+  pa_proplist* proplist = pa_proplist_new();
+  pa_proplist_sets(proplist, PA_PROP_DEVICE_BUS, "bluetooth");
+  EXPECT_EQ(classifyBusType(proplist, QStringLiteral("bluez_sink"), QString()), QStringLiteral("Bluetooth"));
+  pa_proplist_free(proplist);
+}
+
+TEST(ClassifyBusType, UsbBusIsDigital) {
+  pa_proplist* proplist = pa_proplist_new();
+  pa_proplist_sets(proplist, PA_PROP_DEVICE_BUS, "usb");
+  EXPECT_EQ(classifyBusType(proplist, QStringLiteral("usb_headset"), QString()), QStringLiteral("Digital"));
+  pa_proplist_free(proplist);
+}
+
+TEST(ClassifyBusType, PciBusIsAnalog) {
+  pa_proplist* proplist = pa_proplist_new();
+  pa_proplist_sets(proplist, PA_PROP_DEVICE_BUS, "pci");
+  EXPECT_EQ(classifyBusType(proplist, QStringLiteral("alsa_output.pci"), QString()), QStringLiteral("Analog"));
+  pa_proplist_free(proplist);
+}
+
+TEST(ClassifyBusType, EmptyProplistIsUnknown) {
+  pa_proplist* proplist = pa_proplist_new();
+  EXPECT_EQ(classifyBusType(proplist, QString(), QString()), QStringLiteral("Unknown"));
+  pa_proplist_free(proplist);
+}
+
+TEST(ClassifyBusType, NullProplistIsUnknown) {
+  EXPECT_EQ(classifyBusType(nullptr, QString(), QString()), QStringLiteral("Unknown"));
+}
+
+TEST(PulseAudioBackend, SinkToDevicePopulatesChannelCountSampleRateAndMetadata) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "test-sink";
+    info.default_source_name = "test-source";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_sink_info sink{};
+    sink.index = 7;
+    sink.name = "test-sink";
+    sink.description = "Test Sink";
+    sink.channel_map.channels = 2;
+    sink.sample_spec.rate = 48000;
+    sink.volume.channels = 2;
+    sink.volume.values[0] = PA_VOLUME_NORM;
+    sink.volume.values[1] = PA_VOLUME_NORM;
+    sink.proplist = pa_proplist_new();
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_BUS, "pci");
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_ICON_NAME, "audio-card");
+
+    ASSERT_NE(mock_sys.sink_cb, nullptr);
+    mock_sys.sink_cb(mock_sys.mock_context, &sink, 0, mock_sys.sink_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    auto dev = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(dev.channel_count, 2);
+    EXPECT_EQ(dev.sample_rate, 48000U);
+    EXPECT_EQ(dev.bus_type, QStringLiteral("Analog"));
+    EXPECT_EQ(dev.icon_name, QStringLiteral("audio-card"));
+    EXPECT_TRUE(dev.codec.isEmpty());
+
+    pa_proplist_free(sink.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, HdmiSinkOverridesGenericCardIconWithDisplayIcon) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info server_info{};
+    server_info.default_sink_name = "alsa_output.pci.hdmi-stereo";
+    mock_sys.server_info_cb(mock_sys.mock_context, &server_info, mock_sys.server_info_userdata);
+
+    pa_sink_info sink{};
+    sink.index = 8;
+    sink.name = "alsa_output.pci.hdmi-stereo";
+    sink.description = "Digital Stereo (HDMI)";
+    sink.channel_map.channels = 2;
+    sink.sample_spec.rate = 48000;
+    sink.volume.channels = 2;
+    sink.volume.values[0] = PA_VOLUME_NORM;
+    sink.volume.values[1] = PA_VOLUME_NORM;
+    sink.proplist = pa_proplist_new();
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_ICON_NAME, "audio-card");
+
+    ASSERT_NE(mock_sys.sink_cb, nullptr);
+    mock_sys.sink_cb(mock_sys.mock_context, &sink, 0, mock_sys.sink_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    const auto device = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(device.bus_type, QStringLiteral("Digital"));
+    EXPECT_EQ(device.icon_name, QStringLiteral("video-display"));
+
+    pa_proplist_free(sink.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, SourceToDevicePopulatesChannelCountAndSampleRate) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "test-sink";
+    info.default_source_name = "test-source";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_source_info source{};
+    source.index = 9;
+    source.name = "test-source";
+    source.description = "Test Source";
+    source.monitor_of_sink = PA_INVALID_INDEX;
+    source.channel_map.channels = 1;
+    source.sample_spec.rate = 44100;
+    source.volume.channels = 1;
+    source.volume.values[0] = PA_VOLUME_NORM;
+    source.proplist = pa_proplist_new();
+    pa_proplist_sets(source.proplist, PA_PROP_DEVICE_FORM_FACTOR, "microphone");
+
+    ASSERT_NE(mock_sys.source_cb, nullptr);
+    mock_sys.source_cb(mock_sys.mock_context, &source, 0, mock_sys.source_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    auto dev = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(dev.channel_count, 1);
+    EXPECT_EQ(dev.sample_rate, 44100U);
+    EXPECT_EQ(dev.icon_name, QStringLiteral("audio-input-microphone"));
+
+    pa_proplist_free(source.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, GenericAnalogCardSourceUsesMicrophoneIcon) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "";
+    info.default_source_name = "alsa_input.pci-0000_00_1f.3.analog-stereo";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_source_info source{};
+    source.index = 10;
+    source.name = info.default_source_name;
+    source.description = "Built-in Audio Analog Stereo";
+    source.monitor_of_sink = PA_INVALID_INDEX;
+    source.channel_map.channels = 2;
+    source.sample_spec.rate = 48000;
+    source.volume.channels = 2;
+    source.volume.values[0] = PA_VOLUME_NORM;
+    source.volume.values[1] = PA_VOLUME_NORM;
+    source.proplist = pa_proplist_new();
+    pa_proplist_sets(source.proplist, PA_PROP_DEVICE_ICON_NAME, "audio-card-analog");
+
+    ASSERT_NE(mock_sys.source_cb, nullptr);
+    mock_sys.source_cb(mock_sys.mock_context, &source, 0, mock_sys.source_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    const auto device = device_added_spy.constFirst().constFirst().value<AudioDevice>();
+    EXPECT_EQ(device.icon_name, QStringLiteral("audio-input-microphone"));
+
+    pa_proplist_free(source.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, BluetoothCodecPrefersBluezCodecName) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "bt-sink";
+    info.default_source_name = "";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_sink_info sink{};
+    sink.index = 11;
+    sink.name = "bt-sink";
+    sink.description = "Bluetooth Headphones";
+    sink.volume.channels = 2;
+    sink.volume.values[0] = PA_VOLUME_NORM;
+    sink.volume.values[1] = PA_VOLUME_NORM;
+    sink.proplist = pa_proplist_new();
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_BUS, "bluetooth");
+    pa_proplist_sets(sink.proplist, "bluez.codec_name", "AAC");
+    pa_proplist_sets(sink.proplist, "bluetooth.codec", "SBC");
+
+    mock_sys.sink_cb(mock_sys.mock_context, &sink, 0, mock_sys.sink_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    auto dev = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(dev.bus_type, QStringLiteral("Bluetooth"));
+    EXPECT_EQ(dev.codec, QStringLiteral("AAC"));
+
+    pa_proplist_free(sink.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, BluetoothCodecFallsBackToBluetoothCodecKey) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "bt-sink";
+    info.default_source_name = "";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_sink_info sink{};
+    sink.index = 12;
+    sink.name = "bt-sink";
+    sink.description = "Bluetooth Headphones";
+    sink.volume.channels = 2;
+    sink.volume.values[0] = PA_VOLUME_NORM;
+    sink.volume.values[1] = PA_VOLUME_NORM;
+    sink.proplist = pa_proplist_new();
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_BUS, "bluetooth");
+    pa_proplist_sets(sink.proplist, "bluetooth.codec", "SBC");
+
+    mock_sys.sink_cb(mock_sys.mock_context, &sink, 0, mock_sys.sink_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    auto dev = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(dev.codec, QStringLiteral("SBC"));
+
+    pa_proplist_free(sink.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, BluetoothCodecDefaultsToPcmWhenBothKeysAbsent) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "bt-sink";
+    info.default_source_name = "";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_sink_info sink{};
+    sink.index = 13;
+    sink.name = "bt-sink";
+    sink.description = "Bluetooth Headphones";
+    sink.volume.channels = 2;
+    sink.volume.values[0] = PA_VOLUME_NORM;
+    sink.volume.values[1] = PA_VOLUME_NORM;
+    sink.proplist = pa_proplist_new();
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_BUS, "bluetooth");
+
+    mock_sys.sink_cb(mock_sys.mock_context, &sink, 0, mock_sys.sink_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    auto dev = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(dev.codec, QStringLiteral("PCM"));
+
+    pa_proplist_free(sink.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, NonBluetoothDeviceCodecStaysEmpty) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy device_added_spy(&backend, &PulseAudioBackend::deviceAdded);
+    backend.start();
+    mock_sys.context_state = PA_CONTEXT_READY;
+    mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+    pa_server_info info{};
+    info.default_sink_name = "usb-sink";
+    info.default_source_name = "";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    pa_sink_info sink{};
+    sink.index = 14;
+    sink.name = "usb-sink";
+    sink.description = "USB DAC";
+    sink.volume.channels = 2;
+    sink.volume.values[0] = PA_VOLUME_NORM;
+    sink.volume.values[1] = PA_VOLUME_NORM;
+    sink.proplist = pa_proplist_new();
+    pa_proplist_sets(sink.proplist, PA_PROP_DEVICE_BUS, "usb");
+    pa_proplist_sets(sink.proplist, "bluez.codec_name", "AAC");  // present but irrelevant — not Bluetooth
+
+    mock_sys.sink_cb(mock_sys.mock_context, &sink, 0, mock_sys.sink_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_EQ(device_added_spy.count(), 1);
+    auto dev = device_added_spy.first().at(0).value<AudioDevice>();
+    EXPECT_EQ(dev.bus_type, QStringLiteral("Digital"));
+    EXPECT_TRUE(dev.codec.isEmpty());
+
+    pa_proplist_free(sink.proplist);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+// ============================================================
+// T-010: input-level monitoring stream lifecycle
+// ============================================================
+
+namespace {
+
+void bringToReadyWithDefaultSource(PulseAudioBackend& backend, FakePulseAudioSystem& mock_sys,
+                                   const char* default_source_name) {
+  backend.start();
+  mock_sys.context_state = PA_CONTEXT_READY;
+  mock_sys.state_cb(mock_sys.mock_context, mock_sys.state_userdata);
+
+  pa_server_info info{};
+  info.default_sink_name = "test-sink";
+  info.default_source_name = default_source_name;
+  mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+}
+
+}  // namespace
+
+TEST(PulseAudioBackend, StartInputLevelMonitorConnectsRecordStreamToDefaultSource) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+
+    backend.startInputLevelMonitor();
+
+    EXPECT_EQ(mock_sys.stream_new_calls, 1);
+    EXPECT_EQ(mock_sys.last_stream_sample_spec.rate, 30U);
+    EXPECT_EQ(mock_sys.last_stream_sample_spec.channels, 1);
+    EXPECT_EQ(mock_sys.last_stream_sample_spec.format, PA_SAMPLE_FLOAT32LE);
+    EXPECT_EQ(mock_sys.stream_connect_record_calls, 1);
+    EXPECT_EQ(mock_sys.last_stream_connect_record_device, QStringLiteral("mic-a"));
+    EXPECT_TRUE((mock_sys.last_stream_connect_record_flags & PA_STREAM_PEAK_DETECT) != 0);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, StartInputLevelMonitorIsIdempotent) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+
+    backend.startInputLevelMonitor();
+    backend.startInputLevelMonitor();
+
+    EXPECT_EQ(mock_sys.stream_new_calls, 1);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, FailedInputLevelConnectionCleansUpAndRetriesAreBounded) {
+  FakePulseAudioSystem mock_sys;
+  mock_sys.stream_connect_record_result = -1;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+
+    backend.startInputLevelMonitor();
+    for (int attempt = 0; attempt < 5; ++attempt) {
+      QCoreApplication::processEvents();
+    }
+
+    EXPECT_EQ(mock_sys.stream_connect_record_calls, 4);
+    EXPECT_EQ(mock_sys.stream_unref_calls, 4);
+    EXPECT_EQ(mock_sys.stream_disconnect_calls, 0);
+    EXPECT_EQ(mock_sys.stream_state_cb, nullptr);
+    EXPECT_EQ(mock_sys.stream_read_cb, nullptr);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, ReadCallbackEmitsScaledInputLevel) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy level_spy(&backend, &PulseAudioBackend::inputLevelChanged);
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+    backend.startInputLevelMonitor();
+
+    const float sample = 0.5F;
+    mock_sys.stream_peek_data = &sample;
+    mock_sys.stream_peek_bytes = sizeof(sample);
+    mock_sys.stream_peek_result = 0;
+
+    ASSERT_NE(mock_sys.stream_read_cb, nullptr);
+    mock_sys.stream_read_cb(mock_sys.mock_stream, sizeof(sample), mock_sys.stream_read_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_GE(level_spy.count(), 1);
+    EXPECT_EQ(level_spy.last().at(0).toInt(), 50);
+    EXPECT_EQ(mock_sys.stream_drop_calls, 1);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, StreamFailedStateEmitsZeroLevel) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy level_spy(&backend, &PulseAudioBackend::inputLevelChanged);
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+    backend.startInputLevelMonitor();
+
+    mock_sys.stream_state = PA_STREAM_FAILED;
+    ASSERT_NE(mock_sys.stream_state_cb, nullptr);
+    mock_sys.stream_state_cb(mock_sys.mock_stream, mock_sys.stream_state_userdata);
+    QCoreApplication::processEvents();
+
+    ASSERT_GE(level_spy.count(), 1);
+    EXPECT_EQ(level_spy.last().at(0).toInt(), 0);
+    EXPECT_EQ(mock_sys.stream_disconnect_calls, 1);
+    EXPECT_EQ(mock_sys.stream_unref_calls, 1);
+    EXPECT_EQ(mock_sys.stream_new_calls, 2);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, StopInputLevelMonitorClearsCallbacksBeforeDisconnectAndUnref) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    QSignalSpy level_spy(&backend, &PulseAudioBackend::inputLevelChanged);
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+    backend.startInputLevelMonitor();
+
+    backend.stopInputLevelMonitor();
+    QCoreApplication::processEvents();
+
+    ASSERT_GE(mock_sys.stream_call_log.size(), 4U);
+    const auto tail_start = mock_sys.stream_call_log.size() - 4;
+    EXPECT_EQ(mock_sys.stream_call_log[tail_start], QStringLiteral("clear_state_cb"));
+    EXPECT_EQ(mock_sys.stream_call_log[tail_start + 1], QStringLiteral("clear_read_cb"));
+    EXPECT_EQ(mock_sys.stream_call_log[tail_start + 2], QStringLiteral("disconnect"));
+    EXPECT_EQ(mock_sys.stream_call_log[tail_start + 3], QStringLiteral("unref"));
+    EXPECT_EQ(mock_sys.stream_disconnect_calls, 1);
+    EXPECT_EQ(mock_sys.stream_unref_calls, 1);
+    ASSERT_GE(level_spy.count(), 1);
+    EXPECT_EQ(level_spy.last().at(0).toInt(), 0);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, StopInputLevelMonitorIsIdempotent) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+    backend.startInputLevelMonitor();
+
+    backend.stopInputLevelMonitor();
+    backend.stopInputLevelMonitor();
+
+    EXPECT_EQ(mock_sys.stream_disconnect_calls, 1);
+    EXPECT_EQ(mock_sys.stream_unref_calls, 1);
+  }
+
+  PulseAudioBackend::resetPulseAudioSystem();
+}
+
+TEST(PulseAudioBackend, DefaultSourceChangeWhileMonitoringReconnectsStream) {
+  FakePulseAudioSystem mock_sys;
+  PulseAudioBackend::setPulseAudioSystem(&mock_sys);
+
+  {
+    PulseAudioBackend backend;
+    bringToReadyWithDefaultSource(backend, mock_sys, "mic-a");
+    backend.startInputLevelMonitor();
+    ASSERT_EQ(mock_sys.stream_new_calls, 1);
+
+    pa_server_info info{};
+    info.default_sink_name = "test-sink";
+    info.default_source_name = "mic-b";
+    mock_sys.server_info_cb(mock_sys.mock_context, &info, mock_sys.server_info_userdata);
+
+    EXPECT_EQ(mock_sys.stream_new_calls, 2);
+    EXPECT_EQ(mock_sys.last_stream_connect_record_device, QStringLiteral("mic-b"));
+  }
+
   PulseAudioBackend::resetPulseAudioSystem();
 }

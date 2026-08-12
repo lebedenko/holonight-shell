@@ -3,6 +3,7 @@
 #include "AudioTypes.h"
 
 #include <QObject>
+#include <QString>
 #include <QTimer>
 
 #include <cstdint>
@@ -10,6 +11,11 @@
 #include <vector>
 
 class PulseAudioSystem;
+struct pa_proplist;
+
+// Free function (external linkage) so test_pulse_audio_backend.cpp can exercise it directly
+// against hand-built pa_proplist fixtures without going through a live PulseAudio connection.
+QString classifyBusType(const pa_proplist* proplist, const QString& device_name, const QString& active_port_name);
 
 class PulseAudioBackend : public QObject {
   Q_OBJECT
@@ -34,6 +40,9 @@ class PulseAudioBackend : public QObject {
   void start();
   void stop();
 
+  void startInputLevelMonitor();
+  void stopInputLevelMonitor();
+
   void setDeviceVolume(uint32_t idx, int percent);
   void setDeviceMuted(uint32_t idx, bool muted);
   void setSourceVolume(uint32_t idx, int percent);
@@ -56,11 +65,13 @@ class PulseAudioBackend : public QObject {
   void streamChanged(AudioStream stream);
   void availableChanged(bool available);
   void healthStateChanged(AudioHealthState state);
+  void inputLevelChanged(int level);
 
  private Q_SLOTS:
   void onContextLost();
   void onReconnectSucceeded();
   void attemptReconnect();
+  void retryInputLevelMonitor();
 
  private:
   void scheduleReconnect();

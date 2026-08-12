@@ -67,6 +67,18 @@ class PulseAudioSystem {
   virtual void pa_operation_unref(pa_operation* o) = 0;
   virtual pa_context_state_t pa_context_get_state(const pa_context* c) = 0;
   virtual int pa_context_errno(const pa_context* c) = 0;
+
+  virtual pa_stream* pa_stream_new(pa_context* c, const char* name, const pa_sample_spec* ss,
+                                   const pa_channel_map* map) = 0;
+  virtual void pa_stream_set_state_callback(pa_stream* s, pa_stream_notify_cb_t cb, void* userdata) = 0;
+  virtual void pa_stream_set_read_callback(pa_stream* s, pa_stream_request_cb_t cb, void* userdata) = 0;
+  virtual int pa_stream_connect_record(pa_stream* s, const char* dev, const pa_buffer_attr* attr,
+                                       pa_stream_flags_t flags) = 0;
+  virtual int pa_stream_peek(pa_stream* s, const void** data, size_t* bytes) = 0;
+  virtual int pa_stream_drop(pa_stream* s) = 0;
+  virtual int pa_stream_disconnect(pa_stream* s) = 0;
+  virtual void pa_stream_unref(pa_stream* s) = 0;
+  virtual pa_stream_state_t pa_stream_get_state(const pa_stream* s) = 0;
 };
 
 class RealPulseAudioSystem : public PulseAudioSystem {
@@ -176,5 +188,27 @@ class RealPulseAudioSystem : public PulseAudioSystem {
   void pa_operation_unref(pa_operation* o) override { ::pa_operation_unref(o); }
   pa_context_state_t pa_context_get_state(const pa_context* c) override { return ::pa_context_get_state(c); }
   int pa_context_errno(const pa_context* c) override { return ::pa_context_errno(c); }
+
+  pa_stream* pa_stream_new(pa_context* c, const char* name, const pa_sample_spec* ss,
+                           const pa_channel_map* map) override {
+    return ::pa_stream_new(c, name, ss, map);
+  }
+  void pa_stream_set_state_callback(pa_stream* s, pa_stream_notify_cb_t cb, void* userdata) override {
+    ::pa_stream_set_state_callback(s, cb, userdata);
+  }
+  void pa_stream_set_read_callback(pa_stream* s, pa_stream_request_cb_t cb, void* userdata) override {
+    ::pa_stream_set_read_callback(s, cb, userdata);
+  }
+  int pa_stream_connect_record(pa_stream* s, const char* dev, const pa_buffer_attr* attr,
+                               pa_stream_flags_t flags) override {
+    return ::pa_stream_connect_record(s, dev, attr, flags);
+  }
+  int pa_stream_peek(pa_stream* s, const void** data, size_t* bytes) override {
+    return ::pa_stream_peek(s, data, bytes);
+  }
+  int pa_stream_drop(pa_stream* s) override { return ::pa_stream_drop(s); }
+  int pa_stream_disconnect(pa_stream* s) override { return ::pa_stream_disconnect(s); }
+  void pa_stream_unref(pa_stream* s) override { ::pa_stream_unref(s); }
+  pa_stream_state_t pa_stream_get_state(const pa_stream* s) override { return ::pa_stream_get_state(s); }
 };
 // NOLINTEND(readability-identifier-naming,readability-identifier-length,cppcoreguidelines-special-member-functions)

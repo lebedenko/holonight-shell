@@ -45,6 +45,7 @@ void AudioService::start() {
   connect(backend_, &PulseAudioBackend::streamAdded, this, &AudioService::onStreamAdded);
   connect(backend_, &PulseAudioBackend::streamChanged, this, &AudioService::onStreamChanged);
   connect(backend_, &PulseAudioBackend::streamRemoved, this, &AudioService::onStreamRemoved);
+  connect(backend_, &PulseAudioBackend::inputLevelChanged, this, &AudioService::applyInputLevel);
 
   backend_->start();
 }
@@ -92,6 +93,13 @@ void AudioService::setDeviceMuted(uint32_t idx, bool muted) {
   }
 }
 
+void AudioService::setDefaultOutputMuted(bool muted) {
+  if (backend_ == nullptr || default_output_id_ == kInvalidId) {
+    return;
+  }
+  backend_->setDeviceMuted(default_output_id_, muted);
+}
+
 void AudioService::setInputDeviceVolume(uint32_t idx, int percent) {
   if (backend_ != nullptr) {
     backend_->setSourceVolume(idx, percent);
@@ -128,6 +136,23 @@ void AudioService::moveStreamToInput(uint32_t stream_idx, uint32_t source_idx) {
   }
 }
 
+void AudioService::startInputLevelMonitoring() {
+  ++input_level_monitoring_users_;
+  if (backend_ != nullptr && input_level_monitoring_users_ == 1) {
+    backend_->startInputLevelMonitor();
+  }
+}
+
+void AudioService::stopInputLevelMonitoring() {
+  if (input_level_monitoring_users_ == 0) {
+    return;
+  }
+  --input_level_monitoring_users_;
+  if (backend_ != nullptr && input_level_monitoring_users_ == 0) {
+    backend_->stopInputLevelMonitor();
+  }
+}
+
 void AudioService::applyVolume(int value) {
   if (volume_ == value) {
     return;
@@ -142,6 +167,14 @@ void AudioService::applyMuted(bool value) {
   }
   muted_ = value;
   emit mutedChanged();
+}
+
+void AudioService::applyInputLevel(int value) {
+  if (input_level_ == value) {
+    return;
+  }
+  input_level_ = value;
+  emit inputLevelChanged(input_level_);
 }
 
 void AudioService::setAvailable(bool value) {

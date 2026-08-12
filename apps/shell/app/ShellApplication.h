@@ -18,6 +18,7 @@ class MimeService;
 class PortalService;
 class ScreenSaverAdaptor;
 class SessionIntegrationService;
+class SettingsNavigationService;
 class ConfigService;
 class ControlServer;
 class AudioService;
@@ -127,6 +128,7 @@ class ShellApplication : public QObject {
   KeyboardLayoutService* keyboard_layout_ = nullptr;
   ActiveWindowService* aws_ = nullptr;
   AiChatService* ai_chat_service_ = nullptr;
+  SettingsNavigationService* settings_navigation_service_ = nullptr;
   MonitorOccupancyService* occupancy_ = nullptr;
   BatteryService* battery_ = nullptr;
   AudioService* audio_ = nullptr;

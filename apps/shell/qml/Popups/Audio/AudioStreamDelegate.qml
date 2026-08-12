@@ -9,8 +9,8 @@ import Holonight.Controls
 import HolonightShell
 
 // One application stream row (sink-input / source-output): app icon, application name,
-// media title subtitle, mute toggle, volume slider, percentage. Application streams always
-// use the cyan accent (no per-section accent, no default concept).
+// media title subtitle, volume slider, percentage, disabled "..." placeholder. Application
+// streams always use the cyan accent (no per-section accent, no default concept).
 HnListDelegate {
   id: root
 
@@ -21,7 +21,6 @@ HnListDelegate {
   implicitHeight: 64
 
   readonly property color accentColor: HoloniightPalette.accentCyan
-  readonly property bool isMuted: root.model.muted ?? false
   readonly property int volumePct: root.model.volume ?? 0
   readonly property string iconName: root.model.iconName ?? ""
   readonly property string appName: root.model.application && root.model.application.length > 0
@@ -50,30 +49,10 @@ HnListDelegate {
     RowLayout {
       spacing: 12
 
-      Item {
-        objectName: "streamMuteButton"
-
-        Layout.preferredWidth: 28
-        Layout.preferredHeight: 28
-
-        ExternalIcon {
-          anchors.centerIn: parent
-          iconName: root.isMuted ? "audio-volume-muted" : "audio-volume-high"
-          iconSize: 20
-          tintColor: root.isMuted ? HoloniightPalette.textMuted : root.accentColor
-          opacity: root.isMuted ? 0.6 : 1.0
-        }
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: AudioService.setStreamMuted(root.model.streamId, !root.isMuted)
-        }
-      }
-
       AudioVolumeSlider {
         objectName: "streamVolumeSlider"
 
-        Layout.preferredWidth: 180
+        Layout.preferredWidth: root.width < 520 ? 100 : 180
         Layout.alignment: Qt.AlignVCenter
         value: root.volumePct
         accentColor: root.accentColor
@@ -89,6 +68,23 @@ HnListDelegate {
         text: root.volumePct + "%"
         color: HoloniightPalette.textMuted
         font.pointSize: 9.75
+      }
+
+      Item {
+        objectName: "streamMoreOptionsButton"
+
+        visible: root.width >= 460
+        Layout.preferredWidth: visible ? 28 : 0
+        Layout.preferredHeight: 28
+        Layout.alignment: Qt.AlignVCenter
+
+        Text {
+          anchors.centerIn: parent
+          text: "⋯"
+          color: HoloniightPalette.textDisabled
+          font.pointSize: 14
+          font.bold: true
+        }
       }
     }
   }

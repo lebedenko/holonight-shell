@@ -67,14 +67,6 @@ TestCase {
     }
 
     Component {
-        id: audioTabSidebarComponent
-
-        AudioTabSidebar {
-            currentTab: 1
-        }
-    }
-
-    Component {
         id: keyboardStatusPopupComponent
 
         StatusPopup {
@@ -228,17 +220,6 @@ TestCase {
         compare(dialog.background.fillColor, HoloniightPalette.surfaceRaised)
         compare(dialog.background.borderColor, HoloniightPalette.borderPassive)
         compare(dialog.background.borderWidth, HnMetrics.borderWidth)
-    }
-
-    function test_audio_tab_sidebar_exposes_expected_tabs() {
-        var sidebar = createTemporaryObject(audioTabSidebarComponent, null)
-        verify(sidebar !== null, "AudioTabSidebar should instantiate")
-        compare(sidebar.currentTab, 1)
-        compare(sidebar.implicitWidth, 180)
-        compare(sidebar.tabLabels.length, 3)
-        compare(sidebar.tabLabels[0], "Output Devices")
-        compare(sidebar.tabLabels[1], "Input Devices")
-        compare(sidebar.tabLabels[2], "Applications")
     }
 
     function test_toast_action_bar_instantiates_actions() {

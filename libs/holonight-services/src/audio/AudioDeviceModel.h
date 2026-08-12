@@ -5,12 +5,14 @@
 #include <QAbstractListModel>
 #include <QHash>
 #include <QList>
+#include <QVariantMap>
 
 #include <cstdint>
 
 class AudioDeviceModel : public QAbstractListModel {
   Q_OBJECT
   Q_CLASSINFO("QML.Element", "anonymous")
+  Q_PROPERTY(QVariantMap defaultDevice READ defaultDevice NOTIFY defaultDeviceChanged)
 
  public:
   enum class Role : uint16_t {
@@ -20,6 +22,11 @@ class AudioDeviceModel : public QAbstractListModel {
     Volume,
     Muted,
     IsDefault,
+    BusType,
+    ChannelCount,
+    SampleRate,
+    Codec,
+    IconName,
   };
 
   explicit AudioDeviceModel(QObject* parent = nullptr);
@@ -28,11 +35,19 @@ class AudioDeviceModel : public QAbstractListModel {
   [[nodiscard]] QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
+  [[nodiscard]] QVariantMap defaultDevice() const { return default_device_; }
+
   void applyAdd(const AudioDevice& device);
   void applyChange(const AudioDevice& device);
   void applyRemove(uint32_t device_id);
   void clear();
 
+ signals:
+  void defaultDeviceChanged();
+
  private:
+  void refreshDefaultDevice();
+
   QList<AudioDevice> devices_;
+  QVariantMap default_device_;
 };

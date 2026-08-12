@@ -13,27 +13,6 @@ TestCase {
     when: windowShown
 
     Component {
-        id: focusedSidebarComponent
-
-        FocusScope {
-            width: 180
-            height: 160
-            focus: true
-
-            AudioTabSidebar {
-                objectName: "audioTabSidebar"
-                anchors.fill: parent
-            }
-        }
-    }
-
-    Component {
-        id: signalSpy
-
-        SignalSpy {}
-    }
-
-    Component {
         id: audioPopupComponent
 
         StatusPopup {
@@ -59,6 +38,11 @@ TestCase {
                     muted: false
                     volume: 72
                     isDefault: true
+                    busType: "Analog"
+                    channelCount: 2
+                    sampleRate: 48000
+                    codec: ""
+                    iconName: "audio-speakers"
                 }
                 ListElement {
                     deviceId: 8
@@ -67,6 +51,11 @@ TestCase {
                     muted: false
                     volume: 38
                     isDefault: false
+                    busType: "Digital"
+                    channelCount: 2
+                    sampleRate: 48000
+                    codec: ""
+                    iconName: "audio-card"
                 }
             }
         }
@@ -143,73 +132,6 @@ TestCase {
         }
     }
 
-    function test_preserves_tab_catalog_and_selection() {
-        const focusScope = createTemporaryObject(focusedSidebarComponent, root)
-        verify(focusScope)
-        const sidebar = findChild(focusScope, "audioTabSidebar")
-        verify(sidebar)
-        sidebar.currentTab = 1
-        compare(sidebar.tabLabels, ["Output Devices", "Input Devices", "Applications"])
-
-        const outputDelegate = findChild(sidebar, "audioTabDelegate-0")
-        const inputDelegate = findChild(sidebar, "audioTabDelegate-1")
-        const applicationsDelegate = findChild(sidebar, "audioTabDelegate-2")
-        verify(outputDelegate)
-        verify(inputDelegate)
-        verify(applicationsDelegate)
-        compare(outputDelegate.title, "Output Devices")
-        compare(inputDelegate.title, "Input Devices")
-        compare(applicationsDelegate.title, "Applications")
-        compare(outputDelegate.checked, false)
-        compare(inputDelegate.checked, true)
-        compare(applicationsDelegate.checked, false)
-
-        sidebar.currentTab = 2
-        compare(inputDelegate.checked, false)
-        compare(applicationsDelegate.checked, true)
-    }
-
-    function test_routes_delegate_and_tab_keyboard_activation() {
-        const focusScope = createTemporaryObject(focusedSidebarComponent, root)
-        verify(focusScope)
-        const sidebar = findChild(focusScope, "audioTabSidebar")
-        verify(sidebar)
-
-        const selectedSpy = signalSpy.createObject(sidebar, {
-            "target": sidebar,
-            "signalName": "tabSelected"
-        })
-        verify(selectedSpy)
-
-        const outputDelegate = findChild(sidebar, "audioTabDelegate-0")
-        const inputDelegate = findChild(sidebar, "audioTabDelegate-1")
-        const applicationsDelegate = findChild(sidebar, "audioTabDelegate-2")
-        verify(outputDelegate)
-        verify(inputDelegate)
-        verify(applicationsDelegate)
-
-        inputDelegate.clicked()
-        compare(selectedSpy.count, 1)
-        compare(selectedSpy.signalArguments[0][0], 1)
-
-        compare(outputDelegate.activeFocusOnTab, true)
-        compare(inputDelegate.activeFocusOnTab, true)
-        compare(applicationsDelegate.activeFocusOnTab, true)
-
-        outputDelegate.forceActiveFocus()
-        verify(outputDelegate.activeFocus)
-        keyClick(Qt.Key_Tab)
-        verify(inputDelegate.activeFocus)
-        keyClick(Qt.Key_Tab)
-        verify(applicationsDelegate.activeFocus)
-        keyClick(Qt.Key_Space)
-        compare(selectedSpy.count, 2)
-        compare(selectedSpy.signalArguments[1][0], 2)
-
-        keyClick(Qt.Key_Backtab)
-        verify(inputDelegate.activeFocus)
-    }
-
     function test_status_popup_enables_rich_content_focus_scope() {
         const popup = createTemporaryObject(audioPopupComponent, root)
         verify(popup)
@@ -231,7 +153,7 @@ TestCase {
         verify(secondaryDelegate)
         verify(delegate instanceof HnListDelegate)
         compare(delegate.title, "Test Speakers")
-        compare(delegate.subtitle, "alsa_output.test")
+        compare(delegate.subtitle, "Analog • 2 channels • 48 kHz")
         compare(delegate.subtitlePresentation, HnListDelegate.SingleLine)
         compare(delegate.leadingContentAlignment, Qt.AlignVCenter)
         compare(delegate.checked, true)
@@ -240,7 +162,8 @@ TestCase {
         tryVerify(function() { return delegate.leadingItem !== null && delegate.trailingItem !== null })
         compare(findChild(delegate, "deviceVolumeSlider").value, 72)
         compare(findChild(delegate, "deviceVolumeText").text, "72%")
-        verify(findChild(delegate, "deviceMuteButton"))
+        verify(findChild(delegate, "deviceRadioIndicator"))
+        verify(findChild(delegate, "deviceIcon"))
 
         list.model.setProperty(0, "isDefault", false)
         list.model.setProperty(1, "isDefault", true)
@@ -283,7 +206,7 @@ TestCase {
         tryVerify(function() { return delegate.leadingItem !== null && delegate.trailingItem !== null })
         compare(findChild(delegate, "streamVolumeSlider").value, 38)
         compare(findChild(delegate, "streamVolumeText").text, "38%")
-        verify(findChild(delegate, "streamMuteButton"))
+        verify(findChild(delegate, "streamMoreOptionsButton"))
     }
 
     function test_device_list_uses_shared_empty_state() {

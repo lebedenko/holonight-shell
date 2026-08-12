@@ -4,6 +4,8 @@ add_library(holonight_app STATIC
     app/ControlServer.cpp
     app/ShellApplication.h
     app/ShellApplication.cpp
+    app/SettingsNavigationService.h
+    app/SettingsNavigationService.cpp
 )
 
 target_link_libraries(holonight_app PUBLIC
@@ -14,6 +16,7 @@ target_link_libraries(holonight_app PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Network
+    Qt6::DBus
     Qt6::Qml
 )
 
@@ -76,6 +79,24 @@ qt6_add_qml_module(holonight-shell
     NO_GENERATE_QMLTYPES
     NO_IMPORT_SCAN
     QML_FILES ${HOLONIGHT_QML_FILES}
+)
+
+# Plain JS files (pragma-library helpers imported via relative "import \"foo.js\"" — not
+# versioned QML component types) must NOT go through QML_FILES above: qt6_add_qml_module treats
+# every QML_FILES entry as an importable module type and auto-adds a "Name 1.0 path.js" line to
+# the generated qmldir, which makes this Qt build report the whole HolonightShell module as
+# ambiguous ("Found in qrc:/HolonightShell/ and in <empty>") and fail to load ANY type from it.
+# Bundle them as plain resources instead, at the same qrc alias the module's .qml files use, so
+# relative imports between the two still resolve.
+file(GLOB_RECURSE HOLONIGHT_QML_JS_FILES
+    LIST_DIRECTORIES false
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/qml/*.js"
+)
+qt6_add_resources(holonight-shell "qml_js_files"
+    PREFIX "/HolonightShell"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/qml"
+    FILES ${HOLONIGHT_QML_JS_FILES}
 )
 
 file(GLOB WEATHER_SVG_FILES

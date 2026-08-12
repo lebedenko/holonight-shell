@@ -1,106 +1,177 @@
 import QtQuick
 import QtQuick.Layouts
 import Holonight.Core
+import Holonight.Controls
 
 import HolonightShell
 
-// Audio popup body (mini-pavucontrol). Left tab rail selects one of three sections — Output
-// Devices, Input Devices, Applications — shown one at a time in the main area. A Master Volume
-// strip is pinned to the bottom across all tabs. Falls back to an "unavailable" message when
-// the audio service is not connected (REQ-F-032).
+// Audio popup body, redesigned as a single scrollable column (REQ-F-1001/1002): header ->
+// Master Volume hero -> Output accordion -> Input accordion (with live mic meter) ->
+// Application Volume (4-row cap) -> keyboard-hint footer. Replaces the old tab-sidebar layout;
+// AudioTabSidebar.qml is deleted (no tab-selection UI remains). Falls back to an "unavailable"
+// message when the audio service is not connected.
 Item {
   id: root
 
-  property int currentTab: 0
+  // Accordion state (REQ-F-7001/7002): a single boolean structurally enforces "exactly one
+  // expanded at all times" — there is no representable illegal state. Each AudioDeviceSection
+  // bubbles expandRequested() up ("I want to be the expanded one"); this owns the actual
+  // transition. Defaults satisfy REQ-F-7002 (Output expanded, Input collapsed) with no reset
+  // code needed — StatusPopupSurface::show() destroys and rebuilds this whole tree on every
+  // open, so nothing survives between opens.
+  property bool outputExpanded: true
+  readonly property bool inputExpanded: !root.outputExpanded
 
-  readonly property var sectionTitles: [qsTr("Output Devices"), qsTr("Input Devices"), qsTr("Applications")]
+  readonly property real sectionSeparatorThickness: 1 / Screen.devicePixelRatio
+  readonly property real separatorBleed: 16
+
+  Component.onCompleted: AudioService.startInputLevelMonitoring()
+  Component.onDestruction: AudioService.stopInputLevelMonitoring()
+
+  Keys.onPressed: (event) => {
+    if (event.key === Qt.Key_M && event.modifiers === Qt.NoModifier) {
+      AudioService.setDefaultOutputMuted(!AudioService.muted)
+      event.accepted = true
+    }
+  }
+
+  // Unavailable state.
+  Text {
+    anchors.centerIn: parent
+    visible: !AudioService.available
+    text: qsTr("Audio service unavailable")
+    color: HoloniightPalette.textSecondary
+    font.pointSize: 12
+  }
 
   ColumnLayout {
-    anchors.fill: parent
+    id: pinnedHeader
+    objectName: "audioPopupPinnedHeader"
+
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    visible: AudioService.available
     spacing: 0
 
-    RowLayout {
+    AudioPopupHeader {
       Layout.fillWidth: true
-      Layout.fillHeight: true
-      spacing: 0
+      Layout.leftMargin: 16
+      Layout.rightMargin: 16
+      Layout.topMargin: 8
+      Layout.bottomMargin: 16
+    }
 
-      AudioTabSidebar {
-        Layout.preferredWidth: 180
-        Layout.fillHeight: true
-        currentTab: root.currentTab
-        onTabSelected: (index) => { root.currentTab = index; }
-      }
+    HnSeparator {
+      objectName: "audioHeaderSeparator"
+      thickness: root.sectionSeparatorThickness
+      fadeMode: HnSeparator.Solid
+      Layout.fillWidth: true
+      Layout.leftMargin: -root.separatorBleed
+      Layout.rightMargin: -root.separatorBleed
+      Layout.minimumHeight: root.sectionSeparatorThickness
+      Layout.preferredHeight: root.sectionSeparatorThickness
+    }
 
-      Rectangle {
-        Layout.preferredWidth: 1
-        Layout.fillHeight: true
-        color: HoloniightPalette.borderPassive
-      }
+    AudioMasterPanel {
+      objectName: "audioMasterPanel"
+      Layout.fillWidth: true
+      Layout.leftMargin: 16
+      Layout.rightMargin: 16
+      Layout.topMargin: 16
+      Layout.bottomMargin: 16
+    }
 
-      Item {
+    HnSeparator {
+      objectName: "audioHeroSeparator"
+      thickness: root.sectionSeparatorThickness
+      fadeMode: HnSeparator.Solid
+      Layout.fillWidth: true
+      Layout.leftMargin: -root.separatorBleed
+      Layout.rightMargin: -root.separatorBleed
+      Layout.minimumHeight: root.sectionSeparatorThickness
+      Layout.preferredHeight: root.sectionSeparatorThickness
+    }
+  }
+
+  Flickable {
+    id: viewport
+    objectName: "audioPopupViewport"
+
+    anchors.top: pinnedHeader.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: footer.top
+    visible: AudioService.available
+    clip: true
+    contentWidth: width
+    contentHeight: column.height
+    boundsBehavior: Flickable.StopAtBounds
+    flickableDirection: Flickable.VerticalFlick
+    interactive: contentHeight > height
+
+    ColumnLayout {
+      id: column
+
+      width: viewport.width
+      spacing: 16
+
+      AudioDeviceSection {
+        objectName: "outputDeviceSection"
+
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.topMargin: 16
+        isInput: false
+        expanded: root.outputExpanded
+        onExpandRequested: root.outputExpanded = true
+      }
 
-        // Unavailable state (REQ-F-032).
-        Text {
-          anchors.centerIn: parent
-          visible: !AudioService.available
-          text: qsTr("Audio service unavailable")
-          color: HoloniightPalette.textSecondary
-          font.pointSize: 12
-        }
+      HnSeparator {
+        objectName: "audioOutputSeparator"
+        thickness: root.sectionSeparatorThickness
+        fadeMode: HnSeparator.Solid
+        Layout.fillWidth: true
+        Layout.leftMargin: -root.separatorBleed
+        Layout.rightMargin: -root.separatorBleed
+        Layout.minimumHeight: root.sectionSeparatorThickness
+        Layout.preferredHeight: root.sectionSeparatorThickness
+      }
 
-        ColumnLayout {
-          anchors.fill: parent
-          anchors.margins: 16
-          spacing: 12
-          visible: AudioService.available
+      AudioApplicationsSection { Layout.fillWidth: true }
 
-          Text {
-            Layout.fillWidth: true
-            text: root.sectionTitles[root.currentTab]
-            color: HoloniightPalette.textPrimary
-            font.pointSize: 13.5
-            font.bold: true
-          }
+      HnSeparator {
+        objectName: "audioApplicationsSeparator"
+        thickness: root.sectionSeparatorThickness
+        fadeMode: HnSeparator.Solid
+        Layout.fillWidth: true
+        Layout.leftMargin: -root.separatorBleed
+        Layout.rightMargin: -root.separatorBleed
+        Layout.minimumHeight: root.sectionSeparatorThickness
+        Layout.preferredHeight: root.sectionSeparatorThickness
+      }
 
-          StackLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            currentIndex: root.currentTab
+      AudioDeviceSection {
+        objectName: "inputDeviceSection"
 
-            AudioDeviceList {
-              model: AudioService.outputs
-              accentColor: HoloniightPalette.accentCyan
-              isInput: false
-              emptyText: qsTr("No output devices found")
-            }
-
-            AudioDeviceList {
-              model: AudioService.inputs
-              accentColor: HoloniightPalette.accentViolet
-              isInput: true
-              emptyText: qsTr("No input devices found")
-            }
-
-            AudioStreamList {
-              model: AudioService.playbackStreams
-              emptyText: qsTr("No applications are playing audio")
-            }
-          }
-        }
+        Layout.fillWidth: true
+        isInput: true
+        expanded: root.inputExpanded
+        Layout.bottomMargin: 8
+        onExpandRequested: root.outputExpanded = false
       }
     }
+  }
 
-    Rectangle {
-      Layout.fillWidth: true
-      Layout.preferredHeight: 1
-      color: HoloniightPalette.borderPassive
-    }
+  // Pinned below the scrollable viewport (REQ-F-10001's "pinned at the bottom" option, matching
+  // the design mockup) rather than scrolling as the last column entry — KeyboardHintFooter draws
+  // its own top divider/background so it reads correctly detached from the scroll content.
+  KeyboardHintFooter {
+    id: footer
 
-    AudioMasterBar {
-      Layout.fillWidth: true
-      Layout.preferredHeight: 56
-    }
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    visible: AudioService.available
+    separatorBleed: root.separatorBleed
   }
 }

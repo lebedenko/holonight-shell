@@ -45,6 +45,7 @@ using namespace HoloNight::ShellConfig;
 #include "ScreenSaverAdaptor.h"
 #include "SessionIntegrationService.h"
 #include "SessionService.h"
+#include "SettingsNavigationService.h"
 #include "SidebarManager.h"
 #include "StatusPopupSurface.h"
 #include "SuspendInhibitorService.h"
@@ -112,6 +113,7 @@ ShellApplication::ShellApplication(QObject* parent)
       keyboard_layout_(new KeyboardLayoutService(this)),
       aws_(new ActiveWindowService(this)),
       ai_chat_service_(new AiChatService(this)),
+      settings_navigation_service_(new SettingsNavigationService(this)),
       occupancy_(new MonitorOccupancyService(model_, aws_, this)),
       battery_(new BatteryService(this)),
       audio_(new AudioService(this)),
@@ -186,6 +188,7 @@ void ShellApplication::registerQmlTypes() {
   reg(keyboard_layout_, "KeyboardLayoutService");
   reg(battery_, "BatteryService");
   reg(audio_, "AudioService");
+  reg(settings_navigation_service_, "SettingsNavigationService");
   reg(network_, "NetworkService");
   reg(power_profiles_, "PowerProfilesService");
   reg(session_, "SessionService");

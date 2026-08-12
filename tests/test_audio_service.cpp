@@ -167,3 +167,65 @@ TEST(AudioService, SinkRemovalOfDefaultOutputClearsDefaultOutputId) {
   EXPECT_NE(service.defaultOutputId(), 4U);
   EXPECT_EQ(default_output_changed.count(), 1);
 }
+
+TEST(AudioService, SetDefaultOutputMutedIsNoOpWithoutBackend) {
+  AudioService service(AudioService::SkipInit);
+  QSignalSpy muted_changed(&service, &AudioService::mutedChanged);
+
+  service.setDefaultOutputMuted(true);
+
+  EXPECT_FALSE(service.muted());
+  EXPECT_EQ(muted_changed.count(), 0);
+}
+
+TEST(AudioService, SetDefaultOutputMutedIsNoOpWithInvalidDefaultOutputId) {
+  AudioService service;
+  QSignalSpy muted_changed(&service, &AudioService::mutedChanged);
+
+  service.setDefaultOutputMuted(true);
+
+  EXPECT_FALSE(service.muted());
+  EXPECT_EQ(muted_changed.count(), 0);
+}
+
+TEST(AudioService, StartStopInputLevelMonitoringAreNoOpWithoutBackend) {
+  AudioService service(AudioService::SkipInit);
+
+  service.startInputLevelMonitoring();
+  service.stopInputLevelMonitoring();
+
+  EXPECT_EQ(service.inputLevel(), 0);
+}
+
+TEST(AudioService, InputLevelMonitoringRemainsAcquiredUntilLastUserStops) {
+  AudioService service(AudioService::SkipInit);
+
+  service.startInputLevelMonitoring();
+  service.startInputLevelMonitoring();
+  EXPECT_EQ(service.inputLevelMonitoringUsers(), 2);
+
+  service.stopInputLevelMonitoring();
+  EXPECT_EQ(service.inputLevelMonitoringUsers(), 1);
+
+  service.stopInputLevelMonitoring();
+  service.stopInputLevelMonitoring();
+  EXPECT_EQ(service.inputLevelMonitoringUsers(), 0);
+}
+
+TEST(AudioService, InputLevelStartsAtZero) {
+  AudioService service(AudioService::SkipInit);
+
+  EXPECT_EQ(service.inputLevel(), 0);
+}
+
+TEST(AudioService, ApplyInputLevelEmitsOnChangeAndSuppressesRepeat) {
+  AudioService service(AudioService::SkipInit);
+  QSignalSpy input_level_changed(&service, &AudioService::inputLevelChanged);
+
+  service.applyInputLevel(42);
+  service.applyInputLevel(42);
+
+  EXPECT_EQ(service.inputLevel(), 42);
+  EXPECT_EQ(input_level_changed.count(), 1);
+  EXPECT_EQ(input_level_changed.first().at(0).toInt(), 42);
+}

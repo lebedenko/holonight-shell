@@ -18,6 +18,11 @@ struct AudioDevice {
   bool muted{false};
   bool is_default{false};
   AudioDeviceType type{AudioDeviceType::Sink};
+  QString bus_type;
+  uint8_t channel_count{0};
+  uint32_t sample_rate{0};
+  QString codec;
+  QString icon_name;
 };
 
 struct AudioStream {

@@ -4,9 +4,12 @@
 
 #include <QLoggingCategory>
 #include <QMetaObject>
+#include <QSet>
 #include <QString>
 
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <pulse/pulseaudio.h>
 #include <tuple>
 
@@ -35,6 +38,86 @@ static std::vector<int> s_reconnect_backoff_ms =  // NOLINT(cppcoreguidelines-av
 
 static PulseAudioSystem* pulseSystem() { return s_pa_system != nullptr ? s_pa_system : &s_real_pa_system; }
 
+static bool looksLikeDigitalOutput(const QString& form_factor, const QString& device_name,
+                                   const QString& active_port_name) {
+  return form_factor == QStringLiteral("hdmi") || device_name.contains(QStringLiteral("hdmi"), Qt::CaseInsensitive) ||
+         device_name.contains(QStringLiteral("spdif"), Qt::CaseInsensitive) ||
+         device_name.contains(QStringLiteral("iec958"), Qt::CaseInsensitive) ||
+         active_port_name.contains(QStringLiteral("hdmi"), Qt::CaseInsensitive) ||
+         active_port_name.contains(QStringLiteral("spdif"), Qt::CaseInsensitive) ||
+         active_port_name.contains(QStringLiteral("iec958"), Qt::CaseInsensitive);
+}
+
+QString classifyBusType(const pa_proplist* proplist, const QString& device_name, const QString& active_port_name) {
+  const char* form_factor = proplist != nullptr ? pa_proplist_gets(proplist, PA_PROP_DEVICE_FORM_FACTOR) : nullptr;
+  const QString form_factor_str = QString::fromUtf8(form_factor != nullptr ? form_factor : "");
+  if (looksLikeDigitalOutput(form_factor_str, device_name, active_port_name)) {
+    return QStringLiteral("Digital");
+  }
+
+  const char* bus = proplist != nullptr ? pa_proplist_gets(proplist, PA_PROP_DEVICE_BUS) : nullptr;
+  const QString bus_str = QString::fromUtf8(bus != nullptr ? bus : "");
+  if (bus_str == QStringLiteral("bluetooth")) {
+    return QStringLiteral("Bluetooth");
+  }
+  if (bus_str == QStringLiteral("usb")) {
+    return QStringLiteral("Digital");
+  }
+  if (!bus_str.isEmpty()) {
+    return QStringLiteral("Analog");
+  }
+  return QStringLiteral("Unknown");
+}
+
+static QString iconNameFromProplist(const pa_proplist* proplist, bool is_sink, const QString& device_name,
+                                    const QString& active_port_name) {
+  const char* icon = proplist != nullptr ? pa_proplist_gets(proplist, PA_PROP_DEVICE_ICON_NAME) : nullptr;
+  const QString reported_icon = QString::fromUtf8(icon != nullptr ? icon : "");
+
+  const char* form_factor = proplist != nullptr ? pa_proplist_gets(proplist, PA_PROP_DEVICE_FORM_FACTOR) : nullptr;
+  const QString form_factor_str = QString::fromUtf8(form_factor != nullptr ? form_factor : "");
+  const bool generic_card_icon = reported_icon.isEmpty() || reported_icon == QStringLiteral("audio-card") ||
+                                 reported_icon.startsWith(QStringLiteral("audio-card-"));
+  if (is_sink && generic_card_icon && looksLikeDigitalOutput(form_factor_str, device_name, active_port_name)) {
+    return QStringLiteral("video-display");
+  }
+  if (!is_sink && generic_card_icon) {
+    return QStringLiteral("audio-input-microphone");
+  }
+  if (!reported_icon.isEmpty()) {
+    return reported_icon;
+  }
+  if (form_factor_str == QStringLiteral("headphone")) {
+    return QStringLiteral("audio-headphones");
+  }
+  if (form_factor_str == QStringLiteral("headset") || form_factor_str == QStringLiteral("hands-free")) {
+    return QStringLiteral("audio-headset");
+  }
+  if (form_factor_str == QStringLiteral("microphone")) {
+    return QStringLiteral("audio-input-microphone");
+  }
+  if (form_factor_str == QStringLiteral("speaker") || form_factor_str == QStringLiteral("internal") ||
+      form_factor_str.isEmpty()) {
+    return is_sink ? QStringLiteral("audio-speakers") : QStringLiteral("audio-input-microphone");
+  }
+  return {};
+}
+
+static QString bluetoothCodecFromProplist(const pa_proplist* proplist) {
+  if (proplist == nullptr) {
+    return QStringLiteral("PCM");
+  }
+  const char* codec = pa_proplist_gets(proplist, "bluez.codec_name");
+  if (codec != nullptr && *codec != '\0') {
+    return QString::fromUtf8(codec);
+  }
+  codec = pa_proplist_gets(proplist, "bluetooth.codec");
+  if (codec != nullptr && *codec != '\0') {
+    return QString::fromUtf8(codec);
+  }
+  return QStringLiteral("PCM");
+}
+
 void PulseAudioBackend::setPulseAudioSystem(PulseAudioSystem* sys) { s_pa_system = sys; }
 
 void PulseAudioBackend::resetPulseAudioSystem() { s_pa_system = nullptr; }
@@ -59,9 +142,18 @@ struct PulseAudioBackend::Impl {
   pa_context* context{nullptr};
   QString default_sink_name;
   QString default_source_name;
+  mutable QSet<quint64> metadata_warned_ids;
+  pa_stream* level_stream{nullptr};
+  bool level_stream_warned{false};
+  bool level_monitor_requested{false};
+  int level_stream_retry_count{0};
 
   [[nodiscard]] AudioDevice sinkToDevice(const pa_sink_info* info) const;
   [[nodiscard]] AudioDevice sourceToDevice(const pa_source_info* info) const;
+  void warnIfMetadataMissing(const AudioDevice& dev) const;
+
+  [[nodiscard]] bool startLevelStreamLocked();
+  void stopLevelStreamLocked();
   [[nodiscard]] static AudioStream sinkInputToStream(const pa_sink_input_info* info);
   [[nodiscard]] static AudioStream sourceOutputToStream(const pa_source_output_info* info);
 
@@ -93,6 +185,9 @@ struct PulseAudioBackend::Impl {
   static void setSinkVolumeCallback(pa_context* ctx, const pa_sink_info* info, int eol, void* userdata);
   static void setSourceVolumeCallback(pa_context* ctx, const pa_source_info* info, int eol, void* userdata);
   static void setSinkInputVolumeCallback(pa_context* ctx, const pa_sink_input_info* info, int eol, void* userdata);
+
+  static void levelStreamStateCallback(pa_stream* stream, void* userdata);
+  static void levelStreamReadCallback(pa_stream* stream, size_t length, void* userdata);
 };
 
 // ============================================================
@@ -108,6 +203,18 @@ AudioDevice PulseAudioBackend::Impl::sinkToDevice(const pa_sink_info* info) cons
   dev.muted = info->mute != 0;
   dev.is_default = (dev.name == default_sink_name);
   dev.type = AudioDeviceType::Sink;
+  dev.channel_count = static_cast<uint8_t>(info->channel_map.channels);
+  dev.sample_rate = info->sample_spec.rate;
+  const QString active_port_name =
+      (info->active_port != nullptr)
+          ? QString::fromUtf8(info->active_port->name != nullptr ? info->active_port->name : "")
+          : QString();
+  dev.bus_type = classifyBusType(info->proplist, dev.name, active_port_name);
+  dev.icon_name = iconNameFromProplist(info->proplist, /*is_sink=*/true, dev.name, active_port_name);
+  if (dev.bus_type == QStringLiteral("Bluetooth")) {
+    dev.codec = bluetoothCodecFromProplist(info->proplist);
+  }
+  warnIfMetadataMissing(dev);
   return dev;
 }
 
@@ -120,7 +227,126 @@ AudioDevice PulseAudioBackend::Impl::sourceToDevice(const pa_source_info* info) 
   dev.muted = info->mute != 0;
   dev.is_default = (dev.name == default_source_name);
   dev.type = AudioDeviceType::Source;
+  dev.channel_count = static_cast<uint8_t>(info->channel_map.channels);
+  dev.sample_rate = info->sample_spec.rate;
+  const QString active_port_name =
+      (info->active_port != nullptr)
+          ? QString::fromUtf8(info->active_port->name != nullptr ? info->active_port->name : "")
+          : QString();
+  dev.bus_type = classifyBusType(info->proplist, dev.name, active_port_name);
+  dev.icon_name = iconNameFromProplist(info->proplist, /*is_sink=*/false, dev.name, active_port_name);
+  if (dev.bus_type == QStringLiteral("Bluetooth")) {
+    dev.codec = bluetoothCodecFromProplist(info->proplist);
+  }
+  warnIfMetadataMissing(dev);
   return dev;
+}
+
+void PulseAudioBackend::Impl::warnIfMetadataMissing(const AudioDevice& dev) const {
+  const bool metadata_missing = dev.bus_type == QStringLiteral("Unknown") || dev.icon_name.isEmpty();
+  const quint64 warning_key = (static_cast<quint64>(dev.type) << 32U) | dev.id;
+  if (!metadata_missing || metadata_warned_ids.contains(warning_key)) {
+    return;
+  }
+  metadata_warned_ids.insert(warning_key);
+  qCWarning(lcAudioBackend) << "PulseAudioBackend: incomplete metadata for device id" << dev.id << "name" << dev.name;
+}
+
+// Assumes the threaded mainloop lock is already held by the caller.
+bool PulseAudioBackend::Impl::startLevelStreamLocked() {
+  if (context == nullptr || level_stream != nullptr) {
+    return level_stream != nullptr;
+  }
+
+  pa_sample_spec sample_spec{};
+  sample_spec.format = PA_SAMPLE_FLOAT32LE;
+  sample_spec.rate = 30;
+  sample_spec.channels = 1;
+
+  pa_stream* stream = pulseSystem()->pa_stream_new(context, "holonight-shell-input-level", &sample_spec, nullptr);
+  if (stream == nullptr) {
+    return false;
+  }
+
+  pulseSystem()->pa_stream_set_state_callback(stream, levelStreamStateCallback, this);
+  pulseSystem()->pa_stream_set_read_callback(stream, levelStreamReadCallback, this);
+
+  pa_buffer_attr attr{};
+  attr.maxlength = UINT32_MAX;
+  attr.fragsize = pa_frame_size(&sample_spec);
+
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) — OR-ing valid bitmask constants
+  const auto flags = static_cast<pa_stream_flags_t>(PA_STREAM_DONT_MOVE | PA_STREAM_PEAK_DETECT |
+                                                    PA_STREAM_ADJUST_LATENCY | PA_STREAM_AUTO_TIMING_UPDATE);
+  const int connect_result =
+      pulseSystem()->pa_stream_connect_record(stream, default_source_name.toUtf8().constData(), &attr, flags);
+  if (connect_result < 0) {
+    pulseSystem()->pa_stream_set_state_callback(stream, nullptr, nullptr);
+    pulseSystem()->pa_stream_set_read_callback(stream, nullptr, nullptr);
+    pulseSystem()->pa_stream_unref(stream);
+    qCWarning(lcAudioBackend) << "PulseAudioBackend: failed to connect input level monitor stream";
+    return false;
+  }
+
+  level_stream = stream;
+  level_stream_warned = false;
+  return true;
+}
+
+// Assumes the threaded mainloop lock is already held by the caller.
+void PulseAudioBackend::Impl::stopLevelStreamLocked() {
+  if (level_stream == nullptr) {
+    return;
+  }
+  pulseSystem()->pa_stream_set_state_callback(level_stream, nullptr, nullptr);
+  pulseSystem()->pa_stream_set_read_callback(level_stream, nullptr, nullptr);
+  pulseSystem()->pa_stream_disconnect(level_stream);
+  pulseSystem()->pa_stream_unref(level_stream);
+  level_stream = nullptr;
+}
+
+void PulseAudioBackend::Impl::levelStreamStateCallback(pa_stream* stream, void* userdata) {
+  auto* impl = static_cast<Impl*>(userdata);
+  const pa_stream_state_t state = pulseSystem()->pa_stream_get_state(stream);
+  if (state == PA_STREAM_READY) {
+    return;
+  }
+  if (state != PA_STREAM_FAILED) {
+    return;
+  }
+  PulseAudioBackend* self = impl->backend;
+  QMetaObject::invokeMethod(self, [self] { emit self->inputLevelChanged(0); }, Qt::QueuedConnection);
+  if (!impl->level_stream_warned) {
+    impl->level_stream_warned = true;
+    qCWarning(lcAudioBackend) << "PulseAudioBackend: input level monitor stream failed";
+  }
+  QMetaObject::invokeMethod(self, &PulseAudioBackend::retryInputLevelMonitor, Qt::QueuedConnection);
+}
+
+void PulseAudioBackend::Impl::levelStreamReadCallback(pa_stream* stream, size_t /*length*/, void* userdata) {
+  auto* impl = static_cast<Impl*>(userdata);
+  const void* data = nullptr;
+  size_t bytes = 0;
+  if (pulseSystem()->pa_stream_peek(stream, &data, &bytes) != 0) {
+    return;
+  }
+  if (data == nullptr && bytes == 0) {
+    return;
+  }
+  if (data == nullptr && bytes > 0) {
+    pulseSystem()->pa_stream_drop(stream);
+    return;
+  }
+
+  float sample = 0.0F;
+  if (bytes >= sizeof(float)) {
+    std::memcpy(&sample, data, sizeof(float));
+  }
+  const int level = std::clamp(static_cast<int>(std::abs(sample) * 100.0F), 0, 100);
+  pulseSystem()->pa_stream_drop(stream);
+
+  PulseAudioBackend* self = impl->backend;
+  QMetaObject::invokeMethod(self, [self, level] { emit self->inputLevelChanged(level); }, Qt::QueuedConnection);
 }
 
 AudioStream PulseAudioBackend::Impl::sinkInputToStream(const pa_sink_input_info* info) {
@@ -186,6 +412,7 @@ void PulseAudioBackend::Impl::teardownContext() {
     return;
   }
   pulseSystem()->threaded_mainloop_lock(mainloop);
+  stopLevelStreamLocked();
   pulseSystem()->pa_context_set_state_callback(context, nullptr, nullptr);
   pulseSystem()->pa_context_set_subscribe_callback(context, nullptr, nullptr);
   pulseSystem()->pa_context_disconnect(context);
@@ -256,6 +483,7 @@ void PulseAudioBackend::Impl::querySourceOutputs() {
 
 void PulseAudioBackend::Impl::handleSinkEvent(pa_context* ctx, int evt, uint32_t idx) {
   if (evt == PA_SUBSCRIPTION_EVENT_REMOVE) {
+    metadata_warned_ids.remove((static_cast<quint64>(AudioDeviceType::Sink) << 32U) | idx);
     PulseAudioBackend* self = backend;
     QMetaObject::invokeMethod(self, [self, idx] { emit self->sinkRemoved(idx); }, Qt::QueuedConnection);
     return;
@@ -270,6 +498,7 @@ void PulseAudioBackend::Impl::handleSinkEvent(pa_context* ctx, int evt, uint32_t
 
 void PulseAudioBackend::Impl::handleSourceEvent(pa_context* ctx, int evt, uint32_t idx) {
   if (evt == PA_SUBSCRIPTION_EVENT_REMOVE) {
+    metadata_warned_ids.remove((static_cast<quint64>(AudioDeviceType::Source) << 32U) | idx);
     PulseAudioBackend* self = backend;
     QMetaObject::invokeMethod(self, [self, idx] { emit self->sourceRemoved(idx); }, Qt::QueuedConnection);
     return;
@@ -362,12 +591,19 @@ void PulseAudioBackend::Impl::serverInfoCallback(pa_context* /*ctx*/, const pa_s
     return;
   }
   auto* impl = static_cast<Impl*>(userdata);
+  const QString new_default_source_name =
+      QString::fromUtf8(info->default_source_name != nullptr ? info->default_source_name : "");
+  const bool source_changed = impl->level_stream != nullptr && new_default_source_name != impl->default_source_name;
   impl->default_sink_name = QString::fromUtf8(info->default_sink_name != nullptr ? info->default_sink_name : "");
-  impl->default_source_name = QString::fromUtf8(info->default_source_name != nullptr ? info->default_source_name : "");
+  impl->default_source_name = new_default_source_name;
   impl->querySinks();
   impl->querySources();
   impl->querySinkInputs();
   impl->querySourceOutputs();
+  if (source_changed) {
+    impl->stopLevelStreamLocked();
+    (void)impl->startLevelStreamLocked();
+  }
 }
 
 void PulseAudioBackend::Impl::sinkListCallback(pa_context* /*ctx*/, const pa_sink_info* info, int eol, void* userdata) {
@@ -601,13 +837,60 @@ void PulseAudioBackend::setHealthState(AudioHealthState state) {
   emit healthStateChanged(health_state_);
 }
 
+void PulseAudioBackend::startInputLevelMonitor() {
+  if (impl_->mainloop == nullptr) {
+    return;
+  }
+  impl_->level_monitor_requested = true;
+  pulseSystem()->threaded_mainloop_lock(impl_->mainloop);
+  const bool started = impl_->startLevelStreamLocked();
+  pulseSystem()->threaded_mainloop_unlock(impl_->mainloop);
+  if (!started) {
+    QMetaObject::invokeMethod(this, &PulseAudioBackend::retryInputLevelMonitor, Qt::QueuedConnection);
+  }
+}
+
+void PulseAudioBackend::stopInputLevelMonitor() {
+  impl_->level_monitor_requested = false;
+  impl_->level_stream_retry_count = 0;
+  if (impl_->mainloop == nullptr) {
+    return;
+  }
+  pulseSystem()->threaded_mainloop_lock(impl_->mainloop);
+  impl_->stopLevelStreamLocked();
+  pulseSystem()->threaded_mainloop_unlock(impl_->mainloop);
+
+  PulseAudioBackend* self = this;
+  QMetaObject::invokeMethod(self, [self] { emit self->inputLevelChanged(0); }, Qt::QueuedConnection);
+}
+
+void PulseAudioBackend::retryInputLevelMonitor() {
+  constexpr int kMaximumLevelStreamRetries = 3;
+  if (!impl_->level_monitor_requested || impl_->mainloop == nullptr ||
+      impl_->level_stream_retry_count >= kMaximumLevelStreamRetries) {
+    return;
+  }
+
+  ++impl_->level_stream_retry_count;
+  pulseSystem()->threaded_mainloop_lock(impl_->mainloop);
+  impl_->stopLevelStreamLocked();
+  const bool started = impl_->startLevelStreamLocked();
+  pulseSystem()->threaded_mainloop_unlock(impl_->mainloop);
+  if (!started) {
+    QMetaObject::invokeMethod(this, &PulseAudioBackend::retryInputLevelMonitor, Qt::QueuedConnection);
+  }
+}
+
 void PulseAudioBackend::stop() {
   reconnect_timer_->stop();
+  impl_->level_monitor_requested = false;
+  impl_->level_stream_retry_count = 0;
   if (impl_->mainloop == nullptr) {
     return;
   }
   if (impl_->context != nullptr) {
     pulseSystem()->threaded_mainloop_lock(impl_->mainloop);
+    impl_->stopLevelStreamLocked();
     pulseSystem()->pa_context_set_state_callback(impl_->context, nullptr, nullptr);
     pulseSystem()->pa_context_set_subscribe_callback(impl_->context, nullptr, nullptr);
     pulseSystem()->pa_context_disconnect(impl_->context);

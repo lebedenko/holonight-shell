@@ -2,14 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Holonight.Core
-import Holonight.Components
 import Holonight.Controls
 
 import HolonightShell
 
-// One device row (output sink or input source): icon, name/description, DEFAULT badge,
-// mute toggle, volume slider, percentage. Clicking the row (away from the mute button and
+import "AudioMetadataFormat.js" as AudioMetadataFormat
+
+// One device row (output sink or input source): radio-checkmark, icon, name/description,
+// metadata subtitle, volume slider, percentage. Clicking the row (away from the
 // slider) makes this device the default sink/source.
 HnListDelegate {
   id: root
@@ -23,11 +25,11 @@ HnListDelegate {
   implicitHeight: 64
 
   readonly property bool isDefault: root.model.isDefault ?? false
-  readonly property bool isMuted: root.model.muted ?? false
   readonly property int volumePct: root.model.volume ?? 0
 
   title: root.model.description && root.model.description.length > 0 ? root.model.description : root.model.name
-  subtitle: root.model.description && root.model.description.length > 0 ? root.model.name : ""
+  subtitle: AudioMetadataFormat.formatDeviceMetadata(root.model.busType, root.model.channelCount,
+                                                     root.model.sampleRate, root.model.codec)
   subtitlePresentation: HnListDelegate.SingleLine
   leadingContentAlignment: Qt.AlignVCenter
   checked: root.isDefault
@@ -43,14 +45,49 @@ HnListDelegate {
   }
 
   leadingContent: Component {
-    ExternalIcon {
-      objectName: "deviceIcon"
+    RowLayout {
+      spacing: 8
 
-      iconName: root.isInputDevice ? "audio-input-microphone" : "audio-card"
-      iconSize: 28
-      tintColor: root.accentColor
-      width: 28
-      height: 28
+      Rectangle {
+        objectName: "deviceRadioIndicator"
+
+        Layout.preferredWidth: 16
+        Layout.preferredHeight: 16
+        Layout.alignment: Qt.AlignVCenter
+        radius: 8
+        color: root.isDefault ? root.accentColor : "transparent"
+        border.color: root.isDefault ? root.accentColor : HoloniightPalette.borderPassive
+        border.width: 1.5
+
+        Shape {
+          anchors.centerIn: parent
+          width: 16
+          height: 16
+          visible: root.isDefault
+          preferredRendererType: Shape.CurveRenderer
+
+          ShapePath {
+            fillColor: "transparent"
+            strokeColor: HoloniightPalette.textInverse
+            strokeWidth: 1.6
+            capStyle: ShapePath.RoundCap
+            joinStyle: ShapePath.RoundJoin
+
+            PathSvg { path: "M4 8l3 3 5-6" }
+          }
+        }
+      }
+
+      AudioTintedIcon {
+        objectName: "deviceIcon"
+
+        iconName: root.model.iconName ?? ""
+        fallbackIconName: root.isInputDevice ? "audio-input-microphone" : "audio-card"
+        iconSize: 28
+        tintColor: root.isDefault ? root.accentColor : HoloniightPalette.textSecondary
+        Layout.preferredWidth: 28
+        Layout.preferredHeight: 28
+      }
     }
   }
 
@@ -58,54 +95,10 @@ HnListDelegate {
     RowLayout {
       spacing: 12
 
-      Rectangle {
-        visible: root.isDefault
-        Layout.preferredWidth: badgeText.implicitWidth + 16
-        Layout.preferredHeight: 20
-        radius: 10
-        color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.18)
-        border.color: root.accentColor
-        border.width: 1
-
-        Text {
-          id: badgeText
-          anchors.centerIn: parent
-          text: qsTr("DEFAULT")
-          color: root.accentColor
-          font.pointSize: 7.5
-          font.bold: true
-        }
-      }
-
-      Item {
-        objectName: "deviceMuteButton"
-
-        Layout.preferredWidth: 28
-        Layout.preferredHeight: 28
-
-        ExternalIcon {
-          anchors.centerIn: parent
-          iconName: root.isMuted ? "audio-volume-muted" : "audio-volume-high"
-          iconSize: 20
-          tintColor: root.isMuted ? HoloniightPalette.textMuted : root.accentColor
-          opacity: root.isMuted ? 0.6 : 1.0
-        }
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: {
-            if (root.isInputDevice)
-              AudioService.setInputDeviceMuted(root.model.deviceId, !root.isMuted);
-            else
-              AudioService.setDeviceMuted(root.model.deviceId, !root.isMuted);
-          }
-        }
-      }
-
       AudioVolumeSlider {
         objectName: "deviceVolumeSlider"
 
-        Layout.preferredWidth: 180
+        Layout.preferredWidth: root.width < 520 ? 88 : 180
         Layout.alignment: Qt.AlignVCenter
         value: root.volumePct
         accentColor: root.accentColor
@@ -129,7 +122,7 @@ HnListDelegate {
         Layout.preferredWidth: 40
         horizontalAlignment: Text.AlignRight
         text: root.volumePct + "%"
-        color: HoloniightPalette.textMuted
+        color: root.isDefault ? root.accentColor : HoloniightPalette.textMuted
         font.pointSize: 9.75
       }
     }

@@ -392,13 +392,40 @@ class FakePopupSurface : public QObject {
 class FakeStatusPopupSurface : public QObject {
   Q_OBJECT
   Q_PROPERTY(int pointerX READ pointerX CONSTANT)
+  Q_PROPERTY(int hideCount READ hideCount NOTIFY hideCountChanged)
 
  public:
   [[nodiscard]] int pointerX() const { return 120; }
-  Q_INVOKABLE void hide() {}
+  [[nodiscard]] int hideCount() const { return hide_count_; }
+  Q_INVOKABLE void hide() {
+    ++hide_count_;
+    Q_EMIT hideCountChanged();
+  }
 
  Q_SIGNALS:
   void geometryChanged();
+  void hideCountChanged();
+
+ private:
+  int hide_count_{0};
+};
+
+class FakeSettingsNavigationService : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QString lastOpenedPage READ lastOpenedPage NOTIFY lastOpenedPageChanged)
+
+ public:
+  [[nodiscard]] QString lastOpenedPage() const { return last_opened_page_; }
+  Q_INVOKABLE void openPage(const QString& page_key) {
+    last_opened_page_ = page_key;
+    Q_EMIT lastOpenedPageChanged();
+  }
+
+ Q_SIGNALS:
+  void lastOpenedPageChanged();
+
+ private:
+  QString last_opened_page_;
 };
 
 class FakeTooltipSurface : public QObject {
@@ -1035,6 +1062,8 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "LauncherSurface", &launcher_surface_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PopupSurface", &popup_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StatusPopupSurface", &status_popup_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SettingsNavigationService", &settings_navigation_) >=
+               0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TooltipSurface", &tooltip_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "RecentAppsTracker", &recent_apps_tracker_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SuspendInhibitorService",
@@ -1084,6 +1113,7 @@ class FakeQmlServices {
   FakeLauncherSurface launcher_surface_;
   FakePopupSurface popup_;
   FakeStatusPopupSurface status_popup_;
+  FakeSettingsNavigationService settings_navigation_;
   FakeTooltipSurface tooltip_;
   FakeRecentAppsTracker recent_apps_tracker_;
   FakeMprisDBus* mpris_dbus_{nullptr};

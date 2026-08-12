@@ -64,18 +64,15 @@ keep the slider semantics simple and avoid accidental speaker damage.
 **How to add later:** raise the slider max to 150, add a visual "over-amplified" zone past the
 100% mark, and relax the clamp in `AudioVolumeSlider` / the service.
 
-## 5. "+" add-device buttons and the "Settings" sidebar entry
+## 5. "+" add-device buttons
 
-**Mockup:** a `+` affordance to add/connect devices and a **Settings** entry at the bottom of
-the sidebar.
+**Mockup:** a `+` affordance to add/connect devices.
 
 **Deferred because:** "add device" maps to Bluetooth pairing / network-audio discovery, which is
-outside the PulseAudio control surface entirely, and "Settings" has no defined destination in
-this shell yet. Both were explicitly omitted from this iteration's sidebar (only the three real
-tabs + Master Volume are shown).
+outside the PulseAudio control surface entirely.
 
-**How to add later:** decide the target (e.g. launch `blueman` / a settings popup) and add the
-entries back to `AudioTabSidebar` as action buttons rather than tabs.
+**How to add later:** define a dedicated pairing workflow and expose it as an action rather than a
+device-list entry.
 
 ---
 
@@ -83,6 +80,8 @@ entries back to `AudioTabSidebar` as action buttons rather than tabs.
 
 For clarity, these mockup elements **are** implemented and are *not* part of this deferral list:
 
+- The header settings gear opens `holonight-settings` on page key `audio` through its
+  `org.freedesktop.Application` D-Bus contract.
 - Output / Input / Applications as real tabs (one section at a time)
 - Per-row icon, name, description/media-title, mute toggle, volume slider, percentage
 - DEFAULT badge + click-row-to-set-default (cyan for output, violet for input)

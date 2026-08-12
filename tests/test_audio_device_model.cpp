@@ -7,7 +7,8 @@
 namespace {
 
 AudioDevice makeSink(uint32_t dev_id, const char* name, uint8_t volume = 50, bool muted = false,
-                     bool is_default = false) {
+                     bool is_default = false, const QString& bus_type = QString(), uint8_t channel_count = 0,
+                     uint32_t sample_rate = 0, const QString& codec = QString(), const QString& icon_name = QString()) {
   AudioDevice dev;
   dev.id = dev_id;
   dev.name = QString::fromUtf8(name);
@@ -16,6 +17,11 @@ AudioDevice makeSink(uint32_t dev_id, const char* name, uint8_t volume = 50, boo
   dev.muted = muted;
   dev.is_default = is_default;
   dev.type = AudioDeviceType::Sink;
+  dev.bus_type = bus_type;
+  dev.channel_count = channel_count;
+  dev.sample_rate = sample_rate;
+  dev.codec = codec;
+  dev.icon_name = icon_name;
   return dev;
 }
 
@@ -54,6 +60,10 @@ TEST(AudioDeviceModel, ApplyAddUpdatesExistingRowByDeviceId) {
   EXPECT_EQ(model.rowCount(), 1);
   EXPECT_EQ(rows_inserted.count(), 0);
   EXPECT_EQ(data_changed.count(), 1);
+  const QList<int> changed_roles = data_changed.first().at(2).value<QList<int>>();
+  EXPECT_EQ(changed_roles, (QList<int>{static_cast<int>(AudioDeviceModel::Role::Volume),
+                                       static_cast<int>(AudioDeviceModel::Role::Muted),
+                                       static_cast<int>(AudioDeviceModel::Role::IsDefault)}));
   const QModelIndex item = model.index(0);
   EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::Volume)).toUInt(), 70U);
   EXPECT_TRUE(model.data(item, static_cast<int>(AudioDeviceModel::Role::Muted)).toBool());
@@ -62,7 +72,8 @@ TEST(AudioDeviceModel, ApplyAddUpdatesExistingRowByDeviceId) {
 
 TEST(AudioDeviceModel, DataReturnsAllRoles) {
   AudioDeviceModel model;
-  model.applyAdd(makeSink(42, "alsa_output", 75, true, true));
+  model.applyAdd(makeSink(42, "alsa_output", 75, true, true, QStringLiteral("Analog"), 2, 48000, QString(),
+                          QStringLiteral("audio-speakers")));
 
   const QModelIndex item = model.index(0);
   EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::DeviceId)).toUInt(), 42U);
@@ -70,6 +81,12 @@ TEST(AudioDeviceModel, DataReturnsAllRoles) {
   EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::Volume)).toUInt(), 75U);
   EXPECT_TRUE(model.data(item, static_cast<int>(AudioDeviceModel::Role::Muted)).toBool());
   EXPECT_TRUE(model.data(item, static_cast<int>(AudioDeviceModel::Role::IsDefault)).toBool());
+  EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::BusType)).toString(), QStringLiteral("Analog"));
+  EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::ChannelCount)).toUInt(), 2U);
+  EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::SampleRate)).toUInt(), 48000U);
+  EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::Codec)).toString(), QString());
+  EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::IconName)).toString(),
+            QStringLiteral("audio-speakers"));
 }
 
 TEST(AudioDeviceModel, InvalidIndexReturnsNullVariant) {
@@ -87,6 +104,8 @@ TEST(AudioDeviceModel, ApplyChangeEmitsDataChanged) {
 
   EXPECT_EQ(model.rowCount(), 1);
   EXPECT_EQ(data_changed.count(), 1);
+  const QList<int> changed_roles = data_changed.first().at(2).value<QList<int>>();
+  EXPECT_EQ(changed_roles, QList<int>{static_cast<int>(AudioDeviceModel::Role::Volume)});
   const QModelIndex item = model.index(0);
   EXPECT_EQ(model.data(item, static_cast<int>(AudioDeviceModel::Role::Volume)).toUInt(), 80U);
 }
@@ -164,4 +183,66 @@ TEST(AudioDeviceModel, RoleNamesAreCorrect) {
   EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::Volume)), "volume");
   EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::Muted)), "muted");
   EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::IsDefault)), "isDefault");
+  EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::BusType)), "busType");
+  EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::ChannelCount)), "channelCount");
+  EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::SampleRate)), "sampleRate");
+  EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::Codec)), "codec");
+  EXPECT_EQ(roles.value(static_cast<int>(AudioDeviceModel::Role::IconName)), "iconName");
+}
+
+TEST(AudioDeviceModel, DefaultDeviceStartsEmpty) {
+  AudioDeviceModel model;
+  EXPECT_TRUE(model.defaultDevice().isEmpty());
+}
+
+TEST(AudioDeviceModel, DefaultDevicePopulatesWhenDefaultDeviceAdded) {
+  AudioDeviceModel model;
+  QSignalSpy default_device_changed(&model, &AudioDeviceModel::defaultDeviceChanged);
+
+  model.applyAdd(makeSink(1, "s1", 50, false, false));
+  EXPECT_EQ(default_device_changed.count(), 0);
+  EXPECT_TRUE(model.defaultDevice().isEmpty());
+
+  model.applyAdd(makeSink(2, "s2", 60, false, true));
+
+  EXPECT_EQ(default_device_changed.count(), 1);
+  const QVariantMap default_device = model.defaultDevice();
+  EXPECT_EQ(default_device.value("deviceId").toUInt(), 2U);
+  EXPECT_EQ(default_device.value("name").toString(), QStringLiteral("s2"));
+  EXPECT_TRUE(default_device.value("isDefault").toBool());
+}
+
+TEST(AudioDeviceModel, DefaultDeviceReemitsWhenDefaultRowChangesWhileRemainingDefault) {
+  AudioDeviceModel model;
+  model.applyAdd(makeSink(1, "s1", 50, false, true));
+  QSignalSpy default_device_changed(&model, &AudioDeviceModel::defaultDeviceChanged);
+
+  model.applyChange(makeSink(1, "s1", 90, true, true));
+
+  EXPECT_EQ(default_device_changed.count(), 1);
+  EXPECT_EQ(model.defaultDevice().value("volume").toUInt(), 90U);
+  EXPECT_TRUE(model.defaultDevice().value("muted").toBool());
+}
+
+TEST(AudioDeviceModel, DefaultDeviceDoesNotReemitOnUnrelatedNonDefaultRowChange) {
+  AudioDeviceModel model;
+  model.applyAdd(makeSink(1, "s1", 50, false, true));
+  model.applyAdd(makeSink(2, "s2", 20, false, false));
+  QSignalSpy default_device_changed(&model, &AudioDeviceModel::defaultDeviceChanged);
+
+  model.applyChange(makeSink(2, "s2", 99, true, false));
+
+  EXPECT_EQ(default_device_changed.count(), 0);
+  EXPECT_EQ(model.defaultDevice().value("deviceId").toUInt(), 1U);
+}
+
+TEST(AudioDeviceModel, DefaultDeviceGoesEmptyWhenDefaultDeviceRemoved) {
+  AudioDeviceModel model;
+  model.applyAdd(makeSink(1, "s1", 50, false, true));
+  QSignalSpy default_device_changed(&model, &AudioDeviceModel::defaultDeviceChanged);
+
+  model.applyRemove(1);
+
+  EXPECT_EQ(default_device_changed.count(), 1);
+  EXPECT_TRUE(model.defaultDevice().isEmpty());
 }

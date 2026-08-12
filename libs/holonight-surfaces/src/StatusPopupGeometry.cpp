@@ -22,9 +22,9 @@ QSize boundedDimension(const QSize& minimum, const QSize& preferred, const QSize
 
 StatusPopupSizePolicy statusPopupSizePolicy(const QString& popup_id) {
   if (popup_id == QLatin1String("audio")) {
-    return {.minimum_content_size = {600, 420},
-            .preferred_content_size = {900, 600},
-            .maximum_content_size = {900, 600},
+    return {.minimum_content_size = {600, 480},
+            .preferred_content_size = {780, 820},
+            .maximum_content_size = {780, 820},
             .overflow_mode = StatusPopupOverflowMode::InternalList};
   }
   if (popup_id == QLatin1String("network")) {

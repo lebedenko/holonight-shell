@@ -1,10 +1,12 @@
 # Config flow: holonight-shell ↔ holonight-settings
 
 `holonight-shell` and `holonight-settings` are separate applications, in separate git
-repositories, with separate build/install steps. They coordinate through exactly one shared
-artifact — `$XDG_CONFIG_HOME/holonight/config.toml` (default `~/.config/holonight/config.toml`) —
-and nothing else. There is no D-Bus service, socket, or other IPC between them. Neither process is
-aware the other exists.
+repositories, with separate build/install steps. Configuration exchange uses one shared artifact:
+`$XDG_CONFIG_HOME/holonight/config.toml` (default `~/.config/holonight/config.toml`). Window/page
+activation is separate from configuration exchange: the shell asynchronously calls
+`org.freedesktop.Application.ActivateAction("audio", [], {})` on `org.holonight.Settings` at
+`/org/holonight/Settings` when the audio popup's settings button is activated. No configuration
+values are carried over D-Bus.
 
 Both link the same `holonight_config` static library for the TOML schema
 (`config_structs.h`/`ParsedConfig`), the parser (`ConfigParsers.cpp`), and the writer

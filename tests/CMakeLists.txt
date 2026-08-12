@@ -154,6 +154,7 @@ holonight_add_test_exe(test_holonight_app
   main.cpp
   test_control_server.cpp
   test_shell_application.cpp
+  test_settings_navigation_service.cpp
 )
 target_link_libraries(test_holonight_app PRIVATE
   holonight_app
