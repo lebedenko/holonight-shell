@@ -1,19 +1,22 @@
 #include "SessionService.h"
 
+#include "CompositorSelection.h"
 #include "session/CommandRunner.h"
 #include "session/HyprlandSessionBackend.h"
 #include "session/LogindSessionBackend.h"
 #include "session/ProcessEnvironment.h"
 #include "session/SessionBackend.h"
 #include "session/SwaySessionBackend.h"
-#include "CompositorSelection.h"
 
 namespace {
 std::unique_ptr<SessionBackend> makeBackend(const ProcessEnvironment* env, CommandRunner* runner) {
   switch (selectCompositor(systemCompositorEnvironment())) {
-    case CompositorKind::Hyprland: return std::make_unique<HyprlandSessionBackend>(env, runner);
-    case CompositorKind::Sway: return std::make_unique<SwaySessionBackend>(env, runner);
-    case CompositorKind::Generic: return std::make_unique<LogindSessionBackend>(env, runner);
+    case CompositorKind::Hyprland:
+      return std::make_unique<HyprlandSessionBackend>(env, runner);
+    case CompositorKind::Sway:
+      return std::make_unique<SwaySessionBackend>(env, runner);
+    case CompositorKind::Generic:
+      return std::make_unique<LogindSessionBackend>(env, runner);
   }
   return std::make_unique<LogindSessionBackend>(env, runner);
 }
