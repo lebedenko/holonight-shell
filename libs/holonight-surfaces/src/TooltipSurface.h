@@ -1,14 +1,14 @@
 #pragma once
 
-#include "LayerShell.h"
-#include "LayerSurface.h"
+#include "TransientSurfaceHost.h"
 
 #include <QObject>
 #include <QQmlEngine>
-#include <QQuickView>
 #include <QString>
 
-class TooltipSurface : public QObject {
+class QScreen;
+
+class TooltipSurface : public TransientSurfaceHost {
   Q_OBJECT
   QML_ELEMENT
   QML_SINGLETON
@@ -42,6 +42,9 @@ class TooltipSurface : public QObject {
                         int signal_strength);
   Q_INVOKABLE void hide();
 
+  [[nodiscard]] static Holonight::Wayland::LayerSurfaceSpec surfaceSpec(QScreen* screen, int anchor_x,
+                                                                        int anchor_width);
+
  Q_SIGNALS:
   void contentChanged();
   void tooltipVisibleChanged();
@@ -53,9 +56,9 @@ class TooltipSurface : public QObject {
   void setContent(const QString& title, const QString& description, const QString& icon_name, int battery_percent,
                   bool charging, int signal_strength);
 
-  LayerShell shell_;
-  QQuickView* view_ = nullptr;
-  LayerSurface* surface_ = nullptr;
+  void onSurfaceTerminated() override;
+  void onSurfaceConfigured() override;
+
   bool tooltip_visible_ = false;
   bool pending_show_ = false;
   QString pending_screen_;

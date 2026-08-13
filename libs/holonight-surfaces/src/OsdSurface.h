@@ -1,7 +1,6 @@
 #pragma once
 
-#include "LayerShell.h"
-#include "LayerSurface.h"
+#include "TransientSurfaceHost.h"
 
 #include <QObject>
 #include <QQmlEngine>
@@ -9,8 +8,7 @@
 
 #include <holonight_shell_config/config_structs.h>
 
-struct wl_surface;
-class QQuickView;
+class QScreen;
 
 // The OSD's layer-shell surface: one overlay-layer QQuickView following whichever monitor the
 // caller names, hosting Osd/OsdView.qml. (The view is not named OsdSurface.qml: this class already
@@ -26,7 +24,7 @@ class QQuickView;
 // unchanged, destroy and rebuild when it changes, and defer creation until the layer-shell global
 // is bound. Unlike the toast stack the surface is sized entirely by its content (REQ-C-013) --
 // there is no fixed width -- because the OSD's width varies with the keyboard layout name.
-class OsdSurface : public QObject {
+class OsdSurface : public TransientSurfaceHost {
   Q_OBJECT
   QML_ELEMENT
   QML_SINGLETON
@@ -57,7 +55,8 @@ class OsdSurface : public QObject {
 
   void destroySurface();
 
-  [[nodiscard]] bool isActive() const { return view_ != nullptr; }
+  [[nodiscard]] bool isActive() const { return hasSurface(); }
+  [[nodiscard]] Holonight::Wayland::LayerSurfaceSpec surfaceSpec(QScreen* screen, const QString& screen_name) const;
 
   // Called by OsdView.qml once the exit animation completes, the same callback mechanism
   // SidebarManager uses for RightSidebar.qml's close animation. Queues the teardown rather than
@@ -77,18 +76,14 @@ class OsdSurface : public QObject {
  private:
   bool createSurface(const QString& screen_name);
   void applyPlacement();
-  // REQ-F-024: installs an empty wl_region as the surface's input region so pointer and touch
-  // events fall through to whatever is behind the OSD. Does not commit -- callers batch it with
-  // whatever other surface state they are already committing.
   void applyInputRegion();
   // Replays the last pushed content onto the QML root. Called after every content update and after
   // a rebuild, so migrating to another monitor never shows a frame of empty OSD.
   void pushPendingContent();
 
-  LayerShell shell_;
-  QQuickView* view_ = nullptr;
-  LayerSurface* surface_ = nullptr;
-  wl_surface* wl_surface_ = nullptr;
+  void onSurfaceConfigured() override;
+  void onSurfaceTerminated() override;
+
   QString current_screen_;
   // Last size handed to set_size, so the per-frame resample only issues a request when it changed.
   // -1 means "nothing applied yet", which no real size can match.

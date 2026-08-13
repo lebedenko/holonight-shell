@@ -1,17 +1,15 @@
 #pragma once
 
 #include "LauncherSurfaceLifecycle.h"
-#include "LayerShell.h"
-#include "LayerSurface.h"
+#include "TransientSurfaceHost.h"
 
 #include <QObject>
 #include <QQmlEngine>
-#include <QQuickView>
 #include <QString>
 
-struct wl_surface;
+class QScreen;
 
-class LauncherSurface : public QObject {
+class LauncherSurface : public TransientSurfaceHost {
   Q_OBJECT
   QML_ELEMENT
   QML_SINGLETON
@@ -34,6 +32,8 @@ class LauncherSurface : public QObject {
   // Called by QML after the close animation completes.
   Q_INVOKABLE void notifyHideReady();
 
+  [[nodiscard]] static Holonight::Wayland::LayerSurfaceSpec surfaceSpec(QScreen* screen);
+
  Q_SIGNALS:
   void visibleChanged();
 
@@ -43,10 +43,8 @@ class LauncherSurface : public QObject {
   void executeCommand(const LauncherSurfaceCommand& command);
   void setVisible(bool visible);
 
-  LayerShell shell_;
-  QQuickView* view_{nullptr};
-  LayerSurface* surface_{nullptr};
-  wl_surface* wl_surface_{nullptr};
+  void onSurfaceTerminated() override;
+
   LauncherSurfaceLifecycle lifecycle_;
   bool visible_{false};
 };

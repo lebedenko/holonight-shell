@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(LauncherSurfaceLifecycle, DefersShowUntilShellBecomesActive) {
+TEST(LauncherSurfaceLifecycle, DefersShowUntilProviderBecomesAvailable) {
   LauncherSurfaceLifecycle lifecycle;
 
   const LauncherSurfaceCommand pending = lifecycle.show(QStringLiteral("DP-1"), false);
@@ -10,7 +10,7 @@ TEST(LauncherSurfaceLifecycle, DefersShowUntilShellBecomesActive) {
   EXPECT_TRUE(lifecycle.pendingShow());
   EXPECT_EQ(lifecycle.pendingScreen(), QStringLiteral("DP-1"));
 
-  const LauncherSurfaceCommand create = lifecycle.shellActivated(true);
+  const LauncherSurfaceCommand create = lifecycle.providerAvailabilityChanged(true);
   EXPECT_EQ(create.type, LauncherSurfaceCommandType::CreateSurface);
   EXPECT_EQ(create.screen_name, QStringLiteral("DP-1"));
   EXPECT_FALSE(lifecycle.pendingShow());

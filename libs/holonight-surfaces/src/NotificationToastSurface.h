@@ -1,13 +1,11 @@
 #pragma once
 
-#include "LayerShell.h"
-#include "LayerSurface.h"
+#include "TransientSurfaceHost.h"
 
 #include <QObject>
 #include <QString>
 
-struct wl_surface;
-class QQuickView;
+class QScreen;
 
 // Layer-shell surface manager for toast notifications on a single monitor. Modeled on
 // TooltipSurface / StatusPopupSurface: owns one QQuickView whose root is ToastStack.qml, placed
@@ -19,7 +17,7 @@ class QQuickView;
 // the screen edge stays click-through. One instance per active monitor; owned by
 // NotificationManager, which creates it on the first notification and destroys it when the
 // monitor's visible set and queue both empty.
-class NotificationToastSurface : public QObject {
+class NotificationToastSurface : public TransientSurfaceHost {
   Q_OBJECT
 
  public:
@@ -36,7 +34,8 @@ class NotificationToastSurface : public QObject {
   void ensureSurface(const QString& screen_name);
   void destroySurface();
 
-  [[nodiscard]] bool isActive() const { return view_ != nullptr; }
+  [[nodiscard]] bool isActive() const { return hasSurface(); }
+  [[nodiscard]] static Holonight::Wayland::LayerSurfaceSpec surfaceSpec(QScreen* screen, const QString& screen_name);
 
  private Q_SLOTS:
   // Resizes the layer surface to the current QML contentHeight (toasts + glow margin).
@@ -44,11 +43,9 @@ class NotificationToastSurface : public QObject {
 
  private:
   bool createSurface(const QString& screen_name);
+  void onSurfaceConfigured() override;
+  void onSurfaceTerminated() override;
 
-  LayerShell shell_;
-  QQuickView* view_ = nullptr;
-  LayerSurface* surface_ = nullptr;
-  wl_surface* wl_surface_ = nullptr;
   QString current_screen_;
   bool pending_show_ = false;
   QString pending_screen_;

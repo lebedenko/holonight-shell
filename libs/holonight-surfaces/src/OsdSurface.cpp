@@ -1,6 +1,5 @@
 #include "OsdSurface.h"
 
-#include "QmlSourceLoader.h"
 #include "ShellConstants.h"
 #include "WidgetSurfacePolicy.h"
 
@@ -8,11 +7,6 @@
 #include <QQuickItem>
 #include <QQuickView>
 #include <QScreen>
-#include <QtGui/qguiapplication_platform.h>
-#include <qpa/qplatformwindow_p.h>
-#include <qscreen_platform.h>
-
-#include <wayland-client.h>
 
 namespace {
 constexpr int kOsdMargin = 24;
@@ -22,14 +16,9 @@ constexpr int kFallbackWidth = 220;
 constexpr int kFallbackHeight = 96;
 }  // namespace
 
-OsdSurface::OsdSurface(QObject* parent) : QObject(parent) {
-  connect(&shell_, &QWaylandClientExtension::activeChanged, this, [this]() {
-    if (shell_.isActive() && pending_show_) {
-      pending_show_ = false;
-      createSurface(pending_screen_);
-    }
-  });
-}
+using namespace Holonight::Wayland;
+
+OsdSurface::OsdSurface(QObject* parent) : TransientSurfaceHost("OsdSurface", parent) {}
 
 OsdSurface::~OsdSurface() { destroySurface(); }
 
@@ -42,16 +31,11 @@ void OsdSurface::setPosition(HoloNight::ShellConfig::WidgetPosition position) {
 }
 
 void OsdSurface::ensureSurface(const QString& screen_name) {
-  if (view_ != nullptr && current_screen_ == screen_name) {
+  if (hasSurface() && current_screen_ == screen_name) {
     return;  // already on this monitor
   }
-  if (view_ != nullptr) {
+  if (hasSurface()) {
     destroySurface();  // monitor changed — rebuild
-  }
-  if (!shell_.isActive()) {
-    pending_show_ = true;
-    pending_screen_ = screen_name;
-    return;
   }
   createSurface(screen_name);
 }
@@ -73,10 +57,10 @@ void OsdSurface::showSelection(const QString& channel, const QString& short_labe
 }
 
 void OsdSurface::hide() {
-  if (view_ == nullptr) {
+  if (!hasSurface()) {
     return;
   }
-  if (QQuickItem* root = view_->rootObject()) {
+  if (auto* root = qobject_cast<QQuickItem*>(rootObject())) {
     root->setProperty("hiding", true);
   }
 }
@@ -94,8 +78,8 @@ void OsdSurface::destroyAfterHide() {
   // the OSD back in (pushPendingContent), possibly onto a surface rebuilt for another monitor.
   // Tearing down on that stale request would kill a live OSD, so the decision is re-derived from
   // current state rather than trusted from when it was queued.
-  if (view_ != nullptr) {
-    const QQuickItem* root = view_->rootObject();
+  if (hasSurface()) {
+    const auto* root = qobject_cast<QQuickItem*>(rootObject());
     if (root != nullptr && !root->property("hiding").toBool()) {
       return;
     }
@@ -118,132 +102,67 @@ bool OsdSurface::createSurface(const QString& screen_name) {
     return false;
   }
 
-  view_ = new QQuickView();
-  view_->setScreen(screen);
-  view_->setResizeMode(QQuickView::SizeRootObjectToView);
-  view_->setFlags(view_->flags() | Qt::BypassWindowManagerHint);
-  view_->setColor(Qt::transparent);
-  view_->create();
-
-  auto* wayland_window = view_->nativeInterface<QNativeInterface::Private::QWaylandWindow>();
-  if (wayland_window == nullptr) {
-    qCritical("OsdSurface: not running under Wayland");
-    destroySurface();
-    return false;
-  }
-
-  wl_surface* wl_surface = wayland_window->surface();
-  if (wl_surface == nullptr) {
-    qCritical("OsdSurface: wl_surface not available");
-    destroySurface();
-    return false;
-  }
-
-  wl_output* wl_output = nullptr;
-  if (auto* wayland_screen = screen->nativeInterface<QNativeInterface::QWaylandScreen>()) {
-    wl_output = wayland_screen->output();
-  }
-
-  auto* raw = shell_.get_layer_surface(wl_surface, wl_output, QtWayland::zwlr_layer_shell_v1::layer_overlay,
-                                       QStringLiteral("osd"));
-  if (raw == nullptr) {
-    qCritical("OsdSurface: layer surface creation failed");
-    destroySurface();
-    return false;
-  }
-
-  wl_surface_ = wl_surface;
-  surface_ = new LayerSurface(raw, wl_surface, view_, this);
-  surface_->set_size(kFallbackWidth, kFallbackHeight);
-  // REQ-F-024: the OSD is never focusable. `none` is already the protocol default, but say so
-  // explicitly -- this surface sits on the overlay layer, where silently taking keyboard focus
-  // would steal input from the focused application.
-  surface_->set_keyboard_interactivity(QtWayland::zwlr_layer_surface_v1::keyboard_interactivity_none);
-  applyPlacement();
-  applyInputRegion();
-
-  // REQ-NF-009: nothing renders until the compositor has configured the surface, so the entrance
-  // animation never plays against a not-yet-mapped surface. Guarded per the documented
-  // SingleShotConnection race: the configure event can arrive after a monitor-change rebuild has
-  // already destroyed this view.
-  connect(
-      surface_, &LayerSurface::configured, this,
-      [this]() {
-        if (!isActive()) {
-          return;
-        }
-        // Re-applied post-map: Qt owns the same wl_surface and sets its own input region while
-        // mapping the window, which would otherwise overwrite the empty one installed at creation.
-        applyInputRegion();
-        wl_surface_commit(wl_surface_);
-        if (QQuickItem* root = view_->rootObject()) {
-          root->setProperty("configured", true);
-        }
-        // Content is pushed only now, not at creation: OsdView.qml starts its entrance from
-        // the channel property changing, and it ignores that change while `configured` is false.
-        // Pushing earlier would leave the OSD permanently at opacity 0.
-        pushPendingContent();
-      },
-      Qt::SingleShotConnection);
-
-  view_->setInitialProperties({{QStringLiteral("monitorName"), screen_name}});
-  if (!loadQmlSource(view_, QUrl(QStringLiteral("qrc:/HolonightShell/Osd/OsdView.qml")), "OsdSurface")) {
-    destroySurface();
-    return false;
-  }
-
-  // Sampled once per frame rather than from implicitWidth/HeightChanged: the renderers are built
-  // from QtQuick.Layouts, whose implicit size is recomputed during the polish phase and not at all
-  // while the root is still invisible, so those signals can fire before the card has its final
-  // geometry and then never again -- leaving the surface at the fallback size with the card
-  // overflowing and clipped. afterAnimating runs after polishItems() on the GUI thread, so the
-  // implicit size read here is always the one about to be rendered.
-  connect(view_, &QQuickWindow::afterAnimating, this, &OsdSurface::updateSurfaceSize);
-
   current_screen_ = screen_name;
-  updateSurfaceSize();
-  wl_surface_commit(wl_surface);
-  return true;
+  return openSurface(surfaceSpec(screen, screen_name));
 }
 
+LayerSurfaceSpec OsdSurface::surfaceSpec(QScreen* screen, const QString& screen_name) const {
+  const int top = widgetPositionIsTopAnchored(position_) ? kBarHeight + kOsdMargin : kOsdMargin;
+  return {.output = screen,
+          .name_space = QStringLiteral("osd"),
+          .layer = Layer::Overlay,
+          .anchors = anchorsForPosition(position_),
+          .width = kFallbackWidth,
+          .height = kFallbackHeight,
+          .margin_top = top,
+          .margin_right = kOsdMargin,
+          .margin_bottom = kOsdMargin,
+          .margin_left = kOsdMargin,
+          .exclusive_zone = 0,
+          .keyboard_interactivity = KeyboardInteractivity::None,
+          .input_region_policy = InputRegionPolicy::Empty,
+          .input_region = {},
+          .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Osd/OsdView.qml")),
+          .initial_properties = {{QStringLiteral("monitorName"), screen_name}},
+          .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+          .color = Qt::transparent};
+}
+
+void OsdSurface::onSurfaceConfigured() {
+  applyInputRegion();
+  if (auto* root = qobject_cast<QQuickItem*>(rootObject())) {
+    root->setProperty("configured", true);
+  }
+  if (view() != nullptr) {
+    connect(view(), &QQuickWindow::afterAnimating, this, &OsdSurface::updateSurfaceSize, Qt::UniqueConnection);
+  }
+  pushPendingContent();
+}
+
+void OsdSurface::onSurfaceTerminated() {}
+
 void OsdSurface::applyPlacement() {
-  if (surface_ == nullptr || wl_surface_ == nullptr) {
+  if (host() == nullptr) {
     return;
   }
   // Top-anchored positions clear the bar's exclusive zone, the same rule desktop widgets follow.
   const int top = widgetPositionIsTopAnchored(position_) ? kBarHeight + kOsdMargin : kOsdMargin;
-  surface_->set_anchor(anchorFlagsForPosition(position_));
-  surface_->set_margin(top, kOsdMargin, kOsdMargin, kOsdMargin);
-  surface_->set_exclusive_zone(0);  // the OSD never reserves space
-  wl_surface_commit(wl_surface_);
+  host()->setAnchors(anchorsForPosition(position_));
+  host()->setMargins(top, kOsdMargin, kOsdMargin, kOsdMargin);
+  host()->setExclusiveZone(0);
 }
 
 void OsdSurface::applyInputRegion() {
-  if (wl_surface_ == nullptr) {
-    return;
+  if (host() != nullptr) {
+    host()->setInputRegion(InputRegionPolicy::Empty);
   }
-  const auto* wayland_app = qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
-  wl_compositor* compositor = wayland_app != nullptr ? wayland_app->compositor() : nullptr;
-  if (compositor == nullptr) {
-    qCritical("OsdSurface: no wl_compositor available; the OSD would swallow clicks");
-    return;
-  }
-  wl_region* region = wl_compositor_create_region(compositor);
-  if (region == nullptr) {
-    qCritical("OsdSurface: wl_region creation failed; the OSD would swallow clicks");
-    return;
-  }
-  // Deliberately empty -- no wl_region_add() -- so every pointer and touch event lands on whatever
-  // is behind the OSD instead of on this surface.
-  wl_surface_set_input_region(wl_surface_, region);
-  wl_region_destroy(region);
 }
 
 void OsdSurface::pushPendingContent() {
-  if (view_ == nullptr) {
+  if (!hasSurface()) {
     return;
   }
-  QQuickItem* root = view_->rootObject();
+  auto* root = qobject_cast<QQuickItem*>(rootObject());
   if (root == nullptr || !root->property("configured").toBool()) {
     return;  // replayed from the configured() handler instead
   }
@@ -267,12 +186,12 @@ void OsdSurface::pushPendingContent() {
 }
 
 void OsdSurface::updateSurfaceSize() {
-  if (surface_ == nullptr || view_ == nullptr || wl_surface_ == nullptr) {
+  if (host() == nullptr || view() == nullptr) {
     return;
   }
   int width = kFallbackWidth;
   int height = kFallbackHeight;
-  if (QQuickItem* root = view_->rootObject()) {
+  if (auto* root = qobject_cast<QQuickItem*>(rootObject())) {
     // The QML root's implicit size already includes its glow margin, so it is used as-is.
     const int reported_width = static_cast<int>(root->implicitWidth());
     const int reported_height = static_cast<int>(root->implicitHeight());
@@ -289,19 +208,15 @@ void OsdSurface::updateSurfaceSize() {
   applied_width_ = width;
   applied_height_ = height;
 
-  surface_->set_size(width, height);
+  host()->setSize(width, height);
   // Qt reinstalls its own input region as the window resizes, so the empty one has to be restated
   // on every size change, not just at creation.
   applyInputRegion();
-  wl_surface_commit(wl_surface_);
 }
 
 void OsdSurface::destroySurface() {
-  delete surface_;
-  surface_ = nullptr;
-  delete view_;
-  view_ = nullptr;
-  wl_surface_ = nullptr;
+  clearPendingSurface();
+  closeSurface();
   current_screen_.clear();
   // Reset with the surface: the next one starts at the fallback size, so a stale match here would
   // skip the first real resize and clip the card.

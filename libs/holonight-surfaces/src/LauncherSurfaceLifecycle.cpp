@@ -1,14 +1,15 @@
 #include "LauncherSurfaceLifecycle.h"
 
-LauncherSurfaceCommand LauncherSurfaceLifecycle::toggle(const QString& screen_name, bool shell_active, bool has_view) {
+LauncherSurfaceCommand LauncherSurfaceLifecycle::toggle(const QString& screen_name, bool provider_available,
+                                                        bool has_view) {
   if (visible_ && !closing_) {
     return hide(has_view);
   }
-  return show(screen_name, shell_active);
+  return show(screen_name, provider_available);
 }
 
-LauncherSurfaceCommand LauncherSurfaceLifecycle::show(const QString& screen_name, bool shell_active) {
-  if (!shell_active) {
+LauncherSurfaceCommand LauncherSurfaceLifecycle::show(const QString& screen_name, bool provider_available) {
+  if (!provider_available) {
     pending_show_ = true;
     pending_screen_ = screen_name;
     return {};
@@ -43,8 +44,8 @@ LauncherSurfaceCommand LauncherSurfaceLifecycle::notifyHideReady(bool has_view) 
   };
 }
 
-LauncherSurfaceCommand LauncherSurfaceLifecycle::shellActivated(bool shell_active) {
-  if (!shell_active || !pending_show_) {
+LauncherSurfaceCommand LauncherSurfaceLifecycle::providerAvailabilityChanged(bool provider_available) {
+  if (!provider_available || !pending_show_) {
     return {};
   }
 

@@ -2,6 +2,8 @@ add_library(holonight_surfaces STATIC
     src/ShellConstants.h
     src/PerMonitorLayerManager.h
     src/PerMonitorLayerManager.cpp
+    src/TransientSurfaceHost.h
+    src/TransientSurfaceHost.cpp
     src/BackgroundManager.h
     src/BackgroundManager.cpp
     src/WidgetCountdown.h

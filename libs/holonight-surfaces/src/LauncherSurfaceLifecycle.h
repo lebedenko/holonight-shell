@@ -25,11 +25,11 @@ class LauncherSurfaceLifecycle {
   [[nodiscard]] bool pendingShow() const { return pending_show_; }
   [[nodiscard]] QString pendingScreen() const { return pending_screen_; }
 
-  [[nodiscard]] LauncherSurfaceCommand toggle(const QString& screen_name, bool shell_active, bool has_view);
-  [[nodiscard]] LauncherSurfaceCommand show(const QString& screen_name, bool shell_active);
+  [[nodiscard]] LauncherSurfaceCommand toggle(const QString& screen_name, bool provider_available, bool has_view);
+  [[nodiscard]] LauncherSurfaceCommand show(const QString& screen_name, bool provider_available);
   [[nodiscard]] LauncherSurfaceCommand hide(bool has_view);
   [[nodiscard]] LauncherSurfaceCommand notifyHideReady(bool has_view);
-  [[nodiscard]] LauncherSurfaceCommand shellActivated(bool shell_active);
+  [[nodiscard]] LauncherSurfaceCommand providerAvailabilityChanged(bool provider_available);
   [[nodiscard]] LauncherSurfaceCommand surfaceCreated(bool created);
   [[nodiscard]] LauncherSurfaceCommand surfaceClosed();
 

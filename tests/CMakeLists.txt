@@ -135,7 +135,8 @@ holonight_add_test_exe(test_holonight_surfaces
   test_sidebar_surface_policy.cpp
   test_sidebar_manager.cpp
   test_widget_surface_policy.cpp
-  test_persistent_surface_policy.cpp
+    test_persistent_surface_policy.cpp
+    test_transient_surface_policy.cpp
   test_widget_countdown.cpp
   test_widget_clock.cpp
   test_mpris_widget_manager.cpp

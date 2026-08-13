@@ -1,82 +1,49 @@
 #include "LauncherSurface.h"
 
 #include "IconImageProvider.h"
-#include "QmlSourceLoader.h"
 
 #include <QGuiApplication>
 #include <QLoggingCategory>
+#include <QQmlEngine>
 #include <QQuickItem>
 #include <QScreen>
-#include <qpa/qplatformwindow_p.h>
-#include <qscreen_platform.h>
 
-#include <wayland-client.h>
+#include <holonight/wayland/layershellcontext.h>
 
 Q_LOGGING_CATEGORY(lcLauncher, "holonight.launcher")
 
-namespace {
-QQuickView* makeLauncherView(QScreen* screen, wl_surface*& wl_surface_out, wl_output*& wl_output_out) {
-  auto* view = new QQuickView();
-  view->setScreen(screen);
-  view->setResizeMode(QQuickView::SizeRootObjectToView);
-  view->setFlags(view->flags() | Qt::BypassWindowManagerHint);
-  view->setColor(Qt::transparent);
-  view->create();
+using namespace Holonight::Wayland;
 
-  auto* wayland_window = view->nativeInterface<QNativeInterface::Private::QWaylandWindow>();
-  if (wayland_window == nullptr) {
-    qWarning("LauncherSurface: not running under Wayland");
-    delete view;
-    return nullptr;
-  }
-
-  wl_surface* wl_surf = wayland_window->surface();
-  if (wl_surf == nullptr) {
-    qWarning("LauncherSurface: wl_surface not available");
-    delete view;
-    return nullptr;
-  }
-
-  wl_output* wl_out = nullptr;
-  if (auto* wayland_screen = screen->nativeInterface<QNativeInterface::QWaylandScreen>()) {
-    wl_out = wayland_screen->output();
-  }
-
-  wl_surface_out = wl_surf;
-  wl_output_out = wl_out;
-  return view;
-}
-}  // namespace
-
-LauncherSurface::LauncherSurface(QObject* parent) : QObject(parent) {
-  connect(&shell_, &QWaylandClientExtension::activeChanged, this,
-          [this]() { executeCommand(lifecycle_.shellActivated(shell_.isActive())); });
+LauncherSurface::LauncherSurface(QObject* parent) : TransientSurfaceHost("LauncherSurface", parent) {
+  connect(LayerShellContext::instance(), &LayerShellContext::availabilityChanged, this, [this]() {
+    executeCommand(lifecycle_.providerAvailabilityChanged(LayerShellContext::instance()->isAvailable()));
+  });
 }
 
 LauncherSurface::~LauncherSurface() { destroySurface(); }
 
 void LauncherSurface::toggle(const QString& screen_name) {
   qCInfo(lcLauncher) << "toggle" << screen_name << "visible" << visible_ << "closing" << lifecycle_.closing();
-  executeCommand(lifecycle_.toggle(screen_name, shell_.isActive(), view_ != nullptr));
+  executeCommand(lifecycle_.toggle(screen_name, LayerShellContext::instance()->isAvailable(), hasSurface()));
 }
 
 void LauncherSurface::show(const QString& screen_name) {
-  qCInfo(lcLauncher) << "show requested" << screen_name << "shell active" << shell_.isActive() << "visible" << visible_
-                     << "closing" << lifecycle_.closing() << "view" << view_;
-  executeCommand(lifecycle_.show(screen_name, shell_.isActive()));
+  qCInfo(lcLauncher) << "show requested" << screen_name << "provider available"
+                     << LayerShellContext::instance()->isAvailable() << "visible" << visible_ << "closing"
+                     << lifecycle_.closing() << "view" << view();
+  executeCommand(lifecycle_.show(screen_name, LayerShellContext::instance()->isAvailable()));
 }
 
 void LauncherSurface::hide() {
   qCInfo(lcLauncher) << "hide requested"
-                     << "view" << view_ << "visible" << visible_ << "closing" << lifecycle_.closing();
-  executeCommand(lifecycle_.hide(view_ != nullptr));
+                     << "view" << view() << "visible" << visible_ << "closing" << lifecycle_.closing();
+  executeCommand(lifecycle_.hide(hasSurface()));
 }
 
 void LauncherSurface::notifyHideReady() {
   qCInfo(lcLauncher) << "notifyHideReady"
-                     << "view" << view_ << "wl_surface" << wl_surface_ << "visible" << visible_ << "closing"
-                     << lifecycle_.closing();
-  executeCommand(lifecycle_.notifyHideReady(view_ != nullptr));
+                     << "view" << view() << "visible" << visible_ << "closing" << lifecycle_.closing();
+  executeCommand(lifecycle_.notifyHideReady(hasSurface()));
 }
 
 bool LauncherSurface::ensureSurface(const QString& screen_name) {
@@ -95,53 +62,33 @@ bool LauncherSurface::ensureSurface(const QString& screen_name) {
     return false;
   }
 
-  wl_output* launcher_out = nullptr;
-  view_ = makeLauncherView(screen, wl_surface_, launcher_out);
-  if (view_ == nullptr) {
-    return false;
-  }
-
-  auto* raw_surface = shell_.get_layer_surface(wl_surface_, launcher_out, QtWayland::zwlr_layer_shell_v1::layer_top,
-                                               QStringLiteral("launcher"));
-  if (raw_surface == nullptr) {
-    qCritical("LauncherSurface: layer surface creation failed");
-    destroySurface();
-    return false;
-  }
-
-  surface_ = new LayerSurface(raw_surface, wl_surface_, view_, this);
-  connect(surface_, &LayerSurface::closed, this, [this]() { executeCommand(lifecycle_.surfaceClosed()); });
-
-  surface_->set_anchor(QtWayland::zwlr_layer_surface_v1::anchor_top | QtWayland::zwlr_layer_surface_v1::anchor_bottom |
-                       QtWayland::zwlr_layer_surface_v1::anchor_left | QtWayland::zwlr_layer_surface_v1::anchor_right);
-  surface_->set_size(0, 0);
-  surface_->set_exclusive_zone(0);
-  surface_->set_keyboard_interactivity(QtWayland::zwlr_layer_surface_v1::keyboard_interactivity_exclusive);
-
-  view_->engine()->addImageProvider(QStringLiteral("icon"), new IconImageProvider());
-  if (!loadQmlSource(view_, QUrl(QStringLiteral("qrc:/HolonightShell/Launcher/Launcher.qml")), "LauncherSurface")) {
-    destroySurface();
-    return false;
-  }
-
-  wl_surface_commit(wl_surface_);
-  return true;
+  return openSurface(surfaceSpec(screen));
 }
 
 void LauncherSurface::destroySurface() {
-  qCInfo(lcLauncher) << "destroySurface"
-                     << "view" << view_ << "surface" << surface_ << "wl_surface" << wl_surface_;
-  wl_surface_ = nullptr;
-  if (surface_ != nullptr) {
-    surface_->deleteLater();
-    surface_ = nullptr;
-  }
-  if (view_ != nullptr) {
-    view_->hide();
-    view_->deleteLater();
-    view_ = nullptr;
-  }
+  qCInfo(lcLauncher) << "destroySurface" << "view" << view();
+  clearPendingSurface();
+  closeSurface();
 }
+
+LayerSurfaceSpec LauncherSurface::surfaceSpec(QScreen* screen) {
+  return {.output = screen,
+          .name_space = QStringLiteral("launcher"),
+          .layer = Layer::Top,
+          .anchors = Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
+          .width = 0,
+          .height = 0,
+          .exclusive_zone = 0,
+          .keyboard_interactivity = KeyboardInteractivity::Exclusive,
+          .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Launcher/Launcher.qml")),
+          .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+          .color = Qt::transparent,
+          .before_load = [](QQmlEngine* engine) {
+            engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider());
+          }};
+}
+
+void LauncherSurface::onSurfaceTerminated() { executeCommand(lifecycle_.surfaceClosed()); }
 
 void LauncherSurface::executeCommand(const LauncherSurfaceCommand& command) {
   switch (command.type) {
@@ -156,7 +103,7 @@ void LauncherSurface::executeCommand(const LauncherSurfaceCommand& command) {
       destroySurface();
       break;
     case LauncherSurfaceCommandType::StartCloseAnimation:
-      if (QQuickItem* root = view_ != nullptr ? view_->rootObject() : nullptr) {
+      if (auto* root = qobject_cast<QQuickItem*>(rootObject())) {
         QMetaObject::invokeMethod(root, "startClose");
       }
       break;
