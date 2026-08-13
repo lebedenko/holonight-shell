@@ -1,95 +1,172 @@
-#include "LayerShell.h"
 #include "SidebarManager.h"
 
+#include <QCoreApplication>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QScreen>
 #include <QSignalSpy>
-#include <QString>
 
 #include <gtest/gtest.h>
 
-// SidebarManager only touches Wayland when it creates a surface, so construction and the
-// pure state accessors are unit-testable here; anything that opens a real layer surface
-// (toggle()/closeAll() sequencing) needs a live compositor (REQ-C-3) and is covered by the manual
-// verification checklist instead.
+using Holonight::Wayland::LayerSurfaceHost;
+using Holonight::Wayland::LayerSurfaceSpec;
 
-TEST(SidebarManagerMonitorValidation, RejectsUnknownMonitorName) {
+class SidebarManagerHarness final : public SidebarManager {
+ public:
+  SidebarManagerHarness()
+      : SidebarManager([this] {
+          auto host = std::make_unique<LayerSurfaceHost>();
+          hosts.append(host.get());
+          return host;
+        }) {}
+
+  QList<LayerSurfaceHost*> hosts;
+  QList<LayerSurfaceSpec> specs;
+  bool available = true;
+  bool open_succeeds = true;
+  QScreen* screen = QGuiApplication::primaryScreen();
+
+  void providerChanged() { handleProviderAvailabilityChanged(); }
+  void outputRemoved(const QString& name) { handleOutputRemoved(name); }
+
+ protected:
+  bool openHost(LayerSurfaceHost&, const LayerSurfaceSpec& spec) override {
+    specs.append(spec);
+    return open_succeeds;
+  }
+  bool providerAvailable() const override { return available; }
+  QScreen* screenForName(const QString& name) const override {
+    return !name.isEmpty() && screen != nullptr ? screen : nullptr;
+  }
+};
+
+static void deliverQueuedSignals() { QCoreApplication::sendPostedEvents(nullptr, QEvent::MetaCall); }
+
+TEST(SidebarManagerMonitorValidation, RejectsUnknownAndEmptyMonitorNames) {
   EXPECT_FALSE(SidebarManager::isKnownMonitor(QStringLiteral("definitely-not-a-real-monitor-xyz123")));
-}
-
-TEST(SidebarManagerMonitorValidation, RejectsEmptyMonitorName) {
   EXPECT_FALSE(SidebarManager::isKnownMonitor(QString{}));
 }
 
-TEST(SidebarManagerMonitorValidation, AcceptsAnyCurrentlyConnectedNonEmptyNamedScreen) {
-  // The offscreen QPA platform used by this test harness names its QScreen "" — a genuinely
-  // empty name is correctly rejected (see RejectsEmptyMonitorName), so this only exercises
-  // screens with a real name, mirroring what a live Wayland session always provides.
-  const QList<QScreen*> screens = QGuiApplication::screens();
-  ASSERT_FALSE(screens.isEmpty()) << "test harness offscreen platform should expose at least one QScreen";
+TEST(SidebarManagerLifecycle, OpensWithCachedHeightAndTabAndEmitsOnce) {
+  SidebarManagerHarness manager;
+  QSignalSpy opened(&manager, &SidebarManager::sidebarOpened);
+  manager.onContentHeightChanged(QStringLiteral("DP-3"), 700);
+  manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
+  manager.toggle(QStringLiteral("DP-3"));
 
-  int named_screens = 0;
-  for (QScreen* screen : screens) {
-    if (screen->name().isEmpty()) {
-      continue;
-    }
-    ++named_screens;
-    EXPECT_TRUE(SidebarManager::isKnownMonitor(screen->name()));
-  }
-  if (named_screens == 0) {
-    GTEST_SKIP() << "offscreen platform exposed no non-empty-named QScreen in this environment";
-  }
+  ASSERT_TRUE(manager.isOpen(QStringLiteral("DP-3")));
+  ASSERT_EQ(opened.count(), 1);
+  ASSERT_EQ(manager.specs.size(), 1);
+  EXPECT_EQ(manager.specs[0].initial_properties.value(QStringLiteral("panelHeight")).toInt(), 700);
+  EXPECT_EQ(manager.specs[0].initial_properties.value(QStringLiteral("currentTab")).toInt(), 4);
 }
 
-TEST(SidebarManagerMonitorValidation, RejectsWhitespaceOnlyName) {
-  EXPECT_FALSE(SidebarManager::isKnownMonitor(QStringLiteral("   ")));
+TEST(SidebarManagerLifecycle, ConfigureNotificationDoesNotDuplicateOpenSignal) {
+  SidebarManagerHarness manager;
+  QSignalSpy opened(&manager, &SidebarManager::sidebarOpened);
+  manager.toggle(QStringLiteral("DP-3"));
+  QMetaObject::invokeMethod(manager.hosts.front(), "configured", Qt::DirectConnection);
+  deliverQueuedSignals();
+  EXPECT_TRUE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_EQ(opened.count(), 1);
 }
 
-TEST(SidebarManagerCurrentTab, DefaultsToZeroForUnreportedMonitor) {
-  LayerShell shell;
-  SidebarManager manager(shell);
+TEST(SidebarManagerLifecycle, AnimatedCloseRetainsHostUntilCallback) {
+  SidebarManagerHarness manager;
+  manager.toggle(QStringLiteral("DP-3"));
+  QPointer<LayerSurfaceHost> host = manager.hosts.front();
+  manager.close(QStringLiteral("DP-3"));
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
+  manager.onClosingAnimationFinished(QStringLiteral("DP-3"));
+  deliverQueuedSignals();
+  QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+  EXPECT_TRUE(host.isNull());
+}
 
-  // Must match what createSurface() seeds the QML root's currentTab with, or a monitor whose
-  // sidebar has never been opened would read back a tab the QML never selected.
+TEST(SidebarManagerLifecycle, CrossMonitorOpenRetainsClosingHost) {
+  SidebarManagerHarness manager;
+  manager.toggle(QStringLiteral("DP-3"));
+  manager.toggle(QStringLiteral("HDMI-A-1"));
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_TRUE(manager.isOpen(QStringLiteral("HDMI-A-1")));
+  EXPECT_EQ(manager.hosts.size(), 2);
+}
+
+TEST(SidebarManagerLifecycle, SameMonitorReopenMakesOldAnimationCallbackNoOp) {
+  SidebarManagerHarness manager;
+  manager.toggle(QStringLiteral("DP-3"));
+  manager.close(QStringLiteral("DP-3"));
+  manager.toggle(QStringLiteral("DP-3"));
+  manager.onClosingAnimationFinished(QStringLiteral("DP-3"));
+  EXPECT_TRUE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_EQ(manager.hosts.size(), 1);
+}
+
+TEST(SidebarManagerLifecycle, OpenFailureLeavesLogicalStateClosed) {
+  SidebarManagerHarness manager;
+  QSignalSpy opened(&manager, &SidebarManager::sidebarOpened);
+  manager.open_succeeds = false;
+  manager.toggle(QStringLiteral("DP-3"));
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_EQ(opened.count(), 0);
+}
+
+TEST(SidebarManagerLifecycle, HostFailureAndDuplicateTerminalCallbacksCloseOnce) {
+  SidebarManagerHarness manager;
+  QSignalSpy closed(&manager, &SidebarManager::sidebarClosed);
+  manager.toggle(QStringLiteral("DP-3"));
+  LayerSurfaceHost* host = manager.hosts.front();
+  QMetaObject::invokeMethod(host, "failed", Qt::DirectConnection, Q_ARG(QString, QStringLiteral("failure")));
+  QMetaObject::invokeMethod(host, "closed", Qt::DirectConnection);
+  deliverQueuedSignals();
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_EQ(closed.count(), 1);
+}
+
+TEST(SidebarManagerLifecycle, StaleTerminalCallbackCannotCloseReplacement) {
+  SidebarManagerHarness manager;
+  manager.toggle(QStringLiteral("DP-3"));
+  LayerSurfaceHost* stale = manager.hosts.front();
+  manager.close(QStringLiteral("DP-3"));
+  manager.onClosingAnimationFinished(QStringLiteral("DP-3"));
+  manager.toggle(QStringLiteral("DP-3"));
+  QMetaObject::invokeMethod(stale, "closed", Qt::DirectConnection);
+  deliverQueuedSignals();
+  EXPECT_TRUE(manager.isOpen(QStringLiteral("DP-3")));
+}
+
+TEST(SidebarManagerLifecycle, OutputRemovalClearsStateAndCache) {
+  SidebarManagerHarness manager;
+  QSignalSpy closed(&manager, &SidebarManager::sidebarClosed);
+  manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
+  manager.toggle(QStringLiteral("DP-3"));
+  manager.outputRemoved(QStringLiteral("DP-3"));
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
   EXPECT_EQ(manager.currentTabForMonitor(QStringLiteral("DP-3")), 0);
+  EXPECT_EQ(closed.count(), 1);
 }
 
-TEST(SidebarManagerCurrentTab, ReadsBackTheTabReportedForThatMonitor) {
-  LayerShell shell;
-  SidebarManager manager(shell);
+TEST(SidebarManagerLifecycle, ProviderLossClosesAllImmediatelyWithoutReplay) {
+  SidebarManagerHarness manager;
+  QSignalSpy closed(&manager, &SidebarManager::sidebarClosed);
+  manager.toggle(QStringLiteral("DP-3"));
+  manager.available = false;
+  manager.providerChanged();
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_EQ(closed.count(), 1);
+  manager.available = true;
+  manager.providerChanged();
+  EXPECT_FALSE(manager.isOpen(QStringLiteral("DP-3")));
+  EXPECT_EQ(manager.specs.size(), 1);
+}
 
+TEST(SidebarManagerCurrentTab, EmitsRepeatedReportsAndKeepsPerMonitorState) {
+  SidebarManagerHarness manager;
+  QSignalSpy spy(&manager, &SidebarManager::currentTabChanged);
+  manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
   manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
   manager.onCurrentTabChanged(QStringLiteral("HDMI-A-1"), 2);
-
-  // Per-monitor, not global: brightness suppression asks every monitor in turn, so one monitor's
-  // tab must never answer for another's (REQ-F-006).
   EXPECT_EQ(manager.currentTabForMonitor(QStringLiteral("DP-3")), 4);
   EXPECT_EQ(manager.currentTabForMonitor(QStringLiteral("HDMI-A-1")), 2);
-}
-
-TEST(SidebarManagerCurrentTab, EmitsCurrentTabChangedWithMonitorAndIndex) {
-  LayerShell shell;
-  SidebarManager manager(shell);
-  QSignalSpy spy(&manager, &SidebarManager::currentTabChanged);
-  ASSERT_TRUE(spy.isValid());
-
-  manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
-
-  ASSERT_EQ(spy.count(), 1);
-  EXPECT_EQ(spy.at(0).at(0).toString(), QStringLiteral("DP-3"));
-  EXPECT_EQ(spy.at(0).at(1).toInt(), 4);
-}
-
-TEST(SidebarManagerCurrentTab, EmitsEvenWhenTheTabIndexRepeats) {
-  LayerShell shell;
-  SidebarManager manager(shell);
-  QSignalSpy spy(&manager, &SidebarManager::currentTabChanged);
-
-  manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
-  manager.onCurrentTabChanged(QStringLiteral("DP-3"), 4);
-
-  // No de-duplication here on purpose: the only caller is RightSidebar.qml's onCurrentTabChanged
-  // handler, which Qt already fires on real changes only, and the suppression consumer is
-  // idempotent. Filtering here would add a second, redundant notion of "changed".
-  EXPECT_EQ(spy.count(), 2);
+  EXPECT_EQ(spy.count(), 3);
 }

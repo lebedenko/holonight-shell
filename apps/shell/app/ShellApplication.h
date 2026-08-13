@@ -24,7 +24,6 @@ class ControlServer;
 class AudioService;
 class BatteryService;
 class KeyboardLayoutService;
-class LayerShell;
 class LayerShellManager;
 class PerMonitorLayerManager;
 class LauncherService;
@@ -77,7 +76,7 @@ class ShellApplication : public QObject {
   }
   void connectSessionFailureNotificationsForTest() { connectSessionFailureNotifications(); }
   [[nodiscard]] bool shellSurfaceManagersConstructedForTest() const {
-    return layer_shell_ != nullptr && layer_shell_manager_ != nullptr && background_manager_ != nullptr;
+    return layer_shell_manager_ != nullptr && background_manager_ != nullptr;
   }
   [[nodiscard]] NotificationService* notificationServiceForTest() const { return notification_service_; }
   [[nodiscard]] SessionService* sessionServiceForTest() const { return session_; }
@@ -164,8 +163,6 @@ class ShellApplication : public QObject {
   PortalService* portal_service_ = nullptr;
   ScreenSaverAdaptor* screen_saver_adaptor_ = nullptr;
   ControlServer* control_server_ = nullptr;
-  // Retained for unfinished transient/sidebar surfaces that still use the local protocol wrapper.
-  std::unique_ptr<LayerShell> layer_shell_;
   std::unique_ptr<LayerShellManager> layer_shell_manager_;
   std::unique_ptr<BackgroundManager> background_manager_;
   std::unique_ptr<SidebarManager> sidebar_manager_;

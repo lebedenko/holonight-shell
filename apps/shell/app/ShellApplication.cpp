@@ -18,7 +18,6 @@
 #include "KeyboardLayoutService.h"
 #include "LauncherService.h"
 #include "LauncherSurface.h"
-#include "LayerShell.h"
 #include "LayerShellManager.h"
 #include "LidStateMonitor.h"
 #include "LowBatteryMonitor.h"
@@ -284,8 +283,8 @@ void ShellApplication::startServices() {
           &ShellApplication::updateAudioOsdSuppression);
   connect(status_popup_surface_, &StatusPopupSurface::activePopupChanged, this,
           &ShellApplication::updateAudioOsdSuppression);
-  // Brightness suppression is wired in startLayerSurfaces() instead — SidebarManager needs the
-  // LayerShell and does not exist yet at this point.
+  // Brightness suppression is wired in startLayerSurfaces() instead because SidebarManager does
+  // not exist until the layer-shell provider is ready.
 
   // REQ-C-005/C-010/C-011. Applied once up front so the OSD never runs on the struct defaults, then
   // re-applied on every reload; the setters are all idempotent, so re-pushing unchanged fields is free.
@@ -317,9 +316,6 @@ void ShellApplication::startShell() {
     return;
   }
 
-  // Local wrapper remains for unfinished transient/sidebar surfaces; persistent managers use
-  // HolonightQt's process-wide LayerShellContext.
-  layer_shell_ = std::make_unique<LayerShell>();
   layer_shell_manager_ = std::make_unique<LayerShellManager>(tray_model_, this);
   background_manager_ = std::make_unique<BackgroundManager>(config_service_, this);
   startLayerSurfacesWhenReady();
@@ -376,10 +372,9 @@ void ShellApplication::startLayerSurfaces() {
   }
   managers_started_ = true;
 
-  // SidebarManager needs LayerShell, so it is created here (not in the constructor).
   // Register as a QML singleton before any QML loads so ClockSection.qml can call
   // SidebarManager.toggle() once T-014 wires the clock trigger.
-  sidebar_manager_ = std::make_unique<SidebarManager>(*layer_shell_, this);
+  sidebar_manager_ = std::make_unique<SidebarManager>(this);
   QQmlEngine::setObjectOwnership(sidebar_manager_.get(), QQmlEngine::CppOwnership);
   qmlRegisterSingletonType<SidebarManager>(
       "HolonightShell", 1, 0, "SidebarManager",
@@ -476,7 +471,7 @@ void ShellApplication::rebuildWidgets() {
     return;
   }
   // Destroy every existing widget surface before rebuilding (config order / collisions may have
-  // changed). The unique_ptr reset tears surfaces down while the LayerShell is still alive.
+  // changed). The unique_ptr reset tears down each shared host.
   widget_managers_.clear();
 
   const WidgetsConfig& cfg = config_service_->widgets();

@@ -1,7 +1,4 @@
 add_library(holonight_platform STATIC
-    src/LayerShell.h
-    src/LayerSurface.h
-    src/LayerSurface.cpp
     src/HyprlandIpc.h
     src/HyprlandIpc.cpp
     src/HyprlandIpcClient.h
@@ -12,7 +9,6 @@ add_library(holonight_platform STATIC
 
 qt6_generate_wayland_protocol_client_sources(holonight_platform
     FILES
-        ${PROJECT_SOURCE_DIR}/protocols/wlr-layer-shell-unstable-v1.xml
         ${PROJECT_SOURCE_DIR}/protocols/ext-workspace-v1.xml
         ${PROJECT_SOURCE_DIR}/protocols/ext-idle-notify-v1.xml
         ${XDG_SHELL_PROTOCOL}

@@ -46,7 +46,6 @@ add_library(holonight_surfaces STATIC
     src/TrayItem.cpp
     src/TrayItemProperties.h
     src/TrayItemProperties.cpp
-    src/QmlSourceLoader.h
     src/TrayModel.h
     src/TrayModel.cpp
     src/TrayWatcher.h
@@ -73,10 +72,6 @@ target_link_libraries(holonight_surfaces PUBLIC
     Qt6::Gui
     Qt6::Quick
     Qt6::DBus
-)
-
-target_link_libraries(holonight_surfaces PRIVATE
-    holonight_qt_gui_private
 )
 
 target_include_directories(holonight_surfaces PUBLIC

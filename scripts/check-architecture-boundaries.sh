@@ -52,4 +52,21 @@ if (( ${#violations[@]} > 0 )); then
   exit 1
 fi
 
+local_layer_shell_violations=()
+while IFS= read -r violation; do
+  local_layer_shell_violations+=("${violation}")
+done < <(grep -RInE --include='*.h' --include='*.cpp' --include='CMakeLists.txt' \
+  '(qwayland-wlr-layer-shell|wayland-wlr-layer-shell|zwlr_layer_(shell|surface)_v1|wl_surface_commit|class LayerShell;|class LayerSurface;|#include "LayerShell.h"|#include "LayerSurface.h")' \
+  "${repo_root}/apps" "${repo_root}/libs" "${repo_root}/tests" || true)
+
+if (( ${#local_layer_shell_violations[@]} > 0 )); then
+  {
+    echo "Local layer-shell ownership or direct protocol use is forbidden:"
+    printf '  %s\n' "${local_layer_shell_violations[@]}"
+    echo
+    echo "Describe surfaces with Holonight::Wayland::LayerSurfaceSpec and own them with LayerSurfaceHost."
+  } >&2
+  exit 1
+fi
+
 echo "Architecture boundary check passed."

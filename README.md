@@ -109,7 +109,7 @@ Requires **hypridle ≥ 0.2.0** (or swayidle) to track idle time via `ext-idle-n
 
 ## Requirements
 
-- Qt 6 (`Core`, `Gui`, `GuiPrivate`, `Quick`, `WaylandClient`, `DBus`, `Network`, `Concurrent`, `Sql`)
+- Qt 6 (`Core`, `Gui`, `Quick`, `WaylandClient`, `DBus`, `Network`, `Concurrent`, `Sql`)
 - CMake 3.25+
 - **hypridle ≥ 0.2.0** or swayidle — recommended; shell runs without them but idle detection and Teams/Zoom "Away" status are disabled
 - Ninja

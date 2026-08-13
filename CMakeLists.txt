@@ -16,7 +16,7 @@ set(QT_SKIP_AUTO_QML_PLUGIN_INCLUSION ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent Sql QuickControls2)
 find_package(HolonightQt REQUIRED COMPONENTS Wayland)
 find_package(HoloNightSystemServices REQUIRED)
-find_package(Qt6 COMPONENTS GuiPrivate WaylandClient WaylandClientPrivate QUIET)
+find_package(Qt6 COMPONENTS WaylandClient WaylandClientPrivate QUIET)
 find_package(Qt6WaylandScannerTools REQUIRED)
 if(NOT COMMAND qt6_generate_wayland_protocol_client_sources)
   include("${Qt6WaylandScannerTools_DIR}/Qt6WaylandClientMacros.cmake" OPTIONAL)
@@ -125,37 +125,6 @@ if(NOT COMMAND qt6_generate_wayland_protocol_client_sources)
 
     target_include_directories(${target} PRIVATE "${target_binary_dir}")
   endfunction()
-endif()
-
-add_library(holonight_qt_gui_private INTERFACE)
-if(TARGET Qt6::GuiPrivate)
-  target_link_libraries(holonight_qt_gui_private INTERFACE Qt6::GuiPrivate)
-else()
-  get_target_property(_qt_gui_include_dirs Qt6::Gui INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(_qt_core_include_dirs Qt6::Core INTERFACE_INCLUDE_DIRECTORIES)
-  foreach(_qt_gui_include_dir IN LISTS _qt_gui_include_dirs)
-    if(EXISTS "${_qt_gui_include_dir}/${Qt6_VERSION}/QtGui/qpa/qplatformwindow_p.h")
-      target_include_directories(holonight_qt_gui_private INTERFACE
-          "${_qt_gui_include_dir}/${Qt6_VERSION}"
-          "${_qt_gui_include_dir}/${Qt6_VERSION}/QtGui"
-      )
-      set(_holonight_found_qt_gui_private_headers TRUE)
-      break()
-    endif()
-  endforeach()
-  foreach(_qt_core_include_dir IN LISTS _qt_core_include_dirs)
-    if(EXISTS "${_qt_core_include_dir}/${Qt6_VERSION}/QtCore/private/qglobal_p.h")
-      target_include_directories(holonight_qt_gui_private INTERFACE
-          "${_qt_core_include_dir}/${Qt6_VERSION}"
-          "${_qt_core_include_dir}/${Qt6_VERSION}/QtCore"
-      )
-      set(_holonight_found_qt_core_private_headers TRUE)
-      break()
-    endif()
-  endforeach()
-  if(NOT _holonight_found_qt_gui_private_headers OR NOT _holonight_found_qt_core_private_headers)
-    message(FATAL_ERROR "Qt Gui private headers were not found. Install the Qt private development package.")
-  endif()
 endif()
 
 add_library(holonight_qt_wayland_client INTERFACE)
@@ -326,8 +295,6 @@ if(CLANG_TIDY)
   set(TIDY_DB_DIR ${CMAKE_BINARY_DIR}/tidy)
   set(STRIP_TIDY_FLAGS_SCRIPT ${CMAKE_BINARY_DIR}/strip_tidy_flags.cmake)
   set(TIDY_GENERATED_FILES
-      ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-wlr-layer-shell-unstable-v1.h
-      ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/wayland-wlr-layer-shell-unstable-v1-client-protocol.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-ext-workspace-v1.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/wayland-ext-workspace-v1-client-protocol.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-xdg-shell.h
