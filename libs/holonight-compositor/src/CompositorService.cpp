@@ -61,12 +61,9 @@ bool CompositorService::isOutputEmpty(const QString& output) const {
   if (!snapshot_.capabilities.occupancy) {
     return false;
   }
-  for (const auto& workspace : snapshot_.workspaces) {
-    if (workspace.outputs.contains(output) && workspace.active && workspace.occupied.value_or(true)) {
-      return false;
-    }
-  }
-  return true;
+  return std::ranges::none_of(snapshot_.workspaces, [&output](const CompositorWorkspace& workspace) {
+    return workspace.outputs.contains(output) && workspace.active && workspace.occupied.value_or(true);
+  });
 }
 void CompositorService::activateWorkspace(const QString& workspace_id) {
   if (!snapshot_.connected || !snapshot_.capabilities.workspace_activation || workspace_id.isEmpty()) {

@@ -7,7 +7,7 @@
 CompositorWorkspaceModel::CompositorWorkspaceModel(QObject* parent) : QAbstractListModel(parent) {}
 
 int CompositorWorkspaceModel::rowCount(const QModelIndex& parent) const {
-  return parent.isValid() ? 0 : entries_.size();
+  return parent.isValid() ? 0 : static_cast<int>(entries_.size());
 }
 
 QVariant CompositorWorkspaceModel::data(const QModelIndex& index, int role) const {
@@ -82,7 +82,7 @@ void CompositorWorkspaceModel::replaceTransactional(QList<CompositorWorkspace> w
 }
 
 int CompositorWorkspaceModel::focusedRow() const {
-  for (int row = 0; row < entries_.size(); ++row) {
+  for (int row = 0; row < static_cast<int>(entries_.size()); ++row) {
     if (entries_.at(row).focused) {
       return row;
     }

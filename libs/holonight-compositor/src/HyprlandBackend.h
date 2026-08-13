@@ -5,6 +5,8 @@
 
 #include <QSet>
 
+#include <cstdint>
+
 class HyprlandBackend final : public CompositorBackend {
   Q_OBJECT
 
@@ -14,7 +16,7 @@ class HyprlandBackend final : public CompositorBackend {
   void activateWorkspace(const QString& workspace_id) override;
 
  private:
-  enum class Phase { Idle, Monitors, Workspaces, Clients, Activation, LuaActivation };
+  enum class Phase : std::uint8_t { Idle, Monitors, Workspaces, Clients, Activation, LuaActivation };
   void scheduleRefresh();
   void beginRefresh();
   void handleCommand(const QByteArray& response, bool success);
@@ -27,6 +29,7 @@ class HyprlandBackend final : public CompositorBackend {
   QByteArray monitors_;
   QByteArray workspaces_;
   QString activation_id_;
+  QString pending_activation_;
   QSet<QString> urgent_addresses_;
   bool refresh_dirty_{false};
 };

@@ -14,6 +14,10 @@ class GenericWorkspaceHandle final : public QtWayland::ext_workspace_handle_v1 {
  public:
   GenericWorkspaceHandle(struct ::ext_workspace_handle_v1* handle, GenericBackend* backend, int order);
   ~GenericWorkspaceHandle() override;
+  GenericWorkspaceHandle(const GenericWorkspaceHandle&) = delete;
+  GenericWorkspaceHandle& operator=(const GenericWorkspaceHandle&) = delete;
+  GenericWorkspaceHandle(GenericWorkspaceHandle&&) = delete;
+  GenericWorkspaceHandle& operator=(GenericWorkspaceHandle&&) = delete;
 
  protected:
   void ext_workspace_handle_v1_name(const QString& name) override;
@@ -31,6 +35,10 @@ class GenericWorkspaceGroup final : public QtWayland::ext_workspace_group_handle
  public:
   GenericWorkspaceGroup(struct ::ext_workspace_group_handle_v1* group, GenericBackend* backend);
   ~GenericWorkspaceGroup() override;
+  GenericWorkspaceGroup(const GenericWorkspaceGroup&) = delete;
+  GenericWorkspaceGroup& operator=(const GenericWorkspaceGroup&) = delete;
+  GenericWorkspaceGroup(GenericWorkspaceGroup&&) = delete;
+  GenericWorkspaceGroup& operator=(GenericWorkspaceGroup&&) = delete;
   [[nodiscard]] QStringList outputNames() const;
 
  protected:
@@ -67,6 +75,10 @@ class GenericBackend final : public CompositorBackend {
  public:
   explicit GenericBackend(QObject* parent = nullptr);
   ~GenericBackend() override;
+  GenericBackend(const GenericBackend&) = delete;
+  GenericBackend& operator=(const GenericBackend&) = delete;
+  GenericBackend(GenericBackend&&) = delete;
+  GenericBackend& operator=(GenericBackend&&) = delete;
   void start() override;
   void activateWorkspace(const QString& workspace_id) override;
 

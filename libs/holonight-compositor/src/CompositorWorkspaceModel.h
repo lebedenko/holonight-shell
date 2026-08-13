@@ -5,13 +5,14 @@
 #include <QAbstractListModel>
 #include <QtQml/qqml.h>
 
+#include <cstdint>
 #include <functional>
 
 class CompositorWorkspaceModel final : public QAbstractListModel {
   Q_OBJECT
 
  public:
-  enum Role {
+  enum Role : std::uint16_t {  // NOLINT(cppcoreguidelines-use-enum-class): Qt model roles are int-compatible.
     WorkspaceIdRole = Qt::UserRole + 1,
     NumericSlotRole,
     DisplayNameRole,

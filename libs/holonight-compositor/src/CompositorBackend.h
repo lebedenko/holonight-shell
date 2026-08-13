@@ -10,6 +10,10 @@ class CompositorBackend : public QObject {
  public:
   using QObject::QObject;
   ~CompositorBackend() override = default;
+  CompositorBackend(const CompositorBackend&) = delete;
+  CompositorBackend& operator=(const CompositorBackend&) = delete;
+  CompositorBackend(CompositorBackend&&) = delete;
+  CompositorBackend& operator=(CompositorBackend&&) = delete;
 
   virtual void start() = 0;
   virtual void activateWorkspace(const QString& workspace_id) = 0;

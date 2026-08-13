@@ -6,6 +6,8 @@
 #include <QLocalSocket>
 #include <QTimer>
 
+#include <cstdint>
+
 class SwayBackend final : public CompositorBackend {
   Q_OBJECT
 
@@ -15,7 +17,7 @@ class SwayBackend final : public CompositorBackend {
   void activateWorkspace(const QString& workspace_id) override;
 
  private:
-  enum class RequestPhase { Idle, Workspaces, Outputs, Tree, Command };
+  enum class RequestPhase : std::uint8_t { Idle, Workspaces, Outputs, Tree, Command };
   static constexpr quint32 kGetWorkspaces = 1;
   static constexpr quint32 kSubscribe = 2;
   static constexpr quint32 kGetOutputs = 3;
@@ -27,6 +29,11 @@ class SwayBackend final : public CompositorBackend {
   void sendRequest(quint32 type, const QByteArray& payload = {});
   void handleRequestData();
   void handleSubscriptionData();
+  [[nodiscard]] quint32 expectedResponseType() const;
+  bool handleRequestFrame(const SwayIpcFrame& frame);
+  void finishRefresh(const QByteArray& tree);
+  void finishActivation(const QByteArray& payload);
+  void disconnectSession(const QString& diagnostic);
   void scheduleRefresh();
   void beginRefresh();
   void fail(const QString& diagnostic);
@@ -42,6 +49,7 @@ class SwayBackend final : public CompositorBackend {
   RequestPhase phase_{RequestPhase::Idle};
   QByteArray workspaces_;
   QByteArray outputs_;
+  QString pending_activation_;
   bool refresh_dirty_{false};
   bool subscription_ready_{false};
   int reconnect_delay_ms_{1000};

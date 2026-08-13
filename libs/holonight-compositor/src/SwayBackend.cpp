@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <utility>
 
 SwayBackend::SwayBackend(QString socket_path, QObject* parent)
     : CompositorBackend(parent),
@@ -21,13 +22,7 @@ SwayBackend::SwayBackend(QString socket_path, QObject* parent)
     subscription_socket_.write(
         encodeSwayIpcFrame(kSubscribe, QByteArrayLiteral(R"(["workspace","window","output","shutdown"])")));
   });
-  const auto disconnected = [this] {
-    if (request_socket_.state() == QLocalSocket::UnconnectedState &&
-        subscription_socket_.state() == QLocalSocket::UnconnectedState) {
-      fail(QStringLiteral("Sway IPC disconnected"));
-      scheduleReconnect();
-    }
-  };
+  const auto disconnected = [this] { disconnectSession(QStringLiteral("Sway IPC disconnected")); };
   connect(&request_socket_, &QLocalSocket::disconnected, this, disconnected);
   connect(&subscription_socket_, &QLocalSocket::disconnected, this, disconnected);
 }
@@ -41,6 +36,7 @@ void SwayBackend::start() {
 }
 
 void SwayBackend::connectSockets() {
+  phase_ = RequestPhase::Idle;
   request_decoder_ = {};
   subscription_decoder_ = {};
   subscription_ready_ = false;
@@ -53,7 +49,7 @@ void SwayBackend::activateWorkspace(const QString& workspace_id) {
     return;
   }
   if (phase_ != RequestPhase::Idle) {
-    refresh_dirty_ = true;
+    pending_activation_ = workspace_id;
     return;
   }
   phase_ = RequestPhase::Command;
@@ -88,56 +84,90 @@ void SwayBackend::beginRefresh() {
 
 void SwayBackend::handleRequestData() {
   if (!request_decoder_.append(request_socket_.readAll())) {
-    fail(request_decoder_.error());
-    request_socket_.abort();
+    disconnectSession(request_decoder_.error());
     return;
   }
   for (const SwayIpcFrame& frame : request_decoder_.takeFrames()) {
-    const quint32 expected = phase_ == RequestPhase::Workspaces ? kGetWorkspaces
-                             : phase_ == RequestPhase::Outputs  ? kGetOutputs
-                             : phase_ == RequestPhase::Tree     ? kGetTree
-                             : phase_ == RequestPhase::Command  ? kCommand
-                                                                : std::numeric_limits<quint32>::max();
-    if (frame.type != expected) {
-      fail(QStringLiteral("unexpected Sway IPC response type"));
-      request_socket_.abort();
+    if (!handleRequestFrame(frame)) {
       return;
     }
-    if (phase_ == RequestPhase::Workspaces) {
+  }
+}
+
+quint32 SwayBackend::expectedResponseType() const {
+  switch (phase_) {
+    case RequestPhase::Workspaces:
+      return kGetWorkspaces;
+    case RequestPhase::Outputs:
+      return kGetOutputs;
+    case RequestPhase::Tree:
+      return kGetTree;
+    case RequestPhase::Command:
+      return kCommand;
+    case RequestPhase::Idle:
+      return std::numeric_limits<quint32>::max();
+  }
+  return std::numeric_limits<quint32>::max();
+}
+
+bool SwayBackend::handleRequestFrame(const SwayIpcFrame& frame) {
+  if (frame.type != expectedResponseType()) {
+    disconnectSession(QStringLiteral("unexpected Sway IPC response type"));
+    return false;
+  }
+  switch (phase_) {
+    case RequestPhase::Workspaces:
       workspaces_ = frame.payload;
       phase_ = RequestPhase::Outputs;
       sendRequest(kGetOutputs);
-    } else if (phase_ == RequestPhase::Outputs) {
+      break;
+    case RequestPhase::Outputs:
       outputs_ = frame.payload;
       phase_ = RequestPhase::Tree;
       sendRequest(kGetTree);
-    } else if (phase_ == RequestPhase::Tree) {
-      phase_ = RequestPhase::Idle;
-      if (auto snapshot = parseSwaySnapshot(workspaces_, outputs_, frame.payload)) {
-        reconnect_delay_ms_ = 1000;
-        emit snapshotReady(std::move(*snapshot));
-      } else {
-        fail(QStringLiteral("invalid Sway refresh response"));
-      }
-      if (refresh_dirty_) {
-        scheduleRefresh();
-      }
-    } else if (phase_ == RequestPhase::Command) {
-      phase_ = RequestPhase::Idle;
-      const QJsonDocument response = QJsonDocument::fromJson(frame.payload);
-      if (!response.isArray() || response.array().isEmpty() ||
-          !response.array().first().toObject().value(QStringLiteral("success")).toBool(false)) {
-        fail(QStringLiteral("Sway workspace activation failed"));
-      }
-      scheduleRefresh();
-    }
+      break;
+    case RequestPhase::Tree:
+      finishRefresh(frame.payload);
+      break;
+    case RequestPhase::Command:
+      finishActivation(frame.payload);
+      break;
+    case RequestPhase::Idle:
+      return false;
   }
+  return true;
+}
+
+void SwayBackend::finishRefresh(const QByteArray& tree) {
+  phase_ = RequestPhase::Idle;
+  if (auto snapshot = parseSwaySnapshot(workspaces_, outputs_, tree)) {
+    reconnect_delay_ms_ = 1000;
+    emit snapshotReady(std::move(*snapshot));
+  } else {
+    fail(QStringLiteral("invalid Sway refresh response"));
+  }
+  if (!pending_activation_.isEmpty()) {
+    const QString activation = std::exchange(pending_activation_, {});
+    activateWorkspace(activation);
+  } else if (refresh_dirty_) {
+    scheduleRefresh();
+  }
+}
+
+void SwayBackend::finishActivation(const QByteArray& payload) {
+  phase_ = RequestPhase::Idle;
+  const QJsonDocument response = QJsonDocument::fromJson(payload);
+  if (!response.isArray() || response.array().isEmpty() ||
+      !response.array().first().toObject().value(QStringLiteral("success")).toBool(false)) {
+    fail(QStringLiteral("Sway workspace activation failed"));
+  }
+  scheduleRefresh();
 }
 
 void SwayBackend::handleSubscriptionData() {
   if (!subscription_decoder_.append(subscription_socket_.readAll())) {
     fail(subscription_decoder_.error());
-    subscription_socket_.abort();
+    disconnectSession(subscription_decoder_.error());
     return;
   }
   for (const SwayIpcFrame& frame : subscription_decoder_.takeFrames()) {
@@ -146,7 +176,7 @@ void SwayBackend::handleSubscriptionData() {
       if (frame.type != kSubscribe || !response.isObject() ||
           !response.object().value(QStringLiteral("success")).toBool(false)) {
         fail(QStringLiteral("Sway IPC subscription rejected"));
-        subscription_socket_.abort();
+        disconnectSession(QStringLiteral("Sway IPC subscription rejected"));
         return;
       }
       subscription_ready_ = true;
@@ -154,7 +184,7 @@ void SwayBackend::handleSubscriptionData() {
     }
     if ((frame.type & kEventBit) == 0) {
       fail(QStringLiteral("non-event traffic on Sway subscription socket"));
-      subscription_socket_.abort();
+      disconnectSession(QStringLiteral("non-event traffic on Sway subscription socket"));
       return;
     }
     scheduleRefresh();
@@ -163,6 +193,20 @@ void SwayBackend::handleSubscriptionData() {
 
 void SwayBackend::fail(const QString& diagnostic) {
   emit snapshotReady({.connected = false, .diagnostic = diagnostic});
+}
+
+void SwayBackend::disconnectSession(const QString& diagnostic) {
+  if (request_socket_.state() == QLocalSocket::UnconnectedState &&
+      subscription_socket_.state() == QLocalSocket::UnconnectedState && reconnect_timer_.isActive()) {
+    return;
+  }
+  phase_ = RequestPhase::Idle;
+  workspaces_.clear();
+  outputs_.clear();
+  fail(diagnostic);
+  request_socket_.abort();
+  subscription_socket_.abort();
+  scheduleReconnect();
 }
 
 void SwayBackend::scheduleReconnect() {

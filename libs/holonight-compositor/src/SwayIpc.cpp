@@ -1,10 +1,11 @@
 #include "SwayIpc.h"
 
+#include <QDataStream>
+#include <QIODevice>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 
-#include <cstring>
 #include <utility>
 
 namespace {
@@ -41,7 +42,7 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
   }
 
   for (const QString& child_list : {QStringLiteral("nodes"), QStringLiteral("floating_nodes")}) {
-    for (const QJsonValue& value : node.value(child_list).toArray()) {
+    for (const auto value : node.value(child_list).toArray()) {
       if (value.isObject()) {
         inspectSwayTree(value.toObject(), next_output, next_workspace, occupied, windows);
       }
@@ -51,11 +52,12 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
 }  // namespace
 
 QByteArray encodeSwayIpcFrame(quint32 type, const QByteArray& payload) {
-  QByteArray frame(kHeaderSize, Qt::Uninitialized);
-  std::memcpy(frame.data(), kMagic.data(), kMagic.size());
+  QByteArray frame;
+  QDataStream stream(&frame, QIODevice::WriteOnly);
+  stream.setByteOrder(QDataStream::LittleEndian);
+  stream.writeRawData(kMagic.data(), static_cast<int>(kMagic.size()));
   const auto length = static_cast<quint32>(payload.size());
-  std::memcpy(frame.data() + 6, &length, sizeof(length));
-  std::memcpy(frame.data() + 10, &type, sizeof(type));
+  stream << length << type;
   frame.append(payload);
   return frame;
 }
@@ -70,8 +72,11 @@ bool SwayIpcDecoder::append(const QByteArray& bytes) {
       error_ = QStringLiteral("invalid i3 IPC magic");
       return false;
     }
+    QDataStream stream(buffer_.left(kHeaderSize));
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream.skipRawData(static_cast<int>(kMagic.size()));
     quint32 length = 0;
-    std::memcpy(&length, buffer_.constData() + 6, sizeof(length));
+    stream >> length;
     if (length > kMaximumPayload) {
       error_ = QStringLiteral("i3 IPC payload exceeds 8 MiB");
       return false;
@@ -80,9 +85,10 @@ bool SwayIpcDecoder::append(const QByteArray& bytes) {
       break;
     }
     quint32 type = 0;
-    std::memcpy(&type, buffer_.constData() + 10, sizeof(type));
-    frames_.append({.type = type, .payload = buffer_.mid(kHeaderSize, length)});
-    buffer_.remove(0, kHeaderSize + length);
+    stream >> type;
+    const auto payload_size = static_cast<qsizetype>(length);
+    frames_.append({.type = type, .payload = buffer_.mid(kHeaderSize, payload_size)});
+    buffer_.remove(0, kHeaderSize + payload_size);
   }
   return true;
 }
@@ -124,7 +130,7 @@ std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces
   QHash<QString, bool> occupied;
   inspectSwayTree(tree.object(), {}, {}, &occupied, &snapshot.active_windows);
 
-  for (const QJsonValue& value : outputs.array()) {
+  for (const auto value : outputs.array()) {
     const QJsonObject output = value.toObject();
     if (output.value(QStringLiteral("focused")).toBool(false)) {
       snapshot.focused_output = output.value(QStringLiteral("name")).toString();
@@ -133,7 +139,7 @@ std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces
   }
 
   int order = 0;
-  for (const QJsonValue& value : workspaces.array()) {
+  for (const auto value : workspaces.array()) {
     const QJsonObject workspace = value.toObject();
     const QString name = workspace.value(QStringLiteral("name")).toString();
     if (name.isEmpty() || name == QLatin1String("__i3_scratch")) {

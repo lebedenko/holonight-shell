@@ -2,7 +2,9 @@
 
 #include <QByteArray>
 
-enum class CompositorKind { Generic, Hyprland, Sway };
+#include <cstdint>
+
+enum class CompositorKind : std::uint8_t { Generic, Hyprland, Sway };
 
 struct CompositorEnvironment {
   QByteArray current_desktop;

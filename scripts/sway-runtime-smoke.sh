@@ -3,7 +3,7 @@ set -euo pipefail
 
 shell_binary="${1:-build/holonight-shell}"
 runtime_dir="$(mktemp -d /tmp/holonight-sway-smoke.XXXXXX)"
-session_runtime="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR must name the user runtime directory}"
+session_runtime="${runtime_dir}/runtime"
 wayland_display=""
 config_file="${runtime_dir}/sway.conf"
 sway_log="${runtime_dir}/sway.log"
@@ -23,6 +23,8 @@ finish() {
 trap finish EXIT
 
 chmod 700 "${runtime_dir}"
+mkdir "${session_runtime}"
+chmod 700 "${session_runtime}"
 printf '%s\n' \
   'output HEADLESS-1 mode 1280x720' \
   'workspace "dev:web" output HEADLESS-1' \
