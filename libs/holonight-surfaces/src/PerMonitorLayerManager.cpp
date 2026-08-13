@@ -45,7 +45,9 @@ void PerMonitorLayerManager::start() {
   connect(qGuiApp, &QGuiApplication::screenRemoved, this, &PerMonitorLayerManager::handleScreenRemoved);
   connect(Holonight::Wayland::LayerShellContext::instance(),
           &Holonight::Wayland::LayerShellContext::availabilityChanged, this, [this]() {
-            if (!Holonight::Wayland::LayerShellContext::instance()->isAvailable()) closeAllSurfaces();
+            if (!Holonight::Wayland::LayerShellContext::instance()->isAvailable()) {
+              closeAllSurfaces();
+            }
           });
 
   for (QScreen* screen : QGuiApplication::screens()) {
@@ -82,13 +84,17 @@ void PerMonitorLayerManager::createSurface(QScreen* screen) {
   connect(
       host.get(), &LayerSurfaceHost::configured, this,
       [this, output_name, isCurrent]() {
-        if (isCurrent()) onHostConfigured(output_name);
+        if (isCurrent()) {
+          onHostConfigured(output_name);
+        }
       },
       Qt::QueuedConnection);
   connect(
       host.get(), &LayerSurfaceHost::failed, this,
       [this, output_name, expected_host, isCurrent](const QString& diagnostic) {
-        if (!isCurrent()) return;
+        if (!isCurrent()) {
+          return;
+        }
         qCritical("%s: surface failed for screen '%s': %s", log_tag_, qPrintable(output_name), qPrintable(diagnostic));
         removeCurrentSurface(output_name, expected_host);
       },
@@ -96,7 +102,9 @@ void PerMonitorLayerManager::createSurface(QScreen* screen) {
   connect(
       host.get(), &LayerSurfaceHost::closed, this,
       [this, output_name, expected_host, isCurrent]() {
-        if (isCurrent()) removeCurrentSurface(output_name, expected_host);
+        if (isCurrent()) {
+          removeCurrentSurface(output_name, expected_host);
+        }
       },
       Qt::QueuedConnection);
   if (!openHost(*host, surfaceSpec(screen))) {
@@ -105,7 +113,9 @@ void PerMonitorLayerManager::createSurface(QScreen* screen) {
     host->close();
     return;
   }
-  if (auto old = surfaces_.find(output_name); old != surfaces_.end()) old->second.host->close();
+  if (auto old = surfaces_.find(output_name); old != surfaces_.end()) {
+    old->second.host->close();
+  }
   surfaces_.insert_or_assign(output_name, MonitorSurface{.screen = screen, .host = std::move(host)});
 }
 
@@ -129,12 +139,16 @@ void PerMonitorLayerManager::handleScreenRemoved(QScreen* screen) {
 void PerMonitorLayerManager::closeAllSurfaces() {
   auto surfaces = std::move(surfaces_);
   surfaces_.clear();
-  for (auto& [name, surface] : surfaces) surface.host->close();
+  for (auto& [name, surface] : surfaces) {
+    surface.host->close();
+  }
 }
 
 void PerMonitorLayerManager::removeCurrentSurface(const QString& output_name, LayerSurfaceHost* expected_host) {
   const auto surface = surfaces_.find(output_name);
-  if (surface == surfaces_.end() || surface->second.host.get() != expected_host) return;
+  if (surface == surfaces_.end() || surface->second.host.get() != expected_host) {
+    return;
+  }
   surface->second.host.release()->deleteLater();
   surfaces_.erase(surface);
 }

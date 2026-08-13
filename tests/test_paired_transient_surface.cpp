@@ -47,11 +47,13 @@ class PairedHostHarness : public PairedTransientSurfaceHost {
   int terminal_count = 0;
 
  protected:
-  bool openHost(LayerSurfaceHost&, const LayerSurfaceSpec&) override {
-    if (open_results.isEmpty()) return true;
+  bool openHost(LayerSurfaceHost& /*host*/, const LayerSurfaceSpec& /*spec*/) override {
+    if (open_results.isEmpty()) {
+      return true;
+    }
     return open_results.takeFirst();
   }
-  bool providerAvailable() const override { return available; }
+  [[nodiscard]] bool providerAvailable() const override { return available; }
   void onPairOpened() override { ++opened_count; }
   void onPairConfigured() override { ++configured_count; }
   void onPairTerminated() override { ++terminal_count; }

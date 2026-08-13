@@ -4,12 +4,11 @@
 #include <QString>
 #include <QStringList>
 
-#include <cstdint>
 #include <holonight/wayland/layersurfacespec.h>
 #include <holonight_shell_config/config_structs.h>
 
 struct WidgetSurfacePlacement {
-  Holonight::Wayland::Anchors anchors{};
+  Holonight::Wayland::Anchors anchors;
   int width{};
   int height{};
   int top_margin{};
@@ -22,8 +21,6 @@ struct WidgetSurfacePlacement {
 // codebase (REQ-C-006). Surfaces that are not widgets -- the OSD -- need the anchor flags without
 // widgetSurfacePlacement()'s widget-specific width, height and margins.
 [[nodiscard]] Holonight::Wayland::Anchors anchorsForPosition(HoloNight::ShellConfig::WidgetPosition position);
-// Compatibility for unfinished local-protocol transient surfaces.
-[[nodiscard]] std::uint32_t anchorFlagsForPosition(HoloNight::ShellConfig::WidgetPosition position);
 
 // MPRIS desktop widget size: provides transparent blur padding around its 256px content column,
 // unlike the 460x200 Clock/TimeToEvent default below.

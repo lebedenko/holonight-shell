@@ -1,5 +1,6 @@
 #include "SidebarSurfacePolicy.h"
 
+#include <QGuiApplication>
 #include <QQmlEngine>
 #include <QScreen>
 
@@ -24,7 +25,8 @@ TEST(SidebarSurfacePolicy, BoundsHeightToDefaultWhenScreenIsMissing) {
 }
 
 TEST(SidebarSurfacePolicy, ProducesCompleteFullscreenInteractiveSpec) {
-  auto* screen = reinterpret_cast<QScreen*>(0x1);
+  QScreen* screen = QGuiApplication::primaryScreen();
+  ASSERT_NE(screen, nullptr);
   const auto spec = sidebarSurfaceSpec(screen, QStringLiteral("DP-3"), 720, 4);
 
   EXPECT_EQ(spec.output, screen);
@@ -50,7 +52,9 @@ TEST(SidebarSurfacePolicy, ProducesCompleteFullscreenInteractiveSpec) {
 }
 
 TEST(SidebarSurfacePolicy, InstallsIconImageProviderBeforeLoad) {
-  const auto spec = sidebarSurfaceSpec(reinterpret_cast<QScreen*>(0x1), QStringLiteral("DP-3"), 600, 0);
+  QScreen* screen = QGuiApplication::primaryScreen();
+  ASSERT_NE(screen, nullptr);
+  const auto spec = sidebarSurfaceSpec(screen, QStringLiteral("DP-3"), 600, 0);
   ASSERT_TRUE(static_cast<bool>(spec.before_load));
   QQmlEngine engine;
   spec.before_load(&engine);

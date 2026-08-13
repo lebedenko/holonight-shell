@@ -25,7 +25,7 @@ sudo apt-get install -y --no-install-recommends \
 ```
 
 CI installs Qt 6.8.3 with `jurplel/install-qt-action`, including the `qtwayland` module, because the project uses
-`Qt6::GuiPrivate` and `QtQuick.Effects`.
+`Qt6::WaylandClientPrivate` and `QtQuick.Effects`.
 
 Install [Task](https://taskfile.dev) separately for the local workflow documented in `README.md`.
 

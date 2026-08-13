@@ -50,18 +50,18 @@ class PersistentHostLifecycleManager : public PerMonitorLayerManager {
   QList<LayerSurfaceSpec> opened_specs;
 
  protected:
-  LayerConfig layerConfig() const override {
+  [[nodiscard]] LayerConfig layerConfig() const override {
     return {.layer = Layer::Bottom, .namespace_name = QStringLiteral("test-persistent"), .extra_flags = {}};
   }
-  void configureSurface(LayerSurfaceSpec& spec, QScreen*) override {
+  void configureSurface(LayerSurfaceSpec& spec, QScreen* /*screen*/) override {
     spec.anchors = Anchor::Top | Anchor::Left;
     spec.width = 100;
     spec.height = 50;
   }
-  QmlSource qmlSource(QScreen*) override {
+  [[nodiscard]] QmlSource qmlSource(QScreen* /*screen*/) override {
     return {.url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml"))};
   }
-  bool openHost(LayerSurfaceHost&, const LayerSurfaceSpec& spec) override {
+  bool openHost(LayerSurfaceHost& /*host*/, const LayerSurfaceSpec& spec) override {
     opened_specs.push_back(spec);
     return true;
   }

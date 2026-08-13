@@ -37,10 +37,6 @@ Holonight::Wayland::Anchors anchorsForPosition(WidgetPosition position) {
   return {};
 }
 
-std::uint32_t anchorFlagsForPosition(WidgetPosition position) {
-  return static_cast<std::uint32_t>(anchorsForPosition(position).toInt());
-}
-
 WidgetSurfacePlacement widgetSurfacePlacement(WidgetPosition position, int margin, int width, int height) {
   const int top_margin = widgetPositionIsTopAnchored(position) ? kBarHeight + margin : margin;
   return WidgetSurfacePlacement{

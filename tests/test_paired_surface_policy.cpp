@@ -28,9 +28,8 @@ void expectDismissPolicy(const LayerSurfaceSpec& spec, QScreen* screen, const QS
 TEST(PairedSurfacePolicy, DescribesStatusContentAndDismissSurfacesCompletely) {
   QScreen* screen = QGuiApplication::primaryScreen();
   ASSERT_NE(screen, nullptr);
-  StatusPopupSurface popup;
   const int anchor_x = screen->geometry().x() + 300;
-  const PairedLayerSurfaceSpec pair = popup.surfaceSpec(screen, QStringLiteral("audio"), anchor_x, 40);
+  const PairedLayerSurfaceSpec pair = StatusPopupSurface::surfaceSpec(screen, QStringLiteral("audio"), anchor_x, 40);
   const StatusPopupGeometry geometry =
       statusPopupGeometry(QStringLiteral("audio"), screen->geometry(), screen->availableGeometry(), anchor_x, 40);
   expectDismissPolicy(pair.dismiss, screen, QStringLiteral("status-popup-dismiss"),

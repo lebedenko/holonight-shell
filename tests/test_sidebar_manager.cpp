@@ -30,12 +30,12 @@ class SidebarManagerHarness final : public SidebarManager {
   void outputRemoved(const QString& name) { handleOutputRemoved(name); }
 
  protected:
-  bool openHost(LayerSurfaceHost&, const LayerSurfaceSpec& spec) override {
+  bool openHost(LayerSurfaceHost& /*host*/, const LayerSurfaceSpec& spec) override {
     specs.append(spec);
     return open_succeeds;
   }
-  bool providerAvailable() const override { return available; }
-  QScreen* screenForName(const QString& name) const override {
+  [[nodiscard]] bool providerAvailable() const override { return available; }
+  [[nodiscard]] QScreen* screenForName(const QString& name) const override {
     return !name.isEmpty() && screen != nullptr ? screen : nullptr;
   }
 };

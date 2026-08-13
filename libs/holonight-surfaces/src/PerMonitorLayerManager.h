@@ -63,7 +63,7 @@ class PerMonitorLayerManager : public QObject {
 
   // The live surfaces keyed by their monitor. Exposed so subclasses can push live updates (e.g. a
   // wallpaper change) into existing views without rebuilding them.
-  const std::map<QString, MonitorSurface>& surfaces() const { return surfaces_; }
+  [[nodiscard]] const std::map<QString, MonitorSurface>& surfaces() const { return surfaces_; }
 
   // Find a live view by its stable compositor monitor name without scanning every surface. Returns
   // null when this manager has no surface for the requested monitor.

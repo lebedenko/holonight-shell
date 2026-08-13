@@ -39,8 +39,8 @@ class TransientHostLifecycleHarness : public TransientSurfaceHost {
   int terminal_count = 0;
 
  protected:
-  bool openHost(LayerSurfaceHost&, const LayerSurfaceSpec&) override { return true; }
-  bool providerAvailable() const override { return true; }
+  bool openHost(LayerSurfaceHost& /*host*/, const LayerSurfaceSpec& /*spec*/) override { return true; }
+  [[nodiscard]] bool providerAvailable() const override { return true; }
   void onSurfaceConfigured() override { ++configured_count; }
   void onSurfaceTerminated() override { ++terminal_count; }
 };
@@ -50,8 +50,7 @@ TEST(TransientSurfacePolicy, DescribesLauncherAndToastCompletely) {
   QScreen* screen = QGuiApplication::primaryScreen();
   ASSERT_NE(screen, nullptr);
 
-  LauncherSurface launcher;
-  const LayerSurfaceSpec launcher_spec = launcher.surfaceSpec(screen);
+  const LayerSurfaceSpec launcher_spec = LauncherSurface::surfaceSpec(screen);
   expectTransientDefaults(launcher_spec, screen);
   EXPECT_EQ(launcher_spec.name_space, QStringLiteral("launcher"));
   EXPECT_EQ(launcher_spec.layer, Layer::Top);
@@ -62,8 +61,7 @@ TEST(TransientSurfacePolicy, DescribesLauncherAndToastCompletely) {
   EXPECT_EQ(launcher_spec.qml_url, QUrl(QStringLiteral("qrc:/HolonightShell/Launcher/Launcher.qml")));
   EXPECT_TRUE(static_cast<bool>(launcher_spec.before_load));
 
-  NotificationToastSurface toast;
-  const LayerSurfaceSpec toast_spec = toast.surfaceSpec(screen, QStringLiteral("DP-1"));
+  const LayerSurfaceSpec toast_spec = NotificationToastSurface::surfaceSpec(screen, QStringLiteral("DP-1"));
   expectTransientDefaults(toast_spec, screen);
   EXPECT_EQ(toast_spec.name_space, QStringLiteral("notifications"));
   EXPECT_EQ(toast_spec.layer, Layer::Overlay);
@@ -103,9 +101,8 @@ TEST(TransientSurfacePolicy, DescribesOsdPlacementAndInputPolicy) {
 TEST(TransientSurfacePolicy, ComputesTooltipGeometryInSpec) {
   QScreen* screen = QGuiApplication::primaryScreen();
   ASSERT_NE(screen, nullptr);
-  TooltipSurface tooltip;
   const int anchor_x = screen->geometry().x() + 300;
-  const LayerSurfaceSpec spec = tooltip.surfaceSpec(screen, anchor_x, 40);
+  const LayerSurfaceSpec spec = TooltipSurface::surfaceSpec(screen, anchor_x, 40);
   expectTransientDefaults(spec, screen);
   EXPECT_EQ(spec.name_space, QStringLiteral("tooltip"));
   EXPECT_EQ(spec.layer, Layer::Top);
