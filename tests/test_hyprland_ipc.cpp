@@ -6,11 +6,11 @@
 
 TEST(HyprlandIpc, ParsesActiveWindowEvent) {
   const std::optional<HyprlandActiveWindow> parsed =
-      parseHyprlandActiveWindowEvent("activewindow>>kitty,src/ActiveWindowService.cpp");
+      parseHyprlandActiveWindowEvent("activewindow>>kitty,src/editor.cpp");
 
   ASSERT_TRUE(parsed.has_value());
   EXPECT_EQ(parsed->app_class, QStringLiteral("kitty"));
-  EXPECT_EQ(parsed->title, QStringLiteral("src/ActiveWindowService.cpp"));
+  EXPECT_EQ(parsed->title, QStringLiteral("src/editor.cpp"));
 }
 
 TEST(HyprlandIpc, IgnoresUnrelatedEvent) { EXPECT_FALSE(parseHyprlandActiveWindowEvent("workspace>>2").has_value()); }

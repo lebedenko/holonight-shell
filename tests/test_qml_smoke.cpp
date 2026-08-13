@@ -8,7 +8,6 @@
 #include "TrayModel.h"
 #include "WeatherIconBridge.h"
 #include "WifiNetworkModel.h"
-#include "WorkspaceModel.h"
 
 #include <QColor>
 #include <QCoreApplication>

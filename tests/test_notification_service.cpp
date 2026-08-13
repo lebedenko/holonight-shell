@@ -14,7 +14,7 @@
 
 // Unit tests for NotificationService model logic (REQ-NF-041). The service is constructed with
 // a null ConfigService (defaults: default_timeout_ms=5000, max_visible=3) and a null
-// ActiveWindowService; every NotificationData carries an explicit monitor_name so placement does
+// compositor focus; every NotificationData carries an explicit monitor_name so placement does
 // not depend on the live focused-monitor lookup. expire_timeout_ms is set to 0 (never expire) so
 // no QTimer fires during these synchronous tests — timeout behaviour is covered separately in
 // test_notification_timeout.cpp.

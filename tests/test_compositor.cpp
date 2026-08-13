@@ -52,7 +52,7 @@ TEST(CompositorService, PublishesOneAtomicRevisionWithOpaqueWorkspaceRoles) {
       .active_windows = {{QStringLiteral("DP-1"), {.app_id = QStringLiteral("foot"), .title = QStringLiteral("vim")}}},
   };
 
-  service.publishSnapshot(snapshot);
+  service.publishSnapshotForTest(snapshot);
 
   EXPECT_EQ(revisions.count(), 1);
   EXPECT_EQ(service.revision(), 1);
@@ -70,12 +70,12 @@ TEST(CompositorService, PublishesOneAtomicRevisionWithOpaqueWorkspaceRoles) {
 TEST(CompositorService, GatesActivationAndUnknownOccupancy) {
   CompositorService service(CompositorKind::Generic);
   QSignalSpy activations(&service, &CompositorService::workspaceActivationRequested);
-  service.publishSnapshot({.workspaces = {{.id = QStringLiteral("opaque"), .active = true}}});
+  service.publishSnapshotForTest({.workspaces = {{.id = QStringLiteral("opaque"), .active = true}}});
   service.activateWorkspace(QStringLiteral("opaque"));
   EXPECT_EQ(activations.count(), 0);
   EXPECT_FALSE(service.isOutputEmpty(QStringLiteral("DP-1")));
 
-  service.publishSnapshot(
+  service.publishSnapshotForTest(
       {.connected = true,
        .capabilities = {.workspace_activation = true, .occupancy = true},
        .workspaces = {
@@ -87,13 +87,13 @@ TEST(CompositorService, GatesActivationAndUnknownOccupancy) {
 
 TEST(CompositorService, DisconnectClearsTransientStateAndCapabilities) {
   CompositorService service(CompositorKind::Sway);
-  service.publishSnapshot({.connected = true,
-                           .focused_output = QStringLiteral("DP-1"),
-                           .capabilities = {.workspace_listing = true, .active_window = true},
-                           .workspaces = {{.id = QStringLiteral("dev")}},
-                           .active_windows = {{QStringLiteral("DP-1"), {.title = QStringLiteral("editor")}}}});
+  service.publishSnapshotForTest({.connected = true,
+                                  .focused_output = QStringLiteral("DP-1"),
+                                  .capabilities = {.workspace_listing = true, .active_window = true},
+                                  .workspaces = {{.id = QStringLiteral("dev")}},
+                                  .active_windows = {{QStringLiteral("DP-1"), {.title = QStringLiteral("editor")}}}});
 
-  service.publishSnapshot({.diagnostic = QStringLiteral("subscription disconnected")});
+  service.publishSnapshotForTest({.diagnostic = QStringLiteral("subscription disconnected")});
 
   EXPECT_FALSE(service.connected());
   EXPECT_FALSE(service.canListWorkspaces());
@@ -106,7 +106,7 @@ TEST(CompositorService, DisconnectClearsTransientStateAndCapabilities) {
 TEST(CompositorService, SynthesizesNumericSlotsOnlyWhenCapabilityAllowsIt) {
   CompositorService hyprland(CompositorKind::Hyprland);
   hyprland.setWorkspaceDisplayCount(3);
-  hyprland.publishSnapshot(
+  hyprland.publishSnapshotForTest(
       {.connected = true,
        .capabilities = {.workspace_listing = true, .numeric_workspace_creation = true},
        .workspaces = {
@@ -115,7 +115,7 @@ TEST(CompositorService, SynthesizesNumericSlotsOnlyWhenCapabilityAllowsIt) {
 
   CompositorService sway(CompositorKind::Sway);
   sway.setWorkspaceDisplayCount(3);
-  sway.publishSnapshot(
+  sway.publishSnapshotForTest(
       {.connected = true,
        .capabilities = {.workspace_listing = true},
        .workspaces = {{.id = QStringLiteral("9:mail"), .display_name = QStringLiteral("9:mail"), .stable_order = 0}}});
@@ -134,7 +134,7 @@ TEST(CompositorService, ComputesVisibleRowsByModelIndex) {
                                 .stable_order = row,
                                 .focused = row == 5});
   }
-  service.publishSnapshot(std::move(snapshot));
+  service.publishSnapshotForTest(std::move(snapshot));
   EXPECT_EQ(service.focusedWorkspaceRow(), 5);
   EXPECT_EQ(service.firstVisibleWorkspaceRow(), 4);
 }

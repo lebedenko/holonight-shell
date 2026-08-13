@@ -39,10 +39,6 @@ target_link_libraries(test_holonight_platform PRIVATE
 holonight_add_test_exe(test_holonight_core
   main.cpp
   test_config_service.cpp
-  test_integration_workspace_config.cpp
-  test_workspace_model.cpp
-  test_hyprland_workspace_service.cpp
-  test_ext_workspace_manager.cpp
   test_keyboard_layout_service.cpp
   test_audio_state.cpp
   test_battery_state.cpp
@@ -58,6 +54,7 @@ target_link_libraries(test_holonight_core PRIVATE
 holonight_add_test_exe(test_holonight_compositor
   main.cpp
   test_compositor.cpp
+  test_hyprland_backend.cpp
   test_sway_ipc.cpp
 )
 target_link_libraries(test_holonight_compositor PRIVATE
@@ -84,13 +81,11 @@ target_link_libraries(test_holonight_shell_config PRIVATE
 holonight_add_test_exe(test_holonight_services
   main.cpp
   test_ai_chat_service.cpp
-  test_active_window_service.cpp
   test_integration_theme_config.cpp
   test_launcher_service.cpp
   test_battery_service.cpp
   test_calendar_integration.cpp
   test_http_sync_client.cpp
-  test_monitor_occupancy_service.cpp
   test_network_service.cpp
   test_power_profiles_service.cpp
   test_session_service.cpp
@@ -224,6 +219,7 @@ if(ENABLE_COVERAGE)
   foreach(test_exe IN ITEMS
       test_holonight_platform
       test_holonight_core
+      test_holonight_compositor
       test_holonight_services
       test_holonight_surfaces
       test_holonight_app
@@ -239,6 +235,7 @@ if(ENABLE_COVERAGE)
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
     COMMAND $<TARGET_FILE:test_holonight_platform>
     COMMAND $<TARGET_FILE:test_holonight_core>
+    COMMAND $<TARGET_FILE:test_holonight_compositor>
     COMMAND $<TARGET_FILE:test_holonight_services>
     COMMAND $<TARGET_FILE:test_holonight_surfaces>
     COMMAND $<TARGET_FILE:test_holonight_app>
@@ -248,6 +245,7 @@ if(ENABLE_COVERAGE)
         --root ${CMAKE_SOURCE_DIR}
         --filter "${CMAKE_SOURCE_DIR}/apps/shell/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-core/"
+        --filter "${CMAKE_SOURCE_DIR}/libs/holonight-compositor/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-platform/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-services/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-surfaces/"
@@ -261,6 +259,7 @@ if(ENABLE_COVERAGE)
     DEPENDS
       test_holonight_platform
       test_holonight_core
+      test_holonight_compositor
       test_holonight_services
       test_holonight_surfaces
       test_holonight_app

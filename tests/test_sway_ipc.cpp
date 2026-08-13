@@ -1,6 +1,8 @@
 #include "SwayIpc.h"
 
-#include <cstring>
+#include <QDataStream>
+#include <QIODevice>
+
 #include <gtest/gtest.h>
 
 TEST(SwayIpc, DecodesPartialHeaderAndPayload) {
@@ -24,7 +26,11 @@ TEST(SwayIpc, RejectsInvalidMagicAndOversizedPayloadBeforeAllocation) {
 
   QByteArray header = encodeSwayIpcFrame(1, {});
   const quint32 oversized_length = SwayIpcDecoder::kMaximumPayload + 1;
-  std::memcpy(header.data() + 6, &oversized_length, sizeof(oversized_length));
+  QByteArray encoded_length;
+  QDataStream stream(&encoded_length, QIODevice::WriteOnly);
+  stream.setByteOrder(QDataStream::LittleEndian);
+  stream << oversized_length;
+  header.replace(6, encoded_length.size(), encoded_length);
   SwayIpcDecoder oversized;
   EXPECT_FALSE(oversized.append(header));
   EXPECT_TRUE(oversized.error().contains(QStringLiteral("8 MiB")));
