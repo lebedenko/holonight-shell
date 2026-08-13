@@ -7,6 +7,10 @@
 #include <QObject>
 #include <QtQml/qqml.h>
 
+#include <memory>
+
+class CompositorBackend;
+
 class CompositorService final : public QObject {
   Q_OBJECT
   QML_ELEMENT
@@ -18,6 +22,8 @@ class CompositorService final : public QObject {
   Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
   Q_PROPERTY(QString focusedOutput READ focusedOutput NOTIFY revisionChanged)
   Q_PROPERTY(QAbstractItemModel* workspaces READ workspaces CONSTANT)
+  Q_PROPERTY(int workspaceDisplayCount READ workspaceDisplayCount WRITE setWorkspaceDisplayCount NOTIFY
+                 workspaceDisplayCountChanged)
   Q_PROPERTY(bool canListWorkspaces READ canListWorkspaces NOTIFY revisionChanged)
   Q_PROPERTY(bool canActivateWorkspaces READ canActivateWorkspaces NOTIFY revisionChanged)
   Q_PROPERTY(bool canCreateNumericWorkspaces READ canCreateNumericWorkspaces NOTIFY revisionChanged)
@@ -30,6 +36,8 @@ class CompositorService final : public QObject {
  public:
   explicit CompositorService(QObject* parent = nullptr);
   explicit CompositorService(CompositorKind kind, QObject* parent = nullptr);
+  CompositorService(CompositorKind kind, std::unique_ptr<CompositorBackend> backend, QObject* parent = nullptr);
+  ~CompositorService() override;
   [[nodiscard]] CompositorKind backendKind() const { return kind_; }
   [[nodiscard]] QString backendName() const;
   [[nodiscard]] bool connected() const { return snapshot_.connected; }
@@ -37,6 +45,12 @@ class CompositorService final : public QObject {
   [[nodiscard]] int revision() const { return revision_; }
   [[nodiscard]] QString focusedOutput() const { return snapshot_.focused_output; }
   [[nodiscard]] QAbstractItemModel* workspaces() { return &workspace_model_; }
+  [[nodiscard]] int workspaceDisplayCount() const { return workspace_display_count_; }
+  void setWorkspaceDisplayCount(int count);
+  Q_INVOKABLE int focusedWorkspaceRow() const { return workspace_model_.focusedRow(); }
+  Q_INVOKABLE int firstVisibleWorkspaceRow() const {
+    return workspace_model_.firstVisibleRow(workspace_display_count_);
+  }
   [[nodiscard]] bool canListWorkspaces() const { return snapshot_.capabilities.workspace_listing; }
   [[nodiscard]] bool canActivateWorkspaces() const { return snapshot_.capabilities.workspace_activation; }
   [[nodiscard]] bool canCreateNumericWorkspaces() const { return snapshot_.capabilities.numeric_workspace_creation; }
@@ -50,17 +64,21 @@ class CompositorService final : public QObject {
   Q_INVOKABLE QString activeWindowCategory(const QString& output) const;
   Q_INVOKABLE bool isOutputEmpty(const QString& output) const;
   Q_INVOKABLE void activateWorkspace(const QString& workspace_id);
+  void start();
   void publishSnapshot(CompositorSnapshot snapshot);
 
  Q_SIGNALS:
   void revisionChanged();
   void workspaceActivationRequested(const QString& workspace_id);
+  void workspaceDisplayCountChanged();
 
  private:
   CompositorKind kind_;
   int revision_{0};
+  int workspace_display_count_{5};
   CompositorSnapshot snapshot_;
   CompositorWorkspaceModel workspace_model_;
+  std::unique_ptr<CompositorBackend> backend_;
 };
 
 Q_DECLARE_METATYPE(CompositorKind)

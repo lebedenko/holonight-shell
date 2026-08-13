@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CompositorSnapshot.h"
+
 #include <QByteArray>
 #include <QList>
 #include <QString>
@@ -26,3 +28,6 @@ class SwayIpcDecoder {
 
 [[nodiscard]] QByteArray encodeSwayIpcFrame(quint32 type, const QByteArray& payload);
 [[nodiscard]] QString escapeSwayWorkspaceName(const QString& name);
+[[nodiscard]] std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces_json,
+                                                                  const QByteArray& outputs_json,
+                                                                  const QByteArray& tree_json);

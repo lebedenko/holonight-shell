@@ -2,6 +2,8 @@
 
 #include <QVariant>
 
+#include <algorithm>
+
 CompositorWorkspaceModel::CompositorWorkspaceModel(QObject* parent) : QAbstractListModel(parent) {}
 
 int CompositorWorkspaceModel::rowCount(const QModelIndex& parent) const {
@@ -60,7 +62,26 @@ QHash<int, QByteArray> CompositorWorkspaceModel::roleNames() const {
 }
 
 void CompositorWorkspaceModel::replace(QList<CompositorWorkspace> workspaces) {
+  replaceTransactional(std::move(workspaces), [] {});
+}
+
+void CompositorWorkspaceModel::replaceTransactional(QList<CompositorWorkspace> workspaces,
+                                                    const std::function<void()>& commit) {
   beginResetModel();
   entries_ = std::move(workspaces);
+  commit();
   endResetModel();
+}
+
+int CompositorWorkspaceModel::focusedRow() const {
+  for (int row = 0; row < entries_.size(); ++row) {
+    if (entries_.at(row).focused) return row;
+  }
+  return -1;
+}
+
+int CompositorWorkspaceModel::firstVisibleRow(int display_count) const {
+  if (display_count <= 0 || entries_.size() <= display_count) return 0;
+  const int focus = std::max(0, focusedRow());
+  return std::clamp(focus - ((display_count - 1) / 2), 0, static_cast<int>(entries_.size()) - display_count);
 }

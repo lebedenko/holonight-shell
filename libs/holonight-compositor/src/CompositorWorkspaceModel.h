@@ -5,6 +5,8 @@
 #include <QAbstractListModel>
 #include <QtQml/qqml.h>
 
+#include <functional>
+
 class CompositorWorkspaceModel final : public QAbstractListModel {
   Q_OBJECT
 
@@ -29,6 +31,9 @@ class CompositorWorkspaceModel final : public QAbstractListModel {
   [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
   [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
   void replace(QList<CompositorWorkspace> workspaces);
+  void replaceTransactional(QList<CompositorWorkspace> workspaces, const std::function<void()>& commit);
+  [[nodiscard]] int focusedRow() const;
+  [[nodiscard]] int firstVisibleRow(int display_count) const;
   [[nodiscard]] const QList<CompositorWorkspace>& entries() const { return entries_; }
 
  private:
