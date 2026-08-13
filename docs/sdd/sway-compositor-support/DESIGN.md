@@ -23,6 +23,11 @@ activation key. Numeric slot is optional and never reconstructed from an
 arbitrary Sway name. Visual state precedence is focused, urgent, active,
 occupied, empty; unknown optional facts remain unknown rather than false.
 
+The generic ext-workspace backend projects each workspace's output membership,
+but never derives keyboard focus from the protocol's per-output active state.
+Consequently it leaves `focusedOutput` empty and `hasFocusedOutput` false, and
+screen-targeted consumers use the primary-screen fallback.
+
 Shell surface managers translate their existing policies into specs. The
 provider owns Qt private/native Wayland access and protocol objects. Image
 providers are installed through `before_load`; properties are supplied in
@@ -56,4 +61,3 @@ verify bars, backgrounds, widgets, launcher, sidebar, popups, tray, toasts and
 OSD on Hyprland and Sway; named workspace activation on Sway; generic hiding of
 unsupported data; both installed greeter entries; and close/reopen plus output
 hotplug lifecycle behavior.
-

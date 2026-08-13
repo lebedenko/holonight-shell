@@ -40,12 +40,14 @@ the selected identity.
 | create numeric slots | yes | no | no |
 | special workspaces | yes | no | no |
 | active-window data | yes | yes | no |
-| focused output | yes | yes | protocol present |
+| focused output | yes | yes | no |
 | urgency | yes | yes | protocol present |
 | occupancy | yes | yes | no |
 
 Configured empty numeric slots are synthesized only when numeric creation is
-supported. Unknown occupancy keeps desktop widgets unmapped.
+supported. The generic protocol reports workspace output membership, but does
+not identify the keyboard-focused output; placement therefore falls back to the
+primary screen. Unknown occupancy keeps desktop widgets unmapped.
 
 ## IPC constraints
 
@@ -76,4 +78,3 @@ exit` or `swaymsg exit`; generic logout is unsupported.
 
 Portal routing installs Hyprland, Sway (`wlr;gtk`), and generic HoloNight
 configurations. The settings portal advertises both desktops.
-
