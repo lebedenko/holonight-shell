@@ -231,19 +231,18 @@ if have_command busctl && busctl --user status org.freedesktop.impl.portal.deskt
   status INFO "HoloNight portal accent-color: ${portal_accent:-unavailable}"
 fi
 
-hyprland_desktop_configured=false
+selected_compositor=""
 IFS=':' read -r -a current_desktops <<<"${XDG_CURRENT_DESKTOP:-}"
 for desktop in "${current_desktops[@]}"; do
-  if [[ "${desktop,,}" == "hyprland" ]]; then
-    hyprland_desktop_configured=true
-    break
-  fi
+  case "${desktop,,}" in
+    hyprland|sway) selected_compositor="${desktop,,}"; break ;;
+  esac
 done
 
-if [[ "${hyprland_desktop_configured}" == true ]]; then
-  status OK "XDG_CURRENT_DESKTOP identifies Hyprland"
+if [[ -n "${selected_compositor}" ]]; then
+  status OK "XDG_CURRENT_DESKTOP identifies ${selected_compositor}"
 else
-  status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland"
+  status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland or Sway"
 fi
 
 case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
@@ -253,11 +252,15 @@ esac
 
 holonight_portal_file=""
 holonight_portals_conf=""
+compositor_portals_conf=""
 while IFS= read -r dir; do
   [[ -n "${holonight_portal_file}" ]] || [[ ! -f "${dir}/portals/holonight.portal" ]] || \
     holonight_portal_file="${dir}/portals/holonight.portal"
   [[ -n "${holonight_portals_conf}" ]] || [[ ! -f "${dir}/holonight-portals.conf" ]] || \
     holonight_portals_conf="${dir}/holonight-portals.conf"
+  [[ -z "${selected_compositor}" || -n "${compositor_portals_conf}" ]] || \
+    [[ ! -f "${dir}/${selected_compositor}-portals.conf" ]] || \
+    compositor_portals_conf="${dir}/${selected_compositor}-portals.conf"
 done < <(portal_config_search_dirs)
 
 if [[ -n "${holonight_portal_file}" ]]; then
@@ -265,6 +268,40 @@ if [[ -n "${holonight_portal_file}" ]]; then
 else
   status WARN "HoloNight portal descriptor was not found in XDG data portal search paths"
 fi
+
+if [[ -n "${compositor_portals_conf}" ]]; then
+  status OK "${selected_compositor} portal routing config: ${compositor_portals_conf}"
+elif [[ -n "${selected_compositor}" ]]; then
+  status WARN "${selected_compositor}-portals.conf was not found in XDG portal config/data search paths"
+fi
+
+section "Installed sessions"
+if have_command holonight-session; then
+  status OK "canonical launcher: $(command -v holonight-session)"
+else
+  status WARN "holonight-session is not installed in PATH"
+fi
+if have_command holonight-hyprland-session; then
+  status WARN "retired launcher is still installed: $(command -v holonight-hyprland-session)"
+else
+  status OK "retired holonight-hyprland-session launcher is absent"
+fi
+for descriptor in holonight-hyprland.desktop holonight-sway.desktop; do
+  descriptor_path=""
+  while IFS= read -r dir; do
+    [[ -n "${descriptor_path}" ]] || [[ ! -f "${dir}/wayland-sessions/${descriptor}" ]] || \
+      descriptor_path="${dir}/wayland-sessions/${descriptor}"
+  done < <(
+    printf '%s\n' "$(xdg_data_home)"
+    IFS=':' read -r -a data_dirs <<<"$(xdg_data_dirs)"
+    printf '%s\n' "${data_dirs[@]}"
+  )
+  if [[ -n "${descriptor_path}" ]]; then
+    status OK "login descriptor: ${descriptor_path}"
+  else
+    status WARN "${descriptor} was not found in XDG data search paths"
+  fi
+done
 
 if [[ -n "${holonight_portals_conf}" ]]; then
   status OK "HoloNight portal routing config: ${holonight_portals_conf}"
@@ -371,7 +408,7 @@ section "Suggested next actions"
 status INFO "portal color/accent changes are live for consumers that observe Settings signals"
 status INFO "GTK settings and application-native preferences may require an application relaunch"
 status INFO "cursor environment changes require a full session restart"
-status INFO "login entry: select HoloNight (Hyprland)"
+status INFO "login entries: select HoloNight (Hyprland) or HoloNight (Sway)"
 status INFO "bootstrap script: holonight-session {hyprland|sway}"
 status INFO "force direct mode: HOLONIGHT_SESSION_MODE=direct holonight-session sway"
 status INFO "force UWSM mode: HOLONIGHT_SESSION_MODE=uwsm holonight-session hyprland"

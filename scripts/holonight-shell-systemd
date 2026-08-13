@@ -22,6 +22,7 @@ environment_value() {
 
 import_runtime_environment() {
   local output="$1"
+  local compositor="$2"
   local name
   local value
   local allowed=(
@@ -52,6 +53,25 @@ import_runtime_environment() {
       export "${name}=${value}"
     fi
   done
+  if [[ "${compositor}" == sway ]]; then
+    unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD
+  else
+    unset SWAYSOCK I3SOCK
+  fi
+}
+
+selected_compositor() {
+  local desktops="$1"
+  local desktop
+
+  IFS=':' read -r -a desktop_tokens <<<"${desktops}"
+  for desktop in "${desktop_tokens[@]}"; do
+    case "${desktop,,}" in
+      hyprland) printf 'hyprland\n'; return ;;
+      sway) printf 'sway\n'; return ;;
+    esac
+  done
+  return 1
 }
 
 wait_for_compositor_environment() {
@@ -61,7 +81,7 @@ wait_for_compositor_environment() {
   local wayland_display
   local hyprland_signature
   local sway_socket
-  local desktop
+  local compositor
 
   if ! have_command systemctl; then
     warn "systemctl is not installed; starting with inherited environment"
@@ -73,11 +93,11 @@ wait_for_compositor_environment() {
     wayland_display="$(environment_value WAYLAND_DISPLAY "${output}")"
     hyprland_signature="$(environment_value HYPRLAND_INSTANCE_SIGNATURE "${output}")"
     sway_socket="$(environment_value SWAYSOCK "${output}")"
-    desktop="$(environment_value XDG_CURRENT_DESKTOP "${output}")"
+    compositor="$(selected_compositor "$(environment_value XDG_CURRENT_DESKTOP "${output}")" || true)"
 
-    if [[ -n "${wayland_display}" ]] && { [[ "${desktop,,}" == *sway* && -n "${sway_socket}" ]] ||
-         [[ "${desktop,,}" != *sway* && -n "${hyprland_signature}" ]]; }; then
-      import_runtime_environment "${output}"
+    if [[ -n "${wayland_display}" ]] && { [[ "${compositor}" == sway && -n "${sway_socket}" ]] ||
+         [[ "${compositor}" == hyprland && -n "${hyprland_signature}" ]]; }; then
+      import_runtime_environment "${output}" "${compositor}"
       return 0
     fi
 

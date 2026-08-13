@@ -5,7 +5,52 @@ die() { printf 'holonight-session: error: %s\n' "$*" >&2; exit 1; }
 warn() { printf 'holonight-session: warning: %s\n' "$*" >&2; }
 have_command() { command -v "$1" >/dev/null 2>&1; }
 
-compositor="${1:-}"
+resolve_appearance_file() {
+  if [[ -n "${HOLONIGHT_APPEARANCE_FILE:-}" ]]; then
+    printf '%s\n' "${HOLONIGHT_APPEARANCE_FILE}"
+  elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+    printf '%s/holonight/appearance.toml\n' "${XDG_CONFIG_HOME}"
+  elif [[ -n "${HOME:-}" ]]; then
+    printf '%s/.config/holonight/appearance.toml\n' "${HOME}"
+  else
+    return 1
+  fi
+}
+
+load_cursor_theme() {
+  local appearance_file
+  local output
+
+  if ! have_command holonight-appearance-adapter; then
+    warn "holonight-appearance-adapter is not installed; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  if ! appearance_file="$(resolve_appearance_file)"; then
+    warn "canonical appearance path is unavailable; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  if ! output="$(holonight-appearance-adapter query --appearance "${appearance_file}" --field cursor-theme)"; then
+    warn "cursor theme query failed; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  if [[ -z "${output}" || ${#output} -gt 4096 || "${output}" == *$'\n'* || "${output}" =~ [[:cntrl:]] ]]; then
+    warn "cursor theme query returned invalid output; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  export XCURSOR_THEME="${output}"
+}
+
+start_shell_service() {
+  if have_command systemctl; then
+    systemctl --user daemon-reload || warn "failed to reload systemd user units"
+    systemctl --user start holonight-shell.service || warn "failed to queue holonight-shell.service"
+  else
+    warn "systemctl is not installed; holonight-shell.service cannot be started automatically"
+  fi
+}
+
+[[ $# -eq 1 ]] || die "expected compositor hyprland or sway"
+compositor="$1"
 case "${compositor}" in hyprland|sway) ;; *) die "expected compositor hyprland or sway" ;; esac
 
 if [[ "${compositor}" == hyprland ]]; then
@@ -13,19 +58,20 @@ if [[ "${compositor}" == hyprland ]]; then
   desktop=Hyprland
   uwsm_desktop=hyprland.desktop
   menu_prefix=hyprland-
-  unset SWAYSOCK I3SOCK
+  stale_vars=(SWAYSOCK I3SOCK)
 else
   executable=sway
   desktop=sway
   uwsm_desktop=sway.desktop
   menu_prefix=sway-
-  unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD
+  stale_vars=(HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD)
 fi
 
 have_command "${executable}" || die "${executable} was not found in PATH"
-export XDG_CURRENT_DESKTOP="${desktop}"
-export XDG_SESSION_DESKTOP="${desktop}"
-export XDG_SESSION_TYPE=wayland
+unset "${stale_vars[@]}"
+export XDG_CURRENT_DESKTOP="HoloNight:${desktop}"
+export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-${desktop}}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-${menu_prefix}}"
 case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
   *:/usr/share/holonight/xdg:*) ;;
@@ -34,24 +80,37 @@ esac
 export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
 export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
 
+load_cursor_theme
+
 vars=(WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX
   XDG_DATA_DIRS XDG_CONFIG_DIRS QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME
   XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE)
 if have_command dbus-update-activation-environment; then
+  dbus_update_args=()
+  for stale_var in "${stale_vars[@]}"; do
+    dbus_update_args+=("${stale_var}=")
+  done
+  dbus-update-activation-environment --systemd "${dbus_update_args[@]}" || \
+    warn "failed to clear stale compositor variables from D-Bus activation"
   dbus-update-activation-environment --systemd "${vars[@]}" || warn "failed to import D-Bus environment"
 fi
 if have_command systemctl; then
+  systemctl --user unset-environment "${stale_vars[@]}" || warn "failed to clear stale systemd environment"
   systemctl --user import-environment "${vars[@]}" || warn "failed to import systemd environment"
 fi
 
 mode="${HOLONIGHT_SESSION_MODE:-auto}"
 case "${mode}" in
   auto)
-    if have_command uwsm; then exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"; fi
+    if have_command uwsm; then
+      start_shell_service
+      exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"
+    fi
     exec "${executable}"
     ;;
   uwsm)
     have_command uwsm || die "HOLONIGHT_SESSION_MODE=uwsm was requested, but uwsm was not found in PATH"
+    start_shell_service
     exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"
     ;;
   direct) exec "${executable}" ;;
