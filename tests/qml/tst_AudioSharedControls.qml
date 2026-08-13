@@ -153,7 +153,7 @@ TestCase {
         verify(secondaryDelegate)
         verify(delegate instanceof HnListDelegate)
         compare(delegate.title, "Test Speakers")
-        compare(delegate.subtitle, "Analog • 2 channels • 48 kHz")
+        compare(delegate.subtitle, "Analog • Stereo")
         compare(delegate.subtitlePresentation, HnListDelegate.SingleLine)
         compare(delegate.leadingContentAlignment, Qt.AlignVCenter)
         compare(delegate.checked, true)

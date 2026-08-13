@@ -36,8 +36,10 @@ ColumnLayout {
       spacing: 8
 
       InputLevelMeter {
+        objectName: "inputDeviceLevelMeter"
         Layout.preferredWidth: 100
         Layout.preferredHeight: 18
+        accentColor: root.accentColor
       }
 
       HnLabel {
@@ -79,6 +81,9 @@ ColumnLayout {
     trailingContent: root.isInput ? inputMeterComponent : null
     fallbackIconName: root.isInput ? "audio-input-microphone" : "audio-speakers"
     showDefaultBadge: true
+    muted: root.defaultDeviceInfo.muted ?? false
+    isInputDevice: root.isInput
+    deviceId: root.defaultDeviceInfo.deviceId ?? 0
 
     onToggled: root.expandRequested()
   }

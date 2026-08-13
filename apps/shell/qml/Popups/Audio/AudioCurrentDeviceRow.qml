@@ -22,10 +22,17 @@ Item {
   property Component trailingContent: null
   property string fallbackIconName: "audio-card"
   property bool showDefaultBadge: true
+  property bool muted: false
+  property bool isInputDevice: false
+  property int deviceId: 0
+  readonly property string keyboardHintType: "summaryRow"
 
   signal toggled()
 
   implicitHeight: 64
+  activeFocusOnTab: true
+  Accessible.role: Accessible.Button
+  Accessible.name: root.title
 
   Rectangle {
     objectName: "currentDeviceRowFrame"
@@ -33,14 +40,29 @@ Item {
     anchors.fill: parent
     radius: 6
     color: "transparent"
-    border.color: HoloniightPalette.borderPassive
-    border.width: 1
+    border.color: root.activeFocus ? root.accentColor : HoloniightPalette.borderPassive
+    border.width: root.activeFocus ? HnMetrics.focusBorderWidth : 1
   }
 
   MouseArea {
     anchors.fill: parent
     cursorShape: Qt.PointingHandCursor
     onClicked: root.toggled()
+  }
+
+  Keys.onPressed: (event) => {
+    if (event.modifiers !== Qt.NoModifier)
+      return;
+    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)
+      root.toggled();
+    else if (event.key === Qt.Key_M) {
+      if (root.isInputDevice)
+        AudioService.setInputDeviceMuted(root.deviceId, !root.muted);
+      else
+        AudioService.setDefaultOutputMuted(!root.muted);
+    } else
+      return;
+    event.accepted = true;
   }
 
   RowLayout {

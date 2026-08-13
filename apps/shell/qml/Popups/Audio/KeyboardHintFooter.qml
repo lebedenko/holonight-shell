@@ -5,13 +5,14 @@ import Holonight.Controls
 
 import HolonightShell
 
-// Static keyboard-hint footer (REQ-F-10001/10002): three hint chips — "Tab + ↔ Navigate",
-// "Enter Select", "M Mute". Purely visual; no Keys.onPressed or shortcut handlers are attached
-// here or anywhere else as part of this redesign — existing Tab focus traversal is unmodified.
+// The footer mirrors the commands supported by the currently focused control.
 Item {
   id: root
 
   property real separatorBleed: 0
+  property var focusItem: null
+  readonly property string focusContext: root.focusItem && root.focusItem.keyboardHintType
+      ? root.focusItem.keyboardHintType : "other"
 
   implicitHeight: 48
 
@@ -54,29 +55,67 @@ Item {
 
   RowLayout {
     anchors.centerIn: parent
-    spacing: 24
+    spacing: 16
 
     RowLayout {
       objectName: "navigateHint"
+      visible: root.focusContext === "deviceRow"
       spacing: 6
-      FooterKeyHint { objectName: "tabKeyHint"; text: "Tab" }
-      HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: "+"; color: HoloniightPalette.textMuted }
-      FooterKeyHint { objectName: "navigationKeyHint"; text: "← →"; navigationKey: true }
+      FooterKeyHint { objectName: "navigationKeyHint"; text: "↑ ↓"; navigationKey: true }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Navigate"); color: HoloniightPalette.textMuted }
     }
 
     RowLayout {
       objectName: "selectHint"
+      visible: root.focusContext === "deviceRow"
       spacing: 6
       FooterKeyHint { objectName: "enterKeyHint"; text: "Enter" }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Select"); color: HoloniightPalette.textMuted }
     }
 
     RowLayout {
+      objectName: "adjustHint"
+      visible: root.focusContext === "slider"
+      spacing: 6
+      FooterKeyHint { text: "← →"; navigationKey: true }
+      HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Adjust"); color: HoloniightPalette.textMuted }
+    }
+
+    RowLayout {
+      objectName: "minMaxHint"
+      visible: root.focusContext === "slider"
+      spacing: 6
+      FooterKeyHint { text: "Home End" }
+      HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Min/Max"); color: HoloniightPalette.textMuted }
+    }
+
+    RowLayout {
+      objectName: "expandHint"
+      visible: root.focusContext === "summaryRow"
+      spacing: 6
+      FooterKeyHint { text: "Enter" }
+      HnLabel {
+        Layout.alignment: Qt.AlignVCenter
+        role: HnTypographyRole.Caption
+        rawText: root.focusItem && root.focusItem.expanded ? qsTr("Collapse") : qsTr("Expand")
+        color: HoloniightPalette.textMuted
+      }
+    }
+
+    RowLayout {
       objectName: "muteHint"
+      visible: root.focusContext !== "other"
       spacing: 6
       FooterKeyHint { objectName: "muteKeyHint"; text: "M" }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Mute"); color: HoloniightPalette.textMuted }
+    }
+
+    RowLayout {
+      objectName: "tabFocusHint"
+      visible: root.focusContext === "other"
+      spacing: 6
+      FooterKeyHint { objectName: "tabKeyHint"; text: "Tab" }
+      HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Focus"); color: HoloniightPalette.textMuted }
     }
   }
 }

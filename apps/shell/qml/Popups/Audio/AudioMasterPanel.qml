@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import Holonight.Core
+import Holonight.Controls
+import Holonight.Components
 
 import HolonightShell
 
@@ -13,7 +15,7 @@ import HolonightShell
 Item {
   id: root
 
-  implicitHeight: 88
+  implicitHeight: 72
 
   readonly property int masterVolume: AudioService.volume
   readonly property bool masterMuted: AudioService.muted
@@ -62,7 +64,7 @@ Item {
     ColumnLayout {
       Layout.fillWidth: true
       Layout.alignment: Qt.AlignVCenter
-      spacing: 6
+      spacing: 4
 
       Text {
         text: qsTr("MASTER VOLUME")
@@ -79,10 +81,10 @@ Item {
         Text {
           objectName: "masterVolumePercentageText"
 
-          Layout.preferredWidth: 64
+          Layout.preferredWidth: 48
           text: root.masterVolume + "%"
           color: HoloniightPalette.textPrimary
-          font.pointSize: 19
+          font.pointSize: 14
         }
 
         AudioVolumeSlider {
@@ -92,33 +94,46 @@ Item {
           Layout.alignment: Qt.AlignVCenter
           value: root.masterVolume
           accentColor: HoloniightPalette.accentCyan
+          muted: root.masterMuted
+          accessibleName: qsTr("Master volume")
           onValueChanging: (value) => AudioService.setVolume(value)
           onValueCommitted: (value) => AudioService.setVolume(value)
+          onMuteRequested: AudioService.setDefaultOutputMuted(!root.masterMuted)
         }
       }
     }
 
-    Rectangle {
+    HnIconButton {
+      id: muteButton
       objectName: "masterMuteButton"
 
-      Layout.preferredWidth: 40
-      Layout.preferredHeight: 40
+      Layout.preferredWidth: 44
+      Layout.preferredHeight: 44
       Layout.alignment: Qt.AlignVCenter
-      radius: 8
-      color: "transparent"
-      border.color: "transparent"
+      sizeRole: HnControlSize.Large
+      icon.source: root.masterMuted ? "image://icon/audio-volume-muted" : "image://icon/audio-volume-high"
+      activeFocusOnTab: true
+      Accessible.name: root.masterMuted ? qsTr("Unmute master output") : qsTr("Mute master output")
+      onClicked: AudioService.setDefaultOutputMuted(!root.masterMuted)
 
-      AudioTintedIcon {
-        anchors.centerIn: parent
-        iconName: root.masterMuted ? "audio-volume-muted" : "audio-volume-high"
-        iconSize: 20
-        tintColor: root.masterMuted ? HoloniightPalette.textMuted : HoloniightPalette.textPrimary
+      contentItem: Item {
+        ExternalIcon {
+          objectName: "masterMuteButtonIcon"
+          anchors.centerIn: parent
+          width: 22
+          height: 22
+          iconName: root.masterMuted ? "audio-volume-muted" : "audio-volume-high"
+          iconSize: 22
+          tintColor: root.masterMuted ? HoloniightPalette.textMuted : HoloniightPalette.textPrimary
+        }
       }
 
-      MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: AudioService.setDefaultOutputMuted(!AudioService.muted)
+      background: Rectangle {
+        color: muteButton.down ? HoloniightPalette.surface
+                               : (muteButton.hovered ? HoloniightPalette.surfaceHover : "transparent")
+        radius: 6
+        border.color: muteButton.visualFocus ? HoloniightPalette.borderFocus : HoloniightPalette.borderPassive
+        border.width: muteButton.visualFocus ? HnMetrics.focusBorderWidth : 1
       }
     }
   }

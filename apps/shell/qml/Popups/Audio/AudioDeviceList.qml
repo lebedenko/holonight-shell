@@ -18,9 +18,17 @@ ListView {
   boundsBehavior: Flickable.StopAtBounds
   currentIndex: -1
 
+  function focusRelativeTo(item: Item, delta: int): void {
+    const index = root.indexAt(1, item.y + item.height / 2);
+    const target = root.itemAtIndex(Math.max(0, Math.min(root.count - 1, index + delta)));
+    if (target)
+      target.forceActiveFocus(Qt.TabFocusReason);
+  }
+
   delegate: AudioDeviceDelegate {
     accentColor: root.accentColor
     isInputDevice: root.isInput
+    navigationList: root
   }
 
   HnEmptyState {

@@ -10,6 +10,7 @@ Item {
   id: root
 
   property int level: AudioService.inputLevel
+  property color accentColor: HoloniightPalette.accentCyan
   readonly property int barCount: 10
   readonly property real barSpacing: 3
   readonly property real barWidth: Math.max(2, (root.width - (root.barCount - 1) * root.barSpacing) / root.barCount)
@@ -42,7 +43,7 @@ Item {
           width: parent.width
           height: parent.height
           radius: width / 2
-          color: barSlot.lit ? HoloniightPalette.accentCyan : HoloniightPalette.borderPassive
+          color: barSlot.lit ? root.accentColor : HoloniightPalette.borderPassive
         }
       }
     }

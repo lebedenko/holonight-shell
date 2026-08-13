@@ -38,6 +38,7 @@ ColumnLayout {
       Layout.preferredWidth: showAllRow.implicitWidth
       Layout.preferredHeight: showAllRow.implicitHeight
       Layout.rightMargin: 16
+      visible: streamList.count > 4
 
       RowLayout {
         id: showAllRow
@@ -77,7 +78,7 @@ ColumnLayout {
     Layout.fillWidth: true
     clip: true
     readonly property real collapsedHeight: 4 * 64 + 3 * streamList.spacing
-    implicitHeight: streamList.count === 0 ? 72
+    implicitHeight: streamList.count === 0 ? 32
                                           : root.showAll ? streamList.contentHeight
                                                          : Math.min(streamList.contentHeight, collapsedHeight)
 
@@ -94,6 +95,16 @@ ColumnLayout {
       width: parent.width
       height: streamList.contentHeight
       model: root.model
+      visible: count > 0
+    }
+
+    Text {
+      objectName: "audioApplicationsEmptyText"
+      anchors.centerIn: parent
+      visible: streamList.count === 0
+      text: qsTr("No applications are playing audio")
+      color: HoloniightPalette.textMuted
+      font.pointSize: 9
     }
   }
 }

@@ -19,6 +19,7 @@ HnListDelegate {
   required property var model
   required property color accentColor
   required property bool isInputDevice
+  required property var navigationList
 
   width: ListView.view ? ListView.view.width : implicitWidth
   implicitWidth: 480
@@ -26,6 +27,12 @@ HnListDelegate {
 
   readonly property bool isDefault: root.model.isDefault ?? false
   readonly property int volumePct: root.model.volume ?? 0
+  readonly property string keyboardHintType: "deviceRow"
+
+  activeFocusOnTab: true
+  Accessible.role: Accessible.RadioButton
+  Accessible.name: root.title
+  Accessible.checked: root.isDefault
 
   title: root.model.displayName && root.model.displayName.length > 0
       ? root.model.displayName
@@ -44,6 +51,33 @@ HnListDelegate {
       AudioService.setDefaultInputByName(root.model.name);
     else
       AudioService.setDefaultOutputByName(root.model.name);
+  }
+
+  function selectDevice(): void {
+    root.clicked();
+  }
+
+  function muteDevice(): void {
+    if (root.isInputDevice)
+      AudioService.setInputDeviceMuted(root.model.deviceId, !root.model.muted);
+    else
+      AudioService.setDeviceMuted(root.model.deviceId, !root.model.muted);
+  }
+
+  Keys.onPressed: (event) => {
+    if (event.modifiers !== Qt.NoModifier)
+      return;
+    if (event.key === Qt.Key_Up)
+      root.navigationList.focusRelativeTo(root, -1);
+    else if (event.key === Qt.Key_Down)
+      root.navigationList.focusRelativeTo(root, 1);
+    else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)
+      root.selectDevice();
+    else if (event.key === Qt.Key_M)
+      root.muteDevice();
+    else
+      return;
+    event.accepted = true;
   }
 
   leadingContent: Component {
@@ -86,7 +120,7 @@ HnListDelegate {
         iconName: root.model.iconName ?? ""
         fallbackIconName: root.isInputDevice ? "audio-input-microphone" : "audio-card"
         iconSize: 28
-        tintColor: root.isDefault ? root.accentColor : HoloniightPalette.textSecondary
+        tintColor: HoloniightPalette.textSecondary
         Layout.preferredWidth: 28
         Layout.preferredHeight: 28
       }
@@ -104,6 +138,8 @@ HnListDelegate {
         Layout.alignment: Qt.AlignVCenter
         value: root.volumePct
         accentColor: root.accentColor
+        muted: root.model.muted ?? false
+        accessibleName: qsTr("%1 volume").arg(root.title)
         onValueChanging: (value) => {
           if (root.isInputDevice)
             AudioService.setInputDeviceVolume(root.model.deviceId, value);
@@ -116,6 +152,7 @@ HnListDelegate {
           else
             AudioService.setDeviceVolume(root.model.deviceId, value);
         }
+        onMuteRequested: root.muteDevice()
       }
 
       Text {
@@ -124,7 +161,7 @@ HnListDelegate {
         Layout.preferredWidth: 40
         horizontalAlignment: Text.AlignRight
         text: root.volumePct + "%"
-        color: root.isDefault ? root.accentColor : HoloniightPalette.textMuted
+        color: HoloniightPalette.textMuted
         font.pointSize: 9.75
       }
     }

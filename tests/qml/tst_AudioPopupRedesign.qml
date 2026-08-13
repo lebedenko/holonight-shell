@@ -154,6 +154,36 @@ TestCase {
     }
 
     Component {
+        id: volumeSliderComponent
+
+        AudioVolumeSlider {
+            width: 180
+            value: 50
+            accessibleName: "Test player volume"
+        }
+    }
+
+    Component {
+        id: signalSpy
+
+        SignalSpy {}
+    }
+
+    Component {
+        id: fourApplicationsSectionComponent
+
+        AudioApplicationsSection {
+            width: 640
+            model: ListModel {
+                ListElement { streamId: 1; name: "s1"; application: "One"; muted: false; volume: 10 }
+                ListElement { streamId: 2; name: "s2"; application: "Two"; muted: false; volume: 20 }
+                ListElement { streamId: 3; name: "s3"; application: "Three"; muted: false; volume: 30 }
+                ListElement { streamId: 4; name: "s4"; application: "Four"; muted: false; volume: 40 }
+            }
+        }
+    }
+
+    Component {
         id: inputDeviceSectionComponent
 
         AudioDeviceSection {
@@ -189,6 +219,31 @@ TestCase {
         verify(inputList)
         compare(outputList.visible, true)
         compare(inputList.visible, false)
+    }
+
+    function test_device_sections_expand_and_collapse_independently() {
+        const popup = createTemporaryObject(audioPopupComponent, root)
+        verify(popup)
+
+        const outputSummary = findChild(findChild(popup, "outputDeviceSection"), "audioCurrentDeviceRow")
+        const inputSummary = findChild(findChild(popup, "inputDeviceSection"), "audioCurrentDeviceRow")
+        verify(outputSummary)
+        verify(inputSummary)
+
+        outputSummary.forceActiveFocus()
+        keyClick(Qt.Key_Return)
+        compare(popup.outputExpanded, false)
+        compare(popup.inputExpanded, false)
+
+        inputSummary.forceActiveFocus()
+        keyClick(Qt.Key_Space)
+        compare(popup.outputExpanded, false)
+        compare(popup.inputExpanded, true)
+
+        outputSummary.forceActiveFocus()
+        keyClick(Qt.Key_Space)
+        compare(popup.outputExpanded, true)
+        compare(popup.inputExpanded, true)
     }
 
     function test_hero_is_pinned_above_scrollable_device_content() {
@@ -243,29 +298,44 @@ TestCase {
         compare(footerSeparator.width, popup.width + popup.separatorBleed * 2)
     }
 
-    function test_footer_key_hints_are_centered_and_use_compact_control_shape() {
+    function test_footer_defaults_to_tab_focus_hint() {
         const popup = createTemporaryObject(audioPopupComponent, root)
         verify(popup)
 
         const tabHint = findChild(popup, "tabKeyHint")
-        const arrowHint = findChild(popup, "navigationKeyHint")
-        const enterHint = findChild(popup, "enterKeyHint")
-        const muteHint = findChild(popup, "muteKeyHint")
         verify(tabHint)
-        verify(arrowHint)
-        verify(enterHint)
-        verify(muteHint)
-        const tabCenter = tabHint.mapToItem(popup, 0, tabHint.height / 2).y
-        const arrowCenter = arrowHint.mapToItem(popup, 0, arrowHint.height / 2).y
-        const enterCenter = enterHint.mapToItem(popup, 0, enterHint.height / 2).y
-        const muteCenter = muteHint.mapToItem(popup, 0, muteHint.height / 2).y
-        verify(Math.abs(tabCenter - arrowCenter) < 0.5)
-        verify(Math.abs(tabCenter - enterCenter) < 0.5)
-        verify(Math.abs(tabCenter - muteCenter) < 0.5)
+        compare(findChild(popup, "tabFocusHint").visible, true)
+        compare(findChild(popup, "navigateHint").visible, false)
         verify(tabHint.leftPadding > 6)
-        verify(arrowHint.font.bold)
-        verify(arrowHint.implicitWidth > muteHint.implicitWidth)
         verify(tabHint.background.radius < tabHint.height / 2)
+    }
+
+    function test_footer_tracks_slider_device_and_summary_focus() {
+        const popup = createTemporaryObject(audioPopupComponent, root)
+        verify(popup)
+        const slider = findChild(popup, "masterVolumeSlider")
+        const summary = findChild(findChild(popup, "inputDeviceSection"), "audioCurrentDeviceRow")
+        const deviceList = createTemporaryObject(deviceListComponent, root)
+        verify(slider)
+        verify(summary)
+        tryCompare(deviceList, "count", 2)
+
+        slider.forceActiveFocus()
+        tryCompare(findChild(popup, "adjustHint"), "visible", true)
+        compare(findChild(popup, "minMaxHint").visible, true)
+        compare(findChild(popup, "muteHint").visible, true)
+
+        const device = deviceList.itemAtIndex(0)
+        device.forceActiveFocus()
+        tryCompare(findChild(popup, "navigateHint"), "visible", true)
+        compare(findChild(popup, "selectHint").visible, true)
+
+        summary.forceActiveFocus()
+        tryCompare(findChild(popup, "expandHint"), "visible", true)
+        compare(popup.inputExpanded, false)
+        keyClick(Qt.Key_Return)
+        compare(popup.inputExpanded, true)
+        compare(popup.outputExpanded, true)
     }
 
     function test_summary_rows_use_compact_radius_and_keep_default_badges() {
@@ -276,12 +346,41 @@ TestCase {
         const inputSection = findChild(popup, "inputDeviceSection")
         const outputFrame = findChild(outputSection, "currentDeviceRowFrame")
         const inputFrame = findChild(inputSection, "currentDeviceRowFrame")
+        const outputSummary = findChild(outputSection, "audioCurrentDeviceRow")
+        const inputSummary = findChild(inputSection, "audioCurrentDeviceRow")
         const outputBadge = findChild(outputSection, "currentDeviceDefaultPill")
         const inputBadge = findChild(inputSection, "currentDeviceDefaultPill")
         compare(outputFrame.radius, 6)
         compare(inputFrame.radius, 6)
         compare(outputBadge.visible, true)
         compare(inputBadge.visible, true)
+
+        compare(outputFrame.border.color, HoloniightPalette.borderPassive)
+        outputSummary.forceActiveFocus()
+        compare(outputFrame.border.color, HoloniightPalette.accentCyan)
+
+        inputSummary.forceActiveFocus()
+        compare(inputFrame.border.color, HoloniightPalette.accentViolet)
+        compare(outputFrame.border.color, HoloniightPalette.borderPassive)
+    }
+
+    function test_master_mute_button_has_large_bordered_target() {
+        const popup = createTemporaryObject(audioPopupComponent, root)
+        verify(popup)
+
+        const muteButton = findChild(popup, "masterMuteButton")
+        const muteIcon = findChild(muteButton, "masterMuteButtonIcon")
+        verify(muteButton)
+        verify(muteIcon)
+        compare(muteButton.width, 44)
+        compare(muteButton.height, 44)
+        compare(muteButton.sizeRole, HnControlSize.Large)
+        compare(muteIcon.width, 22)
+        compare(muteIcon.height, 22)
+        compare(muteIcon.iconSize, 22)
+        compare(muteIcon.tintColor, HoloniightPalette.textPrimary)
+        compare(muteButton.background.border.color, HoloniightPalette.borderPassive)
+        compare(muteButton.background.border.width, 1)
     }
 
     function test_master_and_device_sliders_use_cyan_accent() {
@@ -310,7 +409,7 @@ TestCase {
         compare(effect.colorization, 1)
     }
 
-    function test_accordion_mutual_exclusivity_toggles_on_click() {
+    function test_summary_toggle_signals_preserve_other_section_state() {
         const popup = createTemporaryObject(audioPopupComponent, root)
         verify(popup)
 
@@ -323,14 +422,14 @@ TestCase {
 
         inputRow.toggled()
 
-        compare(outputList.visible, false)
+        compare(outputList.visible, true)
         compare(inputList.visible, true)
 
         const outputRow = findChild(outputSection, "audioCurrentDeviceRow")
         outputRow.toggled()
 
-        compare(outputList.visible, true)
-        compare(inputList.visible, false)
+        compare(outputList.visible, false)
+        compare(inputList.visible, true)
     }
 
     function test_radio_circle_reflects_default_state() {
@@ -358,27 +457,28 @@ TestCase {
     }
 
     function test_format_device_metadata_normal_device() {
-        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 2, 48000, ""), "Analog • 2 channels • 48 kHz")
+        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 2, 48000, ""), "Analog • Stereo")
     }
 
     function test_format_device_metadata_omits_zero_channel_count() {
-        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 0, 48000, ""), "Analog • 48 kHz")
+        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 0, 48000, ""), "Analog")
     }
 
     function test_format_device_metadata_omits_zero_sample_rate() {
-        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 2, 0, ""), "Analog • 2 channels")
+        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 2, 0, ""), "Analog • Stereo")
     }
 
-    function test_format_device_metadata_preserves_fractional_khz() {
-        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 2, 44100, ""), "Analog • 2 channels • 44.1 kHz")
+    function test_format_device_metadata_omits_sample_rate() {
+        compare(AudioMetadataFormat.formatDeviceMetadata("Analog", 6, 44100, ""), "Analog • 6 channels")
     }
 
     function test_format_device_metadata_bluetooth_with_codec() {
-        compare(AudioMetadataFormat.formatDeviceMetadata("Bluetooth", 2, 48000, "AAC"), "Bluetooth • AAC • 48 kHz")
+        compare(AudioMetadataFormat.formatDeviceMetadata("Bluetooth", 2, 48000, "AAC"), "Bluetooth • AAC")
     }
 
-    function test_format_device_metadata_bluetooth_missing_codec_falls_back() {
-        compare(AudioMetadataFormat.formatDeviceMetadata("Bluetooth", 2, 48000, ""), "Bluetooth • Unknown • 48 kHz")
+    function test_format_device_metadata_omits_unknown_fields() {
+        compare(AudioMetadataFormat.formatDeviceMetadata("Bluetooth", 2, 48000, ""), "Bluetooth")
+        compare(AudioMetadataFormat.formatDeviceMetadata("Unknown", 0, 48000, ""), "")
     }
 
     function test_applications_section_caps_at_four_rows_and_show_all_expands() {
@@ -398,6 +498,12 @@ TestCase {
         tryCompare(clipContainer, "height", streamList.contentHeight)
     }
 
+    function test_show_all_is_hidden_at_four_streams() {
+        const section = createTemporaryObject(fourApplicationsSectionComponent, root)
+        verify(section)
+        compare(findChild(section, "showAllToggle").visible, false)
+    }
+
     function test_empty_sections_keep_space_for_empty_state() {
         const deviceSection = createTemporaryObject(inputDeviceSectionComponent, root)
         verify(deviceSection)
@@ -409,7 +515,9 @@ TestCase {
         verify(applicationsSection)
         const clipContainer = findChild(applicationsSection, "audioApplicationsClipContainer")
         verify(clipContainer)
-        tryCompare(clipContainer, "height", 72)
+        tryCompare(clipContainer, "height", 32)
+        compare(findChild(applicationsSection, "audioApplicationsEmptyText").text,
+                "No applications are playing audio")
     }
 
     function test_input_section_uses_input_accent_for_labels() {
@@ -425,7 +533,7 @@ TestCase {
         compare(sectionLabel.color, HoloniightPalette.accentViolet)
     }
 
-    function test_device_rows_use_type_accent_only_for_selected_state() {
+    function test_device_rows_keep_icons_and_values_neutral() {
         const inputList = createTemporaryObject(inputDeviceListComponent, root)
         verify(inputList)
         tryCompare(inputList, "count", 2)
@@ -439,8 +547,8 @@ TestCase {
         const otherVolume = findChild(otherInput, "deviceVolumeText")
 
         compare(selectedSlider.accentColor, HoloniightPalette.accentViolet)
-        compare(selectedIcon.tintColor, HoloniightPalette.accentViolet)
-        compare(selectedVolume.color, HoloniightPalette.accentViolet)
+        compare(selectedIcon.tintColor, HoloniightPalette.textSecondary)
+        compare(selectedVolume.color, HoloniightPalette.textMuted)
         compare(otherIcon.tintColor, HoloniightPalette.textSecondary)
         compare(otherVolume.color, HoloniightPalette.textMuted)
 
@@ -449,8 +557,54 @@ TestCase {
         tryCompare(outputList, "count", 2)
         const selectedOutput = outputList.itemAtIndex(0)
         compare(findChild(selectedOutput, "deviceVolumeSlider").accentColor, HoloniightPalette.accentCyan)
-        compare(findChild(selectedOutput, "deviceIcon").tintColor, HoloniightPalette.accentCyan)
-        compare(findChild(selectedOutput, "deviceVolumeText").color, HoloniightPalette.accentCyan)
+        compare(findChild(selectedOutput, "deviceIcon").tintColor, HoloniightPalette.textSecondary)
+        compare(findChild(selectedOutput, "deviceVolumeText").color, HoloniightPalette.textMuted)
+    }
+
+    function test_input_level_meter_uses_violet_section_accent() {
+        const section = createTemporaryObject(inputDeviceSectionComponent, root)
+        verify(section)
+        compare(findChild(section, "inputDeviceLevelMeter").accentColor, HoloniightPalette.accentViolet)
+    }
+
+    function test_slider_keyboard_adjusts_clamps_and_requests_mute() {
+        const slider = createTemporaryObject(volumeSliderComponent, root)
+        verify(slider)
+        const commitSpy = signalSpy.createObject(slider, { target: slider, signalName: "valueCommitted" })
+        const muteSpy = signalSpy.createObject(slider, { target: slider, signalName: "muteRequested" })
+        slider.forceActiveFocus()
+
+        keyClick(Qt.Key_Right)
+        compare(commitSpy.signalArguments[0][0], 55)
+        keyClick(Qt.Key_Home)
+        compare(commitSpy.signalArguments[1][0], 0)
+        keyClick(Qt.Key_Left)
+        compare(commitSpy.signalArguments[2][0], 0)
+        keyClick(Qt.Key_End)
+        compare(commitSpy.signalArguments[3][0], 100)
+        keyClick(Qt.Key_M)
+        compare(muteSpy.count, 1)
+        compare(slider.Accessible.role, Accessible.Slider)
+        compare(slider.Accessible.name, "Test player volume")
+        compare(slider.accessibleValue, 100)
+    }
+
+    function test_device_rows_navigate_and_activate_from_keyboard() {
+        const list = createTemporaryObject(deviceListComponent, root)
+        verify(list)
+        tryCompare(list, "count", 2)
+        const first = list.itemAtIndex(0)
+        const second = list.itemAtIndex(1)
+        const clickedSpy = signalSpy.createObject(second, { target: second, signalName: "clicked" })
+        first.forceActiveFocus()
+        keyClick(Qt.Key_Down)
+        tryCompare(second, "activeFocus", true)
+        keyClick(Qt.Key_Space)
+        compare(clickedSpy.count, 1)
+        keyClick(Qt.Key_Up)
+        tryCompare(first, "activeFocus", true)
+        compare(first.Accessible.role, Accessible.RadioButton)
+        compare(first.Accessible.checked, true)
     }
 
     function test_narrow_popup_rows_keep_volume_controls_in_bounds() {

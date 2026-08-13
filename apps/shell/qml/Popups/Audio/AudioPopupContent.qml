@@ -13,27 +13,17 @@ import HolonightShell
 Item {
   id: root
 
-  // Accordion state (REQ-F-7001/7002): a single boolean structurally enforces "exactly one
-  // expanded at all times" — there is no representable illegal state. Each AudioDeviceSection
-  // bubbles expandRequested() up ("I want to be the expanded one"); this owns the actual
-  // transition. Defaults satisfy REQ-F-7002 (Output expanded, Input collapsed) with no reset
-  // code needed — StatusPopupSurface::show() destroys and rebuilds this whole tree on every
-  // open, so nothing survives between opens.
+  // The output and input sections expand independently. Defaults keep the initial presentation
+  // compact while exposing output devices immediately. StatusPopupSurface::show() destroys and
+  // rebuilds this whole tree on every open, so nothing survives between opens.
   property bool outputExpanded: true
-  readonly property bool inputExpanded: !root.outputExpanded
+  property bool inputExpanded: false
 
   readonly property real sectionSeparatorThickness: 1 / Screen.devicePixelRatio
   readonly property real separatorBleed: 16
 
   Component.onCompleted: AudioService.startInputLevelMonitoring()
   Component.onDestruction: AudioService.stopInputLevelMonitoring()
-
-  Keys.onPressed: (event) => {
-    if (event.key === Qt.Key_M && event.modifiers === Qt.NoModifier) {
-      AudioService.setDefaultOutputMuted(!AudioService.muted)
-      event.accepted = true
-    }
-  }
 
   // Unavailable state.
   Text {
@@ -123,7 +113,7 @@ Item {
         Layout.topMargin: 16
         isInput: false
         expanded: root.outputExpanded
-        onExpandRequested: root.outputExpanded = true
+        onExpandRequested: root.outputExpanded = !root.outputExpanded
       }
 
       HnSeparator {
@@ -157,7 +147,7 @@ Item {
         isInput: true
         expanded: root.inputExpanded
         Layout.bottomMargin: 8
-        onExpandRequested: root.outputExpanded = false
+        onExpandRequested: root.inputExpanded = !root.inputExpanded
       }
     }
   }
@@ -173,5 +163,6 @@ Item {
     anchors.bottom: parent.bottom
     visible: AudioService.available
     separatorBleed: root.separatorBleed
+    focusItem: root.Window.window ? root.Window.window.activeFocusItem : null
   }
 }

@@ -56,8 +56,11 @@ HnListDelegate {
         Layout.alignment: Qt.AlignVCenter
         value: root.volumePct
         accentColor: root.accentColor
+        muted: root.model.muted ?? false
+        accessibleName: qsTr("%1 volume").arg(root.appName)
         onValueChanging: (value) => AudioService.setStreamVolume(root.model.streamId, value)
         onValueCommitted: (value) => AudioService.setStreamVolume(root.model.streamId, value)
+        onMuteRequested: AudioService.setStreamMuted(root.model.streamId, !root.model.muted)
       }
 
       Text {
