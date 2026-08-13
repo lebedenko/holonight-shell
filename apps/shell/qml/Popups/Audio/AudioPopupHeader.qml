@@ -11,6 +11,9 @@ import HolonightShell
 Item {
   id: root
 
+  property Item nextTabItem: null
+  property alias settingsButtonItem: settingsButton
+
   implicitHeight: 40
 
   RowLayout {
@@ -35,12 +38,15 @@ Item {
     Item { Layout.fillWidth: true }
 
     HnIconButton {
+      id: settingsButton
       objectName: "headerSettingsGear"
 
       icon.source: "qrc:/HolonightShell/common/network-settings.svg"
       icon.color: HoloniightPalette.textSecondary
       Accessible.name: qsTr("Open Audio settings")
       activeFocusOnTab: true
+      KeyNavigation.tab: root.nextTabItem
+      KeyNavigation.priority: KeyNavigation.BeforeItem
       Layout.preferredWidth: implicitWidth
       Layout.preferredHeight: implicitHeight
       onClicked: {

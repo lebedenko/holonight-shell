@@ -15,6 +15,9 @@ import HolonightShell
 Item {
   id: root
 
+  property Item previousTabItem: null
+  property alias volumeSlider: masterSlider
+
   implicitHeight: 72
 
   readonly property int masterVolume: AudioService.volume
@@ -88,6 +91,7 @@ Item {
         }
 
         AudioVolumeSlider {
+          id: masterSlider
           objectName: "masterVolumeSlider"
 
           Layout.fillWidth: true
@@ -96,6 +100,8 @@ Item {
           accentColor: HoloniightPalette.accentCyan
           muted: root.masterMuted
           accessibleName: qsTr("Master volume")
+          KeyNavigation.backtab: root.previousTabItem
+          KeyNavigation.priority: KeyNavigation.BeforeItem
           onValueChanging: (value) => AudioService.setVolume(value)
           onValueCommitted: (value) => AudioService.setVolume(value)
           onMuteRequested: AudioService.setDefaultOutputMuted(!root.masterMuted)

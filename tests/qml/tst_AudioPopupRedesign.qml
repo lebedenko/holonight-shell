@@ -310,6 +310,22 @@ TestCase {
         verify(tabHint.background.radius < tabHint.height / 2)
     }
 
+    function test_tab_moves_past_settings_button() {
+        const popup = createTemporaryObject(audioPopupComponent, root)
+        verify(popup)
+
+        const gear = findChild(popup, "headerSettingsGear")
+        const slider = findChild(popup, "masterVolumeSlider")
+        verify(gear)
+        verify(slider)
+
+        popup.forceActiveFocus()
+        keyClick(Qt.Key_Tab)
+        compare(root.Window.window.activeFocusItem, gear)
+        keyClick(Qt.Key_Tab)
+        compare(root.Window.window.activeFocusItem, slider)
+    }
+
     function test_footer_tracks_slider_device_and_summary_focus() {
         const popup = createTemporaryObject(audioPopupComponent, root)
         verify(popup)

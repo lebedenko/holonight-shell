@@ -45,11 +45,13 @@ Item {
     spacing: 0
 
     AudioPopupHeader {
+      id: popupHeader
       Layout.fillWidth: true
       Layout.leftMargin: 16
       Layout.rightMargin: 16
       Layout.topMargin: 8
       Layout.bottomMargin: 16
+      nextTabItem: masterPanel.volumeSlider
     }
 
     HnSeparator {
@@ -64,12 +66,14 @@ Item {
     }
 
     AudioMasterPanel {
+      id: masterPanel
       objectName: "audioMasterPanel"
       Layout.fillWidth: true
       Layout.leftMargin: 16
       Layout.rightMargin: 16
       Layout.topMargin: 16
       Layout.bottomMargin: 16
+      previousTabItem: popupHeader.settingsButtonItem
     }
 
     HnSeparator {
