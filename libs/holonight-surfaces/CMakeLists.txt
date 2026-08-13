@@ -4,6 +4,8 @@ add_library(holonight_surfaces STATIC
     src/PerMonitorLayerManager.cpp
     src/TransientSurfaceHost.h
     src/TransientSurfaceHost.cpp
+    src/PairedTransientSurfaceHost.h
+    src/PairedTransientSurfaceHost.cpp
     src/BackgroundManager.h
     src/BackgroundManager.cpp
     src/WidgetCountdown.h
@@ -55,6 +57,8 @@ add_library(holonight_surfaces STATIC
     src/DbusMenuClient.cpp
     src/TrayMenuSurface.h
     src/TrayMenuSurface.cpp
+    src/TrayMenuSurfacePolicy.h
+    src/TrayMenuSurfacePolicy.cpp
     src/IconImageProvider.h
 )
 

@@ -137,6 +137,8 @@ holonight_add_test_exe(test_holonight_surfaces
   test_widget_surface_policy.cpp
     test_persistent_surface_policy.cpp
     test_transient_surface_policy.cpp
+    test_paired_transient_surface.cpp
+    test_paired_surface_policy.cpp
   test_widget_countdown.cpp
   test_widget_clock.cpp
   test_mpris_widget_manager.cpp
