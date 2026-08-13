@@ -31,6 +31,7 @@ target_link_libraries(test_holonight_platform PRIVATE
   holonight_platform
   GTest::gtest
   GTest::gmock
+  Qt6::Gui
   Qt6::Test
 )
 
@@ -51,6 +52,19 @@ target_link_libraries(test_holonight_core PRIVATE
   holonight_core
   GTest::gtest
   GTest::gmock
+  Qt6::Test
+)
+
+holonight_add_test_exe(test_holonight_compositor
+  main.cpp
+  test_compositor.cpp
+  test_sway_ipc.cpp
+)
+target_link_libraries(test_holonight_compositor PRIVATE
+  holonight_compositor
+  GTest::gtest
+  GTest::gmock
+  Qt6::Gui
   Qt6::Test
 )
 
