@@ -9,6 +9,7 @@ add_library(holonight_services STATIC ${HOLONIGHT_SERVICE_SOURCES})
 
 target_link_libraries(holonight_services PUBLIC
     holonight_core
+    holonight_compositor
     holonight_platform
     HoloNight::Config
     HolonightQt::Appearance

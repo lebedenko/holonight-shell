@@ -36,6 +36,8 @@ import_runtime_environment() {
     DBUS_SESSION_BUS_ADDRESS
     HYPRLAND_INSTANCE_SIGNATURE
     HYPRLAND_CMD
+    SWAYSOCK
+    I3SOCK
     QT_QPA_PLATFORM
     QT_QPA_PLATFORMTHEME
     QT_QUICK_CONTROLS_STYLE
@@ -52,12 +54,14 @@ import_runtime_environment() {
   done
 }
 
-wait_for_hyprland_environment() {
+wait_for_compositor_environment() {
   local timeout="${HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT:-60}"
   local deadline=$((SECONDS + timeout))
   local output
   local wayland_display
   local hyprland_signature
+  local sway_socket
+  local desktop
 
   if ! have_command systemctl; then
     warn "systemctl is not installed; starting with inherited environment"
@@ -68,8 +72,11 @@ wait_for_hyprland_environment() {
     output="$(systemd_environment)"
     wayland_display="$(environment_value WAYLAND_DISPLAY "${output}")"
     hyprland_signature="$(environment_value HYPRLAND_INSTANCE_SIGNATURE "${output}")"
+    sway_socket="$(environment_value SWAYSOCK "${output}")"
+    desktop="$(environment_value XDG_CURRENT_DESKTOP "${output}")"
 
-    if [[ -n "${wayland_display}" && -n "${hyprland_signature}" ]]; then
+    if [[ -n "${wayland_display}" ]] && { [[ "${desktop,,}" == *sway* && -n "${sway_socket}" ]] ||
+         [[ "${desktop,,}" != *sway* && -n "${hyprland_signature}" ]]; }; then
       import_runtime_environment "${output}"
       return 0
     fi
@@ -77,9 +84,9 @@ wait_for_hyprland_environment() {
     sleep 0.2
   done
 
-  warn "timed out waiting for WAYLAND_DISPLAY and HYPRLAND_INSTANCE_SIGNATURE in the systemd user environment"
+  warn "timed out waiting for WAYLAND_DISPLAY and the selected compositor marker"
   return 1
 }
 
-wait_for_hyprland_environment
+wait_for_compositor_environment
 exec holonight-shell "$@"

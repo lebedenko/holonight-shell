@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+die() { printf 'holonight-session: error: %s\n' "$*" >&2; exit 1; }
+warn() { printf 'holonight-session: warning: %s\n' "$*" >&2; }
+have_command() { command -v "$1" >/dev/null 2>&1; }
+
+compositor="${1:-}"
+case "${compositor}" in hyprland|sway) ;; *) die "expected compositor hyprland or sway" ;; esac
+
+if [[ "${compositor}" == hyprland ]]; then
+  executable=Hyprland
+  desktop=Hyprland
+  uwsm_desktop=hyprland.desktop
+  menu_prefix=hyprland-
+  unset SWAYSOCK I3SOCK
+else
+  executable=sway
+  desktop=sway
+  uwsm_desktop=sway.desktop
+  menu_prefix=sway-
+  unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD
+fi
+
+have_command "${executable}" || die "${executable} was not found in PATH"
+export XDG_CURRENT_DESKTOP="${desktop}"
+export XDG_SESSION_DESKTOP="${desktop}"
+export XDG_SESSION_TYPE=wayland
+export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-${menu_prefix}}"
+case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
+  *:/usr/share/holonight/xdg:*) ;;
+  *) export XDG_CONFIG_DIRS="/usr/share/holonight/xdg:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
+esac
+export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
+export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
+
+vars=(WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX
+  XDG_DATA_DIRS XDG_CONFIG_DIRS QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME
+  XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE)
+if have_command dbus-update-activation-environment; then
+  dbus-update-activation-environment --systemd "${vars[@]}" || warn "failed to import D-Bus environment"
+fi
+if have_command systemctl; then
+  systemctl --user import-environment "${vars[@]}" || warn "failed to import systemd environment"
+fi
+
+mode="${HOLONIGHT_SESSION_MODE:-auto}"
+case "${mode}" in
+  auto)
+    if have_command uwsm; then exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"; fi
+    exec "${executable}"
+    ;;
+  uwsm)
+    have_command uwsm || die "HOLONIGHT_SESSION_MODE=uwsm was requested, but uwsm was not found in PATH"
+    exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"
+    ;;
+  direct) exec "${executable}" ;;
+  *) die "unknown HOLONIGHT_SESSION_MODE=${mode}; expected auto, uwsm, or direct" ;;
+esac

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=HoloNight (Sway)
+Comment=Sway session with HoloNight desktop integration
+Exec=holonight-session sway
+TryExec=sway
+DesktopNames=sway
+Type=Application

@@ -225,10 +225,12 @@ set_target_properties(holonight-shell PROPERTIES _qt_internal_has_qmltypes TRUE)
 _qt_internal_qml_type_registration(holonight-shell)
 
 install(TARGETS holonight-shell DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/holonight-hyprland-session DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/holonight-session DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/holonight-shell-systemd DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(
-    FILES ${PROJECT_SOURCE_DIR}/data/wayland-sessions/holonight-hyprland.desktop
+    FILES
+      ${PROJECT_SOURCE_DIR}/data/wayland-sessions/holonight-hyprland.desktop
+      ${PROJECT_SOURCE_DIR}/data/wayland-sessions/holonight-sway.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/wayland-sessions
 )
 install(
@@ -246,5 +248,9 @@ install(
 
 install(
     FILES ${PROJECT_SOURCE_DIR}/data/xdg/xdg-desktop-portal/hyprland-portals.conf
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/holonight/xdg/xdg-desktop-portal
+)
+install(
+    FILES ${PROJECT_SOURCE_DIR}/data/xdg/xdg-desktop-portal/sway-portals.conf
     DESTINATION ${CMAKE_INSTALL_DATADIR}/holonight/xdg/xdg-desktop-portal
 )

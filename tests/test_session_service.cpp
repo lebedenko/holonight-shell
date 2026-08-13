@@ -4,6 +4,7 @@
 #include "session/Locker.h"
 #include "session/LogindSessionBackend.h"
 #include "session/ProcessEnvironment.h"
+#include "session/SwaySessionBackend.h"
 
 #include <QHash>
 #include <QSignalSpy>
@@ -211,6 +212,30 @@ TEST(SessionServiceTest, UwsmUnavailableFallsBackToHyprctl) {
 
   EXPECT_EQ(runner.lastProgram(), QStringLiteral("hyprctl"));
   EXPECT_EQ(runner.lastArgs(), (QStringList{QStringLiteral("dispatch"), QStringLiteral("exit")}));
+}
+
+TEST(SessionServiceTest, SwayDelegatesDirectLogoutToSwaymsg) {
+  FakeProcessEnvironment env;
+  SpyCommandRunner runner;
+  SessionService service(std::make_unique<SwaySessionBackend>(&env, &runner));
+
+  service.logout();
+
+  EXPECT_EQ(runner.lastProgram(), QStringLiteral("swaymsg"));
+  EXPECT_EQ(runner.lastArgs(), QStringList{QStringLiteral("exit")});
+}
+
+TEST(SessionServiceTest, UwsmManagedSwayDelegatesLogoutToUwsm) {
+  FakeProcessEnvironment env;
+  env.setExecutable(QStringLiteral("uwsm"), QStringLiteral("/usr/bin/uwsm"));
+  env.setUserServiceActive(QStringLiteral("wayland-wm@sway.desktop.service"), true);
+  SpyCommandRunner runner;
+  SessionService service(std::make_unique<SwaySessionBackend>(&env, &runner));
+
+  service.logout();
+
+  EXPECT_EQ(runner.lastProgram(), QStringLiteral("uwsm"));
+  EXPECT_EQ(runner.lastArgs(), QStringList{QStringLiteral("stop")});
 }
 
 TEST(SessionServiceTest, PowerActionsDelegateToSystemctl) {

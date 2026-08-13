@@ -5,17 +5,15 @@
 #include "session/LogindSessionBackend.h"
 #include "session/ProcessEnvironment.h"
 #include "session/SessionBackend.h"
-
-#include <algorithm>
+#include "session/SwaySessionBackend.h"
+#include "CompositorSelection.h"
 
 namespace {
 std::unique_ptr<SessionBackend> makeBackend(const ProcessEnvironment* env, CommandRunner* runner) {
-  const QStringList desktops = qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(QChar(':'), Qt::SkipEmptyParts);
-  const bool declares_hyprland = std::ranges::any_of(desktops, [](const QString& desktop) {
-    return desktop.compare(QStringLiteral("Hyprland"), Qt::CaseInsensitive) == 0;
-  });
-  if (!qEnvironmentVariableIsEmpty("HYPRLAND_INSTANCE_SIGNATURE") || declares_hyprland) {
-    return std::make_unique<HyprlandSessionBackend>(env, runner);
+  switch (selectCompositor(systemCompositorEnvironment())) {
+    case CompositorKind::Hyprland: return std::make_unique<HyprlandSessionBackend>(env, runner);
+    case CompositorKind::Sway: return std::make_unique<SwaySessionBackend>(env, runner);
+    case CompositorKind::Generic: return std::make_unique<LogindSessionBackend>(env, runner);
   }
   return std::make_unique<LogindSessionBackend>(env, runner);
 }
