@@ -1,12 +1,13 @@
 #include "WidgetManager.h"
 
+#include "CompositorService.h"
 #include "LayerSurface.h"
-#include "MonitorOccupancyService.h"
 #include "WidgetClock.h"
 #include "WidgetCountdown.h"
 #include "WidgetSurfacePolicy.h"
 
 #include <QDateTime>
+#include <QGuiApplication>
 #include <QLocale>
 #include <QLoggingCategory>
 #include <QQuickItem>
@@ -29,13 +30,13 @@ constexpr int kSecsPerMinute = 60;
 }  // namespace
 
 WidgetManager::WidgetManager(LayerShell& shell, WidgetDefinition definition, int margin, int index,
-                             QList<QStringList> position_blockers, MonitorOccupancyService* occupancy, QObject* parent)
+                             QList<QStringList> position_blockers, CompositorService* compositor, QObject* parent)
     : PerMonitorLayerManager(shell, "WidgetManager", parent),
       definition_(std::move(definition)),
       margin_(margin),
       index_(index),
       position_blockers_(std::move(position_blockers)),
-      occupancy_(occupancy) {
+      compositor_(compositor) {
   if (definition_.type == WidgetType::Clock) {
     recomputeClockStrings();
   } else {
@@ -43,8 +44,8 @@ WidgetManager::WidgetManager(LayerShell& shell, WidgetDefinition definition, int
   }
   tick_timer_.setSingleShot(true);
   connect(&tick_timer_, &QTimer::timeout, this, &WidgetManager::onTick);
-  if (occupancy_ != nullptr) {
-    connect(occupancy_, &MonitorOccupancyService::occupancyChanged, this, &WidgetManager::onOccupancyChanged);
+  if (compositor_ != nullptr) {
+    connect(compositor_, &CompositorService::revisionChanged, this, &WidgetManager::onCompositorRevision);
   }
 }
 
@@ -107,8 +108,8 @@ bool WidgetManager::shouldCreateSurface(QScreen* screen) const {
   return true;
 }
 
-void WidgetManager::onOccupancyChanged(const QString& monitor_name, bool /*is_empty*/) {
-  applyVisibility(monitor_name);
+void WidgetManager::onCompositorRevision() {
+  for (QScreen* screen : QGuiApplication::screens()) applyVisibility(screen->name());
 }
 
 void WidgetManager::applyVisibility(const QString& monitor_name) {
@@ -116,7 +117,8 @@ void WidgetManager::applyVisibility(const QString& monitor_name) {
   if (view == nullptr) {
     return;
   }
-  const bool visible = occupancy_ == nullptr || occupancy_->isMonitorEmpty(monitor_name);
+  const bool visible = compositor_ != nullptr && compositor_->connected() && compositor_->hasOccupancy() &&
+                       compositor_->isOutputEmpty(monitor_name);
   content_visible_.insert(monitor_name, visible);
   // Toggle the QML root rather than the QWindow: the layer surface stays mapped (its role survives),
   // while an invisible root renders nothing. Pushing the latest strings first avoids a stale frame

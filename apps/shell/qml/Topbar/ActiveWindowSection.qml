@@ -7,7 +7,8 @@ import "../Controls"
 
 BarSection {
     id: root
-    implicitWidth: 0
+    visible: CompositorService.connected && CompositorService.hasActiveWindowData
+    implicitWidth: visible ? 0 : 0
 
     required property string barMonitorName
     readonly property int slantCut: 12
@@ -20,20 +21,18 @@ BarSection {
     readonly property string displayTitle: root.localTitle.length > 0 ? root.localTitle : "Desktop"
 
     Connections {
-        target: ActiveWindowService
-        function onMonitorWindowChanged(monitorName) {
-            if (monitorName === root.barMonitorName) {
-                root.localTitle = ActiveWindowService.titleForMonitor(root.barMonitorName)
-                root.localCategory = ActiveWindowService.categoryForMonitor(root.barMonitorName)
-                root.localAppClass = ActiveWindowService.appClassForMonitor(root.barMonitorName)
-            }
+        target: CompositorService
+        function onRevisionChanged() {
+            root.localTitle = CompositorService.activeWindowTitle(root.barMonitorName)
+            root.localCategory = CompositorService.activeWindowCategory(root.barMonitorName)
+            root.localAppClass = CompositorService.activeWindowAppId(root.barMonitorName)
         }
     }
 
     Component.onCompleted: {
-        root.localTitle = ActiveWindowService.titleForMonitor(root.barMonitorName)
-        root.localCategory = ActiveWindowService.categoryForMonitor(root.barMonitorName)
-        root.localAppClass = ActiveWindowService.appClassForMonitor(root.barMonitorName)
+        root.localTitle = CompositorService.activeWindowTitle(root.barMonitorName)
+        root.localCategory = CompositorService.activeWindowCategory(root.barMonitorName)
+        root.localAppClass = CompositorService.activeWindowAppId(root.barMonitorName)
     }
 
     BarFrame {

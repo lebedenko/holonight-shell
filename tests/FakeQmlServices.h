@@ -4,6 +4,7 @@
 #include "BatteryService.h"
 #include "BatteryState.h"
 #include "ConfigService.h"
+#include "CompositorService.h"
 #include "DbusPropertyClient.h"
 #include "GeneratedQmlFiles.h"
 #include "MprisDbus.h"
@@ -1024,6 +1025,19 @@ class FakeQmlServices {
         topbar_test_seed_(weather_, audio_, battery_, keyboard_layout_, network_) {
     workspace_model_.applyBatchUpdate(
         {{.id = 1, .name = QStringLiteral("1"), .state = WorkspaceModel::WorkspaceState::Active, .on_monitor = true}});
+    compositor_.publishSnapshot({.connected = true,
+                                 .focused_output = QStringLiteral("DP-1"),
+                                 .capabilities = {.workspace_listing = true,
+                                                  .workspace_activation = true,
+                                                  .active_window = true,
+                                                  .focused_output = true,
+                                                  .urgency = true,
+                                                  .occupancy = true},
+                                 .workspaces = {{.id = QStringLiteral("1"),
+                                                 .numeric_slot = 1,
+                                                 .display_name = QStringLiteral("1"),
+                                                 .focused = true,
+                                                 .occupied = true}}});
 
     BatteryStateUpdate battery_update;
     battery_update.percent = 74;
@@ -1040,6 +1054,7 @@ class FakeQmlServices {
 
   [[nodiscard]] bool registerSingletons() {  // NOLINT(readability-function-cognitive-complexity)
     return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspaceModel", &workspace_model_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspaceModelTestSeed", &workspace_test_seed_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
@@ -1090,6 +1105,7 @@ class FakeQmlServices {
   XdgTempIsolation xdg_isolation_;  // must be first — sets XDG_CONFIG_HOME before config_service
   ConfigService config_service_;
   WorkspaceModel workspace_model_;
+  CompositorService compositor_{CompositorKind::Generic};
   WorkspaceModelTestSeed workspace_test_seed_{workspace_model_};
   BatteryService battery_;
   SuspendInhibitorService suspend_inhibitor_service_{SuspendInhibitorService::SkipInit};

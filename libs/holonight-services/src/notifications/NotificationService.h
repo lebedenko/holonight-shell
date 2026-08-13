@@ -14,6 +14,7 @@
 #include <cstdint>
 
 class ActiveWindowService;
+class CompositorService;
 class NotificationRuleModel;
 class NotificationStore;
 class QTimer;
@@ -55,6 +56,7 @@ class NotificationService : public QAbstractListModel {
 
   explicit NotificationService(ConfigService* config, ActiveWindowService* active_window,
                                NotificationRuleModel* rule_model = nullptr, QObject* parent = nullptr);
+  void setCompositorService(CompositorService* compositor) { compositor_ = compositor; }
   ~NotificationService() override = default;
 
   NotificationService(const NotificationService&) = delete;
@@ -150,6 +152,7 @@ class NotificationService : public QAbstractListModel {
 
   ConfigService* config_;
   ActiveWindowService* active_window_;
+  CompositorService* compositor_{nullptr};
   NotificationRuleModel* rule_model_;
 
   bool dnd_enabled_{false};

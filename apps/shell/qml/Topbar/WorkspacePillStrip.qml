@@ -58,11 +58,19 @@ Item {
                 readonly property real viewportRight: viewportLeft + root.width
                 x: index * root.pillStep
                 y: root.glowMargin
-                wsId: absoluteId
+                workspaceId: String(absoluteId)
+                numericSlot: absoluteId
+                label: String(absoluteId)
+                workspaceKind: "normal"
                 barMonitorName: root.barMonitorName
-                wsState: WorkspaceModel.revision >= 0
-                         ? WorkspaceModel.stateForId(absoluteId)
-                         : WorkspaceModel.Empty
+                visualState: {
+                    const state = WorkspaceModel.stateForId(absoluteId)
+                    if (state === WorkspaceModel.FocusedActiveMonitor || state === WorkspaceModel.Active)
+                        return "focused"
+                    if (state === WorkspaceModel.Urgent) return "urgent"
+                    if (state === WorkspaceModel.Occupied) return "occupied"
+                    return "empty"
+                }
                 glowAllowed: x >= viewportLeft && x + width <= viewportRight
             }
         }

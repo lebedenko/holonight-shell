@@ -9,8 +9,8 @@
 #include "session/SwaySessionBackend.h"
 
 namespace {
-std::unique_ptr<SessionBackend> makeBackend(const ProcessEnvironment* env, CommandRunner* runner) {
-  switch (selectCompositor(systemCompositorEnvironment())) {
+std::unique_ptr<SessionBackend> makeBackend(CompositorKind kind, const ProcessEnvironment* env, CommandRunner* runner) {
+  switch (kind) {
     case CompositorKind::Hyprland:
       return std::make_unique<HyprlandSessionBackend>(env, runner);
     case CompositorKind::Sway:
@@ -23,10 +23,13 @@ std::unique_ptr<SessionBackend> makeBackend(const ProcessEnvironment* env, Comma
 }  // namespace
 
 SessionService::SessionService(QObject* parent)
+    : SessionService(selectCompositor(systemCompositorEnvironment()), parent) {}
+
+SessionService::SessionService(CompositorKind kind, QObject* parent)
     : QObject(parent),
       env_(std::make_unique<SystemProcessEnvironment>()),
       runner_(std::make_unique<DetachedCommandRunner>()),
-      backend_(makeBackend(env_.get(), runner_.get())) {}
+      backend_(makeBackend(kind, env_.get(), runner_.get())) {}
 
 SessionService::SessionService(std::unique_ptr<SessionBackend> backend, QObject* parent)
     : QObject(parent), backend_(std::move(backend)) {}

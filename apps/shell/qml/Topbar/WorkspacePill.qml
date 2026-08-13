@@ -7,14 +7,23 @@ import Holonight.Core
 Item {
     id: root
 
-    required property int wsId
-    required property int wsState
+    property int wsId: -1
+    property int wsState: -1
+    property string workspaceId: wsId > 0 ? String(wsId) : ""
+    property var numericSlot: wsId > 0 ? wsId : undefined
+    property string label: wsId > 0 ? String(wsId) : ""
+    property string workspaceKind: "normal"
+    property string visualState: {
+        if (wsState === WorkspaceModel.FocusedActiveMonitor || wsState === WorkspaceModel.Active) return "focused"
+        if (wsState === WorkspaceModel.Urgent) return "urgent"
+        if (wsState === WorkspaceModel.Occupied) return "occupied"
+        return "empty"
+    }
     required property string barMonitorName
-    readonly property string label: wsId > 0 ? String(wsId) : ""
-    readonly property bool active: wsId > 0
+    readonly property bool active: workspaceId.length > 0
     property bool glowAllowed: true
 
-    width: 32
+    width: numericSlot !== undefined && numericSlot !== null ? 32 : Math.min(120, Math.max(32, labelText.implicitWidth + 20))
     height: 32
     enabled: active
     opacity: active ? 1 : 0
@@ -86,8 +95,12 @@ Item {
     }
 
     Text {
+        id: labelText
         anchors.centerIn: pill
         text: root.label
+        width: Math.max(0, pill.width - 16)
+        horizontalAlignment: Text.AlignHCenter
+        elide: Text.ElideRight
         color: _style.textColor
         font.weight: _style.fontWeight
     }
@@ -99,7 +112,7 @@ Item {
         acceptedButtons: Qt.LeftButton
         hoverEnabled: true
         enabled: root.active
-        onClicked: WorkspaceModel.activateWorkspace(root.wsId)
+        onClicked: CompositorService.activateWorkspace(root.workspaceId)
     }
 
     BarTooltipArea {
@@ -119,12 +132,11 @@ Item {
     QtObject {
         id: _style
 
-        readonly property bool focusedActive: root.wsState === WorkspaceModel.FocusedActiveMonitor
-                                           || root.wsState === WorkspaceModel.Active
-        readonly property bool focusedInactive: root.wsState === WorkspaceModel.FocusedInactiveMonitor
+        readonly property bool focusedActive: root.visualState === "focused"
+        readonly property bool focusedInactive: false
         readonly property bool focused: focusedActive || focusedInactive
-        readonly property bool urgent: root.wsState === WorkspaceModel.Urgent
-        readonly property bool occupied: root.wsState === WorkspaceModel.Occupied
+        readonly property bool urgent: root.visualState === "urgent"
+        readonly property bool occupied: root.visualState === "occupied" || root.visualState === "active"
         readonly property bool glowing: focusedActive || urgent
         readonly property bool hovering: pointer.containsMouse
         readonly property bool pressing: pointer.pressed

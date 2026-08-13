@@ -7,7 +7,7 @@
 #include <vector>
 
 class QGuiApplication;
-class ActiveWindowService;
+class CompositorService;
 class AiChatService;
 class AppearanceService;
 class CalendarService;
@@ -23,12 +23,9 @@ class ConfigService;
 class ControlServer;
 class AudioService;
 class BatteryService;
-class ExtWorkspaceManager;
-class HyprlandWorkspaceService;
 class KeyboardLayoutService;
 class LayerShell;
 class LayerShellManager;
-class MonitorOccupancyService;
 class PerMonitorLayerManager;
 class LauncherService;
 class MprisArtworkCache;
@@ -57,7 +54,6 @@ class LidStateMonitor;
 class LowBatteryMonitor;
 class SuspendInhibitorService;
 class WeatherService;
-class WorkspaceModel;
 
 class ShellApplication : public QObject {
   Q_OBJECT
@@ -122,14 +118,10 @@ class ShellApplication : public QObject {
   ActivityGateManager* activity_gate_manager_ = nullptr;
   ConfigService* config_service_ = nullptr;
   CalendarService* calendar_service_ = nullptr;
-  WorkspaceModel* model_ = nullptr;
-  ExtWorkspaceManager* manager_ = nullptr;
-  HyprlandWorkspaceService* workspace_service_ = nullptr;
+  CompositorService* compositor_ = nullptr;
   KeyboardLayoutService* keyboard_layout_ = nullptr;
-  ActiveWindowService* aws_ = nullptr;
   AiChatService* ai_chat_service_ = nullptr;
   SettingsNavigationService* settings_navigation_service_ = nullptr;
-  MonitorOccupancyService* occupancy_ = nullptr;
   BatteryService* battery_ = nullptr;
   AudioService* audio_ = nullptr;
   NetworkService* network_ = nullptr;
@@ -187,4 +179,5 @@ class ShellApplication : public QObject {
   bool services_started_ = false;
   bool shell_started_ = false;
   bool managers_started_ = false;
+  QString compositor_navigation_key_;
 };

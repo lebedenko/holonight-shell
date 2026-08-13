@@ -13,7 +13,7 @@
 
 class LayerShell;
 class LayerSurface;
-class MonitorOccupancyService;
+class CompositorService;
 class MprisArtworkCache;
 class QQuickItem;
 class QQuickView;
@@ -40,7 +40,7 @@ class MprisWidgetManager : public PerMonitorLayerManager {
 
  public:
   MprisWidgetManager(LayerShell& shell, HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
-                     QList<QStringList> position_blockers, MonitorOccupancyService* occupancy, MprisService* mpris,
+                     QList<QStringList> position_blockers, CompositorService* compositor, MprisService* mpris,
                      MprisArtworkCache* artwork_cache, QObject* parent = nullptr);
 
   // Test-only accessors (mirrors MprisService's *ForTest() convention) for logic this class adds
@@ -64,7 +64,7 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   [[nodiscard]] bool shouldCreateSurface(QScreen* screen) const override;
 
  private Q_SLOTS:
-  void onOccupancyChanged(const QString& monitor_name, bool is_empty);
+  void onCompositorRevision();
   void onPositionTick();
   // Connected to every MprisService NOTIFY signal that carries per-track content (title, artist,
   // album, art URL, identity, desktop entry, length, canSeek, hasActivePlayer) — anything
@@ -105,7 +105,7 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   int margin_;
   int index_;
   QList<QStringList> position_blockers_;
-  MonitorOccupancyService* occupancy_;
+  CompositorService* compositor_;
   MprisService* mpris_;
   MprisArtworkCache* artwork_cache_;
   QTimer position_tick_timer_;  // 2 Hz (REQ-F-023), runs only while anySurfaceVisible()

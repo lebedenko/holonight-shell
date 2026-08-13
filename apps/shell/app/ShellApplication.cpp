@@ -1,6 +1,5 @@
 #include "ShellApplication.h"
 
-#include "ActiveWindowService.h"
 #include "ActivityGateManager.h"
 #include "AiChatService.h"
 #include "AppearanceService.h"
@@ -11,10 +10,9 @@
 #include "BrightnessChannelSource.h"
 #include "BrightnessService.h"
 #include "CalendarService.h"
+#include "CompositorService.h"
 #include "ConfigService.h"
 #include "ControlServer.h"
-#include "ExtWorkspaceManager.h"
-#include "HyprlandWorkspaceService.h"
 #include "IdleService.h"
 #include "KeyboardLayoutChannelSource.h"
 #include "KeyboardLayoutService.h"
@@ -25,7 +23,6 @@
 #include "LidStateMonitor.h"
 #include "LowBatteryMonitor.h"
 #include "MimeService.h"
-#include "MonitorOccupancyService.h"
 #include "MprisArtworkCache.h"
 #include "MprisService.h"
 #include "MprisWidgetManager.h"
@@ -58,7 +55,6 @@ using namespace HoloNight::ShellConfig;
 #include "WeatherIconBridge.h"
 #include "WeatherService.h"
 #include "WidgetManager.h"
-#include "WorkspaceModel.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -107,19 +103,15 @@ ShellApplication::ShellApplication(QObject* parent)
       activity_gate_manager_(new ActivityGateManager(this)),
       config_service_(new ConfigService(this)),
       calendar_service_(new CalendarService(this)),
-      model_(new WorkspaceModel(this)),
-      manager_(new ExtWorkspaceManager(model_, config_service_, this)),
-      workspace_service_(new HyprlandWorkspaceService(model_, this)),
+      compositor_(new CompositorService(this)),
       keyboard_layout_(new KeyboardLayoutService(this)),
-      aws_(new ActiveWindowService(this)),
       ai_chat_service_(new AiChatService(this)),
       settings_navigation_service_(new SettingsNavigationService(this)),
-      occupancy_(new MonitorOccupancyService(model_, aws_, this)),
       battery_(new BatteryService(this)),
       audio_(new AudioService(this)),
       network_(new NetworkService(this)),
       power_profiles_(new PowerProfilesService(this)),
-      session_(new SessionService(this)),
+      session_(new SessionService(compositor_->backendKind(), this)),
       system_info_(new SystemInfoService(config_service_, this)),
       appearance_(new AppearanceService(this)),
       theme_(new ThemeService(appearance_, this)),
@@ -138,7 +130,7 @@ ShellApplication::ShellApplication(QObject* parent)
       tray_model_(new TrayModel(config_service_, this)),
       tray_watcher_(new TrayWatcher(tray_model_, this)),
       notification_rule_model_(new NotificationRuleModel(new NotificationRuleStore(this), DesktopEntryScanner(), this)),
-      notification_service_(new NotificationService(config_service_, aws_, notification_rule_model_, this)),
+      notification_service_(new NotificationService(config_service_, nullptr, notification_rule_model_, this)),
       notification_server_(new NotificationServer(notification_service_, this)),
       notification_manager_(new NotificationManager(notification_service_, this)),
       brightness_service_(new BrightnessService(this)),
@@ -159,6 +151,7 @@ ShellApplication::ShellApplication(QObject* parent)
       suspend_inhibitor_service_(new SuspendInhibitorService(this)),
       screen_saver_adaptor_(new ScreenSaverAdaptor(idle_service_, this)),
       control_server_(new ControlServer(this)) {
+  notification_service_->setCompositorService(compositor_);
   session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme());
   connect(appearance_, &AppearanceService::cursorThemeChanged, this,
           [this]() { session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme()); });
@@ -183,8 +176,7 @@ void ShellApplication::registerQmlTypes() {
   reg(mime_service_, "MimeService");
   reg(portal_service_, "PortalService");
   reg(calendar_service_, "CalendarService");
-  reg(model_, "WorkspaceModel");
-  reg(aws_, "ActiveWindowService");
+  reg(compositor_, "CompositorService");
   reg(keyboard_layout_, "KeyboardLayoutService");
   reg(battery_, "BatteryService");
   reg(audio_, "AudioService");
@@ -225,12 +217,18 @@ void ShellApplication::startServices() {
   }
 
   tray_model_->setMenuSurface(tray_menu_surface_);
-  connect(aws_, &ActiveWindowService::visibleWorkspaceChanged, this, &ShellApplication::closeTransientOverlays);
-  connect(aws_, &ActiveWindowService::focusedMonitorChanged, this, &ShellApplication::closeTransientOverlays);
+  compositor_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count);
+  connect(config_service_, &ConfigService::barWorkspacesChanged, this,
+          [this] { compositor_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count); });
+  connect(compositor_, &CompositorService::revisionChanged, this, [this] {
+    const QString key =
+        compositor_->focusedOutput() + QLatin1Char(':') + QString::number(compositor_->focusedWorkspaceRow());
+    if (!compositor_navigation_key_.isEmpty() && key != compositor_navigation_key_) closeTransientOverlays();
+    compositor_navigation_key_ = key;
+  });
 
-  workspace_service_->start();
+  compositor_->start();
   keyboard_layout_->start();
-  aws_->start();
   battery_->start();
   audio_->start();
   network_->start();
@@ -252,14 +250,14 @@ void ShellApplication::startServices() {
   connect(idle_service_, &IdleService::idleChanged, weather_, &WeatherService::onIdleChanged);
   connect(idle_service_, &IdleService::idleChanged, calendar_service_, &CalendarService::onIdleChanged);
   connect(control_server_, &ControlServer::toggleLauncherRequested, this,
-          [this] { launcher_surface_->toggle(aws_->focusedMonitorName()); });
+          [this] { launcher_surface_->toggle(resolveOsdMonitor()); });
   connect(control_server_, &ControlServer::toggleSidebarRequested, this, [this](const QString& monitor_name) {
     if (sidebar_manager_ != nullptr) {
       sidebar_manager_->toggle(monitor_name);
     }
   });
   connect(control_server_, &ControlServer::toggleChatRequested, this, [this](const QString& monitor_name) {
-    ai_chat_service_->togglePanel(monitor_name.isEmpty() ? aws_->focusedMonitorName() : monitor_name);
+    ai_chat_service_->togglePanel(monitor_name.isEmpty() ? resolveOsdMonitor() : monitor_name);
   });
   control_server_->start();
 
@@ -418,7 +416,8 @@ void ShellApplication::closeTransientOverlays() {
 }
 
 QString ShellApplication::resolveOsdMonitor() const {
-  if (QString focused = aws_->focusedMonitorName(); !focused.isEmpty()) {
+  if (QString focused = compositor_->focusedOutput();
+      compositor_->connected() && compositor_->hasFocusedOutput() && !focused.isEmpty()) {
     return focused;
   }
   // Resolve the primary screen's *name* rather than handing OsdSurface an empty string: the surface
@@ -497,11 +496,11 @@ void ShellApplication::rebuildWidgets() {
     std::unique_ptr<PerMonitorLayerManager> manager;
     if (defs.at(i).type == WidgetType::Mpris) {
       manager = std::make_unique<MprisWidgetManager>(*layer_shell_, defs.at(i), cfg.margin, static_cast<int>(i),
-                                                     blockersForWidget(defs, i), occupancy_, mpris_,
+                                                     blockersForWidget(defs, i), compositor_, mpris_,
                                                      mpris_artwork_cache_.get(), this);
     } else {
       manager = std::make_unique<WidgetManager>(*layer_shell_, defs.at(i), cfg.margin, static_cast<int>(i),
-                                                blockersForWidget(defs, i), occupancy_, this);
+                                                blockersForWidget(defs, i), compositor_, this);
     }
     manager->start();
     widget_managers_.push_back(std::move(manager));

@@ -12,7 +12,7 @@
 
 class LayerShell;
 class LayerSurface;
-class MonitorOccupancyService;
+class CompositorService;
 class QQuickItem;
 class QQuickView;
 class QScreen;
@@ -28,7 +28,7 @@ class WidgetManager : public PerMonitorLayerManager {
 
  public:
   WidgetManager(LayerShell& shell, HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
-                QList<QStringList> position_blockers, MonitorOccupancyService* occupancy, QObject* parent = nullptr);
+                QList<QStringList> position_blockers, CompositorService* compositor, QObject* parent = nullptr);
 
  protected:
   [[nodiscard]] LayerConfig layerConfig() const override;
@@ -37,7 +37,7 @@ class WidgetManager : public PerMonitorLayerManager {
   [[nodiscard]] bool shouldCreateSurface(QScreen* screen) const override;
 
  private Q_SLOTS:
-  void onOccupancyChanged(const QString& monitor_name, bool is_empty);
+  void onCompositorRevision();
   void onTick();
 
  private:
@@ -66,7 +66,7 @@ class WidgetManager : public PerMonitorLayerManager {
   // Monitor filters of earlier widgets sharing this widget's position; an entry matches a monitor when
   // it is empty (that widget targets all monitors) or contains the monitor name.
   QList<QStringList> position_blockers_;
-  MonitorOccupancyService* occupancy_;
+  CompositorService* compositor_;
   QTimer tick_timer_;
   QString remaining_text_;  // time-to-event countdown string
   // Clock widget cache: the large HH:mm, the small seconds, and the date row, pushed to QML each tick.

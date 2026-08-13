@@ -1,6 +1,7 @@
 #include "NotificationService.h"
 
 #include "ActiveWindowService.h"
+#include "CompositorService.h"
 #include "ConfigService.h"
 #include "NotificationFilter.h"
 #include "NotificationPolicy.h"
@@ -461,6 +462,10 @@ QString NotificationService::resolveMonitorName() const {
     if (!focused.isEmpty()) {
       return focused;
     }
+  }
+  if (compositor_ != nullptr && compositor_->connected() && compositor_->hasFocusedOutput()) {
+    const QString focused = compositor_->focusedOutput();
+    if (!focused.isEmpty()) return focused;
   }
   if (qobject_cast<QGuiApplication*>(QCoreApplication::instance()) != nullptr) {
     if (QScreen* primary = QGuiApplication::primaryScreen()) {

@@ -57,6 +57,7 @@ add_library(holonight_surfaces STATIC
 )
 
 target_link_libraries(holonight_surfaces PUBLIC
+    holonight_compositor
     holonight_core
     holonight_platform
     holonight_services

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CompositorSelection.h"
+
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
@@ -28,6 +30,7 @@ class SessionService : public QObject {
 
  public:
   explicit SessionService(QObject* parent = nullptr);
+  explicit SessionService(CompositorKind kind, QObject* parent = nullptr);
   // Test seam: takes ownership of a pre-built backend (seams owned by the caller).
   explicit SessionService(std::unique_ptr<SessionBackend> backend, QObject* parent = nullptr);
   ~SessionService() override;

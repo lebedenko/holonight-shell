@@ -1,11 +1,12 @@
 #include "MprisWidgetManager.h"
 
+#include "CompositorService.h"
 #include "IconImageProvider.h"
 #include "LayerSurface.h"
-#include "MonitorOccupancyService.h"
 #include "MprisArtworkCache.h"
 #include "WidgetSurfacePolicy.h"
 
+#include <QGuiApplication>
 #include <QLoggingCategory>
 #include <QPointer>
 #include <QQmlEngine>
@@ -27,21 +28,21 @@ constexpr qint64 kMsPerMinute = 60'000;
 }  // namespace
 
 MprisWidgetManager::MprisWidgetManager(LayerShell& shell, WidgetDefinition definition, int margin, int index,
-                                       QList<QStringList> position_blockers, MonitorOccupancyService* occupancy,
+                                       QList<QStringList> position_blockers, CompositorService* compositor,
                                        MprisService* mpris, MprisArtworkCache* artwork_cache, QObject* parent)
     : PerMonitorLayerManager(shell, "MprisWidgetManager", parent),
       definition_(std::move(definition)),
       margin_(margin),
       index_(index),
       position_blockers_(std::move(position_blockers)),
-      occupancy_(occupancy),
+      compositor_(compositor),
       mpris_(mpris),
       artwork_cache_(artwork_cache) {
   position_tick_timer_.setInterval(kPositionTickIntervalMs);
   connect(&position_tick_timer_, &QTimer::timeout, this, &MprisWidgetManager::onPositionTick);
 
-  if (occupancy_ != nullptr) {
-    connect(occupancy_, &MonitorOccupancyService::occupancyChanged, this, &MprisWidgetManager::onOccupancyChanged);
+  if (compositor_ != nullptr) {
+    connect(compositor_, &CompositorService::revisionChanged, this, &MprisWidgetManager::onCompositorRevision);
   }
   if (mpris_ != nullptr) {
     position_tracking_handle_ = mpris_->acquirePositionTracking();
@@ -99,8 +100,8 @@ bool MprisWidgetManager::shouldCreateSurface(QScreen* screen) const {
   return true;
 }
 
-void MprisWidgetManager::onOccupancyChanged(const QString& monitor_name, bool /*is_empty*/) {
-  applyVisibility(monitor_name);
+void MprisWidgetManager::onCompositorRevision() {
+  for (QScreen* screen : QGuiApplication::screens()) applyVisibility(screen->name());
 }
 
 void MprisWidgetManager::applyVisibility(const QString& monitor_name) {
@@ -108,7 +109,8 @@ void MprisWidgetManager::applyVisibility(const QString& monitor_name) {
   if (view == nullptr) {
     return;
   }
-  const bool visible = occupancy_ == nullptr || occupancy_->isMonitorEmpty(monitor_name);
+  const bool visible = compositor_ != nullptr && compositor_->connected() && compositor_->hasOccupancy() &&
+                       compositor_->isOutputEmpty(monitor_name);
   content_visible_.insert(monitor_name, visible);
 
   if (visible) {
