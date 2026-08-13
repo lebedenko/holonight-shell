@@ -13,13 +13,13 @@ target_link_libraries(holonight_services PUBLIC
     HoloNight::Config
     HolonightQt::Appearance
     HolonightQt::Theme
+    HoloNightSystem::Audio
     Qt6::Core
     Qt6::Qml
     Qt6::DBus
     Qt6::Network
     Qt6::Concurrent
     Qt6::Sql
-    ${LIBPULSE_LIBRARIES}
     ${LIBSECRET_LIBRARIES}
 )
 
@@ -40,7 +40,6 @@ target_include_directories(holonight_services PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/weather-icon
     ${CMAKE_CURRENT_SOURCE_DIR}/src/notifications
     ${CMAKE_CURRENT_SOURCE_DIR}/src/osd
-    ${LIBPULSE_INCLUDE_DIRS}
     ${LIBSECRET_INCLUDE_DIRS}
 )
 

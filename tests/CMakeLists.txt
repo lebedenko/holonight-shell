@@ -73,9 +73,6 @@ holonight_add_test_exe(test_holonight_services
   test_active_window_service.cpp
   test_integration_theme_config.cpp
   test_launcher_service.cpp
-  test_audio_device_model.cpp
-  test_audio_service.cpp
-  test_audio_stream_model.cpp
   test_battery_service.cpp
   test_calendar_integration.cpp
   test_http_sync_client.cpp
@@ -84,7 +81,6 @@ holonight_add_test_exe(test_holonight_services
   test_power_profiles_service.cpp
   test_session_service.cpp
   test_session_integration_service.cpp
-  test_pulse_audio_backend.cpp
   test_notification_service.cpp
   test_notification_payload_bounds.cpp
   test_notification_filter.cpp
