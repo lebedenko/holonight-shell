@@ -1,6 +1,5 @@
 #include "NotificationService.h"
 
-#include "ActiveWindowService.h"
 #include "CompositorService.h"
 #include "ConfigService.h"
 #include "NotificationFilter.h"
@@ -73,8 +72,8 @@ QVariantList actionsToVariant(const QList<NotifAction>& actions) {
 }  // namespace
 
 NotificationService::NotificationService(  // NOLINT(readability-function-cognitive-complexity)
-    ConfigService* config, ActiveWindowService* active_window, NotificationRuleModel* rule_model, QObject* parent)
-    : QAbstractListModel(parent), config_(config), active_window_(active_window), rule_model_(rule_model) {
+    ConfigService* config, CompositorService* compositor, NotificationRuleModel* rule_model, QObject* parent)
+    : QAbstractListModel(parent), config_(config), compositor_(compositor), rule_model_(rule_model) {
   if (config_ != nullptr) {
     default_timeout_ms_ = config_->notifications().default_timeout_ms;
     max_visible_ = config_->notifications().max_visible;
@@ -457,12 +456,6 @@ uint32_t NotificationService::allocateNotificationId() {
 }
 
 QString NotificationService::resolveMonitorName() const {
-  if (active_window_ != nullptr) {
-    const QString focused = active_window_->focusedMonitorName();
-    if (!focused.isEmpty()) {
-      return focused;
-    }
-  }
   if (compositor_ != nullptr && compositor_->connected() && compositor_->hasFocusedOutput()) {
     const QString focused = compositor_->focusedOutput();
     if (!focused.isEmpty()) {

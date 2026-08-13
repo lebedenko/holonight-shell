@@ -13,7 +13,6 @@
 
 #include <cstdint>
 
-class ActiveWindowService;
 class CompositorService;
 class NotificationRuleModel;
 class NotificationStore;
@@ -54,9 +53,8 @@ class NotificationService : public QAbstractListModel {
   };
   Q_ENUM(Roles)
 
-  explicit NotificationService(ConfigService* config, ActiveWindowService* active_window,
+  explicit NotificationService(ConfigService* config, CompositorService* compositor,
                                NotificationRuleModel* rule_model = nullptr, QObject* parent = nullptr);
-  void setCompositorService(CompositorService* compositor) { compositor_ = compositor; }
   ~NotificationService() override = default;
 
   NotificationService(const NotificationService&) = delete;
@@ -151,8 +149,7 @@ class NotificationService : public QAbstractListModel {
   void ensureHistoryStore();
 
   ConfigService* config_;
-  ActiveWindowService* active_window_;
-  CompositorService* compositor_{nullptr};
+  CompositorService* compositor_;
   NotificationRuleModel* rule_model_;
 
   bool dnd_enabled_{false};

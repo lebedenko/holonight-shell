@@ -19,7 +19,7 @@ required_types=(
   "AppearanceService"
   "AudioService"
   "NotificationService"
-  "WorkspaceModel"
+  "CompositorService"
 )
 
 if [[ ! -s "${qmltypes_file}" ]]; then

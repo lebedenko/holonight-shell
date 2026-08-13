@@ -14,7 +14,6 @@
 #include "TrayModel.h"
 #include "WeatherIconBridge.h"
 #include "WifiNetworkModel.h"
-#include "WorkspaceModel.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -64,25 +63,6 @@ class NullDbusPropertyClient final : public DbusPropertyClient {
 };
 
 // NOLINTBEGIN(readability-convert-member-functions-to-static, modernize-return-braced-init-list)
-class FakeActiveWindowService : public QObject {
-  Q_OBJECT
-
- public:
-  [[nodiscard]] Q_INVOKABLE QString titleForMonitor(const QString& /*monitor_name*/) const {
-    return QStringLiteral("Terminal");
-  }
-  [[nodiscard]] Q_INVOKABLE QString appClassForMonitor(const QString& /*monitor_name*/) const {
-    return QStringLiteral("kitty");
-  }
-  [[nodiscard]] Q_INVOKABLE QString categoryForMonitor(const QString& /*monitor_name*/) const {
-    return QStringLiteral("terminal");
-  }
-
- Q_SIGNALS:
-  // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
-  void monitorWindowChanged(const QString& monitorName);
-};
-
 class FakeKeyboardLayoutService : public QObject {
   Q_OBJECT
   Q_PROPERTY(QString layoutCode READ layoutCode NOTIFY layoutCodeChanged)
@@ -849,54 +829,6 @@ class FakeLauncherSurface : public QObject {
   void visibleChanged();
 };
 
-// Test-only seam for QML harness tests: WorkspaceModel's mutators (applyBatchUpdate,
-// applySpecialWorkspaces, setFocusedWorkspaceId, ...) are deliberately NOT Q_INVOKABLE — only
-// the C++ protocol/IPC layers (ExtWorkspaceManager, HyprlandWorkspaceService) are meant to mutate
-// the model. This wrapper is registered only in the test harness so tst_*.qml files can drive the
-// real WorkspaceModel singleton into arbitrary states without loosening the production API.
-class WorkspaceModelTestSeed : public QObject {
-  Q_OBJECT
- public:
-  explicit WorkspaceModelTestSeed(WorkspaceModel& model) : model_(model) {}
-
-  Q_INVOKABLE void seedRows(const QVariantList& rows) {
-    QList<WorkspaceModel::WorkspaceEntry> entries;
-    entries.reserve(rows.size());
-    for (const QVariant& row : rows) {
-      const QVariantMap map = row.toMap();
-      WorkspaceModel::WorkspaceEntry entry;
-      entry.id = map.value(QStringLiteral("id")).toInt();
-      entry.name = QString::number(entry.id);
-      entry.state = static_cast<WorkspaceModel::WorkspaceState>(map.value(QStringLiteral("state")).toInt());
-      entry.on_monitor = map.value(QStringLiteral("onMonitor"), true).toBool();
-      entry.monitor_names = map.value(QStringLiteral("monitorNames")).toStringList();
-      entries.append(entry);
-    }
-    model_.applyBatchUpdate(entries);
-  }
-
-  Q_INVOKABLE void seedSpecials(const QVariantList& specials) {
-    QList<WorkspaceModel::SpecialWorkspaceEntry> entries;
-    entries.reserve(specials.size());
-    for (const QVariant& item : specials) {
-      const QVariantMap map = item.toMap();
-      entries.append(WorkspaceModel::SpecialWorkspaceEntry{
-          .name = map.value(QStringLiteral("name")).toString(),
-          .active = map.value(QStringLiteral("active")).toBool(),
-          .urgent = map.value(QStringLiteral("urgent")).toBool(),
-          .occupied = map.value(QStringLiteral("occupied")).toBool(),
-          .monitor_names = map.value(QStringLiteral("monitorNames")).toStringList(),
-      });
-    }
-    model_.applySpecialWorkspaces(entries);
-  }
-
-  Q_INVOKABLE void setFocused(int id) { model_.setFocusedWorkspaceId(id); }
-
- private:
-  WorkspaceModel& model_;
-};
-
 // Test-only seam for QML harness tests: MprisService's D-Bus-facing slots stay private in
 // production. This wrapper drives the injected FakeMprisDBus directly so tst_*.qml files can put
 // MprisService into arbitrary discovered/playing/paused states without loosening its API.
@@ -1023,21 +955,19 @@ class FakeQmlServices {
         audio_(AudioService::SkipInit),
         power_profiles_(PowerProfilesService::SkipInit),
         topbar_test_seed_(weather_, audio_, battery_, keyboard_layout_, network_) {
-    workspace_model_.applyBatchUpdate(
-        {{.id = 1, .name = QStringLiteral("1"), .state = WorkspaceModel::WorkspaceState::Active, .on_monitor = true}});
-    compositor_.publishSnapshot({.connected = true,
-                                 .focused_output = QStringLiteral("DP-1"),
-                                 .capabilities = {.workspace_listing = true,
-                                                  .workspace_activation = true,
-                                                  .active_window = true,
-                                                  .focused_output = true,
-                                                  .urgency = true,
-                                                  .occupancy = true},
-                                 .workspaces = {{.id = QStringLiteral("1"),
-                                                 .numeric_slot = 1,
-                                                 .display_name = QStringLiteral("1"),
-                                                 .focused = true,
-                                                 .occupied = true}}});
+    compositor_.publishSnapshotForTest({.connected = true,
+                                        .focused_output = QStringLiteral("DP-1"),
+                                        .capabilities = {.workspace_listing = true,
+                                                         .workspace_activation = true,
+                                                         .active_window = true,
+                                                         .focused_output = true,
+                                                         .urgency = true,
+                                                         .occupancy = true},
+                                        .workspaces = {{.id = QStringLiteral("1"),
+                                                        .numeric_slot = 1,
+                                                        .display_name = QStringLiteral("1"),
+                                                        .focused = true,
+                                                        .occupied = true}}});
 
     BatteryStateUpdate battery_update;
     battery_update.percent = 74;
@@ -1053,14 +983,11 @@ class FakeQmlServices {
   }
 
   [[nodiscard]] bool registerSingletons() {  // NOLINT(readability-function-cognitive-complexity)
-    return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspaceModel", &workspace_model_) >= 0 &&
-           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
-           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspaceModelTestSeed", &workspace_test_seed_) >= 0 &&
+    return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PowerProfilesService", &power_profiles_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TrayModel", &tray_model_) >= 0 &&
-           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "ActiveWindowService", &active_window_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "KeyboardLayoutService", &keyboard_layout_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "NetworkService", &network_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WeatherService", &weather_) >= 0 &&
@@ -1104,15 +1031,12 @@ class FakeQmlServices {
 
   XdgTempIsolation xdg_isolation_;  // must be first — sets XDG_CONFIG_HOME before config_service
   ConfigService config_service_;
-  WorkspaceModel workspace_model_;
   CompositorService compositor_{CompositorKind::Generic};
-  WorkspaceModelTestSeed workspace_test_seed_{workspace_model_};
   BatteryService battery_;
   SuspendInhibitorService suspend_inhibitor_service_{SuspendInhibitorService::SkipInit};
   AudioService audio_;
   PowerProfilesService power_profiles_;
   TrayModel tray_model_{&config_service_};
-  FakeActiveWindowService active_window_;
   FakeKeyboardLayoutService keyboard_layout_;
   FakeNetworkService network_;
   FakeWeatherService weather_;

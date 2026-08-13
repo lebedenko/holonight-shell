@@ -4,12 +4,11 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 allowed_surface_service_includes=(
-  "MonitorOccupancyService.h"
   "NotificationService.h"
   # MprisWidgetManager (docs/sdd/mpris-desktop-widget/) drives its surfaces from MprisService's
   # centralized position/pause tracking and shares one MprisArtworkCache instance across monitors
   # (DESIGN.md §2.3/§2.4) — the same "narrow presentation orchestration" dependency shape already
-  # established for MonitorOccupancyService/NotificationService.
+  # established for NotificationService.
   "MprisService.h"
   "MprisArtworkCache.h"
 )

@@ -7,18 +7,11 @@ import Holonight.Core
 Item {
     id: root
 
-    property int wsId: -1
-    property int wsState: -1
-    property string workspaceId: wsId > 0 ? String(wsId) : ""
-    property var numericSlot: wsId > 0 ? wsId : undefined
-    property string label: wsId > 0 ? String(wsId) : ""
+    required property string workspaceId
+    required property var numericSlot
+    required property string label
     property string workspaceKind: "normal"
-    property string visualState: {
-        if (wsState === WorkspaceModel.FocusedActiveMonitor || wsState === WorkspaceModel.Active) return "focused"
-        if (wsState === WorkspaceModel.Urgent) return "urgent"
-        if (wsState === WorkspaceModel.Occupied) return "occupied"
-        return "empty"
-    }
+    required property string visualState
     required property string barMonitorName
     readonly property bool active: workspaceId.length > 0
     property bool glowAllowed: true

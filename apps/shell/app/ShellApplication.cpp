@@ -130,7 +130,7 @@ ShellApplication::ShellApplication(QObject* parent)
       tray_model_(new TrayModel(config_service_, this)),
       tray_watcher_(new TrayWatcher(tray_model_, this)),
       notification_rule_model_(new NotificationRuleModel(new NotificationRuleStore(this), DesktopEntryScanner(), this)),
-      notification_service_(new NotificationService(config_service_, nullptr, notification_rule_model_, this)),
+      notification_service_(new NotificationService(config_service_, compositor_, notification_rule_model_, this)),
       notification_server_(new NotificationServer(notification_service_, this)),
       notification_manager_(new NotificationManager(notification_service_, this)),
       brightness_service_(new BrightnessService(this)),
@@ -151,7 +151,6 @@ ShellApplication::ShellApplication(QObject* parent)
       suspend_inhibitor_service_(new SuspendInhibitorService(this)),
       screen_saver_adaptor_(new ScreenSaverAdaptor(idle_service_, this)),
       control_server_(new ControlServer(this)) {
-  notification_service_->setCompositorService(compositor_);
   session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme());
   connect(appearance_, &AppearanceService::cursorThemeChanged, this,
           [this]() { session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme()); });

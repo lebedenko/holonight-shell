@@ -19,7 +19,7 @@ class QScreen;
 
 // Manages one desktop widget definition across the monitors it targets: a wlr-layer-shell surface on
 // the `bottom` layer per (monitor, widget), shown only while that monitor's visible workspace is empty
-// (gated by MonitorOccupancyService) and hidden — but kept alive — otherwise. One WidgetManager is
+// (gated by compositor occupancy) and hidden — but kept alive — otherwise. One WidgetManager is
 // created per WidgetDefinition; the set of managers is rebuilt on config reload. A single shared
 // QTimer drives the countdown for all of this widget's surfaces; it is frozen while every surface is
 // hidden so occluded widgets do no work.

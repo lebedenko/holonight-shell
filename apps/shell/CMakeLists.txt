@@ -189,15 +189,19 @@ target_link_libraries(holonight-shell PRIVATE
     holonight_componentsplugin
 )
 
-set_property(TARGET holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES "")
+set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES
+                                                                                              "")
 
+qt6_extract_metatypes(holonight_compositor OUTPUT_FILES _HOLONIGHT_COMPOSITOR_METATYPES)
 qt6_extract_metatypes(holonight_core OUTPUT_FILES _HOLONIGHT_CORE_METATYPES)
 qt6_extract_metatypes(holonight_services OUTPUT_FILES _HOLONIGHT_SERVICES_METATYPES)
 qt6_extract_metatypes(holonight_surfaces OUTPUT_FILES _HOLONIGHT_SURFACES_METATYPES)
 # The shell registrar uses the merged library metatypes as its primary input.
 # Do not also feed those linked libraries back through --foreign-types.
-set_property(TARGET holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES "")
+set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES
+                                                                                              "")
 set(_HOLONIGHT_LIBRARY_METATYPE_DEPS
+    ${_HOLONIGHT_COMPOSITOR_METATYPES}
     ${_HOLONIGHT_CORE_METATYPES}
     ${_HOLONIGHT_SERVICES_METATYPES}
     ${_HOLONIGHT_SURFACES_METATYPES}
@@ -211,7 +215,7 @@ add_custom_command(
         ${_HOLONIGHT_LIBRARY_METATYPE_DEPS}
         "${PROJECT_SOURCE_DIR}/scripts/collect-moc-metatypes.cmake"
     COMMAND ${CMAKE_COMMAND}
-        "-DINPUT_FILES=${_HOLONIGHT_CORE_METATYPES}|${_HOLONIGHT_SERVICES_METATYPES}|${_HOLONIGHT_SURFACES_METATYPES}"
+        "-DINPUT_FILES=${_HOLONIGHT_COMPOSITOR_METATYPES}|${_HOLONIGHT_CORE_METATYPES}|${_HOLONIGHT_SERVICES_METATYPES}|${_HOLONIGHT_SURFACES_METATYPES}"
         "-DOUTPUT=${_HOLONIGHT_SHELL_METATYPES}"
         -P "${PROJECT_SOURCE_DIR}/scripts/collect-moc-metatypes.cmake"
     COMMENT "Collecting HolonightShell C++ metatypes"

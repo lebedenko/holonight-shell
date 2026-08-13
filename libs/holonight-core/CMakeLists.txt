@@ -1,12 +1,6 @@
 add_library(holonight_core STATIC
     src/ConfigService.h
     src/ConfigService.cpp
-    src/WorkspaceModel.h
-    src/WorkspaceModel.cpp
-    src/ExtWorkspaceManager.h
-    src/ExtWorkspaceManager.cpp
-    src/HyprlandWorkspaceService.h
-    src/HyprlandWorkspaceService.cpp
     src/KeyboardLayoutService.h
     src/KeyboardLayoutService.cpp
     src/BatteryState.h
