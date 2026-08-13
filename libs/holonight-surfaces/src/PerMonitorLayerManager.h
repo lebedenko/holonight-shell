@@ -8,20 +8,20 @@
 #include <Qt>
 
 #include <cstdint>
+#include <functional>
+#include <holonight/wayland/layersurfacehost.h>
+#include <map>
 #include <memory>
-#include <unordered_map>
 
-class LayerShell;
-class LayerSurface;
 class QQmlEngine;
 class QQuickView;
 class QScreen;
 
 // Base for managers that maintain exactly one wlr-layer-shell surface per monitor (bars, wallpapers).
-// Owns the shared per-monitor lifecycle: creating the QQuickView + LayerSurface, tracking them keyed by
-// QScreen*, tearing them down in Wayland-safe order, and reacting to monitor hotplug
-// (QGuiApplication::screenAdded / screenRemoved). The layer-shell readiness gate lives in
-// ShellApplication, which calls start() once the shared LayerShell global is bound.
+// Owns the shared per-monitor lifecycle: creating a persistent LayerSurfaceHost, tracking it by
+// stable output name, and reacting to monitor hotplug
+// (QGuiApplication::screenAdded / screenRemoved). ShellApplication calls start() once the shared
+// LayerShellContext reports availability.
 //
 // Subclasses supply the per-monitor specifics through the small virtuals below (layer, namespace,
 // flags, anchors/size/zone, QML source). The base never decides those.
@@ -35,21 +35,18 @@ class PerMonitorLayerManager : public QObject {
   PerMonitorLayerManager(PerMonitorLayerManager&&) = delete;
   PerMonitorLayerManager& operator=(PerMonitorLayerManager&&) = delete;
 
-  // Enumerate the current monitors and wire hotplug. Must only be called once the shared LayerShell
-  // global is active (ShellApplication gates this). Idempotent.
+  // Enumerate the current monitors and wire hotplug. The application gates this on LayerShellContext.
   void start();
 
  protected:
-  // surface must be destroyed before view to preserve Wayland protocol order; member declaration
-  // order is load-bearing — do NOT reorder (members destruct in reverse).
   struct MonitorSurface {
-    std::unique_ptr<QQuickView> view;
-    std::unique_ptr<LayerSurface> surface;
+    QScreen* screen{};
+    std::unique_ptr<Holonight::Wayland::LayerSurfaceHost> host;
   };
 
   // Per-manager constants/behavior for one surface.
   struct LayerConfig {
-    std::uint32_t layer;          // QtWayland::zwlr_layer_shell_v1::layer_*
+    Holonight::Wayland::Layer layer;
     QString namespace_name;       // wlr namespace string ("bar", "background")
     Qt::WindowFlags extra_flags;  // added on top of BypassWindowManagerHint
   };
@@ -60,11 +57,13 @@ class PerMonitorLayerManager : public QObject {
     QVariantMap initial_properties;
   };
 
-  PerMonitorLayerManager(LayerShell& shell, const char* log_tag, QObject* parent = nullptr);
+  PerMonitorLayerManager(const char* log_tag, QObject* parent = nullptr);
+  using HostFactory = std::function<std::unique_ptr<Holonight::Wayland::LayerSurfaceHost>()>;
+  PerMonitorLayerManager(const char* log_tag, HostFactory host_factory, QObject* parent = nullptr);
 
   // The live surfaces keyed by their monitor. Exposed so subclasses can push live updates (e.g. a
   // wallpaper change) into existing views without rebuilding them.
-  const std::unordered_map<QScreen*, MonitorSurface>& surfaces() const { return surfaces_; }
+  const std::map<QString, MonitorSurface>& surfaces() const { return surfaces_; }
 
   // Find a live view by its stable compositor monitor name without scanning every surface. Returns
   // null when this manager has no surface for the requested monitor.
@@ -74,8 +73,10 @@ class PerMonitorLayerManager : public QObject {
   [[nodiscard]] virtual LayerConfig layerConfig() const = 0;
   // Add image providers etc. before the QML source is set. Default: nothing.
   virtual void decorateEngine(QQmlEngine& engine);
+  virtual void onHostConfigured(const QString& monitor_name);
+  virtual bool openHost(Holonight::Wayland::LayerSurfaceHost& host, const Holonight::Wayland::LayerSurfaceSpec& spec);
   // Set anchors, size and exclusive zone on a freshly created surface.
-  virtual void configureSurface(LayerSurface& surface, QScreen* screen) = 0;
+  virtual void configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* screen) = 0;
   // The QML component + initial properties for this monitor.
   [[nodiscard]] virtual QmlSource qmlSource(QScreen* screen) = 0;
   // Gate surface creation per monitor. Default: create on every screen. Subclasses that target only
@@ -85,15 +86,17 @@ class PerMonitorLayerManager : public QObject {
   // Called after the set of monitors changes (add or remove). Default: nothing. Backgrounds override
   // to re-resolve positional wallpaper assignments.
   virtual void onScreenSetChanged();
+  [[nodiscard]] Holonight::Wayland::LayerSurfaceSpec surfaceSpec(QScreen* screen);
 
  private:
   void createSurface(QScreen* screen);
   void handleScreenAdded(QScreen* screen);
   void handleScreenRemoved(QScreen* screen);
+  void closeAllSurfaces();
+  void removeCurrentSurface(const QString& output_name, Holonight::Wayland::LayerSurfaceHost* expected_host);
 
-  LayerShell& shell_;
   const char* log_tag_;
-  std::unordered_map<QScreen*, MonitorSurface> surfaces_;
-  QHash<QString, QScreen*> screens_by_name_;
+  HostFactory host_factory_;
+  std::map<QString, MonitorSurface> surfaces_;
   bool started_ = false;
 };

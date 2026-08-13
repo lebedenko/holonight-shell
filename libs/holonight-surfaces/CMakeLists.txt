@@ -61,6 +61,7 @@ target_link_libraries(holonight_surfaces PUBLIC
     holonight_core
     holonight_platform
     holonight_services
+    HolonightQt::Wayland
     Qt6::Core
     Qt6::Qml
     Qt6::Gui

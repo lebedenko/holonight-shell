@@ -2,8 +2,6 @@
 
 #include "PerMonitorLayerManager.h"
 
-class LayerShell;
-class LayerSurface;
 class QScreen;
 class TrayModel;
 
@@ -13,12 +11,12 @@ class TrayModel;
 class LayerShellManager : public PerMonitorLayerManager {
   Q_OBJECT
  public:
-  LayerShellManager(LayerShell& shell, TrayModel* tray_model, QObject* parent = nullptr);
+  LayerShellManager(TrayModel* tray_model, QObject* parent = nullptr);
 
  protected:
   [[nodiscard]] LayerConfig layerConfig() const override;
   void decorateEngine(QQmlEngine& engine) override;
-  void configureSurface(LayerSurface& surface, QScreen* screen) override;
+  void configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* screen) override;
   [[nodiscard]] QmlSource qmlSource(QScreen* screen) override;
 
  private:

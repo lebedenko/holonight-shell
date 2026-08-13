@@ -1,6 +1,5 @@
 #include "ConfigService.h"
 #include "WidgetSurfacePolicy.h"
-#include "qwayland-wlr-layer-shell-unstable-v1.h"
 
 #include <gtest/gtest.h>
 
@@ -8,14 +7,14 @@ using namespace HoloNight::ShellConfig;
 
 namespace {
 
-using Surface = QtWayland::zwlr_layer_surface_v1;
+using enum Holonight::Wayland::Anchor;
 
 }  // namespace
 
 TEST(WidgetSurfacePolicy, PlacesTopAnchoredWidgetBelowBar) {
   const WidgetSurfacePlacement placement = widgetSurfacePlacement(WidgetPosition::RightTop, 32);
 
-  EXPECT_EQ(placement.anchor_flags, Surface::anchor_right | Surface::anchor_top);
+  EXPECT_EQ(placement.anchors, Right | Top);
   EXPECT_EQ(placement.width, 460);
   EXPECT_EQ(placement.height, 200);
   EXPECT_EQ(placement.top_margin, 96);
@@ -28,7 +27,7 @@ TEST(WidgetSurfacePolicy, FourArgOverloadUsesRequestedSize) {
   const WidgetSurfacePlacement placement =
       widgetSurfacePlacement(WidgetPosition::RightTop, 32, kMprisWidgetWidth, kMprisWidgetHeight);
 
-  EXPECT_EQ(placement.anchor_flags, Surface::anchor_right | Surface::anchor_top);
+  EXPECT_EQ(placement.anchors, Right | Top);
   EXPECT_EQ(placement.width, 368);
   EXPECT_EQ(placement.height, 456);
   EXPECT_EQ(placement.top_margin, 96);
@@ -41,7 +40,7 @@ TEST(WidgetSurfacePolicy, TwoArgOverloadDelegatesToDefaultClockSize) {
   const WidgetSurfacePlacement two_arg = widgetSurfacePlacement(WidgetPosition::LeftBottom, 16);
   const WidgetSurfacePlacement four_arg = widgetSurfacePlacement(WidgetPosition::LeftBottom, 16, 460, 200);
 
-  EXPECT_EQ(two_arg.anchor_flags, four_arg.anchor_flags);
+  EXPECT_EQ(two_arg.anchors, four_arg.anchors);
   EXPECT_EQ(two_arg.width, four_arg.width);
   EXPECT_EQ(two_arg.height, four_arg.height);
   EXPECT_EQ(two_arg.top_margin, four_arg.top_margin);
@@ -50,7 +49,7 @@ TEST(WidgetSurfacePolicy, TwoArgOverloadDelegatesToDefaultClockSize) {
 TEST(WidgetSurfacePolicy, KeepsCenterWidgetUnanchored) {
   const WidgetSurfacePlacement placement = widgetSurfacePlacement(WidgetPosition::CenterCenter, 24);
 
-  EXPECT_EQ(placement.anchor_flags, 0U);
+  EXPECT_EQ(placement.anchors, Holonight::Wayland::Anchors{});
   EXPECT_EQ(placement.top_margin, 24);
   EXPECT_EQ(placement.right_margin, 24);
   EXPECT_EQ(placement.bottom_margin, 24);
@@ -58,19 +57,15 @@ TEST(WidgetSurfacePolicy, KeepsCenterWidgetUnanchored) {
 }
 
 TEST(WidgetSurfacePolicy, MapsAllNinePositionsToExpectedAnchors) {
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::LeftTop, 0).anchor_flags,
-            Surface::anchor_left | Surface::anchor_top);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::CenterTop, 0).anchor_flags, Surface::anchor_top);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::RightTop, 0).anchor_flags,
-            Surface::anchor_right | Surface::anchor_top);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::LeftCenter, 0).anchor_flags, Surface::anchor_left);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::CenterCenter, 0).anchor_flags, 0U);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::RightCenter, 0).anchor_flags, Surface::anchor_right);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::LeftBottom, 0).anchor_flags,
-            Surface::anchor_left | Surface::anchor_bottom);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::CenterBottom, 0).anchor_flags, Surface::anchor_bottom);
-  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::RightBottom, 0).anchor_flags,
-            Surface::anchor_right | Surface::anchor_bottom);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::LeftTop, 0).anchors, Left | Top);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::CenterTop, 0).anchors, Top);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::RightTop, 0).anchors, Right | Top);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::LeftCenter, 0).anchors, Left);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::CenterCenter, 0).anchors, Holonight::Wayland::Anchors{});
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::RightCenter, 0).anchors, Right);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::LeftBottom, 0).anchors, Left | Bottom);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::CenterBottom, 0).anchors, Bottom);
+  EXPECT_EQ(widgetSurfacePlacement(WidgetPosition::RightBottom, 0).anchors, Right | Bottom);
 }
 
 TEST(WidgetSurfacePolicy, EmptyMonitorListTargetsEveryMonitor) {

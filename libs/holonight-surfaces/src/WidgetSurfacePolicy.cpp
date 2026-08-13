@@ -2,7 +2,6 @@
 
 #include "ConfigService.h"
 #include "ShellConstants.h"
-#include "qwayland-wlr-layer-shell-unstable-v1.h"
 
 #include <algorithm>
 
@@ -13,35 +12,39 @@ constexpr int kWidgetWidth = 460;
 constexpr int kWidgetHeight = 200;
 }  // namespace
 
-std::uint32_t anchorFlagsForPosition(WidgetPosition position) {
-  using Surface = QtWayland::zwlr_layer_surface_v1;
+Holonight::Wayland::Anchors anchorsForPosition(WidgetPosition position) {
+  using enum Holonight::Wayland::Anchor;
   switch (position) {
     case WidgetPosition::LeftTop:
-      return Surface::anchor_left | Surface::anchor_top;
+      return Left | Top;
     case WidgetPosition::CenterTop:
-      return Surface::anchor_top;
+      return Top;
     case WidgetPosition::RightTop:
-      return Surface::anchor_right | Surface::anchor_top;
+      return Right | Top;
     case WidgetPosition::LeftCenter:
-      return Surface::anchor_left;
+      return Left;
     case WidgetPosition::CenterCenter:
-      return 0;
+      return {};
     case WidgetPosition::RightCenter:
-      return Surface::anchor_right;
+      return Right;
     case WidgetPosition::LeftBottom:
-      return Surface::anchor_left | Surface::anchor_bottom;
+      return Left | Bottom;
     case WidgetPosition::CenterBottom:
-      return Surface::anchor_bottom;
+      return Bottom;
     case WidgetPosition::RightBottom:
-      return Surface::anchor_right | Surface::anchor_bottom;
+      return Right | Bottom;
   }
-  return 0;
+  return {};
+}
+
+std::uint32_t anchorFlagsForPosition(WidgetPosition position) {
+  return static_cast<std::uint32_t>(anchorsForPosition(position).toInt());
 }
 
 WidgetSurfacePlacement widgetSurfacePlacement(WidgetPosition position, int margin, int width, int height) {
   const int top_margin = widgetPositionIsTopAnchored(position) ? kBarHeight + margin : margin;
   return WidgetSurfacePlacement{
-      .anchor_flags = anchorFlagsForPosition(position),
+      .anchors = anchorsForPosition(position),
       .width = width,
       .height = height,
       .top_margin = top_margin,

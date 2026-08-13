@@ -88,8 +88,8 @@ class ShellApplication : public QObject {
   void widgetsChanged();
 
  private:
-  // Single readiness gate for the per-monitor layer-surface managers: waits for the shared layer-shell
-  // global to bind (with a 3s fallback that aborts if it never appears), then starts both managers.
+  // Single readiness gate for persistent layer-surface managers: waits for LayerShellContext
+  // (with a 3s fallback that aborts with its diagnostic), then starts all managers.
   void startLayerSurfacesWhenReady();
   void startLayerSurfaces();
   void connectSessionFailureNotifications();
@@ -164,13 +164,11 @@ class ShellApplication : public QObject {
   PortalService* portal_service_ = nullptr;
   ScreenSaverAdaptor* screen_saver_adaptor_ = nullptr;
   ControlServer* control_server_ = nullptr;
-  // Declared before the managers so it is destroyed *after* them: the managers hold a LayerShell& and
-  // their surfaces must tear down while the shell is still alive (members destruct in reverse order).
+  // Retained for unfinished transient/sidebar surfaces that still use the local protocol wrapper.
   std::unique_ptr<LayerShell> layer_shell_;
   std::unique_ptr<LayerShellManager> layer_shell_manager_;
   std::unique_ptr<BackgroundManager> background_manager_;
   std::unique_ptr<SidebarManager> sidebar_manager_;
-  // Declared after the shell so the widget surfaces tear down while the LayerShell is still alive.
   // Element type is the common base, not WidgetManager, since WidgetType::Mpris definitions
   // construct a MprisWidgetManager instead (rebuildWidgets()'s switch on def.type).
   std::vector<std::unique_ptr<PerMonitorLayerManager>> widget_managers_;

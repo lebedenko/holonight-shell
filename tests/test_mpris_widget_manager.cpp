@@ -1,11 +1,6 @@
-// MprisWidgetManager only touches Wayland when it creates a surface (createSurface() no-ops
-// without a live compositor, per PerMonitorLayerManager), so only construction and the pure
-// currentTrackKey()/pausedTimedOutNow() logic — exposed via *ForTest() accessors — are
-// unit-testable here, mirroring test_sidebar_manager.cpp's documented scoping for the same reason.
-// Occupancy-hide/reveal, timer start/stop, and artwork-push behavior need a real QQuickView and
-// are covered by the compositor smoke-check checklist instead (T-039).
+// Construction and MPRIS-specific state behavior live here. Persistent host policy and lifecycle
+// are covered independently through PerMonitorLayerManager's host-facing seam.
 
-#include "LayerShell.h"
 #include "MprisArtworkCache.h"
 #include "MprisDbus.h"
 #include "MprisService.h"
@@ -59,28 +54,25 @@ WidgetDefinition mprisDefinition(int pause_hide_minutes) {
 }  // namespace
 
 TEST(MprisWidgetManagerConstruction, TolerateNullOptionalDependencies) {
-  LayerShell shell;
   // occupancy/mpris/artwork_cache all default-nullable per the constructor signature; a widget
   // manager with no MprisService injected (e.g. a future headless test harness) must not crash.
-  MprisWidgetManager manager(shell, mprisDefinition(10), 32, 0, {}, nullptr, nullptr, nullptr);
+  MprisWidgetManager manager(mprisDefinition(10), 32, 0, {}, nullptr, nullptr, nullptr);
 
   EXPECT_TRUE(manager.currentTrackKeyForTest().isEmpty());
   EXPECT_FALSE(manager.pausedTimedOutForTest());
 }
 
 TEST(MprisWidgetManagerConstruction, HoldsPositionTrackingForManagerLifetime) {
-  LayerShell shell;
   auto [service, dbus] = makeMprisService();
   EXPECT_EQ(service->positionTrackingRefcountForTest(), 0);
   {
-    MprisWidgetManager manager(shell, mprisDefinition(10), 32, 0, {}, nullptr, service.get(), nullptr);
+    MprisWidgetManager manager(mprisDefinition(10), 32, 0, {}, nullptr, service.get(), nullptr);
     EXPECT_EQ(service->positionTrackingRefcountForTest(), 1);
   }
   EXPECT_EQ(service->positionTrackingRefcountForTest(), 0);
 }
 
 TEST(MprisWidgetManagerTrackKey, ChangesWhenTitleArtistAlbumOrArtUrlChange) {
-  LayerShell shell;
   auto [service, dbus] = makeMprisService();
   dbus->seedPlayer(
       QString::fromLatin1(kVlc),
@@ -89,7 +81,7 @@ TEST(MprisWidgetManagerTrackKey, ChangesWhenTitleArtistAlbumOrArtUrlChange) {
                                     QStringLiteral("file:///a.jpg"), QStringLiteral("t1"))));
   dbus->emitNameOwnerChanged(QString::fromLatin1(kVlc), QString(), QStringLiteral(":1.1"));
   MprisArtworkCache artwork_cache(QStringLiteral("/tmp/holonight-mpris-widget-manager-test-unused/"));
-  MprisWidgetManager manager(shell, mprisDefinition(10), 32, 0, {}, nullptr, service.get(), &artwork_cache);
+  MprisWidgetManager manager(mprisDefinition(10), 32, 0, {}, nullptr, service.get(), &artwork_cache);
 
   const QString first_key = manager.currentTrackKeyForTest();
   EXPECT_FALSE(first_key.isEmpty());
@@ -105,7 +97,6 @@ TEST(MprisWidgetManagerTrackKey, ChangesWhenTitleArtistAlbumOrArtUrlChange) {
 }
 
 TEST(MprisWidgetManagerTrackKey, UnchangedWhenOnlyPlaybackStatusChanges) {
-  LayerShell shell;
   auto [service, dbus] = makeMprisService();
   dbus->seedPlayer(
       QString::fromLatin1(kVlc),
@@ -114,7 +105,7 @@ TEST(MprisWidgetManagerTrackKey, UnchangedWhenOnlyPlaybackStatusChanges) {
                                     QStringLiteral("file:///a.jpg"), QStringLiteral("t1"))));
   dbus->emitNameOwnerChanged(QString::fromLatin1(kVlc), QString(), QStringLiteral(":1.1"));
   MprisArtworkCache artwork_cache(QStringLiteral("/tmp/holonight-mpris-widget-manager-test-unused/"));
-  MprisWidgetManager manager(shell, mprisDefinition(10), 32, 0, {}, nullptr, service.get(), &artwork_cache);
+  MprisWidgetManager manager(mprisDefinition(10), 32, 0, {}, nullptr, service.get(), &artwork_cache);
 
   const QString before = manager.currentTrackKeyForTest();
 
@@ -126,7 +117,6 @@ TEST(MprisWidgetManagerTrackKey, UnchangedWhenOnlyPlaybackStatusChanges) {
 }
 
 TEST(MprisWidgetManagerPauseTimeout, FalseWhilePlaying) {
-  LayerShell shell;
   auto [service, dbus] = makeMprisService();
   dbus->seedPlayer(QString::fromLatin1(kVlc),
                    playerProperties(QStringLiteral("Playing"),
@@ -134,13 +124,12 @@ TEST(MprisWidgetManagerPauseTimeout, FalseWhilePlaying) {
                                                  QStringLiteral("Album"), QString(), QStringLiteral("t1"))));
   dbus->emitNameOwnerChanged(QString::fromLatin1(kVlc), QString(), QStringLiteral(":1.1"));
   MprisArtworkCache artwork_cache(QStringLiteral("/tmp/holonight-mpris-widget-manager-test-unused/"));
-  MprisWidgetManager manager(shell, mprisDefinition(1), 32, 0, {}, nullptr, service.get(), &artwork_cache);
+  MprisWidgetManager manager(mprisDefinition(1), 32, 0, {}, nullptr, service.get(), &artwork_cache);
 
   EXPECT_FALSE(manager.pausedTimedOutForTest());
 }
 
 TEST(MprisWidgetManagerPauseTimeout, FalseImmediatelyAfterPausingEvenWithOneMinuteThreshold) {
-  LayerShell shell;
   auto [service, dbus] = makeMprisService();
   dbus->seedPlayer(QString::fromLatin1(kVlc),
                    playerProperties(QStringLiteral("Playing"),
@@ -148,7 +137,7 @@ TEST(MprisWidgetManagerPauseTimeout, FalseImmediatelyAfterPausingEvenWithOneMinu
                                                  QStringLiteral("Album"), QString(), QStringLiteral("t1"))));
   dbus->emitNameOwnerChanged(QString::fromLatin1(kVlc), QString(), QStringLiteral(":1.1"));
   MprisArtworkCache artwork_cache(QStringLiteral("/tmp/holonight-mpris-widget-manager-test-unused/"));
-  MprisWidgetManager manager(shell, mprisDefinition(1), 32, 0, {}, nullptr, service.get(), &artwork_cache);
+  MprisWidgetManager manager(mprisDefinition(1), 32, 0, {}, nullptr, service.get(), &artwork_cache);
 
   dbus->emitPlayerPropertiesChanged(QString::fromLatin1(kVlc),
                                     {{QStringLiteral("PlaybackStatus"), QStringLiteral("Paused")}});

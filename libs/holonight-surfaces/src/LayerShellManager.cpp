@@ -1,7 +1,6 @@
 #include "LayerShellManager.h"
 
 #include "IconImageProvider.h"
-#include "LayerSurface.h"
 #include "ShellConstants.h"
 #include "TrayModel.h"
 
@@ -9,12 +8,11 @@
 #include <QScreen>
 #include <QUrl>
 
-LayerShellManager::LayerShellManager(LayerShell& shell, TrayModel* tray_model, QObject* parent)
-    : PerMonitorLayerManager(shell, "LayerShellManager", parent), tray_model_(tray_model) {}
+LayerShellManager::LayerShellManager(TrayModel* tray_model, QObject* parent)
+    : PerMonitorLayerManager("LayerShellManager", parent), tray_model_(tray_model) {}
 
 PerMonitorLayerManager::LayerConfig LayerShellManager::layerConfig() const {
-  return {
-      .layer = QtWayland::zwlr_layer_shell_v1::layer_top, .namespace_name = QStringLiteral("bar"), .extra_flags = {}};
+  return {.layer = Holonight::Wayland::Layer::Top, .namespace_name = QStringLiteral("bar"), .extra_flags = {}};
 }
 
 void LayerShellManager::decorateEngine(QQmlEngine& engine) {
@@ -22,11 +20,11 @@ void LayerShellManager::decorateEngine(QQmlEngine& engine) {
   engine.addImageProvider(QStringLiteral("tray"), new TrayImageProvider(tray_model_));
 }
 
-void LayerShellManager::configureSurface(LayerSurface& surface, QScreen* /*screen*/) {
-  surface.set_anchor(QtWayland::zwlr_layer_surface_v1::anchor_top | QtWayland::zwlr_layer_surface_v1::anchor_left |
-                     QtWayland::zwlr_layer_surface_v1::anchor_right);
-  surface.set_size(0, kBarHeight);
-  surface.set_exclusive_zone(kBarHeight);
+void LayerShellManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
+  using enum Holonight::Wayland::Anchor;
+  spec.anchors = Top | Left | Right;
+  spec.height = kBarHeight;
+  spec.exclusive_zone = kBarHeight;
 }
 
 PerMonitorLayerManager::QmlSource LayerShellManager::qmlSource(QScreen* screen) {

@@ -1,7 +1,6 @@
 #include "WidgetManager.h"
 
 #include "CompositorService.h"
-#include "LayerSurface.h"
 #include "WidgetClock.h"
 #include "WidgetCountdown.h"
 #include "WidgetSurfacePolicy.h"
@@ -29,9 +28,9 @@ constexpr int kSecsPerMinute = 60;
 
 }  // namespace
 
-WidgetManager::WidgetManager(LayerShell& shell, WidgetDefinition definition, int margin, int index,
-                             QList<QStringList> position_blockers, CompositorService* compositor, QObject* parent)
-    : PerMonitorLayerManager(shell, "WidgetManager", parent),
+WidgetManager::WidgetManager(WidgetDefinition definition, int margin, int index, QList<QStringList> position_blockers,
+                             CompositorService* compositor, QObject* parent)
+    : PerMonitorLayerManager("WidgetManager", parent),
       definition_(std::move(definition)),
       margin_(margin),
       index_(index),
@@ -50,24 +49,29 @@ WidgetManager::WidgetManager(LayerShell& shell, WidgetDefinition definition, int
 }
 
 PerMonitorLayerManager::LayerConfig WidgetManager::layerConfig() const {
-  return {.layer = QtWayland::zwlr_layer_shell_v1::layer_bottom,
+  return {.layer = Holonight::Wayland::Layer::Bottom,
           .namespace_name = QStringLiteral("widget"),
           // Non-interactive in v1: an empty input region lets clicks fall through to windows below.
           .extra_flags = Qt::WindowTransparentForInput};
 }
 
-void WidgetManager::configureSurface(LayerSurface& surface, QScreen* screen) {
-  const QString monitor = screen->name();
+void WidgetManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
   const WidgetSurfacePlacement placement = widgetSurfacePlacement(definition_.position, margin_);
-  surface.set_anchor(placement.anchor_flags);
-  surface.set_size(placement.width, placement.height);
+  spec.anchors = placement.anchors;
+  spec.width = placement.width;
+  spec.height = placement.height;
   // -1 keeps the widget out of every exclusive zone so it never displaces or is displaced by the bar.
-  surface.set_exclusive_zone(-1);
-  surface.set_margin(placement.top_margin, placement.right_margin, placement.bottom_margin, placement.left_margin);
+  spec.exclusive_zone = -1;
+  spec.margin_top = placement.top_margin;
+  spec.margin_right = placement.right_margin;
+  spec.margin_bottom = placement.bottom_margin;
+  spec.margin_left = placement.left_margin;
+  spec.input_region_policy = Holonight::Wayland::InputRegionPolicy::Empty;
   // Apply occupancy-driven visibility once the compositor has configured (and first-time auto-shown)
   // the surface, so an initially-occupied workspace's widget ends up hidden.
-  connect(&surface, &LayerSurface::configured, this, [this, monitor]() { applyVisibility(monitor); });
 }
+
+void WidgetManager::onHostConfigured(const QString& monitor_name) { applyVisibility(monitor_name); }
 
 PerMonitorLayerManager::QmlSource WidgetManager::qmlSource(QScreen* screen) {
   const QUrl url(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml"));
@@ -170,16 +174,16 @@ bool WidgetManager::isPastDeadline() const {
 void WidgetManager::recomputeAndPropagate() {
   if (definition_.type == WidgetType::Clock) {
     recomputeClockStrings();
-    for (const auto& [screen, monitor_surface] : surfaces()) {
-      if (QQuickItem* root = monitor_surface.view->rootObject()) {
+    for (const auto& [monitor_name, monitor_surface] : surfaces()) {
+      if (auto* root = qobject_cast<QQuickItem*>(monitor_surface.host->rootObject())) {
         pushClockStrings(root);
       }
     }
     return;
   }
   remaining_text_ = currentCountdownText();
-  for (const auto& [screen, monitor_surface] : surfaces()) {
-    if (QQuickItem* root = monitor_surface.view->rootObject()) {
+  for (const auto& [monitor_name, monitor_surface] : surfaces()) {
+    if (auto* root = qobject_cast<QQuickItem*>(monitor_surface.host->rootObject())) {
       root->setProperty("remainingText", remaining_text_);
     }
   }
@@ -203,8 +207,8 @@ void WidgetManager::startTickTimer() {
 
 bool WidgetManager::anySurfaceVisible() const {
   return std::ranges::any_of(surfaces(), [this](const auto& pair) {
-    const auto& [screen, monitor_surface] = pair;
-    return content_visible_.value(screen->name(), false);
+    const auto& [monitor_name, monitor_surface] = pair;
+    return content_visible_.value(monitor_name, false);
   });
 }
 

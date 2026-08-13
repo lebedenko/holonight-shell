@@ -10,8 +10,6 @@
 #include <QStringList>
 #include <QTimer>
 
-class LayerShell;
-class LayerSurface;
 class CompositorService;
 class QQuickItem;
 class QQuickView;
@@ -27,12 +25,13 @@ class WidgetManager : public PerMonitorLayerManager {
   Q_OBJECT
 
  public:
-  WidgetManager(LayerShell& shell, HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
+  WidgetManager(HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
                 QList<QStringList> position_blockers, CompositorService* compositor, QObject* parent = nullptr);
 
  protected:
   [[nodiscard]] LayerConfig layerConfig() const override;
-  void configureSurface(LayerSurface& surface, QScreen* screen) override;
+  void configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* screen) override;
+  void onHostConfigured(const QString& monitor_name) override;
   [[nodiscard]] QmlSource qmlSource(QScreen* screen) override;
   [[nodiscard]] bool shouldCreateSurface(QScreen* screen) const override;
 

@@ -11,8 +11,6 @@
 #include <QStringList>
 #include <QTimer>
 
-class LayerShell;
-class LayerSurface;
 class CompositorService;
 class MprisArtworkCache;
 class QQuickItem;
@@ -39,15 +37,13 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   Q_OBJECT
 
  public:
-  MprisWidgetManager(LayerShell& shell, HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
+  MprisWidgetManager(HoloNight::ShellConfig::WidgetDefinition definition, int margin, int index,
                      QList<QStringList> position_blockers, CompositorService* compositor, MprisService* mpris,
                      MprisArtworkCache* artwork_cache, QObject* parent = nullptr);
 
   // Test-only accessors (mirrors MprisService's *ForTest() convention) for logic this class adds
   // beyond what WidgetSurfacePolicy/MprisService already unit-test — occupancy/timer/surface-push
-  // behavior itself needs a live QQuickView (createSurface() no-ops without a real Wayland
-  // compositor, per PerMonitorLayerManager::createSurface()) and is covered by the compositor
-  // smoke-check checklist instead (T-039), matching WidgetManager's own precedent.
+  // behavior itself is covered through the persistent host seam.
   [[nodiscard]] QString currentTrackKeyForTest() const { return currentTrackKey(); }
   [[nodiscard]] bool pausedTimedOutForTest() const { return pausedTimedOutNow(); }
   [[nodiscard]] bool positionTimerActiveForTest() const { return position_tick_timer_.isActive(); }
@@ -59,7 +55,8 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   // artwork fallback, REQ-F-008/051) is invalid until registered here, the same as every other
   // surface manager that resolves app icons (LayerShellManager, LauncherSurface, TrayMenuSurface, ...).
   void decorateEngine(QQmlEngine& engine) override;
-  void configureSurface(LayerSurface& surface, QScreen* screen) override;
+  void configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* screen) override;
+  void onHostConfigured(const QString& monitor_name) override;
   [[nodiscard]] QmlSource qmlSource(QScreen* screen) override;
   [[nodiscard]] bool shouldCreateSurface(QScreen* screen) const override;
 

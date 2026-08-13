@@ -2,7 +2,6 @@
 
 #include "CompositorService.h"
 #include "IconImageProvider.h"
-#include "LayerSurface.h"
 #include "MprisArtworkCache.h"
 #include "WidgetSurfacePolicy.h"
 
@@ -27,10 +26,10 @@ constexpr int kPositionTickIntervalMs = 500;  // 2 Hz, REQ-F-023
 constexpr qint64 kMsPerMinute = 60'000;
 }  // namespace
 
-MprisWidgetManager::MprisWidgetManager(LayerShell& shell, WidgetDefinition definition, int margin, int index,
+MprisWidgetManager::MprisWidgetManager(WidgetDefinition definition, int margin, int index,
                                        QList<QStringList> position_blockers, CompositorService* compositor,
                                        MprisService* mpris, MprisArtworkCache* artwork_cache, QObject* parent)
-    : PerMonitorLayerManager(shell, "MprisWidgetManager", parent),
+    : PerMonitorLayerManager("MprisWidgetManager", parent),
       definition_(std::move(definition)),
       margin_(margin),
       index_(index),
@@ -53,7 +52,7 @@ MprisWidgetManager::MprisWidgetManager(LayerShell& shell, WidgetDefinition defin
 }
 
 PerMonitorLayerManager::LayerConfig MprisWidgetManager::layerConfig() const {
-  return {.layer = QtWayland::zwlr_layer_shell_v1::layer_bottom,
+  return {.layer = Holonight::Wayland::Layer::Bottom,
           .namespace_name = QStringLiteral("widget"),
           // Non-interactive: an empty input region lets clicks fall through (REQ-U-001).
           .extra_flags = Qt::WindowTransparentForInput};
@@ -63,17 +62,22 @@ void MprisWidgetManager::decorateEngine(QQmlEngine& engine) {
   engine.addImageProvider(QStringLiteral("icon"), new IconImageProvider());
 }
 
-void MprisWidgetManager::configureSurface(LayerSurface& surface, QScreen* screen) {
-  const QString monitor = screen->name();
+void MprisWidgetManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
   const WidgetSurfacePlacement placement =
       widgetSurfacePlacement(definition_.position, margin_, kMprisWidgetWidth, kMprisWidgetHeight);
-  surface.set_anchor(placement.anchor_flags);
-  surface.set_size(placement.width, placement.height);
+  spec.anchors = placement.anchors;
+  spec.width = placement.width;
+  spec.height = placement.height;
   // -1 keeps the widget out of every exclusive zone so it never displaces or is displaced by the bar.
-  surface.set_exclusive_zone(-1);
-  surface.set_margin(placement.top_margin, placement.right_margin, placement.bottom_margin, placement.left_margin);
-  connect(&surface, &LayerSurface::configured, this, [this, monitor]() { applyVisibility(monitor); });
+  spec.exclusive_zone = -1;
+  spec.margin_top = placement.top_margin;
+  spec.margin_right = placement.right_margin;
+  spec.margin_bottom = placement.bottom_margin;
+  spec.margin_left = placement.left_margin;
+  spec.input_region_policy = Holonight::Wayland::InputRegionPolicy::Empty;
 }
+
+void MprisWidgetManager::onHostConfigured(const QString& monitor_name) { applyVisibility(monitor_name); }
 
 PerMonitorLayerManager::QmlSource MprisWidgetManager::qmlSource(QScreen* screen) {
   // Everything beyond barMonitorName arrives via live property pushes (resyncSurface/tick), not
@@ -142,12 +146,12 @@ void MprisWidgetManager::onPositionTick() {
   const qint64 position_us = mpris_->activePosition();
   const bool timed_out = pausedTimedOutNow();
 
-  for (const auto& [screen, monitor_surface] : surfaces()) {
-    const QString monitor = screen->name();
+  for (const auto& [monitor_name, monitor_surface] : surfaces()) {
+    const QString monitor = monitor_surface.screen->name();
     if (!content_visible_.value(monitor, false)) {
       continue;
     }
-    if (QQuickItem* root = monitor_surface.view->rootObject()) {
+    if (auto* root = qobject_cast<QQuickItem*>(monitor_surface.host->rootObject())) {
       root->setProperty("positionUs", position_us);
       root->setProperty("pausedTimedOut", timed_out);
     }
@@ -159,8 +163,8 @@ void MprisWidgetManager::onActiveMetadataChanged() {
   if (new_key != last_track_key_) {
     last_track_key_ = new_key;
   }
-  for (const auto& [screen, monitor_surface] : surfaces()) {
-    const QString monitor = screen->name();
+  for (const auto& [monitor_name, monitor_surface] : surfaces()) {
+    const QString monitor = monitor_surface.screen->name();
     if (content_visible_.value(monitor, false)) {
       resyncSurface(monitor);
     }
@@ -175,12 +179,12 @@ void MprisWidgetManager::onActivePlaybackStatusChanged() {
   }
   const QString status = mpris_->activePlaybackStatus();
   const bool timed_out = pausedTimedOutNow();
-  for (const auto& [screen, monitor_surface] : surfaces()) {
-    const QString monitor = screen->name();
+  for (const auto& [monitor_name, monitor_surface] : surfaces()) {
+    const QString monitor = monitor_surface.screen->name();
     if (!content_visible_.value(monitor, false)) {
       continue;
     }
-    if (QQuickItem* root = monitor_surface.view->rootObject()) {
+    if (auto* root = qobject_cast<QQuickItem*>(monitor_surface.host->rootObject())) {
       root->setProperty("playbackStatus", status);
       root->setProperty("pausedTimedOut", timed_out);
     }
@@ -243,8 +247,8 @@ void MprisWidgetManager::resyncSurface(const QString& monitor_name) {
 
 bool MprisWidgetManager::anySurfaceVisible() const {
   return std::ranges::any_of(surfaces(), [this](const auto& pair) {
-    const auto& [screen, monitor_surface] = pair;
-    return content_visible_.value(screen->name(), false);
+    const auto& [monitor_name, monitor_surface] = pair;
+    return content_visible_.value(monitor_name, false);
   });
 }
 

@@ -5,8 +5,6 @@
 #include <QString>
 
 class ConfigService;
-class LayerShell;
-class LayerSurface;
 class QScreen;
 
 // Creates one full-screen wlr-layer-shell surface per monitor on the BACKGROUND layer to host the
@@ -17,11 +15,11 @@ class QScreen;
 class BackgroundManager : public PerMonitorLayerManager {
   Q_OBJECT
  public:
-  BackgroundManager(LayerShell& shell, ConfigService* config_service, QObject* parent = nullptr);
+  BackgroundManager(ConfigService* config_service, QObject* parent = nullptr);
 
  protected:
   [[nodiscard]] LayerConfig layerConfig() const override;
-  void configureSurface(LayerSurface& surface, QScreen* screen) override;
+  void configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* screen) override;
   [[nodiscard]] QmlSource qmlSource(QScreen* screen) override;
   void onScreenSetChanged() override;
 

@@ -5,10 +5,11 @@
 #include <QStringList>
 
 #include <cstdint>
+#include <holonight/wayland/layersurfacespec.h>
 #include <holonight_shell_config/config_structs.h>
 
 struct WidgetSurfacePlacement {
-  std::uint32_t anchor_flags{};
+  Holonight::Wayland::Anchors anchors{};
   int width{};
   int height{};
   int top_margin{};
@@ -20,6 +21,8 @@ struct WidgetSurfacePlacement {
 // The nine-way position-to-layer-shell-anchor switch, public so it exists exactly once in the
 // codebase (REQ-C-006). Surfaces that are not widgets -- the OSD -- need the anchor flags without
 // widgetSurfacePlacement()'s widget-specific width, height and margins.
+[[nodiscard]] Holonight::Wayland::Anchors anchorsForPosition(HoloNight::ShellConfig::WidgetPosition position);
+// Compatibility for unfinished local-protocol transient surfaces.
 [[nodiscard]] std::uint32_t anchorFlagsForPosition(HoloNight::ShellConfig::WidgetPosition position);
 
 // MPRIS desktop widget size: provides transparent blur padding around its 256px content column,

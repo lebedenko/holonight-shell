@@ -1,7 +1,6 @@
 #include "BackgroundManager.h"
 
 #include "ConfigService.h"
-#include "LayerSurface.h"
 
 #include <QGuiApplication>
 #include <QQuickItem>
@@ -20,26 +19,26 @@ QString BackgroundManager::imageUrlForScreen(QScreen* screen) const {
   return path.isEmpty() ? QString{} : QUrl::fromLocalFile(path).toString();
 }
 
-BackgroundManager::BackgroundManager(LayerShell& shell, ConfigService* config_service, QObject* parent)
-    : PerMonitorLayerManager(shell, "BackgroundManager", parent), config_service_(config_service) {
+BackgroundManager::BackgroundManager(ConfigService* config_service, QObject* parent)
+    : PerMonitorLayerManager("BackgroundManager", parent), config_service_(config_service) {
   connect(config_service_, &ConfigService::backgroundChanged, this, &BackgroundManager::onBackgroundChanged);
 }
 
 PerMonitorLayerManager::LayerConfig BackgroundManager::layerConfig() const {
-  return {.layer = QtWayland::zwlr_layer_shell_v1::layer_background,
+  return {.layer = Holonight::Wayland::Layer::Background,
           .namespace_name = QStringLiteral("background"),
           // WindowTransparentForInput makes Qt maintain an empty input region and re-apply it on every
           // commit, so pointer/keyboard events fall through to the desktop below.
           .extra_flags = Qt::WindowTransparentForInput};
 }
 
-void BackgroundManager::configureSurface(LayerSurface& surface, QScreen* /*screen*/) {
-  surface.set_anchor(QtWayland::zwlr_layer_surface_v1::anchor_top | QtWayland::zwlr_layer_surface_v1::anchor_bottom |
-                     QtWayland::zwlr_layer_surface_v1::anchor_left | QtWayland::zwlr_layer_surface_v1::anchor_right);
-  surface.set_size(0, 0);
+void BackgroundManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
+  using enum Holonight::Wayland::Anchor;
+  spec.anchors = Top | Bottom | Left | Right;
   // -1 makes the surface span the full output and ignore other surfaces' exclusive zones, so the
   // wallpaper extends under the top bar. 0 would let the compositor displace it out of the bar's zone.
-  surface.set_exclusive_zone(-1);
+  spec.exclusive_zone = -1;
+  spec.input_region_policy = Holonight::Wayland::InputRegionPolicy::Empty;
 }
 
 PerMonitorLayerManager::QmlSource BackgroundManager::qmlSource(QScreen* screen) {
@@ -56,9 +55,9 @@ void BackgroundManager::onScreenSetChanged() {
 void BackgroundManager::onBackgroundChanged() { refreshAllWallpapers(); }
 
 void BackgroundManager::refreshAllWallpapers() {
-  for (const auto& [screen, monitor_surface] : surfaces()) {
-    if (QQuickItem* root = monitor_surface.view->rootObject()) {
-      root->setProperty("imagePath", imageUrlForScreen(screen));
+  for (const auto& [monitor_name, monitor_surface] : surfaces()) {
+    if (auto* root = qobject_cast<QQuickItem*>(monitor_surface.host->rootObject())) {
+      root->setProperty("imagePath", imageUrlForScreen(monitor_surface.screen));
     }
   }
 }

@@ -66,6 +66,7 @@ using namespace HoloNight::ShellConfig;
 #include <QtQml/qqmlengine.h>
 #include <QtWaylandClient/QWaylandClientExtension>
 
+#include <holonight/wayland/layershellcontext.h>
 #include <utility>
 
 Q_LOGGING_CATEGORY(lcWidgetCoord, "holonight.widgets")
@@ -316,10 +317,11 @@ void ShellApplication::startShell() {
     return;
   }
 
-  // One shared layer-shell global for both per-monitor managers (bars + wallpapers).
+  // Local wrapper remains for unfinished transient/sidebar surfaces; persistent managers use
+  // HolonightQt's process-wide LayerShellContext.
   layer_shell_ = std::make_unique<LayerShell>();
-  layer_shell_manager_ = std::make_unique<LayerShellManager>(*layer_shell_, tray_model_, this);
-  background_manager_ = std::make_unique<BackgroundManager>(*layer_shell_, config_service_, this);
+  layer_shell_manager_ = std::make_unique<LayerShellManager>(tray_model_, this);
+  background_manager_ = std::make_unique<BackgroundManager>(config_service_, this);
   startLayerSurfacesWhenReady();
 
   shell_started_ = true;
@@ -342,24 +344,25 @@ void ShellApplication::connectNotificationRuleFailureNotifications() {
 }
 
 void ShellApplication::startLayerSurfacesWhenReady() {
-  if (layer_shell_->isActive()) {
+  auto* context = Holonight::Wayland::LayerShellContext::instance();
+  if (context->isAvailable()) {
     startLayerSurfaces();
     return;
   }
 
-  connect(layer_shell_.get(), &QWaylandClientExtension::activeChanged, this, [this]() {
-    if (layer_shell_->isActive()) {
+  connect(context, &Holonight::Wayland::LayerShellContext::availabilityChanged, this, [this, context]() {
+    if (context->isAvailable()) {
       startLayerSurfaces();
     }
   });
 
   // Fallback if the compositor never announces the global.
-  QTimer::singleShot(3000, this, [this]() {
+  QTimer::singleShot(3000, this, [this, context]() {
     if (managers_started_) {
       return;
     }
-    if (!layer_shell_->isActive()) {
-      qCritical("ShellApplication: wlr-layer-shell protocol not available");
+    if (!context->isAvailable()) {
+      qCritical("ShellApplication: wlr-layer-shell protocol not available: %s", qPrintable(context->diagnostic()));
       QCoreApplication::exit(1);
       return;
     }
@@ -496,12 +499,12 @@ void ShellApplication::rebuildWidgets() {
     warnUnknownMonitors(defs.at(i), connected, warned_unknown_monitors);
     std::unique_ptr<PerMonitorLayerManager> manager;
     if (defs.at(i).type == WidgetType::Mpris) {
-      manager = std::make_unique<MprisWidgetManager>(*layer_shell_, defs.at(i), cfg.margin, static_cast<int>(i),
-                                                     blockersForWidget(defs, i), compositor_, mpris_,
-                                                     mpris_artwork_cache_.get(), this);
+      manager =
+          std::make_unique<MprisWidgetManager>(defs.at(i), cfg.margin, static_cast<int>(i), blockersForWidget(defs, i),
+                                               compositor_, mpris_, mpris_artwork_cache_.get(), this);
     } else {
-      manager = std::make_unique<WidgetManager>(*layer_shell_, defs.at(i), cfg.margin, static_cast<int>(i),
-                                                blockersForWidget(defs, i), compositor_, this);
+      manager = std::make_unique<WidgetManager>(defs.at(i), cfg.margin, static_cast<int>(i), blockersForWidget(defs, i),
+                                                compositor_, this);
     }
     manager->start();
     widget_managers_.push_back(std::move(manager));
