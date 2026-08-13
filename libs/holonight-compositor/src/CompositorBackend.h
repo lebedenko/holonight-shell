@@ -15,5 +15,5 @@ class CompositorBackend : public QObject {
   virtual void activateWorkspace(const QString& workspace_id) = 0;
 
  Q_SIGNALS:
-  void snapshotReady(CompositorSnapshot snapshot);
+  void snapshotReady(CompositorSnapshot _t1);
 };

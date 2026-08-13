@@ -44,11 +44,15 @@ void HyprlandBackend::beginRefresh() {
   }
   refresh_dirty_ = false;
   phase_ = Phase::Monitors;
-  if (!transport_->runCommand(QByteArrayLiteral("j/monitors"))) fail(QStringLiteral("Hyprland monitor query failed"));
+  if (!transport_->runCommand(QByteArrayLiteral("j/monitors"))) {
+    fail(QStringLiteral("Hyprland monitor query failed"));
+  }
 }
 
 void HyprlandBackend::handleEvent(const QByteArray& line) {
-  if (const auto urgent = parseHyprlandUrgentWindowEvent(line)) urgent_addresses_.insert(*urgent);
+  if (const auto urgent = parseHyprlandUrgentWindowEvent(line)) {
+    urgent_addresses_.insert(*urgent);
+  }
   scheduleRefresh();
 }
 
@@ -61,29 +65,38 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
   if (phase_ == Phase::Monitors) {
     monitors_ = response;
     phase_ = Phase::Workspaces;
-    if (!transport_->runCommand(QByteArrayLiteral("j/workspaces")))
+    if (!transport_->runCommand(QByteArrayLiteral("j/workspaces"))) {
       fail(QStringLiteral("Hyprland workspace query failed"));
+    }
   } else if (phase_ == Phase::Workspaces) {
     workspaces_ = response;
     phase_ = Phase::Clients;
-    if (!transport_->runCommand(QByteArrayLiteral("j/clients"))) fail(QStringLiteral("Hyprland client query failed"));
+    if (!transport_->runCommand(QByteArrayLiteral("j/clients"))) {
+      fail(QStringLiteral("Hyprland client query failed"));
+    }
   } else if (phase_ == Phase::Clients) {
     phase_ = Phase::Idle;
     publishClients(response);
-    if (refresh_dirty_) scheduleRefresh();
+    if (refresh_dirty_) {
+      scheduleRefresh();
+    }
   } else if (phase_ == Phase::Activation) {
     if (responseIsError(response)) {
       phase_ = Phase::LuaActivation;
       const QByteArray command = QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = ") + activation_id_.toUtf8() +
                                  QByteArrayLiteral(" })");
-      if (!transport_->runCommand(command)) fail(QStringLiteral("Hyprland Lua workspace activation failed"));
+      if (!transport_->runCommand(command)) {
+        fail(QStringLiteral("Hyprland Lua workspace activation failed"));
+      }
       return;
     }
     phase_ = Phase::Idle;
     scheduleRefresh();
   } else if (phase_ == Phase::LuaActivation) {
     phase_ = Phase::Idle;
-    if (responseIsError(response)) fail(QStringLiteral("Hyprland workspace activation failed"));
+    if (responseIsError(response)) {
+      fail(QStringLiteral("Hyprland workspace activation failed"));
+    }
     scheduleRefresh();
   }
 }
@@ -117,7 +130,9 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
       workspace_outputs.insert(active, output);
       active_workspaces.insert(active);
     }
-    if (monitor.value(QStringLiteral("focused")).toBool(false)) snapshot.focused_output = output;
+    if (monitor.value(QStringLiteral("focused")).toBool(false)) {
+      snapshot.focused_output = output;
+    }
   }
   QHash<int, int> window_counts;
   QHash<int, HyprlandClientInfo> focused_clients;
@@ -139,18 +154,23 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
     const QJsonObject workspace = value.toObject();
     const int id = workspace.value(QStringLiteral("id")).toInt();
     const QString name = workspace.value(QStringLiteral("name")).toString();
-    if (id == 0 || name.isEmpty()) continue;
+    if (id == 0 || name.isEmpty()) {
+      continue;
+    }
     const bool special = id < 0 || name.startsWith(QStringLiteral("special:"));
     const bool active = active_workspaces.contains(id);
     bool urgent = false;
     for (const HyprlandClientInfo& client : *clients) {
       if (client.workspace_id == id && std::ranges::any_of(urgent_addresses_, [&client](const QString& address) {
             return client.address.endsWith(address, Qt::CaseInsensitive);
-          }))
+          })) {
         urgent = true;
+      }
     }
     if (active) {
-      for (const HyprlandClientInfo& client : *clients) urgent_addresses_.remove(client.address);
+      for (const HyprlandClientInfo& client : *clients) {
+        urgent_addresses_.remove(client.address);
+      }
     }
     snapshot.workspaces.append(
         {.id = QString::number(id),
@@ -174,7 +194,9 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
 void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
   bool valid = false;
   workspace_id.toInt(&valid);
-  if (!valid || phase_ != Phase::Idle || transport_->hasRunningCommand()) return;
+  if (!valid || phase_ != Phase::Idle || transport_->hasRunningCommand()) {
+    return;
+  }
   activation_id_ = workspace_id;
   phase_ = Phase::Activation;
   if (!transport_->runCommand(QByteArrayLiteral("dispatch workspace ") + workspace_id.toUtf8())) {

@@ -16,10 +16,14 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
   const QString type = node.value(QStringLiteral("type")).toString();
   QString next_output = output;
   QString next_workspace = workspace;
-  if (type == QLatin1String("output")) next_output = node.value(QStringLiteral("name")).toString();
+  if (type == QLatin1String("output")) {
+    next_output = node.value(QStringLiteral("name")).toString();
+  }
   if (type == QLatin1String("workspace")) {
     next_workspace = node.value(QStringLiteral("name")).toString();
-    if (next_workspace == QLatin1String("__i3_scratch")) return;
+    if (next_workspace == QLatin1String("__i3_scratch")) {
+      return;
+    }
   }
 
   const bool leaf = node.value(QStringLiteral("nodes")).toArray().isEmpty() &&
@@ -29,14 +33,18 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
     if (node.value(QStringLiteral("focused")).toBool(false) && !next_output.isEmpty()) {
       const QJsonObject properties = node.value(QStringLiteral("window_properties")).toObject();
       QString app_id = node.value(QStringLiteral("app_id")).toString();
-      if (app_id.isEmpty()) app_id = properties.value(QStringLiteral("class")).toString();
+      if (app_id.isEmpty()) {
+        app_id = properties.value(QStringLiteral("class")).toString();
+      }
       windows->insert(next_output, {.app_id = app_id, .title = node.value(QStringLiteral("name")).toString()});
     }
   }
 
   for (const QString& child_list : {QStringLiteral("nodes"), QStringLiteral("floating_nodes")}) {
     for (const QJsonValue& value : node.value(child_list).toArray()) {
-      if (value.isObject()) inspectSwayTree(value.toObject(), next_output, next_workspace, occupied, windows);
+      if (value.isObject()) {
+        inspectSwayTree(value.toObject(), next_output, next_workspace, occupied, windows);
+      }
     }
   }
 }
@@ -45,7 +53,7 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
 QByteArray encodeSwayIpcFrame(quint32 type, const QByteArray& payload) {
   QByteArray frame(kHeaderSize, Qt::Uninitialized);
   std::memcpy(frame.data(), kMagic.data(), kMagic.size());
-  const quint32 length = static_cast<quint32>(payload.size());
+  const auto length = static_cast<quint32>(payload.size());
   std::memcpy(frame.data() + 6, &length, sizeof(length));
   std::memcpy(frame.data() + 10, &type, sizeof(type));
   frame.append(payload);
@@ -53,7 +61,9 @@ QByteArray encodeSwayIpcFrame(quint32 type, const QByteArray& payload) {
 }
 
 bool SwayIpcDecoder::append(const QByteArray& bytes) {
-  if (!error_.isEmpty()) return false;
+  if (!error_.isEmpty()) {
+    return false;
+  }
   buffer_.append(bytes);
   while (buffer_.size() >= kHeaderSize) {
     if (QByteArrayView(buffer_).first(6) != kMagic) {
@@ -66,7 +76,9 @@ bool SwayIpcDecoder::append(const QByteArray& bytes) {
       error_ = QStringLiteral("i3 IPC payload exceeds 8 MiB");
       return false;
     }
-    if (buffer_.size() < kHeaderSize + static_cast<qsizetype>(length)) break;
+    if (buffer_.size() < kHeaderSize + static_cast<qsizetype>(length)) {
+      break;
+    }
     quint32 type = 0;
     std::memcpy(&type, buffer_.constData() + 10, sizeof(type));
     frames_.append({.type = type, .payload = buffer_.mid(kHeaderSize, length)});
@@ -88,11 +100,17 @@ std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces
                                                     const QByteArray& tree_json) {
   QJsonParseError error;
   const QJsonDocument workspaces = QJsonDocument::fromJson(workspaces_json, &error);
-  if (error.error != QJsonParseError::NoError || !workspaces.isArray()) return std::nullopt;
+  if (error.error != QJsonParseError::NoError || !workspaces.isArray()) {
+    return std::nullopt;
+  }
   const QJsonDocument outputs = QJsonDocument::fromJson(outputs_json, &error);
-  if (error.error != QJsonParseError::NoError || !outputs.isArray()) return std::nullopt;
+  if (error.error != QJsonParseError::NoError || !outputs.isArray()) {
+    return std::nullopt;
+  }
   const QJsonDocument tree = QJsonDocument::fromJson(tree_json, &error);
-  if (error.error != QJsonParseError::NoError || !tree.isObject()) return std::nullopt;
+  if (error.error != QJsonParseError::NoError || !tree.isObject()) {
+    return std::nullopt;
+  }
 
   CompositorSnapshot snapshot{
       .connected = true,
@@ -118,7 +136,9 @@ std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces
   for (const QJsonValue& value : workspaces.array()) {
     const QJsonObject workspace = value.toObject();
     const QString name = workspace.value(QStringLiteral("name")).toString();
-    if (name.isEmpty() || name == QLatin1String("__i3_scratch")) continue;
+    if (name.isEmpty() || name == QLatin1String("__i3_scratch")) {
+      continue;
+    }
     const int number = workspace.value(QStringLiteral("num")).toInt(-1);
     const QString output = workspace.value(QStringLiteral("output")).toString();
     const bool focused = workspace.value(QStringLiteral("focused")).toBool(false);

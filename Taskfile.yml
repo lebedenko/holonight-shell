@@ -247,6 +247,12 @@ tasks:
     cmds:
       - bash scripts/hyprland-smoke-check.sh
 
+  sway-runtime-smoke:
+    desc: Run the Shell in a temporary headless Sway session
+    deps: [build]
+    cmds:
+      - bash scripts/sway-runtime-smoke.sh build/holonight-shell
+
   clean:
     desc: Remove the build directory
     cmds:

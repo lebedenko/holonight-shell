@@ -10,7 +10,9 @@ GenericWorkspaceHandle::GenericWorkspaceHandle(struct ::ext_workspace_handle_v1*
 }
 
 GenericWorkspaceHandle::~GenericWorkspaceHandle() {
-  if (isInitialized()) destroy();
+  if (isInitialized()) {
+    destroy();
+  }
 }
 
 void GenericWorkspaceHandle::ext_workspace_handle_v1_name(const QString& name) {
@@ -32,7 +34,9 @@ GenericWorkspaceGroup::GenericWorkspaceGroup(struct ::ext_workspace_group_handle
     : QtWayland::ext_workspace_group_handle_v1(group), backend_(backend) {}
 
 GenericWorkspaceGroup::~GenericWorkspaceGroup() {
-  if (isInitialized()) destroy();
+  if (isInitialized()) {
+    destroy();
+  }
 }
 
 QStringList GenericWorkspaceGroup::outputNames() const {
@@ -40,7 +44,9 @@ QStringList GenericWorkspaceGroup::outputNames() const {
   for (struct ::wl_output* output : outputs_) {
     for (QScreen* screen : QGuiApplication::screens()) {
       auto* wayland_screen = screen->nativeInterface<QNativeInterface::QWaylandScreen>();
-      if (wayland_screen != nullptr && wayland_screen->output() == output) names.append(screen->name());
+      if (wayland_screen != nullptr && wayland_screen->output() == output) {
+        names.append(screen->name());
+      }
     }
   }
   names.removeDuplicates();
@@ -48,7 +54,9 @@ QStringList GenericWorkspaceGroup::outputNames() const {
 }
 
 void GenericWorkspaceGroup::ext_workspace_group_handle_v1_output_enter(struct ::wl_output* output) {
-  if (!outputs_.contains(output)) outputs_.append(output);
+  if (!outputs_.contains(output)) {
+    outputs_.append(output);
+  }
 }
 void GenericWorkspaceGroup::ext_workspace_group_handle_v1_output_leave(struct ::wl_output* output) {
   outputs_.removeOne(output);
@@ -76,7 +84,9 @@ void GenericProtocol::ext_workspace_manager_v1_done() { backend_->publishSnapsho
 
 GenericBackend::GenericBackend(QObject* parent) : CompositorBackend(parent), protocol_(this) {
   connect(&protocol_, &QWaylandClientExtension::activeChanged, this, [this] {
-    if (!protocol_.isActive()) emit snapshotReady({.diagnostic = QStringLiteral("ext-workspace-v1 is unavailable")});
+    if (!protocol_.isActive()) {
+      emit snapshotReady({.diagnostic = QStringLiteral("ext-workspace-v1 is unavailable")});
+    }
   });
 }
 
@@ -86,7 +96,9 @@ GenericBackend::~GenericBackend() {
 }
 
 void GenericBackend::start() {
-  if (!protocol_.isActive()) emit snapshotReady({.diagnostic = QStringLiteral("waiting for ext-workspace-v1")});
+  if (!protocol_.isActive()) {
+    emit snapshotReady({.diagnostic = QStringLiteral("waiting for ext-workspace-v1")});
+  }
 }
 
 void GenericBackend::publishSnapshotOnDone() {
@@ -97,10 +109,14 @@ void GenericBackend::publishSnapshotOnDone() {
   for (GenericWorkspaceHandle* handle : std::as_const(handles_)) {
     CompositorWorkspace workspace = handle->workspace_;
     for (const GenericWorkspaceGroup* group : std::as_const(groups_)) {
-      if (group->workspaces_.contains(handle->raw_)) workspace.outputs += group->outputNames();
+      if (group->workspaces_.contains(handle->raw_)) {
+        workspace.outputs += group->outputNames();
+      }
     }
     workspace.outputs.removeDuplicates();
-    if (!workspace.id.isEmpty()) snapshot.workspaces.append(std::move(workspace));
+    if (!workspace.id.isEmpty()) {
+      snapshot.workspaces.append(std::move(workspace));
+    }
   }
   emit snapshotReady(std::move(snapshot));
 }
@@ -117,9 +133,13 @@ void GenericBackend::activateWorkspace(const QString& workspace_id) {
 
 void GenericBackend::remove(GenericWorkspaceHandle* handle) {
   handles_.remove(handle->raw_);
-  if (handle->isInitialized()) handle->destroy();
+  if (handle->isInitialized()) {
+    handle->destroy();
+  }
 }
 void GenericBackend::remove(GenericWorkspaceGroup* group) {
   groups_.removeOne(group);
-  if (group->isInitialized()) group->destroy();
+  if (group->isInitialized()) {
+    group->destroy();
+  }
 }

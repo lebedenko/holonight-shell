@@ -9,13 +9,19 @@
 
 namespace {
 std::unique_ptr<CompositorBackend> makeBackend(CompositorKind kind) {
-  if (kind == CompositorKind::Hyprland) return std::make_unique<HyprlandBackend>();
-  if (kind == CompositorKind::Sway) return std::make_unique<SwayBackend>();
+  if (kind == CompositorKind::Hyprland) {
+    return std::make_unique<HyprlandBackend>();
+  }
+  if (kind == CompositorKind::Sway) {
+    return std::make_unique<SwayBackend>();
+  }
   return std::make_unique<GenericBackend>();
 }
 
 void synthesizeNumericSlots(CompositorSnapshot* snapshot, int count) {
-  if (!snapshot->capabilities.numeric_workspace_creation) return;
+  if (!snapshot->capabilities.numeric_workspace_creation) {
+    return;
+  }
   for (int slot = 1; slot <= count; ++slot) {
     const auto found =
         std::ranges::find(snapshot->workspaces, std::optional<int>{slot}, &CompositorWorkspace::numeric_slot);
@@ -52,23 +58,35 @@ QString CompositorService::activeWindowCategory(const QString& output) const {
   return snapshot_.active_windows.value(output).category;
 }
 bool CompositorService::isOutputEmpty(const QString& output) const {
-  if (!snapshot_.capabilities.occupancy) return false;
+  if (!snapshot_.capabilities.occupancy) {
+    return false;
+  }
   for (const auto& workspace : snapshot_.workspaces) {
-    if (workspace.outputs.contains(output) && workspace.active && workspace.occupied.value_or(true)) return false;
+    if (workspace.outputs.contains(output) && workspace.active && workspace.occupied.value_or(true)) {
+      return false;
+    }
   }
   return true;
 }
 void CompositorService::activateWorkspace(const QString& workspace_id) {
-  if (!snapshot_.connected || !snapshot_.capabilities.workspace_activation || workspace_id.isEmpty()) return;
+  if (!snapshot_.connected || !snapshot_.capabilities.workspace_activation || workspace_id.isEmpty()) {
+    return;
+  }
   emit workspaceActivationRequested(workspace_id);
-  if (backend_ != nullptr) backend_->activateWorkspace(workspace_id);
+  if (backend_ != nullptr) {
+    backend_->activateWorkspace(workspace_id);
+  }
 }
 void CompositorService::start() {
-  if (backend_ != nullptr) backend_->start();
+  if (backend_ != nullptr) {
+    backend_->start();
+  }
 }
 void CompositorService::setWorkspaceDisplayCount(int count) {
   count = std::clamp(count, 1, 20);
-  if (workspace_display_count_ == count) return;
+  if (workspace_display_count_ == count) {
+    return;
+  }
   workspace_display_count_ = count;
   emit workspaceDisplayCountChanged();
 }

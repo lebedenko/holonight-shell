@@ -47,8 +47,8 @@ class CompositorService final : public QObject {
   [[nodiscard]] QAbstractItemModel* workspaces() { return &workspace_model_; }
   [[nodiscard]] int workspaceDisplayCount() const { return workspace_display_count_; }
   void setWorkspaceDisplayCount(int count);
-  Q_INVOKABLE int focusedWorkspaceRow() const { return workspace_model_.focusedRow(); }
-  Q_INVOKABLE int firstVisibleWorkspaceRow() const {
+  Q_INVOKABLE [[nodiscard]] [[nodiscard]] int focusedWorkspaceRow() const { return workspace_model_.focusedRow(); }
+  Q_INVOKABLE [[nodiscard]] [[nodiscard]] int firstVisibleWorkspaceRow() const {
     return workspace_model_.firstVisibleRow(workspace_display_count_);
   }
   [[nodiscard]] bool canListWorkspaces() const { return snapshot_.capabilities.workspace_listing; }
@@ -59,17 +59,17 @@ class CompositorService final : public QObject {
   [[nodiscard]] bool hasFocusedOutput() const { return snapshot_.capabilities.focused_output; }
   [[nodiscard]] bool hasUrgency() const { return snapshot_.capabilities.urgency; }
   [[nodiscard]] bool hasOccupancy() const { return snapshot_.capabilities.occupancy; }
-  Q_INVOKABLE QString activeWindowTitle(const QString& output) const;
-  Q_INVOKABLE QString activeWindowAppId(const QString& output) const;
-  Q_INVOKABLE QString activeWindowCategory(const QString& output) const;
-  Q_INVOKABLE bool isOutputEmpty(const QString& output) const;
+  Q_INVOKABLE [[nodiscard]] [[nodiscard]] QString activeWindowTitle(const QString& output) const;
+  Q_INVOKABLE [[nodiscard]] [[nodiscard]] QString activeWindowAppId(const QString& output) const;
+  Q_INVOKABLE [[nodiscard]] [[nodiscard]] QString activeWindowCategory(const QString& output) const;
+  Q_INVOKABLE [[nodiscard]] [[nodiscard]] bool isOutputEmpty(const QString& output) const;
   Q_INVOKABLE void activateWorkspace(const QString& workspace_id);
   void start();
   void publishSnapshot(CompositorSnapshot snapshot);
 
  Q_SIGNALS:
   void revisionChanged();
-  void workspaceActivationRequested(const QString& workspace_id);
+  void workspaceActivationRequested(const QString& _t1);
   void workspaceDisplayCountChanged();
 
  private:

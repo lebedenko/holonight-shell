@@ -223,7 +223,9 @@ void ShellApplication::startServices() {
   connect(compositor_, &CompositorService::revisionChanged, this, [this] {
     const QString key =
         compositor_->focusedOutput() + QLatin1Char(':') + QString::number(compositor_->focusedWorkspaceRow());
-    if (!compositor_navigation_key_.isEmpty() && key != compositor_navigation_key_) closeTransientOverlays();
+    if (!compositor_navigation_key_.isEmpty() && key != compositor_navigation_key_) {
+      closeTransientOverlays();
+    }
     compositor_navigation_key_ = key;
   });
 

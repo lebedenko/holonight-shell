@@ -101,7 +101,9 @@ bool MprisWidgetManager::shouldCreateSurface(QScreen* screen) const {
 }
 
 void MprisWidgetManager::onCompositorRevision() {
-  for (QScreen* screen : QGuiApplication::screens()) applyVisibility(screen->name());
+  for (QScreen* screen : QGuiApplication::screens()) {
+    applyVisibility(screen->name());
+  }
 }
 
 void MprisWidgetManager::applyVisibility(const QString& monitor_name) {

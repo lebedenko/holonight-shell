@@ -109,7 +109,9 @@ bool WidgetManager::shouldCreateSurface(QScreen* screen) const {
 }
 
 void WidgetManager::onCompositorRevision() {
-  for (QScreen* screen : QGuiApplication::screens()) applyVisibility(screen->name());
+  for (QScreen* screen : QGuiApplication::screens()) {
+    applyVisibility(screen->name());
+  }
 }
 
 void WidgetManager::applyVisibility(const QString& monitor_name) {

@@ -49,7 +49,9 @@ void SwayBackend::connectSockets() {
 }
 
 void SwayBackend::activateWorkspace(const QString& workspace_id) {
-  if (workspace_id.isEmpty() || request_socket_.state() != QLocalSocket::ConnectedState) return;
+  if (workspace_id.isEmpty() || request_socket_.state() != QLocalSocket::ConnectedState) {
+    return;
+  }
   if (phase_ != RequestPhase::Idle) {
     refresh_dirty_ = true;
     return;
@@ -68,11 +70,15 @@ void SwayBackend::scheduleRefresh() {
     refresh_dirty_ = true;
     return;
   }
-  if (!refresh_timer_.isActive()) refresh_timer_.start(0);
+  if (!refresh_timer_.isActive()) {
+    refresh_timer_.start(0);
+  }
 }
 
 void SwayBackend::beginRefresh() {
-  if (request_socket_.state() != QLocalSocket::ConnectedState || phase_ != RequestPhase::Idle) return;
+  if (request_socket_.state() != QLocalSocket::ConnectedState || phase_ != RequestPhase::Idle) {
+    return;
+  }
   refresh_dirty_ = false;
   workspaces_.clear();
   outputs_.clear();
@@ -113,7 +119,9 @@ void SwayBackend::handleRequestData() {
       } else {
         fail(QStringLiteral("invalid Sway refresh response"));
       }
-      if (refresh_dirty_) scheduleRefresh();
+      if (refresh_dirty_) {
+        scheduleRefresh();
+      }
     } else if (phase_ == RequestPhase::Command) {
       phase_ = RequestPhase::Idle;
       const QJsonDocument response = QJsonDocument::fromJson(frame.payload);
@@ -158,7 +166,9 @@ void SwayBackend::fail(const QString& diagnostic) {
 }
 
 void SwayBackend::scheduleReconnect() {
-  if (reconnect_timer_.isActive()) return;
+  if (reconnect_timer_.isActive()) {
+    return;
+  }
   reconnect_timer_.start(reconnect_delay_ms_);
   reconnect_delay_ms_ = std::min(reconnect_delay_ms_ * 2, 30000);
 }

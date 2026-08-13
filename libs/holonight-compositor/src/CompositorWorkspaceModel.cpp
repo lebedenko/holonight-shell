@@ -37,10 +37,18 @@ QVariant CompositorWorkspaceModel::data(const QModelIndex& index, int role) cons
     case OccupiedRole:
       return workspace.occupied ? QVariant(*workspace.occupied) : QVariant{};
     case VisualStateRole:
-      if (workspace.focused) return QStringLiteral("focused");
-      if (workspace.urgent) return QStringLiteral("urgent");
-      if (workspace.active) return QStringLiteral("active");
-      if (workspace.occupied.value_or(false)) return QStringLiteral("occupied");
+      if (workspace.focused) {
+        return QStringLiteral("focused");
+      }
+      if (workspace.urgent) {
+        return QStringLiteral("urgent");
+      }
+      if (workspace.active) {
+        return QStringLiteral("active");
+      }
+      if (workspace.occupied.value_or(false)) {
+        return QStringLiteral("occupied");
+      }
       return QStringLiteral("empty");
     default:
       return {};
@@ -75,13 +83,17 @@ void CompositorWorkspaceModel::replaceTransactional(QList<CompositorWorkspace> w
 
 int CompositorWorkspaceModel::focusedRow() const {
   for (int row = 0; row < entries_.size(); ++row) {
-    if (entries_.at(row).focused) return row;
+    if (entries_.at(row).focused) {
+      return row;
+    }
   }
   return -1;
 }
 
 int CompositorWorkspaceModel::firstVisibleRow(int display_count) const {
-  if (display_count <= 0 || entries_.size() <= display_count) return 0;
+  if (display_count <= 0 || entries_.size() <= display_count) {
+    return 0;
+  }
   const int focus = std::max(0, focusedRow());
   return std::clamp(focus - ((display_count - 1) / 2), 0, static_cast<int>(entries_.size()) - display_count);
 }
