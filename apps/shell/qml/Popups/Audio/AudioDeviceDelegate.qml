@@ -27,7 +27,9 @@ HnListDelegate {
   readonly property bool isDefault: root.model.isDefault ?? false
   readonly property int volumePct: root.model.volume ?? 0
 
-  title: root.model.description && root.model.description.length > 0 ? root.model.description : root.model.name
+  title: root.model.displayName && root.model.displayName.length > 0
+      ? root.model.displayName
+      : (root.model.description && root.model.description.length > 0 ? root.model.description : root.model.name)
   subtitle: AudioMetadataFormat.formatDeviceMetadata(root.model.busType, root.model.channelCount,
                                                      root.model.sampleRate, root.model.codec)
   subtitlePresentation: HnListDelegate.SingleLine

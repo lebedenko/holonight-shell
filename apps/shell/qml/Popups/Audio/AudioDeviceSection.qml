@@ -68,8 +68,10 @@ ColumnLayout {
     Layout.fillWidth: true
 
     iconName: root.defaultDeviceInfo.iconName ?? ""
-    title: (root.defaultDeviceInfo.description && root.defaultDeviceInfo.description.length > 0)
-        ? root.defaultDeviceInfo.description : (root.defaultDeviceInfo.name ?? "")
+    title: (root.defaultDeviceInfo.displayName && root.defaultDeviceInfo.displayName.length > 0)
+        ? root.defaultDeviceInfo.displayName
+        : ((root.defaultDeviceInfo.description && root.defaultDeviceInfo.description.length > 0)
+            ? root.defaultDeviceInfo.description : (root.defaultDeviceInfo.name ?? ""))
     subtitle: AudioMetadataFormat.formatDeviceMetadata(root.defaultDeviceInfo.busType,
         root.defaultDeviceInfo.channelCount, root.defaultDeviceInfo.sampleRate, root.defaultDeviceInfo.codec)
     expanded: root.expanded
