@@ -218,6 +218,7 @@ section "Portals"
 print_bus_owner org.freedesktop.portal.Desktop
 print_bus_owner org.freedesktop.impl.portal.desktop.holonight
 print_bus_owner org.freedesktop.impl.portal.desktop.hyprland
+print_bus_owner org.freedesktop.impl.portal.desktop.wlr
 print_bus_owner org.freedesktop.impl.portal.desktop.gtk
 print_bus_owner org.freedesktop.impl.portal.desktop.kde
 
@@ -371,8 +372,8 @@ status INFO "portal color/accent changes are live for consumers that observe Set
 status INFO "GTK settings and application-native preferences may require an application relaunch"
 status INFO "cursor environment changes require a full session restart"
 status INFO "login entry: select HoloNight (Hyprland)"
-status INFO "bootstrap script: holonight-hyprland-session"
-status INFO "force direct mode: HOLONIGHT_HYPRLAND_SESSION_MODE=direct holonight-hyprland-session"
-status INFO "force UWSM mode: HOLONIGHT_HYPRLAND_SESSION_MODE=uwsm holonight-hyprland-session"
+status INFO "bootstrap script: holonight-session {hyprland|sway}"
+status INFO "force direct mode: HOLONIGHT_SESSION_MODE=direct holonight-session sway"
+status INFO "force UWSM mode: HOLONIGHT_SESSION_MODE=uwsm holonight-session hyprland"
 status INFO "manual Hyprland config fallback: exec-once = uwsm app -- holonight-shell"
 status INFO "manual systemd fallback: systemctl --user enable --now holonight-shell.service"

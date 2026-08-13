@@ -1,4 +1,4 @@
 [portal]
 DBusName=org.freedesktop.impl.portal.desktop.holonight
 Interfaces=org.freedesktop.impl.portal.Settings;
-UseIn=HoloNight;Hyprland;
+UseIn=HoloNight;Hyprland;sway;Sway;

@@ -36,6 +36,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-qt
+          ref: a45f7552054abbc6cbd66609e802b43b9b8ee894
           ref: e30ff79e723595ba6193b6621a85a881559ffcc6
           path: holonight-qt-dep
 
@@ -95,6 +96,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-qt
+          ref: a45f7552054abbc6cbd66609e802b43b9b8ee894
           ref: e30ff79e723595ba6193b6621a85a881559ffcc6
           path: holonight-qt-dep
 
