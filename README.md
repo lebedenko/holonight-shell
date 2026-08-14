@@ -150,12 +150,14 @@ Install to a local prefix (no sudo):
 cmake --install build --prefix ~/.local
 ```
 
-The install also writes the HoloNight Settings portal descriptor and routing
-config to the selected prefix:
+The install also writes the HoloNight Settings portal descriptor plus generic,
+Hyprland, and Sway routing configurations to the selected prefix:
 
 ```text
 share/xdg-desktop-portal/portals/holonight.portal
 share/xdg-desktop-portal/holonight-portals.conf
+share/holonight/xdg/xdg-desktop-portal/hyprland-portals.conf
+share/holonight/xdg/xdg-desktop-portal/sway-portals.conf
 ```
 
 After installing or updating these files, log out and back in, or restart the
@@ -173,43 +175,46 @@ holonight-shell --version    # -> holonight-shell 0.1.0
 
 ### Desktop session entry
 
-Installing also provides a Wayland login entry:
+Installing also provides `HoloNight (Hyprland)` and `HoloNight (Sway)` Wayland
+login entries:
 
 ```bash
 cmake --install build --prefix ~/.local
 ```
 
-Select `HoloNight (Hyprland)` in the display manager. The entry runs
-`holonight-hyprland-session`, which exports the HoloNight/Hyprland desktop environment,
-imports it into D-Bus activation and the systemd user manager, queues
-`holonight-shell.service`, then starts Hyprland. With UWSM installed, the script
-uses the distribution Hyprland desktop entry:
+Select the matching entry in the display manager. Both run the canonical
+`holonight-session` launcher with either `hyprland` or `sway`. The launcher
+exports the HoloNight/compositor desktop environment, resolves the canonical
+cursor theme, removes stale markers from the other compositor, and imports the
+environment into D-Bus activation and the systemd user manager. With UWSM
+installed, it queues `holonight-shell.service` before starting the selected
+distribution desktop entry:
 
 ```bash
 uwsm start -e -D Hyprland hyprland.desktop
+uwsm start -e -D sway sway.desktop
 ```
 
 The script defaults missing values to:
 
 ```bash
-XDG_CURRENT_DESKTOP=HoloNight:Hyprland
-XDG_SESSION_DESKTOP=Hyprland
+XDG_CURRENT_DESKTOP=HoloNight:Hyprland # or HoloNight:sway
+XDG_SESSION_DESKTOP=Hyprland           # or sway
 XDG_SESSION_TYPE=wayland
-XDG_MENU_PREFIX=hyprland-
+XDG_MENU_PREFIX=hyprland-              # or sway-
 ```
 
-Startup mode is controlled with `HOLONIGHT_HYPRLAND_SESSION_MODE`:
+Startup mode is controlled with `HOLONIGHT_SESSION_MODE`:
 
-- `auto` (default) uses UWSM when `uwsm` is installed, otherwise runs
-  `Hyprland` directly.
-- `uwsm` requires UWSM and starts Hyprland with
-  `uwsm start -e -D Hyprland hyprland.desktop`.
-- `direct` runs `Hyprland` directly after importing the environment. Direct mode
-  does not automatically start `holonight-shell`; use the manual Hyprland
+- `auto` (default) uses UWSM when `uwsm` is installed, otherwise runs the
+  selected compositor directly.
+- `uwsm` requires UWSM and starts the selected compositor desktop entry.
+- `direct` runs the compositor directly after importing the environment. Direct mode
+  does not automatically start `holonight-shell`; use the manual compositor
   fallback below when running without UWSM.
 
 The installed systemd user unit is intentionally not enabled globally during
-installation. The `HoloNight (Hyprland)` session starts it for that session.
+installation. Either HoloNight login entry starts it for that UWSM session.
 Users who keep their own Hyprland session can opt in with either:
 
 ```ini
@@ -238,7 +243,8 @@ systemctl --user daemon-reload
 For a one-off direct launch without UWSM:
 
 ```bash
-HOLONIGHT_HYPRLAND_SESSION_MODE=direct holonight-hyprland-session
+HOLONIGHT_SESSION_MODE=direct holonight-session hyprland
+HOLONIGHT_SESSION_MODE=direct holonight-session sway
 ```
 
 After login, verify desktop integration:
@@ -248,8 +254,9 @@ scripts/check-desktop-integration.sh
 task compositor-smoke-check
 ```
 
-The integration check reports whether `XDG_CURRENT_DESKTOP` includes
-`HoloNight`, whether the HoloNight portal files are discoverable, and whether
+The integration check reports both installed login entries and the canonical
+launcher, identifies Hyprland or Sway from colon-separated desktop tokens,
+checks the matching compositor portal routing, and reports whether
 `org.freedesktop.impl.portal.desktop.holonight` is owned on the session bus.
 
 ## Releases
