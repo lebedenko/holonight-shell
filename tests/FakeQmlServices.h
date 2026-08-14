@@ -959,6 +959,8 @@ class FakeQmlServices {
                                         .focused_output = QStringLiteral("DP-1"),
                                         .capabilities = {.workspace_listing = true,
                                                          .workspace_activation = true,
+                                                         .numeric_workspace_creation = true,
+                                                         .special_workspaces = true,
                                                          .active_window = true,
                                                          .focused_output = true,
                                                          .urgency = true,
@@ -966,6 +968,8 @@ class FakeQmlServices {
                                         .workspaces = {{.id = QStringLiteral("1"),
                                                         .numeric_slot = 1,
                                                         .display_name = QStringLiteral("1"),
+                                                        .outputs = {QStringLiteral("DP-1")},
+                                                        .active = true,
                                                         .focused = true,
                                                         .occupied = true}}});
 
@@ -1031,7 +1035,7 @@ class FakeQmlServices {
 
   XdgTempIsolation xdg_isolation_;  // must be first — sets XDG_CONFIG_HOME before config_service
   ConfigService config_service_;
-  CompositorService compositor_{CompositorKind::Generic};
+  CompositorService compositor_{CompositorKind::Hyprland};
   BatteryService battery_;
   SuspendInhibitorService suspend_inhibitor_service_{SuspendInhibitorService::SkipInit};
   AudioService audio_;

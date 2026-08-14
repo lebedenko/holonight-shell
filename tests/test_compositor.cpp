@@ -138,3 +138,44 @@ TEST(CompositorService, ComputesVisibleRowsByModelIndex) {
   EXPECT_EQ(service.focusedWorkspaceRow(), 5);
   EXPECT_EQ(service.firstVisibleWorkspaceRow(), 4);
 }
+
+TEST(CompositorService, PreservesHyprlandNumericWorkspacePresentation) {
+  CompositorService service(CompositorKind::Hyprland);
+  service.publishSnapshotForTest(
+      {.connected = true,
+       .focused_output = QStringLiteral("DP-1"),
+       .capabilities = {.workspace_listing = true,
+                        .workspace_activation = true,
+                        .numeric_workspace_creation = true,
+                        .special_workspaces = true,
+                        .urgency = true,
+                        .occupancy = true},
+       .workspaces = {
+           {.id = QStringLiteral("10"), .numeric_slot = 10, .display_name = QStringLiteral("10"), .urgent = true},
+           {.id = QStringLiteral("2"),
+            .numeric_slot = 2,
+            .display_name = QStringLiteral("2"),
+            .outputs = {QStringLiteral("DP-1")},
+            .active = true,
+            .focused = true,
+            .occupied = true},
+           {.id = QStringLiteral("-99"),
+            .display_name = QStringLiteral("special:magic"),
+            .kind = QStringLiteral("special"),
+            .outputs = {QStringLiteral("DP-1")},
+            .active = true,
+            .occupied = true},
+           {.id = QStringLiteral("6"), .numeric_slot = 6, .display_name = QStringLiteral("6"), .occupied = true}}});
+
+  EXPECT_EQ(service.activeNumericWorkspaceForOutput(QStringLiteral("DP-1")), 2);
+  EXPECT_EQ(service.numericWorkspaceVisualState(2), QStringLiteral("focused-active"));
+  EXPECT_EQ(service.numericWorkspaceVisualState(6), QStringLiteral("occupied"));
+  EXPECT_EQ(service.numericWorkspaceVisualState(3), QStringLiteral("empty"));
+  EXPECT_TRUE(service.hasNavigableNumericWorkspaceAtOrBeyond(6));
+  EXPECT_TRUE(service.hasUrgentNumericWorkspaceAtOrBeyond(7));
+  EXPECT_EQ(service.firstUrgentNumericWorkspaceAtOrBeyond(7), 10);
+  EXPECT_FALSE(service.hasUrgentNumericWorkspaceBefore(10));
+  ASSERT_EQ(service.specialWorkspaces().size(), 1);
+  EXPECT_EQ(service.specialWorkspaces().first().toMap().value(QStringLiteral("name")).toString(),
+            QStringLiteral("special:magic"));
+}

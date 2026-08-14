@@ -5,6 +5,7 @@
 #include "CompositorWorkspaceModel.h"
 
 #include <QObject>
+#include <QVariantList>
 #include <QtQml/qqml.h>
 
 #include <memory>
@@ -56,6 +57,14 @@ class CompositorService final : public QObject {
   Q_INVOKABLE [[nodiscard]] int firstVisibleWorkspaceRow() const {
     return workspace_model_.firstVisibleRow(workspace_display_count_);
   }
+  Q_INVOKABLE [[nodiscard]] int activeNumericWorkspaceForOutput(const QString& output) const;
+  Q_INVOKABLE [[nodiscard]] QString numericWorkspaceVisualState(int slot) const;
+  Q_INVOKABLE [[nodiscard]] bool hasNavigableNumericWorkspaceAtOrBeyond(int slot) const;
+  Q_INVOKABLE [[nodiscard]] bool hasUrgentNumericWorkspaceAtOrBeyond(int slot) const;
+  Q_INVOKABLE [[nodiscard]] int firstUrgentNumericWorkspaceAtOrBeyond(int slot) const;
+  Q_INVOKABLE [[nodiscard]] bool hasUrgentNumericWorkspaceBefore(int slot) const;
+  Q_INVOKABLE [[nodiscard]] int lastUrgentNumericWorkspaceBefore(int slot) const;
+  Q_INVOKABLE [[nodiscard]] QVariantList specialWorkspaces() const;
   [[nodiscard]] bool canListWorkspaces() const { return snapshot_.capabilities.workspace_listing; }
   [[nodiscard]] bool canActivateWorkspaces() const { return snapshot_.capabilities.workspace_activation; }
   [[nodiscard]] bool canCreateNumericWorkspaces() const { return snapshot_.capabilities.numeric_workspace_creation; }

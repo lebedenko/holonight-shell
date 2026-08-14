@@ -29,6 +29,7 @@ class HyprlandBackend final : public CompositorBackend {
   QByteArray monitors_;
   QByteArray workspaces_;
   QString activation_id_;
+  bool activation_is_special_{false};
   QString pending_activation_;
   QSet<QString> urgent_addresses_;
   bool refresh_dirty_{false};

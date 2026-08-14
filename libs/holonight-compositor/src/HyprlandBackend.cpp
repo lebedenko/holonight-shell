@@ -16,6 +16,12 @@ bool responseIsError(const QByteArray& response) {
   return response.trimmed().toLower().startsWith(QByteArrayLiteral("error:"));
 }
 
+QByteArray escapeLuaString(QString value) {
+  value.replace(QStringLiteral("\\"), QStringLiteral("\\\\"));
+  value.replace(QStringLiteral("\""), QStringLiteral("\\\""));
+  return value.toUtf8();
+}
+
 bool addressMatches(const QSet<QString>& urgent_addresses, const QString& address) {
   return std::ranges::any_of(
       urgent_addresses, [&address](const QString& urgent) { return address.endsWith(urgent, Qt::CaseInsensitive); });
@@ -26,12 +32,15 @@ void collectMonitors(const QJsonArray& monitors, CompositorSnapshot* snapshot, Q
   for (const auto value : monitors) {
     const QJsonObject monitor = value.toObject();
     const QString output = monitor.value(QStringLiteral("name")).toString();
-    const int workspace_id =
-        monitor.value(QStringLiteral("activeWorkspace")).toObject().value(QStringLiteral("id")).toInt();
-    if (!output.isEmpty() && workspace_id != 0) {
-      outputs->insert(workspace_id, output);
-      active_workspaces->insert(workspace_id);
-    }
+    const auto collect_active = [&output, outputs, active_workspaces](const QJsonObject& workspace) {
+      const int workspace_id = workspace.value(QStringLiteral("id")).toInt();
+      if (!output.isEmpty() && workspace_id != 0) {
+        outputs->insert(workspace_id, output);
+        active_workspaces->insert(workspace_id);
+      }
+    };
+    collect_active(monitor.value(QStringLiteral("activeWorkspace")).toObject());
+    collect_active(monitor.value(QStringLiteral("specialWorkspace")).toObject());
     if (monitor.value(QStringLiteral("focused")).toBool(false)) {
       snapshot->focused_output = output;
     }
@@ -64,7 +73,7 @@ void appendWorkspaces(const QJsonArray& workspaces, const QList<HyprlandClientIn
     const bool special = workspace_id < 0 || name.startsWith(QStringLiteral("special:"));
     const bool active = active_workspaces.contains(workspace_id);
     const bool urgent =
-        std::ranges::any_of(clients, [urgent_addresses, workspace_id](const HyprlandClientInfo& client) {
+        !special && std::ranges::any_of(clients, [urgent_addresses, workspace_id](const HyprlandClientInfo& client) {
           return client.workspace_id == workspace_id && addressMatches(*urgent_addresses, client.address);
         });
     if (active) {
@@ -74,7 +83,7 @@ void appendWorkspaces(const QJsonArray& workspaces, const QList<HyprlandClientIn
         });
       });
     }
-    snapshot->workspaces.append({.id = QString::number(workspace_id),
+    snapshot->workspaces.append({.id = special ? name : QString::number(workspace_id),
                                  .numeric_slot = special ? std::nullopt : std::optional<int>{workspace_id},
                                  .display_name = name,
                                  .stable_order = order++,
@@ -164,6 +173,16 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
     }
   } else if (phase_ == Phase::Activation) {
     if (responseIsError(response)) {
+      if (activation_is_special_) {
+        phase_ = Phase::LuaActivation;
+        const QString name = activation_id_.sliced(QStringLiteral("special:").size());
+        const QByteArray command = QByteArrayLiteral("dispatch hl.dsp.workspace.toggle_special(\"") +
+                                   escapeLuaString(name) + QByteArrayLiteral("\")");
+        if (!transport_->runCommand(command)) {
+          fail(QStringLiteral("Hyprland Lua special workspace activation failed"));
+        }
+        return;
+      }
       phase_ = Phase::LuaActivation;
       const QByteArray command = QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = ") + activation_id_.toUtf8() +
                                  QByteArrayLiteral(" })");
@@ -214,9 +233,10 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
 }
 
 void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
+  const bool special = workspace_id.startsWith(QStringLiteral("special:"));
   bool valid = false;
   workspace_id.toInt(&valid);
-  if (!valid) {
+  if (!valid && !special) {
     return;
   }
   if (phase_ != Phase::Idle || transport_->hasRunningCommand()) {
@@ -224,8 +244,12 @@ void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
     return;
   }
   activation_id_ = workspace_id;
+  activation_is_special_ = special;
   phase_ = Phase::Activation;
-  if (!transport_->runCommand(QByteArrayLiteral("dispatch workspace ") + workspace_id.toUtf8())) {
+  const QByteArray command = special ? QByteArrayLiteral("dispatch togglespecialworkspace ") +
+                                           workspace_id.sliced(QStringLiteral("special:").size()).toUtf8()
+                                     : QByteArrayLiteral("dispatch workspace ") + workspace_id.toUtf8();
+  if (!transport_->runCommand(command)) {
     phase_ = Phase::Idle;
     fail(QStringLiteral("Hyprland workspace activation failed"));
   }

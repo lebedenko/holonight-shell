@@ -100,3 +100,40 @@ TEST(HyprlandBackend, FallsBackToLuaActivationAndRefreshes) {
   processDeferred();
   EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("j/monitors"));
 }
+
+TEST(HyprlandBackend, ActivatesSpecialWorkspaceByName) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+
+  backend.activateWorkspace(QStringLiteral("special:magic"));
+
+  ASSERT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch togglespecialworkspace magic"));
+  fake->finish(QByteArrayLiteral("error: unsupported dispatcher"));
+  ASSERT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch hl.dsp.workspace.toggle_special(\"magic\")"));
+}
+
+TEST(HyprlandBackend, ProjectsVisibleSpecialWorkspaceFromMonitorState) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  QSignalSpy snapshots(&backend, &CompositorBackend::snapshotReady);
+  fake->connectStream();
+  processDeferred();
+  fake->finish(QByteArrayLiteral(
+      R"([{"name":"DP-5","focused":true,"activeWorkspace":{"id":6},"specialWorkspace":{"id":-98,"name":"special:magic"}}])"));
+  fake->finish(QByteArrayLiteral(R"([{"id":6,"name":"6"},{"id":-98,"name":"special:magic"}])"));
+  fake->sendEvent(QByteArrayLiteral("urgent>>0x1"));
+  fake->finish(QByteArrayLiteral(
+      R"([{"address":"0x1","class":"teams","title":"Calendar","workspace":{"id":-98},"focusHistoryID":0}])"));
+
+  ASSERT_EQ(snapshots.count(), 1);
+  const auto snapshot = qvariant_cast<CompositorSnapshot>(snapshots.first().first());
+  const auto special =
+      std::ranges::find(snapshot.workspaces, QStringLiteral("special:magic"), &CompositorWorkspace::id);
+  ASSERT_NE(special, snapshot.workspaces.end());
+  EXPECT_TRUE(special->active);
+  EXPECT_TRUE(special->focused);
+  EXPECT_FALSE(special->urgent);
+  EXPECT_EQ(special->outputs, QStringList{QStringLiteral("DP-5")});
+}

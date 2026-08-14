@@ -126,7 +126,8 @@ Item {
         id: _style
 
         readonly property bool focusedActive: root.visualState === "focused"
-        readonly property bool focusedInactive: false
+                                              || root.visualState === "focused-active"
+        readonly property bool focusedInactive: root.visualState === "focused-inactive"
         readonly property bool focused: focusedActive || focusedInactive
         readonly property bool urgent: root.visualState === "urgent"
         readonly property bool occupied: root.visualState === "occupied" || root.visualState === "active"
