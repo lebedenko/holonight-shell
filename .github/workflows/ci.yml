@@ -46,6 +46,20 @@ jobs:
           cmake --install holonight-qt-dep/build --prefix /tmp/holonight-qt-prefix
           rm -rf holonight-qt-dep
 
+      - name: Checkout HoloNightSystemServices dependency
+        uses: actions/checkout@v4
+        with:
+          repository: lebedenko/holonight-system-services
+          ref: 4556dc9b22237823387110340347cd1301ed9245
+          path: holonight-system-services-dep
+
+      - name: Build and install HoloNightSystemServices dependency
+        run: |
+          cmake -S holonight-system-services-dep -B holonight-system-services-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+          cmake --build holonight-system-services-dep/build --parallel
+          cmake --install holonight-system-services-dep/build --prefix /tmp/holonight-system-services-prefix
+          rm -rf holonight-system-services-dep
+
       - name: Architecture checks
         run: scripts/check-architecture-boundaries.sh
 
@@ -54,7 +68,7 @@ jobs:
           cmake -B build -G Ninja -S .
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix
+          -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix\;/tmp/holonight-system-services-prefix
           -DBUILD_TESTS=ON
 
       - name: Build
@@ -105,12 +119,26 @@ jobs:
           cmake --install holonight-qt-dep/build --prefix /tmp/holonight-qt-prefix
           rm -rf holonight-qt-dep
 
+      - name: Checkout HoloNightSystemServices dependency
+        uses: actions/checkout@v4
+        with:
+          repository: lebedenko/holonight-system-services
+          ref: 4556dc9b22237823387110340347cd1301ed9245
+          path: holonight-system-services-dep
+
+      - name: Build and install HoloNightSystemServices dependency
+        run: |
+          cmake -S holonight-system-services-dep -B holonight-system-services-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+          cmake --build holonight-system-services-dep/build --parallel
+          cmake --install holonight-system-services-dep/build --prefix /tmp/holonight-system-services-prefix
+          rm -rf holonight-system-services-dep
+
       - name: Configure
         run: >
           cmake -B build -G Ninja -S .
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix
+          -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix\;/tmp/holonight-system-services-prefix
           -DBUILD_TESTS=ON
 
       - name: Format check
