@@ -23,6 +23,16 @@ activation key. Numeric slot is optional and never reconstructed from an
 arbitrary Sway name. Visual state precedence is focused, urgent, active,
 occupied, empty; unknown optional facts remain unknown rather than false.
 
+Hyprland presentation retains its compositor-specific numeric window and
+special-workspace dots above that neutral model. `CompositorService` exposes
+read-only QML helpers for the active numeric slot on an output, numeric visual
+state and off-window urgency/navigation, plus projected special-workspace
+facts. Hyprland special-workspace IDs use the opaque `special:<name>` form for
+activation and are never exposed as unstable negative numeric IDs. Urgency
+addresses are matched case-insensitively by suffix because Hyprland events may
+omit the `0x` prefix present in client snapshots; activating a workspace clears
+either representation.
+
 The generic ext-workspace backend projects each workspace's output membership,
 but never derives keyboard focus from the protocol's per-output active state.
 Consequently it leaves `focusedOutput` empty and `hasFocusedOutput` false, and

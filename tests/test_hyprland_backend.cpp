@@ -137,3 +137,29 @@ TEST(HyprlandBackend, ProjectsVisibleSpecialWorkspaceFromMonitorState) {
   EXPECT_FALSE(special->urgent);
   EXPECT_EQ(special->outputs, QStringList{QStringLiteral("DP-5")});
 }
+
+TEST(HyprlandBackend, ClearsUrgencyWhenEventAddressOmitsClientPrefix) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  QSignalSpy snapshots(&backend, &CompositorBackend::snapshotReady);
+  fake->connectStream();
+  processDeferred();
+  fake->sendEvent(QByteArrayLiteral("urgent>>1"));
+  finishRefresh(fake,
+                QByteArrayLiteral(
+                    R"([{"address":"0x1","class":"kitty","title":"shell","workspace":{"id":1},"focusHistoryID":0}])"));
+
+  fake->sendEvent(QByteArrayLiteral("workspace>>2"));
+  processDeferred();
+  fake->finish(QByteArrayLiteral(R"([{"name":"DP-1","focused":true,"activeWorkspace":{"id":2}}])"));
+  fake->finish(QByteArrayLiteral(R"([{"id":1,"name":"1"},{"id":2,"name":"2"}])"));
+  fake->finish(QByteArrayLiteral(
+      R"([{"address":"0x1","class":"kitty","title":"shell","workspace":{"id":1},"focusHistoryID":0}])"));
+
+  ASSERT_EQ(snapshots.count(), 2);
+  const auto snapshot = qvariant_cast<CompositorSnapshot>(snapshots.last().first());
+  const auto workspace = std::ranges::find(snapshot.workspaces, QStringLiteral("1"), &CompositorWorkspace::id);
+  ASSERT_NE(workspace, snapshot.workspaces.end());
+  EXPECT_FALSE(workspace->urgent);
+}

@@ -79,7 +79,7 @@ void appendWorkspaces(const QJsonArray& workspaces, const QList<HyprlandClientIn
     if (active) {
       urgent_addresses->removeIf([&clients, workspace_id](const QString& address) {
         return std::ranges::any_of(clients, [&address, workspace_id](const HyprlandClientInfo& client) {
-          return client.workspace_id == workspace_id && client.address == address;
+          return client.workspace_id == workspace_id && client.address.endsWith(address, Qt::CaseInsensitive);
         });
       });
     }

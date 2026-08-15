@@ -6,7 +6,7 @@
 | SWS-102-02 | Implement compositor service and Hyprland/Sway/generic backends with deterministic tests | Done |
 | SWS-102-03 | Adopt `HolonightQt::Wayland` for every Shell layer surface and remove local protocol ownership | Done |
 | SWS-102-04 | Install descriptor-driven sessions and compositor-aware portal routing | Done |
-| SWS-102-05 | Run focused and full verification, record results, and publish the Shell series | Done |
+| SWS-102-05 | Run focused and full verification, record results, and publish the Shell series | In Progress |
 
 Iteration 3 baseline: `holonight-shell@34580eaad4da8a5440c561c0fe2e82c5f3189727`
 
@@ -105,4 +105,17 @@ Provider: `holonight-qt@a45f7552054abbc6cbd66609e802b43b9b8ee894`
 - Live Hyprland/Sway visual, hotplug, login, and close/reopen checks remain deferred to umbrella integration task
   `SWS-201`.
 
-`SWS-102-02`, `SWS-102-03`, `SWS-102-04`, and `SWS-102-05` are Done. The Shell handoff is ready for `SWS-201`.
+`SWS-102-02`, `SWS-102-03`, and `SWS-102-04` remain Done. The previous `SWS-102-05` handoff was reopened by the
+integration correction below.
+
+## Integration correction — 2026-08-15
+
+Umbrella integration exposed a Hyprland workspace-presentation regression after
+the neutral compositor UI replaced the numeric workspace strip. Commit
+`aba61d1` restores the numeric and special-workspace presentation, introduces
+opaque `special:<name>` activation IDs, and adds the corresponding read-only
+`CompositorService` QML helpers. A follow-up correction handles urgency event
+addresses that omit the client snapshot's `0x` prefix so urgency clears when
+the workspace becomes active. `SWS-102-05` remains In Progress until the final
+series passes local verification, is published, and succeeds in CI at the exact
+handoff revision.
