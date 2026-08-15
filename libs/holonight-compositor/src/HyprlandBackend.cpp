@@ -197,8 +197,8 @@ void HyprlandBackend::runLuaActivation() {
               QByteArrayLiteral("\")");
     diagnostic = QStringLiteral("Hyprland Lua special workspace activation failed");
   } else {
-    command = QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = ") + activation_id_.toUtf8() +
-              QByteArrayLiteral(" })");
+    command =
+        QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = ") + activation_id_.toUtf8() + QByteArrayLiteral(" })");
     diagnostic = QStringLiteral("Hyprland Lua workspace activation failed");
   }
   if (!transport_->runCommand(command)) {
