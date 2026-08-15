@@ -21,6 +21,7 @@ class HyprlandBackend final : public CompositorBackend {
   void beginRefresh();
   void handleCommand(const QByteArray& response, bool success);
   void handleEvent(const QByteArray& line);
+  void runLuaActivation();
   void publishClients(const QByteArray& clients_json);
   void fail(const QString& diagnostic);
 

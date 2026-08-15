@@ -173,22 +173,7 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
     }
   } else if (phase_ == Phase::Activation) {
     if (responseIsError(response)) {
-      if (activation_is_special_) {
-        phase_ = Phase::LuaActivation;
-        const QString name = activation_id_.sliced(QStringLiteral("special:").size());
-        const QByteArray command = QByteArrayLiteral("dispatch hl.dsp.workspace.toggle_special(\"") +
-                                   escapeLuaString(name) + QByteArrayLiteral("\")");
-        if (!transport_->runCommand(command)) {
-          fail(QStringLiteral("Hyprland Lua special workspace activation failed"));
-        }
-        return;
-      }
-      phase_ = Phase::LuaActivation;
-      const QByteArray command = QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = ") + activation_id_.toUtf8() +
-                                 QByteArrayLiteral(" })");
-      if (!transport_->runCommand(command)) {
-        fail(QStringLiteral("Hyprland Lua workspace activation failed"));
-      }
+      runLuaActivation();
       return;
     }
     phase_ = Phase::Idle;
@@ -199,6 +184,25 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
       fail(QStringLiteral("Hyprland workspace activation failed"));
     }
     scheduleRefresh();
+  }
+}
+
+void HyprlandBackend::runLuaActivation() {
+  phase_ = Phase::LuaActivation;
+  QByteArray command;
+  QString diagnostic;
+  if (activation_is_special_) {
+    const QString name = activation_id_.sliced(QStringLiteral("special:").size());
+    command = QByteArrayLiteral("dispatch hl.dsp.workspace.toggle_special(\"") + escapeLuaString(name) +
+              QByteArrayLiteral("\")");
+    diagnostic = QStringLiteral("Hyprland Lua special workspace activation failed");
+  } else {
+    command = QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = ") + activation_id_.toUtf8() +
+              QByteArrayLiteral(" })");
+    diagnostic = QStringLiteral("Hyprland Lua workspace activation failed");
+  }
+  if (!transport_->runCommand(command)) {
+    fail(diagnostic);
   }
 }
 
