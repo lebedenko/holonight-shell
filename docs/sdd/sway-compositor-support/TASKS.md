@@ -6,7 +6,7 @@
 | SWS-102-02 | Implement compositor service and Hyprland/Sway/generic backends with deterministic tests | Done |
 | SWS-102-03 | Adopt `HolonightQt::Wayland` for every Shell layer surface and remove local protocol ownership | Done |
 | SWS-102-04 | Install descriptor-driven sessions and compositor-aware portal routing | Done |
-| SWS-102-05 | Run focused and full verification, record results, and publish the Shell series | In Progress |
+| SWS-102-05 | Run focused and full verification, record results, and publish the Shell series | Done |
 
 Iteration 3 baseline: `holonight-shell@34580eaad4da8a5440c561c0fe2e82c5f3189727`
 
@@ -116,6 +116,26 @@ the neutral compositor UI replaced the numeric workspace strip. Commit
 opaque `special:<name>` activation IDs, and adds the corresponding read-only
 `CompositorService` QML helpers. A follow-up correction handles urgency event
 addresses that omit the client snapshot's `0x` prefix so urgency clears when
-the workspace becomes active. `SWS-102-05` remains In Progress until the final
-series passes local verification, is published, and succeeds in CI at the exact
-handoff revision.
+the workspace becomes active. The completion evidence below closes the reopened
+handoff.
+
+## Integration correction completion verification — 2026-08-15
+
+- Corrected implementation series:
+  - `aba61d1` — restore Hyprland numeric and special-workspace presentation;
+  - `7795408` — clear urgency when event addresses omit the client prefix;
+  - `e661808` — isolate Lua activation fallback to satisfy complexity limits;
+  - `743ddb1` — apply the required clang-format output.
+- Focused `test_holonight_compositor`: passed 22/22, including numeric and special-workspace presentation,
+  special activation, visible special projection, and urgency prefix normalization.
+- `task test`: passed 1063 tests with the existing environment-gated skips.
+- `task build`, `task format-check`, `task tidy`, `task qmltypes-check`, and `task architecture-check`: passed.
+- `task qml-lint`: passed with the existing unresolved `AudioService` warnings.
+- `tests/test_session_scripts.sh`: passed with the expected cursor-query fallback warnings.
+- `task sway-runtime-smoke`: passed outside the filesystem sandbox, including named-workspace activation and Shell
+  startup. The sandboxed attempt retained diagnostics at `/tmp/holonight-sway-smoke.9o109E`.
+- Canonical CI [31898953265](https://github.com/lebedenko/holonight-shell/actions/runs/31898953265) passed both `Build
+  and test` and `Static checks` at exact implementation revision `743ddb1e8867ac6d6a53d5ff710acb0ab98cd77a`.
+
+`SWS-102-05` is Done. Manual compositor and surface acceptance remains owned by umbrella integration task
+`SWS-201`.
