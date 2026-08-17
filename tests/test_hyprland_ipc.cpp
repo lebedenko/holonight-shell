@@ -226,12 +226,44 @@ TEST(HyprlandIpc, ParsesClientsJsonAndFiltersEmptyIdentity) {
   EXPECT_EQ(parsed->at(0).app_class, QStringLiteral("Code"));
   EXPECT_EQ(parsed->at(0).address, QStringLiteral("0xabc123"));
   EXPECT_EQ(parsed->at(0).title, QStringLiteral("holonight-shell"));
+  EXPECT_EQ(parsed->at(0).pid, 0U);
   EXPECT_EQ(parsed->at(0).workspace_id, 2);
   EXPECT_EQ(parsed->at(0).focus_history_id, 0);
   EXPECT_EQ(parsed->at(1).app_class, QStringLiteral("kitty"));
   EXPECT_EQ(parsed->at(1).title, QStringLiteral("build"));
   EXPECT_EQ(parsed->at(1).workspace_id, 3);
   EXPECT_EQ(parsed->at(1).focus_history_id, std::numeric_limits<int>::max());
+}
+
+TEST(HyprlandIpc, ParsesPositiveClientPidWithExactActivationFields) {
+  const auto parsed = parseHyprlandClientsJson(R"json([
+    {"address":"0xabc","class":"kitty","title":"Exact title","pid":4294967295,"workspace":{"id":2}},
+    {"address":"0xempty","class":"kitty","title":"","pid":42,"workspace":{"id":3}}
+  ])json");
+
+  ASSERT_TRUE(parsed.has_value());
+  ASSERT_EQ(parsed->size(), 2);
+  EXPECT_EQ(parsed->at(0).pid, std::numeric_limits<quint32>::max());
+  EXPECT_EQ(parsed->at(0).title, QStringLiteral("Exact title"));
+  EXPECT_EQ(parsed->at(0).address, QStringLiteral("0xabc"));
+  EXPECT_EQ(parsed->at(1).pid, 42U);
+  EXPECT_TRUE(parsed->at(1).title.isEmpty());
+}
+
+TEST(HyprlandIpc, InvalidClientPidsAreNotActivationEligible) {
+  const auto parsed = parseHyprlandClientsJson(R"json([
+    {"address":"zero","class":"app","title":"zero","pid":0},
+    {"address":"negative","class":"app","title":"negative","pid":-1},
+    {"address":"fraction","class":"app","title":"fraction","pid":1.5},
+    {"address":"missing","class":"app","title":"missing"},
+    {"address":"large","class":"app","title":"large","pid":4294967296}
+  ])json");
+
+  ASSERT_TRUE(parsed.has_value());
+  ASSERT_EQ(parsed->size(), 5);
+  for (const HyprlandClientInfo& client : *parsed) {
+    EXPECT_EQ(client.pid, 0U);
+  }
 }
 
 TEST(HyprlandIpc, RejectsInvalidClientsJsonShapes) {

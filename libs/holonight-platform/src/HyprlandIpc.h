@@ -30,6 +30,7 @@ struct HyprlandClientInfo {
   QString address;
   QString app_class;
   QString title;
+  quint32 pid{0};
   int workspace_id{0};
   int focus_history_id{0};
 };

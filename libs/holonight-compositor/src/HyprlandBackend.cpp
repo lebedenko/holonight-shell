@@ -50,6 +50,9 @@ void collectMonitors(const QJsonArray& monitors, CompositorSnapshot* snapshot, Q
 void collectClients(const QList<HyprlandClientInfo>& clients, QHash<int, int>* window_counts,
                     QHash<int, HyprlandClientInfo>* focused_clients) {
   for (const HyprlandClientInfo& client : clients) {
+    if (client.app_class.isEmpty() || client.title.isEmpty()) {
+      continue;
+    }
     ++(*window_counts)[client.workspace_id];
     if (!focused_clients->contains(client.workspace_id) ||
         client.focus_history_id < focused_clients->value(client.workspace_id).focus_history_id) {
@@ -146,8 +149,18 @@ void HyprlandBackend::handleEvent(const QByteArray& line) {
 
 void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
   if (!success) {
+    const Phase failed_phase = phase_;
     phase_ = Phase::Idle;
-    fail(QStringLiteral("Hyprland snapshot refresh failed"));
+    if (failed_phase == Phase::WindowActivation) {
+      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation transport failed")});
+      refresh_dirty_ = true;
+    } else if (failed_phase == Phase::WorkspaceActivation || failed_phase == Phase::LuaActivation) {
+      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland workspace activation failed")});
+      refresh_dirty_ = true;
+    } else {
+      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland snapshot refresh failed")});
+    }
+    drainWork();
     return;
   }
   if (phase_ == Phase::Monitors) {
@@ -165,26 +178,62 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
   } else if (phase_ == Phase::Clients) {
     phase_ = Phase::Idle;
     publishClients(response);
-    if (!pending_activation_.isEmpty()) {
-      const QString activation = std::exchange(pending_activation_, {});
-      activateWorkspace(activation);
-    } else if (refresh_dirty_) {
-      scheduleRefresh();
-    }
-  } else if (phase_ == Phase::Activation) {
+    drainWork();
+  } else if (phase_ == Phase::WorkspaceActivation) {
     if (responseIsError(response)) {
       runLuaActivation();
       return;
     }
     phase_ = Phase::Idle;
-    scheduleRefresh();
+    refresh_dirty_ = true;
+    drainWork();
   } else if (phase_ == Phase::LuaActivation) {
     phase_ = Phase::Idle;
     if (responseIsError(response)) {
-      fail(QStringLiteral("Hyprland workspace activation failed"));
+      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland workspace activation failed")});
     }
+    refresh_dirty_ = true;
+    drainWork();
+  } else if (phase_ == Phase::WindowActivation) {
+    phase_ = Phase::Idle;
+    if (responseIsError(response)) {
+      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation rejected")});
+    }
+    refresh_dirty_ = true;
+    drainWork();
+  }
+}
+
+void HyprlandBackend::drainWork() {
+  if (phase_ != Phase::Idle || transport_->hasRunningCommand()) {
+    return;
+  }
+  if (pending_window_address_) {
+    const QString address = std::exchange(pending_window_address_, std::nullopt).value();
+    if (!beginWindowActivation(address)) {
+      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation transport failed")});
+      refresh_dirty_ = true;
+      scheduleRefresh();
+    }
+    return;
+  }
+  if (!pending_activation_.isEmpty()) {
+    const QString activation = std::exchange(pending_activation_, {});
+    activateWorkspace(activation);
+    return;
+  }
+  if (refresh_dirty_) {
     scheduleRefresh();
   }
+}
+
+bool HyprlandBackend::beginWindowActivation(const QString& address) {
+  phase_ = Phase::WindowActivation;
+  if (transport_->runCommand(QByteArrayLiteral("dispatch focuswindow address:") + address.toUtf8())) {
+    return true;
+  }
+  phase_ = Phase::Idle;
+  return false;
 }
 
 void HyprlandBackend::runLuaActivation() {
@@ -233,7 +282,40 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
   collectClients(*clients, &window_counts, &focused_clients);
   appendWorkspaces(workspaces.array(), *clients, workspace_outputs, active_workspaces, window_counts, focused_clients,
                    &urgent_addresses_, &snapshot);
+  QList<WindowActivationCandidate> activation_candidates;
+  QList<QString> activation_addresses;
+  for (const HyprlandClientInfo& client : *clients) {
+    if (client.pid == 0 || client.address.isEmpty()) {
+      continue;
+    }
+    activation_candidates.append({.pid = client.pid, .title = client.title});
+    activation_addresses.append(client.address);
+  }
+  activation_candidates_ = std::move(activation_candidates);
+  activation_addresses_ = std::move(activation_addresses);
+  snapshot.capabilities.window_activation = true;
   emit snapshotReady(std::move(snapshot));
+}
+
+WindowActivationResult HyprlandBackend::requestWindowActivation(const WindowActivationRequest& request) {
+  const WindowActivationResolution resolution = resolveWindowActivation(request, activation_candidates_);
+  if (resolution.result != WindowActivationResult::Accepted) {
+    return resolution.result;
+  }
+  const QString address = activation_addresses_.at(*resolution.candidate_index);
+  if (phase_ != Phase::Idle || transport_->hasRunningCommand()) {
+    if (pending_window_address_) {
+      return WindowActivationResult::Busy;
+    }
+    pending_window_address_ = address;
+    return WindowActivationResult::Accepted;
+  }
+  if (!beginWindowActivation(address)) {
+    emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation transport failed")});
+    scheduleRefresh();
+    return WindowActivationResult::Failed;
+  }
+  return WindowActivationResult::Accepted;
 }
 
 void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
@@ -249,7 +331,7 @@ void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
   }
   activation_id_ = workspace_id;
   activation_is_special_ = special;
-  phase_ = Phase::Activation;
+  phase_ = Phase::WorkspaceActivation;
   const QByteArray command = special ? QByteArrayLiteral("dispatch togglespecialworkspace ") +
                                            workspace_id.sliced(QStringLiteral("special:").size()).toUtf8()
                                      : QByteArrayLiteral("dispatch workspace ") + workspace_id.toUtf8();

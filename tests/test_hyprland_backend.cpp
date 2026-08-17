@@ -12,7 +12,7 @@ class FakeHyprlandTransport final : public HyprlandIpcTransport {
   bool runCommand(const QByteArray& command, CommandCompletePredicate is_complete = {}) override {
     Q_UNUSED(is_complete)
     commands.append(command);
-    running = true;
+    running = submit_succeeds;
     return submit_succeeds;
   }
   [[nodiscard]] bool hasRunningCommand() const override { return running; }
@@ -36,6 +36,13 @@ void finishRefresh(FakeHyprlandTransport* transport, const QByteArray& clients =
   transport->finish(QByteArrayLiteral(R"([{"id":1,"name":"1"}])"));
   transport->finish(clients);
 }
+
+QByteArray client(QString address, quint32 pid, QString title, int workspace = 1) {
+  return QStringLiteral(
+             R"([{"address":"%1","class":"app","title":"%2","pid":%3,"workspace":{"id":%4},"focusHistoryID":0}])")
+      .arg(address, title, QString::number(pid), QString::number(workspace))
+      .toUtf8();
+}
 }  // namespace
 
 TEST(HyprlandBackend, PublishesCompleteRefreshOnlyAfterAllResponses) {
@@ -55,9 +62,166 @@ TEST(HyprlandBackend, PublishesCompleteRefreshOnlyAfterAllResponses) {
   ASSERT_EQ(snapshots.count(), 1);
   const auto snapshot = qvariant_cast<CompositorSnapshot>(snapshots.first().first());
   EXPECT_TRUE(snapshot.connected);
+  EXPECT_TRUE(snapshot.capabilities.window_activation);
   ASSERT_EQ(snapshot.workspaces.size(), 1);
   EXPECT_TRUE(snapshot.workspaces.first().occupied.value_or(false));
   EXPECT_EQ(snapshot.active_windows.value(QStringLiteral("DP-1")).title, QStringLiteral("shell"));
+}
+
+TEST(HyprlandBackend, DoesNotPublishWindowActivationBeforeValidRefresh) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  QSignalSpy snapshots(&backend, &CompositorBackend::snapshotReady);
+
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Missing);
+  fake->connectStream();
+  processDeferred();
+  fake->finish(QByteArrayLiteral("[]"));
+  fake->finish(QByteArrayLiteral("not-json"));
+  fake->finish(QByteArrayLiteral("[]"));
+
+  ASSERT_EQ(snapshots.count(), 1);
+  EXPECT_FALSE(qvariant_cast<CompositorSnapshot>(snapshots.first().first()).capabilities.window_activation);
+}
+
+TEST(HyprlandBackend, ResolvesLineageAndExactTitleToAddress) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, QByteArrayLiteral(R"([
+    {"address":"0xchild-a","class":"app","title":"First","pid":42,"workspace":{"id":1}},
+    {"address":"0xchild-b","class":"app","title":"Wanted","pid":42,"workspace":{"id":1}},
+    {"address":"0xparent","class":"app","title":"Wanted","pid":7,"workspace":{"id":1}}
+  ])"));
+
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42, 7}, .title_hint = QStringLiteral("Wanted")}),
+            WindowActivationResult::Accepted);
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch focuswindow address:0xchild-b"));
+}
+
+TEST(HyprlandBackend, ReportsMissingAndAmbiguousWithoutSubmitting) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, QByteArrayLiteral(R"([
+    {"address":"0xa","class":"app","title":"A","pid":42,"workspace":{"id":1}},
+    {"address":"0xb","class":"app","title":"B","pid":42,"workspace":{"id":1}}
+  ])"));
+  const qsizetype command_count = fake->commands.size();
+
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {7}}), WindowActivationResult::Missing);
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Ambiguous);
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {0}}), WindowActivationResult::InvalidRequest);
+  EXPECT_EQ(fake->commands.size(), command_count);
+}
+
+TEST(HyprlandBackend, ImmediateSubmissionFailureReturnsFailed) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  QSignalSpy snapshots(&backend, &CompositorBackend::snapshotReady);
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, client(QStringLiteral("0xa"), 42, QStringLiteral("A")));
+  fake->submit_succeeds = false;
+
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Failed);
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch focuswindow address:0xa"));
+  EXPECT_TRUE(
+      qvariant_cast<CompositorSnapshot>(snapshots.last().first()).diagnostic.contains(QStringLiteral("transport")));
+}
+
+TEST(HyprlandBackend, ActivationFailuresPublishDiagnosticsAndRefresh) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  QSignalSpy snapshots(&backend, &CompositorBackend::snapshotReady);
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, client(QStringLiteral("0xa"), 42, QStringLiteral("Private title")));
+
+  ASSERT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
+  fake->finish(QByteArrayLiteral("error: denied"));
+  processDeferred();
+  EXPECT_TRUE(
+      qvariant_cast<CompositorSnapshot>(snapshots.last().first()).diagnostic.contains(QStringLiteral("rejected")));
+  EXPECT_FALSE(
+      qvariant_cast<CompositorSnapshot>(snapshots.last().first()).diagnostic.contains(QStringLiteral("Private")));
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("j/monitors"));
+}
+
+TEST(HyprlandBackend, AcceptedTransportFailurePublishesDiagnosticAndRefreshes) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  QSignalSpy snapshots(&backend, &CompositorBackend::snapshotReady);
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, client(QStringLiteral("0xa"), 42, QStringLiteral("A")));
+
+  ASSERT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
+  fake->finish({}, false);
+  processDeferred();
+  EXPECT_TRUE(
+      qvariant_cast<CompositorSnapshot>(snapshots.last().first()).diagnostic.contains(QStringLiteral("transport")));
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("j/monitors"));
+}
+
+TEST(HyprlandBackend, QueuesOneWindowWithoutOverwritingIt) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, QByteArrayLiteral(R"([
+    {"address":"0xa","class":"app","title":"A","pid":1,"workspace":{"id":1}},
+    {"address":"0xb","class":"app","title":"B","pid":2,"workspace":{"id":1}},
+    {"address":"0xc","class":"app","title":"C","pid":3,"workspace":{"id":1}}
+  ])"));
+
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {1}}), WindowActivationResult::Accepted);
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {2}}), WindowActivationResult::Accepted);
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {3}}), WindowActivationResult::Busy);
+  fake->finish(QByteArrayLiteral("ok"));
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch focuswindow address:0xb"));
+}
+
+TEST(HyprlandBackend, QueuedWindowRetainsAddressAcrossRefresh) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, client(QStringLiteral("0xold"), 42, QStringLiteral("A")));
+  fake->sendEvent(QByteArrayLiteral("workspace>>2"));
+  processDeferred();
+
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
+  finishRefresh(fake, client(QStringLiteral("0xnew"), 42, QStringLiteral("A")));
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch focuswindow address:0xold"));
+}
+
+TEST(HyprlandBackend, DrainsWindowThenWorkspaceThenRefresh) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake, client(QStringLiteral("0xa"), 42, QStringLiteral("A")));
+  backend.activateWorkspace(QStringLiteral("4"));
+  EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
+  fake->sendEvent(QByteArrayLiteral("workspace>>2"));
+
+  fake->finish(QByteArrayLiteral("ok"));
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch focuswindow address:0xa"));
+  fake->finish(QByteArrayLiteral("ok"));
+  processDeferred();
+  EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("j/monitors"));
 }
 
 TEST(HyprlandBackend, DiscardsPartialRefreshOnFailure) {

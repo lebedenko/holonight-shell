@@ -8,6 +8,7 @@
 #include <QLoggingCategory>
 #include <QRegularExpression>
 
+#include <cmath>
 #include <limits>
 
 Q_LOGGING_CATEGORY(lcHyprlandIpc, "holonight.hyprland.ipc")
@@ -314,16 +315,25 @@ std::optional<QList<HyprlandClientInfo>> parseHyprlandClientsJson(const QByteArr
     const QJsonObject obj = val.toObject();
     const QString app_class = obj.value(QStringLiteral("class")).toString();
     const QString title = obj.value(QStringLiteral("title")).toString();
-    if (app_class.isEmpty() || title.isEmpty()) {
+    const QString address = obj.value(QStringLiteral("address")).toString();
+    quint32 pid = 0;
+    const QJsonValue pid_value = obj.value(QStringLiteral("pid"));
+    if (pid_value.isDouble()) {
+      const double parsed_pid = pid_value.toDouble();
+      if (parsed_pid > 0 && parsed_pid <= std::numeric_limits<quint32>::max() && parsed_pid == std::floor(parsed_pid)) {
+        pid = static_cast<quint32>(parsed_pid);
+      }
+    }
+    if ((app_class.isEmpty() || title.isEmpty()) && (pid == 0 || address.isEmpty())) {
       continue;
     }
-    const QString address = obj.value(QStringLiteral("address")).toString();
     const int ws_id = obj.value(QStringLiteral("workspace")).toObject().value(QStringLiteral("id")).toInt(0);
     const int focus_id = obj.value(QStringLiteral("focusHistoryID")).toInt(std::numeric_limits<int>::max());
     result.append(HyprlandClientInfo{
         .address = address,
         .app_class = app_class,
         .title = title,
+        .pid = pid,
         .workspace_id = ws_id,
         .focus_history_id = focus_id,
     });
