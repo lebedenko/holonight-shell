@@ -52,13 +52,19 @@ void SwayBackend::activateWorkspace(const QString& workspace_id) {
     pending_activation_ = workspace_id;
     return;
   }
-  phase_ = RequestPhase::Command;
+  phase_ = RequestPhase::WorkspaceActivation;
   const QString command = QStringLiteral("workspace \"") + escapeSwayWorkspaceName(workspace_id) + QStringLiteral("\"");
-  sendRequest(kCommand, command.toUtf8());
+  if (!sendRequest(kCommand, command.toUtf8())) {
+    phase_ = RequestPhase::Idle;
+    fail(QStringLiteral("Sway workspace activation transport failed"));
+    refresh_dirty_ = true;
+    drainWork();
+  }
 }
 
-void SwayBackend::sendRequest(quint32 type, const QByteArray& payload) {
-  request_socket_.write(encodeSwayIpcFrame(type, payload));
+bool SwayBackend::sendRequest(quint32 type, const QByteArray& payload) {
+  const QByteArray frame = encodeSwayIpcFrame(type, payload);
+  return request_socket_.write(frame) == frame.size();
 }
 
 void SwayBackend::scheduleRefresh() {
@@ -79,7 +85,9 @@ void SwayBackend::beginRefresh() {
   workspaces_.clear();
   outputs_.clear();
   phase_ = RequestPhase::Workspaces;
-  sendRequest(kGetWorkspaces);
+  if (!sendRequest(kGetWorkspaces)) {
+    disconnectSession(QStringLiteral("Sway refresh transport failed"));
+  }
 }
 
 void SwayBackend::handleRequestData() {
@@ -102,7 +110,8 @@ quint32 SwayBackend::expectedResponseType() const {
       return kGetOutputs;
     case RequestPhase::Tree:
       return kGetTree;
-    case RequestPhase::Command:
+    case RequestPhase::WorkspaceActivation:
+    case RequestPhase::WindowActivation:
       return kCommand;
     case RequestPhase::Idle:
       return std::numeric_limits<quint32>::max();
@@ -119,18 +128,25 @@ bool SwayBackend::handleRequestFrame(const SwayIpcFrame& frame) {
     case RequestPhase::Workspaces:
       workspaces_ = frame.payload;
       phase_ = RequestPhase::Outputs;
-      sendRequest(kGetOutputs);
+      if (!sendRequest(kGetOutputs)) {
+        disconnectSession(QStringLiteral("Sway refresh transport failed"));
+        return false;
+      }
       break;
     case RequestPhase::Outputs:
       outputs_ = frame.payload;
       phase_ = RequestPhase::Tree;
-      sendRequest(kGetTree);
+      if (!sendRequest(kGetTree)) {
+        disconnectSession(QStringLiteral("Sway refresh transport failed"));
+        return false;
+      }
       break;
     case RequestPhase::Tree:
       finishRefresh(frame.payload);
       break;
-    case RequestPhase::Command:
-      finishActivation(frame.payload);
+    case RequestPhase::WorkspaceActivation:
+    case RequestPhase::WindowActivation:
+      finishActivation(frame.payload, phase_);
       break;
     case RequestPhase::Idle:
       return false;
@@ -140,28 +156,93 @@ bool SwayBackend::handleRequestFrame(const SwayIpcFrame& frame) {
 
 void SwayBackend::finishRefresh(const QByteArray& tree) {
   phase_ = RequestPhase::Idle;
-  if (auto snapshot = parseSwaySnapshot(workspaces_, outputs_, tree)) {
+  if (auto refresh = parseSwayRefresh(workspaces_, outputs_, tree)) {
     reconnect_delay_ms_ = 1000;
-    emit snapshotReady(std::move(*snapshot));
+    activation_candidates_.clear();
+    activation_container_ids_.clear();
+    for (const SwayWindowInfo& window : refresh->windows) {
+      activation_candidates_.append(window.candidate);
+      activation_container_ids_.append(window.container_id);
+    }
+    refresh->snapshot.capabilities.window_activation = true;
+    emit snapshotReady(std::move(refresh->snapshot));
   } else {
     fail(QStringLiteral("invalid Sway refresh response"));
   }
-  if (!pending_activation_.isEmpty()) {
-    const QString activation = std::exchange(pending_activation_, {});
-    activateWorkspace(activation);
-  } else if (refresh_dirty_) {
-    scheduleRefresh();
-  }
+  drainWork();
 }
 
-void SwayBackend::finishActivation(const QByteArray& payload) {
+void SwayBackend::finishActivation(const QByteArray& payload, RequestPhase completed_phase) {
   phase_ = RequestPhase::Idle;
   const QJsonDocument response = QJsonDocument::fromJson(payload);
   if (!response.isArray() || response.array().isEmpty() ||
       !response.array().first().toObject().value(QStringLiteral("success")).toBool(false)) {
-    fail(QStringLiteral("Sway workspace activation failed"));
+    fail(completed_phase == RequestPhase::WindowActivation ? QStringLiteral("Sway window activation rejected")
+                                                           : QStringLiteral("Sway workspace activation failed"));
   }
-  scheduleRefresh();
+  refresh_dirty_ = true;
+  drainWork();
+}
+
+WindowActivationResult SwayBackend::requestWindowActivation(const WindowActivationRequest& request) {
+  if (!isValidWindowActivationRequest(request)) {
+    return WindowActivationResult::InvalidRequest;
+  }
+  if (request_socket_.state() != QLocalSocket::ConnectedState) {
+    return WindowActivationResult::Disconnected;
+  }
+  const WindowActivationResolution resolution = resolveWindowActivation(request, activation_candidates_);
+  if (resolution.result != WindowActivationResult::Accepted) {
+    return resolution.result;
+  }
+  const quint64 container_id = activation_container_ids_.at(*resolution.candidate_index);
+  if (phase_ != RequestPhase::Idle) {
+    if (pending_window_container_id_) {
+      return WindowActivationResult::Busy;
+    }
+    pending_window_container_id_ = container_id;
+    return WindowActivationResult::Accepted;
+  }
+  if (!beginWindowActivation(container_id)) {
+    fail(QStringLiteral("Sway window activation transport failed"));
+    scheduleRefresh();
+    return WindowActivationResult::Failed;
+  }
+  return WindowActivationResult::Accepted;
+}
+
+bool SwayBackend::beginWindowActivation(quint64 container_id) {
+  phase_ = RequestPhase::WindowActivation;
+  const QByteArray command =
+      QByteArrayLiteral("[con_id=") + QByteArray::number(container_id) + QByteArrayLiteral("] focus");
+  if (sendRequest(kCommand, command)) {
+    return true;
+  }
+  phase_ = RequestPhase::Idle;
+  return false;
+}
+
+void SwayBackend::drainWork() {
+  if (phase_ != RequestPhase::Idle) {
+    return;
+  }
+  if (pending_window_container_id_) {
+    const quint64 container_id = std::exchange(pending_window_container_id_, std::nullopt).value();
+    if (!beginWindowActivation(container_id)) {
+      fail(QStringLiteral("Sway window activation transport failed"));
+      refresh_dirty_ = true;
+      scheduleRefresh();
+    }
+    return;
+  }
+  if (!pending_activation_.isEmpty()) {
+    const QString activation = std::exchange(pending_activation_, {});
+    activateWorkspace(activation);
+    return;
+  }
+  if (refresh_dirty_) {
+    scheduleRefresh();
+  }
 }
 
 void SwayBackend::handleSubscriptionData() {
@@ -203,6 +284,11 @@ void SwayBackend::disconnectSession(const QString& diagnostic) {
   phase_ = RequestPhase::Idle;
   workspaces_.clear();
   outputs_.clear();
+  activation_candidates_.clear();
+  activation_container_ids_.clear();
+  pending_window_container_id_.reset();
+  pending_activation_.clear();
+  refresh_dirty_ = false;
   fail(diagnostic);
   request_socket_.abort();
   subscription_socket_.abort();

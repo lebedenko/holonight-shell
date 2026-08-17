@@ -7,6 +7,7 @@
 #include <QTimer>
 
 #include <cstdint>
+#include <optional>
 
 class SwayBackend final : public CompositorBackend {
   Q_OBJECT
@@ -15,9 +16,10 @@ class SwayBackend final : public CompositorBackend {
   explicit SwayBackend(QString socket_path = {}, QObject* parent = nullptr);
   void start() override;
   void activateWorkspace(const QString& workspace_id) override;
+  [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) override;
 
  private:
-  enum class RequestPhase : std::uint8_t { Idle, Workspaces, Outputs, Tree, Command };
+  enum class RequestPhase : std::uint8_t { Idle, Workspaces, Outputs, Tree, WorkspaceActivation, WindowActivation };
   static constexpr quint32 kGetWorkspaces = 1;
   static constexpr quint32 kSubscribe = 2;
   static constexpr quint32 kGetOutputs = 3;
@@ -26,18 +28,20 @@ class SwayBackend final : public CompositorBackend {
   static constexpr quint32 kEventBit = 1U << 31U;
 
   void connectSockets();
-  void sendRequest(quint32 type, const QByteArray& payload = {});
+  [[nodiscard]] bool sendRequest(quint32 type, const QByteArray& payload = {});
   void handleRequestData();
   void handleSubscriptionData();
   [[nodiscard]] quint32 expectedResponseType() const;
   bool handleRequestFrame(const SwayIpcFrame& frame);
   void finishRefresh(const QByteArray& tree);
-  void finishActivation(const QByteArray& payload);
+  void finishActivation(const QByteArray& payload, RequestPhase completed_phase);
   void disconnectSession(const QString& diagnostic);
   void scheduleRefresh();
   void beginRefresh();
   void fail(const QString& diagnostic);
   void scheduleReconnect();
+  void drainWork();
+  bool beginWindowActivation(quint64 container_id);
 
   QString socket_path_;
   QLocalSocket request_socket_;
@@ -50,6 +54,9 @@ class SwayBackend final : public CompositorBackend {
   QByteArray workspaces_;
   QByteArray outputs_;
   QString pending_activation_;
+  QList<WindowActivationCandidate> activation_candidates_;
+  QList<quint64> activation_container_ids_;
+  std::optional<quint64> pending_window_container_id_;
   bool refresh_dirty_{false};
   bool subscription_ready_{false};
   int reconnect_delay_ms_{1000};

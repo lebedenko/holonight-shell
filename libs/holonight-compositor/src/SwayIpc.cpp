@@ -6,14 +6,31 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <cmath>
+#include <limits>
 #include <utility>
 
 namespace {
 constexpr QByteArrayView kMagic{"i3-ipc"};
 constexpr qsizetype kHeaderSize = 14;
 
-void inspectSwayTree(const QJsonObject& node, const QString& output, const QString& workspace,
-                     QHash<QString, bool>* occupied, QHash<QString, CompositorActiveWindow>* windows) {
+template <typename Integer>
+std::optional<Integer> positiveInteger(const QJsonValue& value) {
+  if (!value.isDouble()) {
+    return std::nullopt;
+  }
+  const double number = value.toDouble();
+  if (!std::isfinite(number) || number < 1.0 ||
+      static_cast<long double>(number) > static_cast<long double>(std::numeric_limits<Integer>::max()) ||
+      std::floor(number) != number) {
+    return std::nullopt;
+  }
+  return static_cast<Integer>(number);
+}
+
+void inspectSwayTree(const QJsonObject& node, const QString& output, const QString& workspace, bool project_snapshot,
+                     QHash<QString, bool>* occupied, QHash<QString, CompositorActiveWindow>* active_windows,
+                     QList<SwayWindowInfo>* activation_windows) {
   const QString type = node.value(QStringLiteral("type")).toString();
   QString next_output = output;
   QString next_workspace = workspace;
@@ -23,13 +40,22 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
   if (type == QLatin1String("workspace")) {
     next_workspace = node.value(QStringLiteral("name")).toString();
     if (next_workspace == QLatin1String("__i3_scratch")) {
-      return;
+      project_snapshot = false;
+    }
+  }
+
+  if (type == QLatin1String("con")) {
+    const auto pid = positiveInteger<quint32>(node.value(QStringLiteral("pid")));
+    const auto container_id = positiveInteger<quint64>(node.value(QStringLiteral("id")));
+    if (pid && container_id) {
+      activation_windows->append({.candidate = {.pid = *pid, .title = node.value(QStringLiteral("name")).toString()},
+                                  .container_id = *container_id});
     }
   }
 
   const bool leaf = node.value(QStringLiteral("nodes")).toArray().isEmpty() &&
                     node.value(QStringLiteral("floating_nodes")).toArray().isEmpty();
-  if (leaf && !next_workspace.isEmpty() && type == QLatin1String("con")) {
+  if (project_snapshot && leaf && !next_workspace.isEmpty() && type == QLatin1String("con")) {
     occupied->insert(next_workspace, true);
     if (node.value(QStringLiteral("focused")).toBool(false) && !next_output.isEmpty()) {
       const QJsonObject properties = node.value(QStringLiteral("window_properties")).toObject();
@@ -37,14 +63,15 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
       if (app_id.isEmpty()) {
         app_id = properties.value(QStringLiteral("class")).toString();
       }
-      windows->insert(next_output, {.app_id = app_id, .title = node.value(QStringLiteral("name")).toString()});
+      active_windows->insert(next_output, {.app_id = app_id, .title = node.value(QStringLiteral("name")).toString()});
     }
   }
 
   for (const QString& child_list : {QStringLiteral("nodes"), QStringLiteral("floating_nodes")}) {
     for (const auto value : node.value(child_list).toArray()) {
       if (value.isObject()) {
-        inspectSwayTree(value.toObject(), next_output, next_workspace, occupied, windows);
+        inspectSwayTree(value.toObject(), next_output, next_workspace, project_snapshot, occupied, active_windows,
+                        activation_windows);
       }
     }
   }
@@ -102,8 +129,8 @@ QString escapeSwayWorkspaceName(const QString& name) {
   return escaped;
 }
 
-std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces_json, const QByteArray& outputs_json,
-                                                    const QByteArray& tree_json) {
+std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_json, const QByteArray& outputs_json,
+                                                  const QByteArray& tree_json) {
   QJsonParseError error;
   const QJsonDocument workspaces = QJsonDocument::fromJson(workspaces_json, &error);
   if (error.error != QJsonParseError::NoError || !workspaces.isArray()) {
@@ -128,7 +155,8 @@ std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces
                        .occupancy = true},
   };
   QHash<QString, bool> occupied;
-  inspectSwayTree(tree.object(), {}, {}, &occupied, &snapshot.active_windows);
+  QList<SwayWindowInfo> activation_windows;
+  inspectSwayTree(tree.object(), {}, {}, true, &occupied, &snapshot.active_windows, &activation_windows);
 
   for (const auto value : outputs.array()) {
     const QJsonObject output = value.toObject();
@@ -158,5 +186,14 @@ std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces
                                 .urgent = workspace.value(QStringLiteral("urgent")).toBool(false),
                                 .occupied = occupied.value(name, false)});
   }
-  return snapshot;
+  return SwayRefreshResult{.snapshot = std::move(snapshot), .windows = std::move(activation_windows)};
+}
+
+std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces_json, const QByteArray& outputs_json,
+                                                    const QByteArray& tree_json) {
+  auto refresh = parseSwayRefresh(workspaces_json, outputs_json, tree_json);
+  if (!refresh) {
+    return std::nullopt;
+  }
+  return std::move(refresh->snapshot);
 }

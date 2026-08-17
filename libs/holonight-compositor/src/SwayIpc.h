@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompositorSnapshot.h"
+#include "WindowActivation.h"
 
 #include <QByteArray>
 #include <QList>
@@ -11,6 +12,18 @@
 struct SwayIpcFrame {
   quint32 type{0};
   QByteArray payload;
+};
+
+struct SwayWindowInfo {
+  WindowActivationCandidate candidate;
+  quint64 container_id{0};
+
+  bool operator==(const SwayWindowInfo&) const = default;
+};
+
+struct SwayRefreshResult {
+  CompositorSnapshot snapshot;
+  QList<SwayWindowInfo> windows;
 };
 
 class SwayIpcDecoder {
@@ -28,6 +41,9 @@ class SwayIpcDecoder {
 
 [[nodiscard]] QByteArray encodeSwayIpcFrame(quint32 type, const QByteArray& payload);
 [[nodiscard]] QString escapeSwayWorkspaceName(const QString& name);
+[[nodiscard]] std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_json,
+                                                                const QByteArray& outputs_json,
+                                                                const QByteArray& tree_json);
 [[nodiscard]] std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces_json,
                                                                   const QByteArray& outputs_json,
                                                                   const QByteArray& tree_json);

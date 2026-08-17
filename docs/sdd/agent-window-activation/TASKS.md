@@ -11,9 +11,9 @@ All tasks are intentionally unchecked. Complete and commit this work package onl
   `j/clients`, retaining inventory only after a valid refresh.
 - [x] **SH-ACT-T03 — Hyprland activation:** serialize `dispatch focuswindow address:<address>` with refresh/workspace
   commands, enforce the one-entry queue, and report send/compositor failures.
-- [ ] **SH-ACT-T04 — Sway inventory:** recursively parse PID, name, and container ID from `GET_TREE` nodes and floating
+- [x] **SH-ACT-T04 — Sway inventory:** recursively parse PID, name, and container ID from `GET_TREE` nodes and floating
   nodes, and clear inventory on disconnect.
-- [ ] **SH-ACT-T05 — Sway activation:** serialize `[con_id=<id>] focus`, validate its reply, enforce the one-entry queue,
+- [x] **SH-ACT-T05 — Sway activation:** serialize `[con_id=<id>] focus`, validate its reply, enforce the one-entry queue,
   and preserve reconnect behavior.
 - [x] **SH-ACT-T06 — Candidate resolution:** implement lineage ordering, duplicate removal, exact-title
   disambiguation, missing/ambiguous results, and all input bounds as a pure testable unit.
