@@ -3,6 +3,7 @@
 #include "CompositorSelection.h"
 #include "CompositorSnapshot.h"
 #include "CompositorWorkspaceModel.h"
+#include "WindowActivation.h"
 
 #include <QObject>
 #include <QVariantList>
@@ -28,6 +29,7 @@ class CompositorService final : public QObject {
                  workspaceDisplayCountChanged)
   Q_PROPERTY(bool canListWorkspaces READ canListWorkspaces NOTIFY revisionChanged)
   Q_PROPERTY(bool canActivateWorkspaces READ canActivateWorkspaces NOTIFY revisionChanged)
+  Q_PROPERTY(bool canActivateWindows READ canActivateWindows NOTIFY revisionChanged)
   Q_PROPERTY(bool canCreateNumericWorkspaces READ canCreateNumericWorkspaces NOTIFY revisionChanged)
   Q_PROPERTY(bool supportsSpecialWorkspaces READ supportsSpecialWorkspaces NOTIFY revisionChanged)
   Q_PROPERTY(bool hasActiveWindowData READ hasActiveWindowData NOTIFY revisionChanged)
@@ -67,6 +69,7 @@ class CompositorService final : public QObject {
   Q_INVOKABLE [[nodiscard]] QVariantList specialWorkspaces() const;
   [[nodiscard]] bool canListWorkspaces() const { return snapshot_.capabilities.workspace_listing; }
   [[nodiscard]] bool canActivateWorkspaces() const { return snapshot_.capabilities.workspace_activation; }
+  [[nodiscard]] bool canActivateWindows() const { return snapshot_.capabilities.window_activation; }
   [[nodiscard]] bool canCreateNumericWorkspaces() const { return snapshot_.capabilities.numeric_workspace_creation; }
   [[nodiscard]] bool supportsSpecialWorkspaces() const { return snapshot_.capabilities.special_workspaces; }
   [[nodiscard]] bool hasActiveWindowData() const { return snapshot_.capabilities.active_window; }
@@ -78,6 +81,7 @@ class CompositorService final : public QObject {
   Q_INVOKABLE [[nodiscard]] QString activeWindowCategory(const QString& output) const;
   Q_INVOKABLE [[nodiscard]] bool isOutputEmpty(const QString& output) const;
   Q_INVOKABLE void activateWorkspace(const QString& workspace_id);
+  [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request);
   void start();
 #ifdef HOLONIGHT_TESTS
   void publishSnapshotForTest(CompositorSnapshot snapshot) { publishSnapshot(std::move(snapshot)); }

@@ -149,6 +149,18 @@ void CompositorService::activateWorkspace(const QString& workspace_id) {
     backend_->activateWorkspace(workspace_id);
   }
 }
+WindowActivationResult CompositorService::requestWindowActivation(const WindowActivationRequest& request) {
+  if (!isValidWindowActivationRequest(request)) {
+    return WindowActivationResult::InvalidRequest;
+  }
+  if (!snapshot_.connected) {
+    return WindowActivationResult::Disconnected;
+  }
+  if (!snapshot_.capabilities.window_activation || backend_ == nullptr) {
+    return WindowActivationResult::Unsupported;
+  }
+  return backend_->requestWindowActivation(request);
+}
 void CompositorService::start() {
   if (backend_ != nullptr) {
     backend_->start();

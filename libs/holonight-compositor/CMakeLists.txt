@@ -3,6 +3,8 @@ add_library(holonight_compositor STATIC
     src/CompositorSelection.cpp
     src/CompositorSnapshot.h
     src/CompositorBackend.h
+    src/WindowActivation.h
+    src/WindowActivation.cpp
     src/GenericBackend.h
     src/GenericBackend.cpp
     src/HyprlandBackend.h

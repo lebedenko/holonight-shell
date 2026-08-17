@@ -54,6 +54,7 @@ target_link_libraries(test_holonight_core PRIVATE
 holonight_add_test_exe(test_holonight_compositor
   main.cpp
   test_compositor.cpp
+  test_window_activation.cpp
   test_hyprland_backend.cpp
   test_sway_ipc.cpp
 )

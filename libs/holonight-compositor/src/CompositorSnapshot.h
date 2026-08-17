@@ -10,6 +10,7 @@
 struct CompositorCapabilities {
   bool workspace_listing{false};
   bool workspace_activation{false};
+  bool window_activation{false};
   bool numeric_workspace_creation{false};
   bool special_workspaces{false};
   bool active_window{false};

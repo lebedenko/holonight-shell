@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompositorSnapshot.h"
+#include "WindowActivation.h"
 
 #include <QObject>
 
@@ -17,6 +18,10 @@ class CompositorBackend : public QObject {
 
   virtual void start() = 0;
   virtual void activateWorkspace(const QString& workspace_id) = 0;
+  virtual WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) {
+    Q_UNUSED(request)
+    return WindowActivationResult::Unsupported;
+  }
 
  Q_SIGNALS:
   void snapshotReady(CompositorSnapshot _t1);
