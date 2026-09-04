@@ -151,16 +151,7 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
   if (!success) {
     const Phase failed_phase = phase_;
     phase_ = Phase::Idle;
-    if (failed_phase == Phase::WindowActivation || failed_phase == Phase::LuaWindowActivation) {
-      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation transport failed")});
-      refresh_dirty_ = true;
-    } else if (failed_phase == Phase::WorkspaceActivation || failed_phase == Phase::LuaActivation) {
-      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland workspace activation failed")});
-      refresh_dirty_ = true;
-    } else {
-      emit snapshotReady({.diagnostic = QStringLiteral("Hyprland snapshot refresh failed")});
-    }
-    drainWork();
+    handleCommandFailure(failed_phase);
     return;
   }
   if (phase_ == Phase::Monitors) {
@@ -210,6 +201,19 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
     refresh_dirty_ = true;
     drainWork();
   }
+}
+
+void HyprlandBackend::handleCommandFailure(Phase failed_phase) {
+  if (failed_phase == Phase::WindowActivation || failed_phase == Phase::LuaWindowActivation) {
+    emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation transport failed")});
+    refresh_dirty_ = true;
+  } else if (failed_phase == Phase::WorkspaceActivation || failed_phase == Phase::LuaActivation) {
+    emit snapshotReady({.diagnostic = QStringLiteral("Hyprland workspace activation failed")});
+    refresh_dirty_ = true;
+  } else {
+    emit snapshotReady({.diagnostic = QStringLiteral("Hyprland snapshot refresh failed")});
+  }
+  drainWork();
 }
 
 void HyprlandBackend::drainWork() {

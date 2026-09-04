@@ -30,6 +30,7 @@ class HyprlandBackend final : public CompositorBackend {
   void scheduleRefresh();
   void beginRefresh();
   void handleCommand(const QByteArray& response, bool success);
+  void handleCommandFailure(Phase failed_phase);
   void handleEvent(const QByteArray& line);
   void runLuaActivation();
   void runLuaWindowActivation();
