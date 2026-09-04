@@ -162,16 +162,33 @@ QList<DailyEntry> dailyFromJson(const QJsonArray& arr) {
 // ---- Icon mapping ------------------------------------------------------------------------
 
 QString iconCode(int condition_id) {
-  if (condition_id >= 200 && condition_id <= 299) return QStringLiteral("11");
-  if ((condition_id >= 300 && condition_id <= 399) || (condition_id >= 520 && condition_id <= 531))
+  if (condition_id >= 200 && condition_id <= 299) {
+    return QStringLiteral("11");
+  }
+  if ((condition_id >= 300 && condition_id <= 399) || (condition_id >= 520 && condition_id <= 531)) {
     return QStringLiteral("09");
-  if (condition_id >= 500 && condition_id <= 504) return QStringLiteral("10");
-  if (condition_id == 511 || (condition_id >= 600 && condition_id <= 699)) return QStringLiteral("13");
-  if (condition_id >= 700 && condition_id <= 799) return QStringLiteral("50");
-  if (condition_id == 800) return QStringLiteral("01");
-  if (condition_id == 801) return QStringLiteral("02");
-  if (condition_id == 802) return QStringLiteral("03");
-  if (condition_id == 803 || condition_id == 804) return QStringLiteral("04");
+  }
+  if (condition_id >= 500 && condition_id <= 504) {
+    return QStringLiteral("10");
+  }
+  if (condition_id == 511 || (condition_id >= 600 && condition_id <= 699)) {
+    return QStringLiteral("13");
+  }
+  if (condition_id >= 700 && condition_id <= 799) {
+    return QStringLiteral("50");
+  }
+  if (condition_id == 800) {
+    return QStringLiteral("01");
+  }
+  if (condition_id == 801) {
+    return QStringLiteral("02");
+  }
+  if (condition_id == 802) {
+    return QStringLiteral("03");
+  }
+  if (condition_id == 803 || condition_id == 804) {
+    return QStringLiteral("04");
+  }
   return QStringLiteral("03");
 }
 
