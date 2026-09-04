@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style id="current-color-scheme">.ColorScheme-Text { color: #8b95a5; }.ColorScheme-Highlight { color: #8b95a5; }</style>
+  <path class="ColorScheme-Text" d="M14 34h36a9 9 0 0 0 0-18 14 14 0 0 0-27 5 8 8 0 0 0-9 13Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <g class="ColorScheme-Highlight" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 40v12M17 43l10 6M27 43l-10 6M43 42v12M38 45l10 6M48 45l-10 6"/></g>
+</svg>

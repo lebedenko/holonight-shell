@@ -8,6 +8,14 @@ set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
 
+install(
+  FILES LICENSE THIRD_PARTY_NOTICES.md
+        LICENSES/GPL-3.0-or-later.txt
+        LICENSES/HPND-sell-variant.txt
+        LICENSES/MIT.txt
+  DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
+)
+
 # The shell loads QML modules dynamically from the runtime Qt installation. Some
 # distro packages provide QML runtime plugins without matching CMake plugin
 # targets, so avoid auto-linking QML plugins during executable finalization.

@@ -98,23 +98,19 @@ class FakeWeatherProvider : public WeatherProvider {
 // --- Part 1: Icon Mapping Tests (existing) ---
 
 TEST(WeatherService, IconPathMapsKnownDayAndNightConditions) {
-  EXPECT_EQ(WeatherService::iconPath(800, true), weatherIcon(QStringLiteral("wsymbol_0001_sunny.svg")));
-  EXPECT_EQ(WeatherService::iconPath(800, false), weatherIcon(QStringLiteral("wsymbol_0008_clear_sky_night.svg")));
-
-  EXPECT_EQ(WeatherService::iconPath(500, true),
-            weatherIcon(QStringLiteral("wsymbol_0017_cloudy_with_light_rain.svg")));
-  EXPECT_EQ(WeatherService::iconPath(500, false),
-            weatherIcon(QStringLiteral("wsymbol_0033_cloudy_with_light_rain_night.svg")));
-}
-
-TEST(WeatherService, IconPathUsesSameIconWhenNoNightVariantExists) {
-  EXPECT_EQ(WeatherService::iconPath(762, true), weatherIcon(QStringLiteral("wsymbol_0091_volcanic_ash.svg")));
-  EXPECT_EQ(WeatherService::iconPath(762, false), weatherIcon(QStringLiteral("wsymbol_0091_volcanic_ash.svg")));
+  const std::vector<std::pair<int, QString>> cases{{200, "11"}, {299, "11"}, {300, "09"}, {399, "09"}, {500, "10"},
+                                                   {504, "10"}, {511, "13"}, {520, "09"}, {531, "09"}, {600, "13"},
+                                                   {699, "13"}, {700, "50"}, {799, "50"}, {800, "01"}, {801, "02"},
+                                                   {802, "03"}, {803, "04"}, {804, "04"}};
+  for (const auto& [condition_id, icon] : cases) {
+    EXPECT_EQ(WeatherService::iconPath(condition_id, true), weatherIcon(icon + QStringLiteral("d.svg")));
+    EXPECT_EQ(WeatherService::iconPath(condition_id, false), weatherIcon(icon + QStringLiteral("n.svg")));
+  }
 }
 
 TEST(WeatherService, IconPathFallsBackForUnknownCondition) {
-  EXPECT_EQ(WeatherService::iconPath(9999, true), weatherIcon(QStringLiteral("wsymbol_0999_unknown.svg")));
-  EXPECT_EQ(WeatherService::iconPath(9999, false), weatherIcon(QStringLiteral("wsymbol_0999_unknown.svg")));
+  EXPECT_EQ(WeatherService::iconPath(9999, true), weatherIcon(QStringLiteral("03d.svg")));
+  EXPECT_EQ(WeatherService::iconPath(9999, false), weatherIcon(QStringLiteral("03n.svg")));
 }
 
 // --- Part 2: Deterministic Response Parsing Tests ---

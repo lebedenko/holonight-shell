@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style id="current-color-scheme">.ColorScheme-Text { color: #8b95a5; }.ColorScheme-Highlight { color: #8b95a5; }</style>
+  <defs><linearGradient id="fade-out" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity="1"/><stop offset="1" stop-opacity="0"/></linearGradient><linearGradient id="fade-in" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity="0"/><stop offset="1" stop-opacity="1"/></linearGradient><mask id="upper" mask-type="alpha"><rect x="0" y="34" width="64" height="24" fill="url(#fade-out)"/></mask><mask id="lower" mask-type="alpha"><rect x="0" y="34" width="64" height="24" fill="url(#fade-in)"/></mask></defs>
+  <path class="ColorScheme-Text" d="M14 35h36a9 9 0 0 0 0-18 14 14 0 0 0-27 5 8 8 0 0 0-9 13Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="ColorScheme-Text" d="M22 38l-6 18M34 38l-6 18M46 38l-6 18" mask="url(#upper)" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path class="ColorScheme-Highlight" d="M22 38l-6 18M34 38l-6 18M46 38l-6 18" mask="url(#lower)" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+</svg>

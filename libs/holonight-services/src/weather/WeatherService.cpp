@@ -7,11 +7,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QPair>
 #include <QSaveFile>
 
 #include <algorithm>
@@ -163,57 +161,18 @@ QList<DailyEntry> dailyFromJson(const QJsonArray& arr) {
 
 // ---- Icon mapping ------------------------------------------------------------------------
 
-using IconPair = QPair<QString, QString>;  // {day filename, night filename}
-
-const QHash<int, IconPair>& iconTable() {
-  static const QHash<int, IconPair> kTable = [] {
-    QHash<int, IconPair> map;
-    const auto add = [&map](std::initializer_list<int> ids, const char* day, const char* night) {
-      for (int code : ids) {
-        map.insert(code, {QString::fromLatin1(day), QString::fromLatin1(night)});
-      }
-    };
-    // Thunderstorm (2xx)
-    add({200, 201, 202, 230, 231, 232}, "wsymbol_0016_thundery_showers.svg", "wsymbol_0032_thundery_showers_night.svg");
-    add({210, 211, 212, 221}, "wsymbol_0024_thunderstorms.svg", "wsymbol_0040_thunderstorms_night.svg");
-    // Drizzle (3xx)
-    add({300, 301, 302, 310, 311}, "wsymbol_0048_drizzle.svg", "wsymbol_0066_drizzle_night.svg");
-    add({312}, "wsymbol_0081_heavy_drizzle.svg", "wsymbol_0082_heavy_drizzle_night.svg");
-    add({313, 314, 321}, "wsymbol_0009_light_rain_showers.svg", "wsymbol_0025_light_rain_showers_night.svg");
-    // Rain (5xx)
-    add({500, 501}, "wsymbol_0017_cloudy_with_light_rain.svg", "wsymbol_0033_cloudy_with_light_rain_night.svg");
-    add({502, 503}, "wsymbol_0018_cloudy_with_heavy_rain.svg", "wsymbol_0034_cloudy_with_heavy_rain_night.svg");
-    add({504}, "wsymbol_0051_extreme_rain.svg", "wsymbol_0069_extreme_rain_night.svg");
-    add({511}, "wsymbol_0050_freezing_rain.svg", "wsymbol_0068_freezing_rain_night.svg");
-    add({520, 521}, "wsymbol_0009_light_rain_showers.svg", "wsymbol_0025_light_rain_showers_night.svg");
-    add({522}, "wsymbol_0010_heavy_rain_showers.svg", "wsymbol_0026_heavy_rain_showers_night.svg");
-    add({531}, "wsymbol_0085_extreme_rain_showers.svg", "wsymbol_0086_extreme_rain_showers_night.svg");
-    // Snow (6xx)
-    add({600, 601}, "wsymbol_0019_cloudy_with_light_snow.svg", "wsymbol_0035_cloudy_with_light_snow_night.svg");
-    add({602}, "wsymbol_0020_cloudy_with_heavy_snow.svg", "wsymbol_0036_cloudy_with_heavy_snow_night.svg");
-    add({611, 612, 615, 616}, "wsymbol_0021_cloudy_with_sleet.svg", "wsymbol_0037_cloudy_with_sleet_night.svg");
-    add({613}, "wsymbol_0087_heavy_sleet_showers.svg", "wsymbol_0088_heavy_sleet_showers_night.svg");
-    add({620}, "wsymbol_0011_light_snow_showers.svg", "wsymbol_0027_light_snow_showers_night.svg");
-    add({621}, "wsymbol_0012_heavy_snow_showers.svg", "wsymbol_0028_heavy_snow_showers_night.svg");
-    add({622}, "wsymbol_0052_extreme_snow.svg", "wsymbol_0070_extreme_snow_night.svg");
-    // Atmosphere (7xx)
-    add({701}, "wsymbol_0006_mist.svg", "wsymbol_0063_mist_night.svg");
-    add({711}, "wsymbol_0055_smoke.svg", "wsymbol_0073_smoke_night.svg");
-    add({721}, "wsymbol_0005_hazy_sun.svg", "wsymbol_0063_mist_night.svg");
-    add({731, 751, 761}, "wsymbol_0056_dust_sand.svg", "wsymbol_0074_dust_sand_night.svg");
-    add({741}, "wsymbol_0007_fog.svg", "wsymbol_0064_fog_night.svg");
-    add({762}, "wsymbol_0091_volcanic_ash.svg", "wsymbol_0091_volcanic_ash.svg");
-    add({771}, "wsymbol_0060_windy.svg", "wsymbol_0078_windy_night.svg");
-    add({781}, "wsymbol_0079_tornado.svg", "wsymbol_0079_tornado.svg");
-    // Clear / clouds (8xx)
-    add({800}, "wsymbol_0001_sunny.svg", "wsymbol_0008_clear_sky_night.svg");
-    add({801}, "wsymbol_0002_sunny_intervals.svg", "wsymbol_0041_partly_cloudy_night.svg");
-    add({802}, "wsymbol_0003_white_cloud.svg", "wsymbol_0042_cloudy_night.svg");
-    add({803}, "wsymbol_0043_mostly_cloudy.svg", "wsymbol_0044_mostly_cloudy_night.svg");
-    add({804}, "wsymbol_0004_black_low_cloud.svg", "wsymbol_0004_black_low_cloud.svg");
-    return map;
-  }();
-  return kTable;
+QString iconCode(int condition_id) {
+  if (condition_id >= 200 && condition_id <= 299) return QStringLiteral("11");
+  if ((condition_id >= 300 && condition_id <= 399) || (condition_id >= 520 && condition_id <= 531))
+    return QStringLiteral("09");
+  if (condition_id >= 500 && condition_id <= 504) return QStringLiteral("10");
+  if (condition_id == 511 || (condition_id >= 600 && condition_id <= 699)) return QStringLiteral("13");
+  if (condition_id >= 700 && condition_id <= 799) return QStringLiteral("50");
+  if (condition_id == 800) return QStringLiteral("01");
+  if (condition_id == 801) return QStringLiteral("02");
+  if (condition_id == 802) return QStringLiteral("03");
+  if (condition_id == 803 || condition_id == 804) return QStringLiteral("04");
+  return QStringLiteral("03");
 }
 
 }  // namespace
@@ -544,12 +503,7 @@ void WeatherService::rebuildForecastVariants() {
 
 QString WeatherService::iconPath(int condition_id, bool is_day) {
   const QString prefix = QStringLiteral("qrc:/HolonightShell/weather/");
-  const auto& table = iconTable();
-  const auto found = table.constFind(condition_id);
-  if (found == table.constEnd()) {
-    return prefix + QStringLiteral("wsymbol_0999_unknown.svg");
-  }
-  return prefix + (is_day ? found->first : found->second);
+  return prefix + iconCode(condition_id) + (is_day ? QLatin1String("d.svg") : QLatin1String("n.svg"));
 }
 
 QString WeatherService::cachePath() {
