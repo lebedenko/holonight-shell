@@ -1,7 +1,7 @@
 # Agent Window Activation — Tasks
 
 **Initiative work package:** `ANWA-101`
-**Implementation baseline:** `b48574d39a83943cb7c6fa012ed0066bb8120399`
+**Implementation baseline:** `dd78e9961ef38770f933a9dad94ce5c47e019ae0`
 
 All tasks are intentionally unchecked. Complete and commit this work package only in `holonight-shell`.
 

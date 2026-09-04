@@ -3,7 +3,7 @@
 **Initiative:** ACF-006
 **Date:** 2026-08-07
 **Status:** In Progress
-**Repository baseline:** `4fe75168632c43476ed862c70c63b95f63e4f292`
+**Repository baseline:** `d8fc52c5e9de711d92b238f9667313d1168f39b1`
 **Umbrella contract:** `623129188f7deeebf943857f0c4b3691c92d63c0`
 **Appearance provider:** `holonight-config` `81b01d3ae8433f3a4b017db2feb588a1ee62b714`
 **Qt provider:** `holonight-qt` `6f591cbdfb8c8e887e87e43a1c4e0c48c1f5f39d`

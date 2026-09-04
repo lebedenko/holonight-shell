@@ -1,7 +1,7 @@
 # SDD Tasks — appearance-configuration-foundation
 
 Umbrella ACF-006 is `Ready`. Implementation started from Shell
-`4fe75168632c43476ed862c70c63b95f63e4f292` against umbrella
+`d8fc52c5e9de711d92b238f9667313d1168f39b1` against umbrella
 `623129188f7deeebf943857f0c4b3691c92d63c0`, `holonight-config`
 `81b01d3ae8433f3a4b017db2feb588a1ee62b714`, and `holonight-qt`
 `6f591cbdfb8c8e887e87e43a1c4e0c48c1f5f39d`.

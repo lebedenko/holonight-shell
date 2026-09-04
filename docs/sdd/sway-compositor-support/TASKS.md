@@ -8,7 +8,7 @@
 | SWS-102-04 | Install descriptor-driven sessions and compositor-aware portal routing | Done |
 | SWS-102-05 | Run focused and full verification, record results, and publish the Shell series | Done |
 
-Iteration 3 baseline: `holonight-shell@34580eaad4da8a5440c561c0fe2e82c5f3189727`
+Iteration 3 baseline: `holonight-shell@96cb9aa56a97c66d3036a421519110fa21f72dbe`
 
 Provider: `holonight-qt@a45f7552054abbc6cbd66609e802b43b9b8ee894`
 
@@ -75,7 +75,7 @@ Provider: `holonight-qt@a45f7552054abbc6cbd66609e802b43b9b8ee894`
 
 ## SWS-102-05 completion verification — 2026-08-14
 
-- Published implementation completion commit: `holonight-shell@248a61d9f947b56e6fddeb60d8e3c06a0228a13f`
+- Published implementation completion commit: `holonight-shell@bb2e6e13a02dbd3f960b8b56afc5b26fa49e6c1c`
   (`ci: install system services dependency`). This handoff record is the final Shell documentation commit for
   SWS-102; umbrella status and gitlink integration remain owned by `SWS-201`.
 - Accepted dependency revisions:
@@ -135,7 +135,7 @@ handoff.
 - `task sway-runtime-smoke`: passed outside the filesystem sandbox, including named-workspace activation and Shell
   startup. The sandboxed attempt retained diagnostics at `/tmp/holonight-sway-smoke.9o109E`.
 - Canonical CI [31898953265](https://github.com/lebedenko/holonight-shell/actions/runs/31898953265) passed both `Build
-  and test` and `Static checks` at exact implementation revision `743ddb1e8867ac6d6a53d5ff710acb0ab98cd77a`.
+  and test` and `Static checks` at exact implementation revision `b704736a40758c91b0ad91b441f1f55643eb3af3`.
 
 `SWS-102-05` is Done. Manual compositor and surface acceptance remains owned by umbrella integration task
 `SWS-201`.

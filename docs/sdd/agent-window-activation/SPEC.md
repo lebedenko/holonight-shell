@@ -2,7 +2,7 @@
 
 **Initiative:** `agent-notification-window-activation`
 **Work package:** `ANWA-101`
-**Baseline:** `b48574d39a83943cb7c6fa012ed0066bb8120399`
+**Baseline:** `dd78e9961ef38770f933a9dad94ce5c47e019ae0`
 **Status:** Accepted for implementation
 
 ## Scope
