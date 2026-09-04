@@ -114,6 +114,7 @@ holonight_add_test_exe(test_holonight_services
   test_libsecret_credential_storage.cpp
   test_lid_state_monitor.cpp
   test_low_battery_monitor.cpp
+  test_window_activation_server.cpp
   test_suspend_inhibitor_service.cpp
   test_logind_session_resolver.cpp
   test_mpris_metadata.cpp

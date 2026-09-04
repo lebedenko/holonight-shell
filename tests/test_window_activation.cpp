@@ -9,7 +9,7 @@ namespace {
 class RejectingActivationBackend final : public CompositorBackend {
  public:
   void start() override {}
-  void activateWorkspace(const QString&) override {}
+  void activateWorkspace(const QString& /*workspace_id*/) override {}
 };
 
 WindowActivationRequest request(QList<quint32> lineage, QString title = {}) {

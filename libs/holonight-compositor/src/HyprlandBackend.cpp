@@ -151,7 +151,7 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
   if (!success) {
     const Phase failed_phase = phase_;
     phase_ = Phase::Idle;
-    if (failed_phase == Phase::WindowActivation) {
+    if (failed_phase == Phase::WindowActivation || failed_phase == Phase::LuaWindowActivation) {
       emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation transport failed")});
       refresh_dirty_ = true;
     } else if (failed_phase == Phase::WorkspaceActivation || failed_phase == Phase::LuaActivation) {
@@ -195,6 +195,14 @@ void HyprlandBackend::handleCommand(const QByteArray& response, bool success) {
     refresh_dirty_ = true;
     drainWork();
   } else if (phase_ == Phase::WindowActivation) {
+    if (responseIsError(response)) {
+      runLuaWindowActivation();
+      return;
+    }
+    phase_ = Phase::Idle;
+    refresh_dirty_ = true;
+    drainWork();
+  } else if (phase_ == Phase::LuaWindowActivation) {
     phase_ = Phase::Idle;
     if (responseIsError(response)) {
       emit snapshotReady({.diagnostic = QStringLiteral("Hyprland window activation rejected")});
@@ -228,12 +236,23 @@ void HyprlandBackend::drainWork() {
 }
 
 bool HyprlandBackend::beginWindowActivation(const QString& address) {
+  window_activation_address_ = address;
   phase_ = Phase::WindowActivation;
   if (transport_->runCommand(QByteArrayLiteral("dispatch focuswindow address:") + address.toUtf8())) {
     return true;
   }
   phase_ = Phase::Idle;
   return false;
+}
+
+void HyprlandBackend::runLuaWindowActivation() {
+  phase_ = Phase::LuaWindowActivation;
+  const QByteArray selector = QByteArrayLiteral("address:") + escapeLuaString(window_activation_address_);
+  const QByteArray command =
+      QByteArrayLiteral("dispatch hl.dsp.focus({ window = \"") + selector + QByteArrayLiteral("\" })");
+  if (!transport_->runCommand(command)) {
+    fail(QStringLiteral("Hyprland Lua window activation failed"));
+  }
 }
 
 void HyprlandBackend::runLuaActivation() {

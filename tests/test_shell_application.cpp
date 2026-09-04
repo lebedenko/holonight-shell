@@ -1,6 +1,8 @@
+#include "CompositorService.h"
 #include "NotificationService.h"
 #include "SessionService.h"
 #include "ShellApplication.h"
+#include "WindowActivationServer.h"
 
 #include <QSignalSpy>
 #include <QTest>
@@ -45,4 +47,23 @@ TEST(ShellApplicationTest, SessionCommandFailureCreatesNotification) {
   EXPECT_EQ(idx.data(NotificationService::SummaryRole).toString(), QStringLiteral("Session command failed: lock"));
   EXPECT_EQ(idx.data(NotificationService::BodyRole).toString(),
             QStringLiteral("failed to launch loginctl lock-session"));
+}
+
+TEST(ShellApplicationTest, OwnsWindowActivationServerForItsCompositor) {
+  ShellApplication app;
+
+  ASSERT_NE(app.windowActivationServerForTest(), nullptr);
+  EXPECT_EQ(app.windowActivationServerForTest()->parent(), &app);
+  EXPECT_EQ(app.windowActivationServerForTest()->compositor(), app.compositorServiceForTest());
+}
+
+TEST(ShellApplicationTest, WindowActivationRegistrationConflictDoesNotAbortServiceStartup) {
+  CompositorService blocker_compositor(CompositorKind::Generic);
+  WindowActivationServer blocker(&blocker_compositor);
+  ASSERT_TRUE(blocker.start());
+  ShellApplication app;
+
+  app.startServices();
+
+  EXPECT_FALSE(app.windowActivationServerForTest()->start());
 }

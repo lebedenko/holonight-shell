@@ -53,6 +53,7 @@ class LidStateMonitor;
 class LowBatteryMonitor;
 class SuspendInhibitorService;
 class WeatherService;
+class WindowActivationServer;
 
 class ShellApplication : public QObject {
   Q_OBJECT
@@ -80,6 +81,8 @@ class ShellApplication : public QObject {
   }
   [[nodiscard]] NotificationService* notificationServiceForTest() const { return notification_service_; }
   [[nodiscard]] SessionService* sessionServiceForTest() const { return session_; }
+  [[nodiscard]] WindowActivationServer* windowActivationServerForTest() const { return window_activation_server_; }
+  [[nodiscard]] CompositorService* compositorServiceForTest() const { return compositor_; }
 #endif
 
  Q_SIGNALS:
@@ -118,6 +121,7 @@ class ShellApplication : public QObject {
   ConfigService* config_service_ = nullptr;
   CalendarService* calendar_service_ = nullptr;
   CompositorService* compositor_ = nullptr;
+  WindowActivationServer* window_activation_server_ = nullptr;
   KeyboardLayoutService* keyboard_layout_ = nullptr;
   AiChatService* ai_chat_service_ = nullptr;
   SettingsNavigationService* settings_navigation_service_ = nullptr;

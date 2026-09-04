@@ -54,6 +54,7 @@ using namespace HoloNight::ShellConfig;
 #include "WeatherIconBridge.h"
 #include "WeatherService.h"
 #include "WidgetManager.h"
+#include "WindowActivationServer.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -104,6 +105,7 @@ ShellApplication::ShellApplication(QObject* parent)
       config_service_(new ConfigService(this)),
       calendar_service_(new CalendarService(this)),
       compositor_(new CompositorService(this)),
+      window_activation_server_(new WindowActivationServer(compositor_, this)),
       keyboard_layout_(new KeyboardLayoutService(this)),
       ai_chat_service_(new AiChatService(this)),
       settings_navigation_service_(new SettingsNavigationService(this)),
@@ -229,6 +231,7 @@ void ShellApplication::startServices() {
   });
 
   compositor_->start();
+  (void)window_activation_server_->start();
   keyboard_layout_->start();
   battery_->start();
   audio_->start();

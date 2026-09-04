@@ -21,6 +21,9 @@ bool waitUntil(const std::function<bool()>& predicate) {
   return false;
 }
 
+// GTest fixtures expose state to generated subclasses; retain the project's private-member suffix
+// convention while allowing TEST_F bodies to address the fixture directly.
+// NOLINTBEGIN(readability-identifier-naming, cppcoreguidelines-non-private-member-variables-in-classes)
 class SwayBackendTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -73,7 +76,7 @@ class SwayBackendTest : public testing::Test {
     return frames.value(0);
   }
 
-  void writeFrame(QLocalSocket* socket, quint32 type, const QByteArray& payload) {
+  static void writeFrame(QLocalSocket* socket, quint32 type, const QByteArray& payload) {
     socket->write(encodeSwayIpcFrame(type, payload));
     socket->flush();
   }
@@ -99,6 +102,7 @@ class SwayBackendTest : public testing::Test {
   SwayIpcDecoder second_decoder_;
   QList<SwayIpcFrame> queued_request_frames_;
 };
+// NOLINTEND(readability-identifier-naming, cppcoreguidelines-non-private-member-variables-in-classes)
 }  // namespace
 
 TEST(SwayBackendDisconnected, ValidatesBeforeReportingDisconnected) {

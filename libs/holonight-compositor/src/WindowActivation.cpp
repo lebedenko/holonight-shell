@@ -2,6 +2,7 @@
 
 #include <QHash>
 
+#include <algorithm>
 #include <limits>
 
 namespace {
@@ -16,12 +17,7 @@ bool isValidWindowActivationRequest(const WindowActivationRequest& request) {
       containsNull(request.title_hint)) {
     return false;
   }
-  for (const quint32 pid : request.process_lineage) {
-    if (pid == 0) {
-      return false;
-    }
-  }
-  return true;
+  return std::ranges::all_of(request.process_lineage, [](quint32 pid) { return pid != 0; });
 }
 
 WindowActivationResolution resolveWindowActivation(const WindowActivationRequest& request,

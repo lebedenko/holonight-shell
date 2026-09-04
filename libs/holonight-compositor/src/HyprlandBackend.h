@@ -24,13 +24,15 @@ class HyprlandBackend final : public CompositorBackend {
     Clients,
     WorkspaceActivation,
     LuaActivation,
-    WindowActivation
+    WindowActivation,
+    LuaWindowActivation
   };
   void scheduleRefresh();
   void beginRefresh();
   void handleCommand(const QByteArray& response, bool success);
   void handleEvent(const QByteArray& line);
   void runLuaActivation();
+  void runLuaWindowActivation();
   void drainWork();
   bool beginWindowActivation(const QString& address);
   void publishClients(const QByteArray& clients_json);
@@ -41,6 +43,7 @@ class HyprlandBackend final : public CompositorBackend {
   QByteArray monitors_;
   QByteArray workspaces_;
   QString activation_id_;
+  QString window_activation_address_;
   bool activation_is_special_{false};
   QString pending_activation_;
   QList<WindowActivationCandidate> activation_candidates_;

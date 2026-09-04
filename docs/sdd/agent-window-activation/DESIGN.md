@@ -41,7 +41,9 @@ The existing serialized `HyprlandIpcTransport` command path remains the only IPC
 
 - Extend `j/clients` parsing with the positive `pid`, existing `title`, and existing client `address`.
 - Keep a private current inventory of `{pid, title, address}` after a valid client refresh.
-- Once a unique candidate is resolved, enqueue exactly `dispatch focuswindow address:<address>` on the command socket.
+- Once a unique candidate is resolved, enqueue `dispatch focuswindow address:<address>` on the command socket and
+  fall back to `dispatch hl.dsp.focus({ window = "address:<address>" })` when current Lua-based Hyprland rejects the
+  legacy dispatcher syntax.
 - Treat an unavailable transport, an in-flight command plus an occupied one-entry activation queue, a rejected
   `runCommand`, or an `error:` response as failure/diagnostic state.
 - Refresh after completion, but do not re-resolve the accepted request against a later inventory.
@@ -67,8 +69,9 @@ helpers. Generic Wayland has no activation implementation in this work package.
 
 ## D-Bus lifecycle and diagnostics
 
-`WindowActivationServer::start()` registers the interface on the same session-bus object/service lifecycle used by the
-shell application. Registration failure is logged and leaves the provider unavailable. The method performs only
+`WindowActivationServer::start()` owns `org.holonight.Shell` and exports `/org/holonight/Shell` with interface
+`org.holonight.Shell.WindowActivation1` on the session bus. Registration failure is logged and leaves the provider
+unavailable. The method performs only
 bounded validation and in-memory resolution before queuing existing non-blocking compositor IPC; it does not enter a
 nested event loop.
 

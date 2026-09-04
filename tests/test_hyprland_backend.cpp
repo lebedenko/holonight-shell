@@ -37,7 +37,7 @@ void finishRefresh(FakeHyprlandTransport* transport, const QByteArray& clients =
   transport->finish(clients);
 }
 
-QByteArray client(QString address, quint32 pid, QString title, int workspace = 1) {
+QByteArray client(const QString& address, quint32 pid, const QString& title, int workspace = 1) {
   return QStringLiteral(
              R"([{"address":"%1","class":"app","title":"%2","pid":%3,"workspace":{"id":%4},"focusHistoryID":0}])")
       .arg(address, title, QString::number(pid), QString::number(workspace))
@@ -136,7 +136,7 @@ TEST(HyprlandBackend, ImmediateSubmissionFailureReturnsFailed) {
       qvariant_cast<CompositorSnapshot>(snapshots.last().first()).diagnostic.contains(QStringLiteral("transport")));
 }
 
-TEST(HyprlandBackend, ActivationFailuresPublishDiagnosticsAndRefresh) {
+TEST(HyprlandBackend, FallsBackToLuaWindowActivationAndReportsRejection) {
   auto transport = std::make_unique<FakeHyprlandTransport>();
   auto* fake = transport.get();
   HyprlandBackend backend(std::move(transport));
@@ -146,6 +146,8 @@ TEST(HyprlandBackend, ActivationFailuresPublishDiagnosticsAndRefresh) {
   finishRefresh(fake, client(QStringLiteral("0xa"), 42, QStringLiteral("Private title")));
 
   ASSERT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
+  fake->finish(QByteArrayLiteral("error: legacy dispatcher unsupported"));
+  ASSERT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch hl.dsp.focus({ window = \"address:0xa\" })"));
   fake->finish(QByteArrayLiteral("error: denied"));
   processDeferred();
   EXPECT_TRUE(

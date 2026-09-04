@@ -4,6 +4,7 @@
 #include <QString>
 #include <QtTypes>
 
+#include <cstdint>
 #include <optional>
 
 struct WindowActivationRequest {
@@ -23,7 +24,7 @@ struct WindowActivationCandidate {
   bool operator==(const WindowActivationCandidate&) const = default;
 };
 
-enum class WindowActivationResult {
+enum class WindowActivationResult : std::uint8_t {
   Accepted,
   InvalidRequest,
   Unsupported,
