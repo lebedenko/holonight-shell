@@ -106,3 +106,13 @@ if grep -Rqs --include='*.qml' 'onFixedFontChanged' "${repo_root}/apps"; then
 fi
 
 echo "QML module packaging check passed."
+
+authentication_module_dir="${build_root}/Holonight/Authentication"
+if ! grep -Fq 'AuthenticationPromptModel' "${authentication_module_dir}/holonight_authentication_qml.qmltypes"; then
+  echo "Authentication QML metadata is missing AuthenticationPromptModel" >&2
+  exit 1
+fi
+for component in AuthenticationDialog AuthenticationPrompt IdentitySelector MessageList; do
+  grep -Fqx "${component} 1.0 ${component}.qml" "${authentication_module_dir}/qmldir"
+done
+echo "Authentication QML metadata check passed."

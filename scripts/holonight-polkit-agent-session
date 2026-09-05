@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fail() { printf 'frontend=polkit phase=routing classification=%s\n' "$1" >&2; exit 1; }
+
+[[ $# -eq 1 && -n "$1" && "$1" != *[!A-Za-z0-9_.-]* ]] || fail invalid-session
+required_session="$1"
+wrapper_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+peer_environment_command="${HOLONIGHT_POLKIT_WAYLAND_ENVIRONMENT:-${wrapper_directory}/holonight-wayland-session-environment}"
+peer_environment_used=false
+
+loginctl_command="${HOLONIGHT_POLKIT_LOGINCTL:-loginctl}"
+systemctl_command="${HOLONIGHT_POLKIT_SYSTEMCTL:-systemctl}"
+sleep_command="${HOLONIGHT_POLKIT_SLEEP:-sleep}"
+stat_command="${HOLONIGHT_POLKIT_STAT:-stat}"
+proc_root="${HOLONIGHT_POLKIT_PROC_ROOT:-/proc}"
+cgroup_root="${HOLONIGHT_POLKIT_CGROUP_ROOT:-/sys/fs/cgroup}"
+current_uid="${HOLONIGHT_POLKIT_CURRENT_UID:-$(id -u)}"
+timeout="${HOLONIGHT_POLKIT_SESSION_TIMEOUT:-60}"
+expected_runtime="${HOLONIGHT_POLKIT_RUNTIME_DIR:-/run/user/${current_uid}}"
+
+[[ "${current_uid}" =~ ^[0-9]+$ ]] || fail invalid-owner
+[[ "${timeout}" =~ ^[0-9]+$ ]] || fail invalid-timeout
+[[ "${proc_root}" == /* && "${cgroup_root}" == /* ]] || fail invalid-path
+[[ "${expected_runtime}" == /* ]] || fail invalid-path
+
+socket_is_usable() {
+  if [[ -n "${HOLONIGHT_POLKIT_SOCKET_CHECK:-}" ]]; then
+    "${HOLONIGHT_POLKIT_SOCKET_CHECK}" "$1"
+  else
+    [[ -S "$1" ]]
+  fi
+}
+
+read_property() {
+  "${loginctl_command}" show-session "${required_session}" -p "$1" --value 2>/dev/null || true
+}
+
+read_environment_value() {
+  local environment_file="$1" name="$2"
+  tr '\0' '\n' <"${environment_file}" | sed -n "s/^${name}=//p" | head -n1
+}
+
+clear_graphical_environment() {
+  unset XDG_SESSION_ID XDG_RUNTIME_DIR WAYLAND_DISPLAY DISPLAY QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME \
+    QT_QUICK_CONTROLS_STYLE XCURSOR_THEME
+}
+
+capture_peer_environment() {
+  local runtime="$1" entry
+  local -a entries=()
+  [[ -x "${peer_environment_command}" ]] || return 1
+  # A final marker distinguishes success from a helper that failed after output.
+  mapfile -d '' -t entries < <(
+    "${peer_environment_command}" "${required_session}" "${runtime}" && printf '%s\0' verified-environment-complete
+  )
+  (( ${#entries[@]} > 1 )) && [[ "${entries[-1]}" == verified-environment-complete ]] || return 1
+  clear_graphical_environment
+  for entry in "${entries[@]}"; do
+    case "${entry}" in
+      XDG_SESSION_ID=*|XDG_RUNTIME_DIR=*|WAYLAND_DISPLAY=*|QT_QPA_PLATFORM=*|QT_QPA_PLATFORMTHEME=*|QT_QUICK_CONTROLS_STYLE=*|XCURSOR_THEME=*)
+        export "${entry}"
+        ;;
+    esac
+  done
+  [[ "${XDG_SESSION_ID:-}" == "${required_session}" && "${XDG_RUNTIME_DIR:-}" == "${runtime}" &&
+     "${QT_QPA_PLATFORM:-}" == wayland && -n "${WAYLAND_DISPLAY:-}" && "${WAYLAND_DISPLAY}" != */* ]] || return 1
+  socket_is_usable "${runtime}/${WAYLAND_DISPLAY}" || return 1
+  peer_environment_used=true
+}
+
+capture_environment() {
+  local cgroup="$1" runtime="$2" process environment_file candidate_session candidate_wayland entry processes_file
+  local cgroup_directory="${cgroup_root}${cgroup}"
+  [[ -d "${cgroup_directory}" ]] || return 1
+
+  while IFS= read -r processes_file; do
+    while IFS= read -r process; do
+      [[ "${process}" =~ ^[0-9]+$ ]] || continue
+      environment_file="${proc_root}/${process}/environ"
+      [[ -r "${environment_file}" ]] || continue
+      [[ "$("${stat_command}" -c %u "${proc_root}/${process}" 2>/dev/null || true)" == "${current_uid}" ]] || continue
+      candidate_session="$(read_environment_value "${environment_file}" XDG_SESSION_ID)"
+      candidate_wayland="$(read_environment_value "${environment_file}" WAYLAND_DISPLAY)"
+      [[ "${candidate_session}" == "${required_session}" && -n "${candidate_wayland}" ]] || continue
+      [[ "${candidate_wayland}" != */* ]] && socket_is_usable "${runtime}/${candidate_wayland}" || continue
+
+      clear_graphical_environment
+      while IFS= read -r entry; do
+        case "${entry}" in
+          XDG_SESSION_ID=*|XDG_RUNTIME_DIR=*|WAYLAND_DISPLAY=*|DISPLAY=*|QT_QPA_PLATFORM=*|QT_QPA_PLATFORMTHEME=*|QT_QUICK_CONTROLS_STYLE=*|XCURSOR_THEME=*)
+            export "${entry}"
+            ;;
+        esac
+      done < <(tr '\0' '\n' <"${environment_file}")
+      export XDG_SESSION_ID="${required_session}"
+      export XDG_RUNTIME_DIR="${runtime}"
+      return 0
+    done <"${processes_file}"
+  done < <(find "${cgroup_directory}" -type f -name cgroup.procs -print 2>/dev/null)
+  return 1
+}
+
+global_environment_matches() {
+  local global_environment="$1" name global_value
+  for name in XDG_SESSION_ID XDG_RUNTIME_DIR WAYLAND_DISPLAY DISPLAY QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME; do
+    # The peer route is Wayland-only; Xwayland's DISPLAY is not present in the
+    # compositor's initial environment and is deliberately not inherited.
+    [[ "${peer_environment_used}" == true && "${name}" == DISPLAY ]] && continue
+    global_value="$(sed -n "s/^${name}=//p" <<<"${global_environment}" | head -n1)"
+    [[ -z "${global_value}" || "${global_value}" == "${!name-}" ]] || return 1
+  done
+}
+
+for ((attempt=0; attempt<=timeout; ++attempt)); do
+  owner="$(read_property User)"
+  type="$(read_property Type)"
+  active="$(read_property Active)"
+  state="$(read_property State)"
+  runtime="$("${loginctl_command}" show-user "${current_uid}" -p RuntimePath --value 2>/dev/null || true)"
+  scope="$(read_property Scope)"
+
+  if [[ "${owner}" == "${current_uid}" && "${type}" == wayland && "${active}" == yes && "${state}" == active &&
+        "${runtime}" == "${expected_runtime}" && -d "${runtime}" &&
+        "$("${stat_command}" -c %u "${runtime}" 2>/dev/null || true)" == "${current_uid}" && -n "${scope}" ]]; then
+    cgroup="$("${systemctl_command}" show "${scope}" -p ControlGroup --value 2>/dev/null || true)"
+    captured=false
+    if [[ "${cgroup}" == /* && "${cgroup}" != *[!A-Za-z0-9_./:@-]* &&
+          "${cgroup}" != *'/../'* && "${cgroup}" != */.. ]] && \
+      capture_environment "${cgroup}" "${runtime}"; then
+      captured=true
+    elif capture_peer_environment "${runtime}"; then
+      captured=true
+    fi
+    if [[ "${captured}" == true ]]; then
+      global_environment="$("${systemctl_command}" --user show-environment 2>/dev/null || true)"
+      global_environment_matches "${global_environment}" || fail conflicting-global-environment
+      exec "${HOLONIGHT_POLKIT_AGENT_EXECUTABLE:-${wrapper_directory}/holonight-polkit-agent}"
+    fi
+  fi
+
+  (( attempt == timeout )) && break
+  "${sleep_command}" 1
+done
+fail session-not-ready

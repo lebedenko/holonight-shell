@@ -245,10 +245,19 @@ else
   status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland or Sway"
 fi
 
-case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
-  *:/usr/share/holonight/xdg:*) status OK "HoloNight portal routing layer is active" ;;
-  *) status WARN "HoloNight portal routing layer is absent from XDG_CONFIG_DIRS" ;;
-esac
+routing_layer_found=false
+IFS=':' read -r -a routing_dirs <<<"${XDG_CONFIG_DIRS:-/etc/xdg}"
+for directory in "${routing_dirs[@]}"; do
+  if [[ -f "${directory}/xdg-desktop-portal/hyprland-portals.conf" &&
+        -f "${directory}/xdg-desktop-portal/sway-portals.conf" ]]; then
+    status OK "Compositor portal routing layer is active: ${directory}"
+    routing_layer_found=true
+    break
+  fi
+done
+if [[ "${routing_layer_found}" != true ]]; then
+  status WARN "Compositor portal routing layer is absent from XDG_CONFIG_DIRS"
+fi
 
 holonight_portal_file=""
 holonight_portals_conf=""

@@ -69,4 +69,33 @@ if (( ${#local_layer_shell_violations[@]} > 0 )); then
   exit 1
 fi
 
+authentication_violations=()
+while IFS= read -r violation; do authentication_violations+=("${violation}"); done < <(
+  grep -RInE --include='*.h' --include='*.cpp' --include='*.qml' --include='CMakeLists.txt' \
+    '(HolonightShell|holonight_(app|services|surfaces|compositor)|LayerSurface|layer-shell|ControlServer)' \
+    "${repo_root}/apps/authentication" "${repo_root}/libs/holonight-authentication" \
+    "${repo_root}/qml/Authentication" || true
+)
+if (( ${#authentication_violations[@]} > 0 )); then
+  {
+    echo "Authentication targets must remain independent of shell-owned code:"
+    printf '  %s\n' "${authentication_violations[@]}"
+  } >&2
+  exit 1
+fi
+
+authentication_install_violations=()
+while IFS= read -r violation; do authentication_install_violations+=("${violation}"); done < <(
+  grep -RInE --exclude='check-architecture-boundaries.sh' --include='CMakeLists.txt' --include='*.cmake' --include='*.sh' \
+    '(/etc/sudo\.conf|systemctl[^#]*(enable|disable|mask|stop).*(polkit|policykit)|pkill[^#]*(polkit|policykit))' \
+    "${repo_root}/CMakeLists.txt" "${repo_root}/apps" "${repo_root}/cmake" "${repo_root}/scripts" || true
+)
+if (( ${#authentication_install_violations[@]} > 0 )); then
+  {
+    echo "Authentication packaging must not modify sudo policy or competing agents:"
+    printf '  %s\n' "${authentication_install_violations[@]}"
+  } >&2
+  exit 1
+fi
+
 echo "Architecture boundary check passed."

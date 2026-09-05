@@ -1,0 +1,4 @@
+#!/bin/sh
+# This root-owned acceptance probe takes no input and changes no system state.
+[ "$#" -eq 0 ] || exit 1
+printf '%s\n' 'HoloNight authentication acceptance succeeded'

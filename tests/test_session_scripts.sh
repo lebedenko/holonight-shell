@@ -17,7 +17,7 @@ make_fake() {
 
 make_compositor() {
   local name="$1"
-  make_fake "${name}" 'printf "compositor=%s desktop=%s session=%s type=%s menu=%s cursor=%s configdirs=%s qt=%s quick=%s style=%s hypr=%s sway=%s i3=%s\n" "${0##*/}" "${XDG_CURRENT_DESKTOP-}" "${XDG_SESSION_DESKTOP-}" "${XDG_SESSION_TYPE-}" "${XDG_MENU_PREFIX-}" "${XCURSOR_THEME-}" "${XDG_CONFIG_DIRS-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" "${HYPRLAND_INSTANCE_SIGNATURE-}" "${SWAYSOCK-}" "${I3SOCK-}" >>"${TEST_LOG}"'
+  make_fake "${name}" 'printf "compositor=%s desktop=%s session=%s type=%s menu=%s cursor=%s configdirs=%s qt=%s quick=%s style=%s hypr=%s sway=%s i3=%s sudo=%s ssh=%s prompt=%s\n" "${0##*/}" "${XDG_CURRENT_DESKTOP-}" "${XDG_SESSION_DESKTOP-}" "${XDG_SESSION_TYPE-}" "${XDG_MENU_PREFIX-}" "${XCURSOR_THEME-}" "${XDG_CONFIG_DIRS-}" "${QT_QPA_PLATFORMTHEME-}" "${QT_QUICK_CONTROLS_STYLE-}" "${QT_STYLE_OVERRIDE-}" "${HYPRLAND_INSTANCE_SIGNATURE-}" "${SWAYSOCK-}" "${I3SOCK-}" "${SUDO_ASKPASS-}" "${SSH_ASKPASS-}" "${SSH_ASKPASS_PROMPT-}" >>"${TEST_LOG}"'
 }
 
 make_compositor Hyprland
@@ -60,7 +60,9 @@ run_session() {
   local mode="$2"
   shift 2
   env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
-    HOLONIGHT_SESSION_MODE="${mode}" "$@" "${source_dir}/scripts/holonight-session" "${compositor}"
+    HOLONIGHT_PORTAL_CONFIG_DIR="${test_root}/installed/share/holonight/xdg" \
+    HOLONIGHT_SESSION_MODE="${mode}" HOLONIGHT_ASKPASS_BINDIR="${test_root}/installed/bin" \
+    "$@" "${source_dir}/scripts/holonight-session" "${compositor}"
 }
 
 make_adapter
@@ -74,14 +76,18 @@ for compositor in hyprland sway; do
     HYPRLAND_INSTANCE_SIGNATURE=stale-hypr HYPRLAND_CMD=stale-command SWAYSOCK=stale-sway I3SOCK=stale-i3
   assert_line "adapter query --appearance ${test_root}/override.toml --field cursor-theme"
   if [[ "${compositor}" == hyprland ]]; then
-    assert_match "compositor=Hyprland desktop=HoloNight:Hyprland session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=/usr/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr=stale-hypr sway= i3="
+    assert_match "compositor=Hyprland desktop=HoloNight:Hyprland session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr=stale-hypr sway= i3="
     assert_match "dbus --systemd SWAYSOCK= I3SOCK="
     assert_match "systemctl --user unset-environment SWAYSOCK I3SOCK"
   else
-    assert_match "compositor=sway desktop=HoloNight:sway session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=/usr/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr= sway=stale-sway i3=stale-i3"
+    assert_match "compositor=sway desktop=HoloNight:sway session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr= sway=stale-sway i3=stale-i3"
     assert_match "dbus --systemd HYPRLAND_INSTANCE_SIGNATURE= HYPRLAND_CMD="
     assert_match "systemctl --user unset-environment HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD"
   fi
+  assert_match "sudo=${test_root}/installed/bin/holonight-sudo-askpass ssh=${test_root}/installed/bin/holonight-ssh-askpass prompt="
+  assert_match "dbus --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP"
+  assert_match "SUDO_ASKPASS SSH_ASKPASS"
+  assert_match "systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP"
   if grep -F 'dbus --systemd WAYLAND_DISPLAY' "${log_file}" | grep -Fq QT_STYLE_OVERRIDE; then
     printf 'QT_STYLE_OVERRIDE must not be imported\n' >&2
     exit 1
@@ -173,14 +179,14 @@ for desktop in 'HoloNight:Hyprland' 'HoloNight:sway'; do
 XDG_CURRENT_DESKTOP=${desktop}
 ${marker_env}
 QT_STYLE_OVERRIDE=Unsupported" env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
-    HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 "${source_dir}/scripts/holonight-shell-systemd"
+    HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 "${source_dir}/scripts/holonight-shell-systemd"
   assert_line "${expected}"
 done
 
 # A stale marker from the non-selected compositor is insufficient.
 : >"${log_file}"
 FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nXDG_CURRENT_DESKTOP=HoloNight:sway\nHYPRLAND_INSTANCE_SIGNATURE=stale' \
-  env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
+  env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
   "${source_dir}/scripts/holonight-shell-systemd" >/dev/null 2>&1 || true
 if grep -Fq 'shell ' "${log_file}"; then
   printf 'wrapper accepted the wrong compositor marker\n' >&2

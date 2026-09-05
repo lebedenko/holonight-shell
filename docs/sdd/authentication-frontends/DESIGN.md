@@ -418,7 +418,8 @@ CMake requires Qt 6 Quick/QML support, the installed HoloNight QML packages,
 PolkitQt6 `Agent` version 0.200.0 or newer, and `polkit-agent-1` development
 metadata. Missing or old dependencies fail configuration with an actionable
 message. OpenSSH 8.2+ and sudo 1.8.15+ are runtime compatibility baselines, not
-libraries linked into the helper.
+libraries linked into the helper. Python 3 (standard library only) is required
+for the UWSM Wayland-peer discovery helper.
 
 Installation includes:
 
@@ -426,7 +427,8 @@ Installation includes:
 - the askpass implementation under `holonight-sudo-askpass`,
   `holonight-ssh-askpass`, and `holonight-askpass`;
 - the `Holonight.Authentication` QML module and its qmltypes metadata;
-- the session-keyed systemd user template and startup wrapper;
+- the session-keyed systemd user template, startup wrapper, and
+  `holonight-wayland-session-environment` discovery helper;
 - HoloNight session activation/environment integration.
 
 No install action reads or writes `/etc/sudo.conf`, disables a third-party
@@ -458,6 +460,22 @@ session-scoped Wayland socket/environment to be usable. It resolves and
 validates the session owner, type, active state, runtime directory,
 `WAYLAND_DISPLAY`, and other required Qt variables, then captures them into the
 child environment immediately before `exec`.
+
+The wrapper first checks processes inside the exact logind session scope.
+When UWSM moves the compositor to a user-service cgroup, a small Python helper
+connects to candidate `wayland-*` Unix sockets and obtains `SO_PEERCRED`.
+The socket and peer must belong to the current UID, and the peer process's
+original environment must name the required session and runtime directory.
+Only one matching compositor is accepted; stale sockets, other sessions, and
+ambiguous matches cannot select a display. The helper emits only the session,
+runtime, verified Wayland socket name, and allowlisted Qt/cursor settings.
+
+The peer route forces `QT_QPA_PLATFORM=wayland` and clears `DISPLAY`, because
+Xwayland may start after the compositor's original environment was created.
+An unrelated manager `DISPLAY` is therefore ignored on this Wayland-only route;
+manager session, runtime, Wayland, and Qt-setting conflicts are still rejected.
+A compositor that does not publish `XDG_SESSION_ID` in its original environment
+and has no usable session-scope descendant is deliberately not guessed.
 
 The wrapper must not choose a session by reading mutable global values from the
 user manager. If global `XDG_SESSION_ID`, `WAYLAND_DISPLAY`, or related state

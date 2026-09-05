@@ -1,0 +1,47 @@
+# Run at installation time: --prefix may differ from the configure-time prefix.
+# DESTDIR stages files only; it must never appear in launchers or service units.
+set(HOLONIGHT_POLKIT_CONFLICT_EXIT_STATUS "@HOLONIGHT_POLKIT_CONFLICT_EXIT_STATUS@")
+set(CMAKE_INSTALL_BINDIR "@CMAKE_INSTALL_BINDIR@")
+set(CMAKE_INSTALL_LIBEXECDIR "@CMAKE_INSTALL_LIBEXECDIR@")
+set(CMAKE_INSTALL_DATADIR "@CMAKE_INSTALL_DATADIR@")
+set(CMAKE_INSTALL_LIBDIR "@CMAKE_INSTALL_LIBDIR@")
+foreach(directory IN ITEMS BINDIR LIBEXECDIR DATADIR LIBDIR)
+  cmake_path(ABSOLUTE_PATH CMAKE_INSTALL_${directory}
+    BASE_DIRECTORY "${CMAKE_INSTALL_PREFIX}" NORMALIZE
+    OUTPUT_VARIABLE CMAKE_INSTALL_FULL_${directory})
+endforeach()
+
+# Percent signs introduce field codes in desktop files and specifiers in units.
+foreach(directory IN ITEMS BINDIR LIBEXECDIR LIBDIR)
+  string(REPLACE "%" "%%" HOLONIGHT_EXEC_${directory} "${CMAKE_INSTALL_FULL_${directory}}")
+endforeach()
+
+macro(holonight_install_integration source directory kind)
+  get_filename_component(filename "${source}" NAME)
+  string(REGEX REPLACE "\\.in$" "" filename "${filename}")
+  set(output "@PROJECT_BINARY_DIR@/install-integration/${filename}")
+  configure_file("@HOLONIGHT_INSTALL_SOURCE_DIR@/${source}" "${output}" @ONLY)
+  file(INSTALL DESTINATION "${directory}" TYPE ${kind} FILES "${output}")
+endmacro()
+
+holonight_install_integration(scripts/holonight-session "${CMAKE_INSTALL_FULL_BINDIR}" PROGRAM)
+holonight_install_integration(scripts/holonight-shell-systemd "${CMAKE_INSTALL_FULL_BINDIR}" PROGRAM)
+holonight_install_integration(scripts/holonight-polkit-agent-session "${CMAKE_INSTALL_FULL_LIBEXECDIR}" PROGRAM)
+holonight_install_integration(scripts/holonight-wayland-session-environment "${CMAKE_INSTALL_FULL_LIBEXECDIR}" PROGRAM)
+holonight_install_integration(data/systemd/user/holonight-shell.service
+  "${CMAKE_INSTALL_FULL_DATADIR}/systemd/user" FILE)
+holonight_install_integration(data/systemd/user/holonight-polkit-agent@.service.in
+  "${CMAKE_INSTALL_FULL_DATADIR}/systemd/user" FILE)
+foreach(compositor IN ITEMS hyprland sway)
+  holonight_install_integration("data/wayland-sessions/holonight-${compositor}.desktop"
+    "${CMAKE_INSTALL_FULL_DATADIR}/wayland-sessions" FILE)
+endforeach()
+
+# Aliases share the installed (RPATH-adjusted) executable, not a build-tree copy.
+file(RELATIVE_PATH askpass_target "${CMAKE_INSTALL_FULL_BINDIR}"
+  "${CMAKE_INSTALL_FULL_LIBEXECDIR}/holonight-askpass")
+foreach(name IN ITEMS holonight-askpass holonight-sudo-askpass holonight-ssh-askpass)
+  set(alias "${CMAKE_INSTALL_FULL_BINDIR}/${name}")
+  file(CREATE_LINK "${askpass_target}" "$ENV{DESTDIR}${alias}" SYMBOLIC)
+  list(APPEND CMAKE_INSTALL_MANIFEST_FILES "${alias}")
+endforeach()

@@ -1,0 +1,14 @@
+[Unit]
+Description=HoloNight Polkit authentication agent for session %i
+After=graphical-session.target
+StartLimitIntervalSec=30s
+StartLimitBurst=3
+
+[Service]
+Type=simple
+Environment="QML_IMPORT_PATH=@HOLONIGHT_EXEC_LIBDIR@/qt6/qml" "QT_PLUGIN_PATH=@HOLONIGHT_EXEC_LIBDIR@/qt6/plugins"
+ExecStart="@HOLONIGHT_EXEC_LIBEXECDIR@/holonight-polkit-agent-session" %i
+Restart=on-failure
+RestartSec=2s
+RestartPreventExitStatus=@HOLONIGHT_POLKIT_CONFLICT_EXIT_STATUS@
+LimitCORE=0

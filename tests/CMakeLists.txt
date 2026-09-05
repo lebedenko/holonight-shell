@@ -1,7 +1,22 @@
 include(GoogleTest)
+add_test(NAME test_installation
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_installation.py
+)
+add_test(NAME test_uninstall
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_uninstall.py
+)
+add_test(NAME test_wayland_session_environment
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_wayland_session_environment.py
+)
 
 add_test(NAME test_session_scripts
   COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_session_scripts.sh ${CMAKE_SOURCE_DIR}
+)
+add_test(NAME test_polkit_session_wrapper
+  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_polkit_session_wrapper.sh ${CMAKE_SOURCE_DIR}
+)
+add_test(NAME test_authentication_install
+  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_authentication_install.sh ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR}
 )
 
 # Helper: define a test executable with common settings.
@@ -19,6 +34,32 @@ function(holonight_add_test_exe name)
     PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=/tmp/holonight-qt-prefix/lib/qt6/qml;QML2_IMPORT_PATH=/tmp/holonight-qt-prefix/lib/qt6/qml"
   )
 endfunction()
+
+holonight_add_test_exe(test_holonight_authentication
+  main.cpp
+  test_authentication_core.cpp
+  test_account_profile_resolver.cpp
+  ${PROJECT_SOURCE_DIR}/apps/authentication/polkit/AccountProfileResolver.cpp
+  test_askpass_process.cpp
+  test_polkit_bridge_integration.cpp
+  test_polkit_agent_process.cpp
+  ${PROJECT_SOURCE_DIR}/apps/authentication/askpass/AskpassMode.cpp
+  ${PROJECT_SOURCE_DIR}/apps/authentication/polkit/PolkitListenerBridge.cpp
+)
+target_include_directories(test_holonight_authentication PRIVATE
+  ${PROJECT_SOURCE_DIR}/apps/authentication/askpass
+  ${PROJECT_SOURCE_DIR}/apps/authentication/polkit
+)
+target_compile_definitions(test_holonight_authentication PRIVATE
+  TEST_ASKPASS_PATH="$<TARGET_FILE:holonight-askpass-test>"
+  TEST_PRODUCTION_ASKPASS_PATH="$<TARGET_FILE:holonight-askpass-bin>"
+  TEST_POLKIT_AGENT_PATH="$<TARGET_FILE:holonight-polkit-agent>"
+  POLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE
+)
+add_dependencies(test_holonight_authentication holonight-askpass-test holonight-askpass-bin holonight-polkit-agent)
+target_link_libraries(test_holonight_authentication PRIVATE
+  holonight_authentication_core PkgConfig::POLKIT_AGENT GTest::gtest GTest::gmock Qt6::Gui Qt6::Test Qt6::DBus
+)
 
 # --- platform tests (links holonight_platform) ---
 holonight_add_test_exe(test_holonight_platform
@@ -205,6 +246,8 @@ target_compile_definitions(test_holonight_qml_harness PRIVATE
 target_link_libraries(test_holonight_qml_harness PRIVATE
   holonight_app
   holonight_componentsplugin
+  "$<LINK_LIBRARY:WHOLE_ARCHIVE,holonight_authentication_qml>"
+  holonight_authentication_qmlplugin
   Qt6::QuickTest
   Qt6::Qml
 )

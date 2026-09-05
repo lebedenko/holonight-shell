@@ -44,6 +44,12 @@ start_shell_service() {
   if have_command systemctl; then
     systemctl --user daemon-reload || warn "failed to reload systemd user units"
     systemctl --user start holonight-shell.service || warn "failed to queue holonight-shell.service"
+    if [[ -n "${XDG_SESSION_ID:-}" && "${XDG_SESSION_ID}" != *[!A-Za-z0-9_.-]* ]]; then
+      systemctl --user start "holonight-polkit-agent@${XDG_SESSION_ID}.service" || \
+        warn "failed to queue the session Polkit agent"
+    else
+      warn "XDG_SESSION_ID is unavailable; the session Polkit agent was not started"
+    fi
   else
     warn "systemctl is not installed; holonight-shell.service cannot be started automatically"
   fi
@@ -73,18 +79,41 @@ export XDG_CURRENT_DESKTOP="HoloNight:${desktop}"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-${desktop}}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-${menu_prefix}}"
+script_directory="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)"
+installation_datadir="@CMAKE_INSTALL_FULL_DATADIR@"
+installation_libdir="@CMAKE_INSTALL_FULL_LIBDIR@"
+default_portal_dir="${installation_datadir}/holonight/xdg"
+if [[ "${installation_datadir}" == '@'* ]]; then
+  installation_datadir="${script_directory}/../data"
+  default_portal_dir="${installation_datadir}/xdg"
+fi
+portal_config_dir="${HOLONIGHT_PORTAL_CONFIG_DIR:-${default_portal_dir}}"
+[[ "${portal_config_dir}" == /* ]] || die "portal configuration directory must be absolute"
 case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
-  *:/usr/share/holonight/xdg:*) ;;
-  *) export XDG_CONFIG_DIRS="/usr/share/holonight/xdg:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
+  *:"${portal_config_dir}":*) ;;
+  *) export XDG_CONFIG_DIRS="${portal_config_dir}:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
 esac
+case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
+  *:"${installation_datadir}":*) ;;
+  *) export XDG_DATA_DIRS="${installation_datadir}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
+esac
+if [[ "${installation_libdir}" != '@'* ]]; then
+  export QML_IMPORT_PATH="${installation_libdir}/qt6/qml${QML_IMPORT_PATH:+:${QML_IMPORT_PATH}}"
+  export QT_PLUGIN_PATH="${installation_libdir}/qt6/plugins${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}"
+fi
 export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
 export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
 
 load_cursor_theme
 
+askpass_bindir="${HOLONIGHT_ASKPASS_BINDIR:-${script_directory}}"
+[[ "${askpass_bindir}" == /* ]] || die "askpass installation directory must be absolute"
+export SUDO_ASKPASS="${askpass_bindir}/holonight-sudo-askpass"
+export SSH_ASKPASS="${askpass_bindir}/holonight-ssh-askpass"
+
 vars=(WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX
-  XDG_DATA_DIRS XDG_CONFIG_DIRS QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME
-  XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE)
+  XDG_DATA_DIRS XDG_CONFIG_DIRS QML_IMPORT_PATH QT_PLUGIN_PATH QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME
+  XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE SUDO_ASKPASS SSH_ASKPASS)
 if have_command dbus-update-activation-environment; then
   dbus_update_args=()
   for stale_var in "${stale_vars[@]}"; do

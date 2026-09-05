@@ -228,19 +228,11 @@ _qt_internal_assign_build_metatypes_files_and_properties(holonight-shell
 set_target_properties(holonight-shell PROPERTIES _qt_internal_has_qmltypes TRUE)
 _qt_internal_qml_type_registration(holonight-shell)
 
+# Find runtime providers installed alongside a local-prefix shell. Never retain
+# development dependency paths such as /tmp/holonight-config-prefix in the ELF.
+file(RELATIVE_PATH HOLONIGHT_BIN_TO_LIB "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_LIBDIR}")
+set_target_properties(holonight-shell PROPERTIES INSTALL_RPATH "$ORIGIN/${HOLONIGHT_BIN_TO_LIB}")
 install(TARGETS holonight-shell DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/holonight-session DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/holonight-shell-systemd DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(
-    FILES
-      ${PROJECT_SOURCE_DIR}/data/wayland-sessions/holonight-hyprland.desktop
-      ${PROJECT_SOURCE_DIR}/data/wayland-sessions/holonight-sway.desktop
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/wayland-sessions
-)
-install(
-    FILES ${PROJECT_SOURCE_DIR}/data/systemd/user/holonight-shell.service
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/systemd/user
-)
 install(
     FILES ${PROJECT_SOURCE_DIR}/data/xdg-desktop-portal/portals/holonight.portal
     DESTINATION ${CMAKE_INSTALL_DATADIR}/xdg-desktop-portal/portals

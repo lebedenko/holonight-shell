@@ -1,0 +1,2 @@
+#pragma once
+inline constexpr int kHolonightPolkitConflictExitStatus = @HOLONIGHT_POLKIT_CONFLICT_EXIT_STATUS@;

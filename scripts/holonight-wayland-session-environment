@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Print only a verified Wayland peer's session environment, as NUL-separated entries."""
+import os
+from pathlib import Path
+import re
+import socket
+import stat
+import struct
+import sys
+
+QT_SETTINGS = (b'QT_QPA_PLATFORMTHEME', b'QT_QUICK_CONTROLS_STYLE', b'XCURSOR_THEME')
+
+
+def peer_environment(path, session, runtime, uid):
+    """The socket name is a candidate; its kernel-supplied peer identifies the session."""
+    try:
+        metadata = path.lstat()
+        if not stat.S_ISSOCK(metadata.st_mode) or metadata.st_uid != uid:
+            return None
+        with socket.socket(socket.AF_UNIX) as connection:
+            connection.settimeout(0.25)
+            connection.connect(str(path))
+            credentials = connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i'))
+            pid, peer_uid, _ = struct.unpack('3i', credentials)
+            if pid <= 0 or peer_uid != uid:
+                return None
+            # Keep the connection alive while reading the peer's original environment.
+            process = Path('/proc') / str(pid)
+            if process.stat().st_uid != uid:
+                return None
+            entries = (process / 'environ').read_bytes().split(b'\0')
+            environment = dict(entry.split(b'=', 1) for entry in entries if b'=' in entry)
+            if (environment.get(b'XDG_SESSION_ID') != os.fsencode(session)
+                    or environment.get(b'XDG_RUNTIME_DIR') != os.fsencode(runtime)):
+                return None
+            result = {b'XDG_SESSION_ID': os.fsencode(session), b'XDG_RUNTIME_DIR': os.fsencode(runtime),
+                      b'WAYLAND_DISPLAY': os.fsencode(path.name), b'QT_QPA_PLATFORM': b'wayland'}
+            for key in QT_SETTINGS:
+                value = environment.get(key, b'')
+                if value and len(value) <= 4096 and not any(byte < 32 or byte == 127 for byte in value):
+                    result[key] = value
+            return result
+    except (OSError, ValueError):
+        return None
+
+
+def main(arguments):
+    if len(arguments) != 2:
+        return 1
+    session, directory = arguments
+    runtime = Path(directory)
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+', session) or not runtime.is_absolute():
+        return 1
+    try:
+        uid = os.getuid()
+        if runtime.stat().st_uid != uid or not runtime.is_dir():
+            return 1
+        candidates = []
+        for path in sorted(runtime.glob('wayland-*')):
+            if not re.fullmatch(r'wayland-[A-Za-z0-9_.-]+', path.name):
+                continue
+            environment = peer_environment(path, session, runtime, uid)
+            if environment is not None:
+                candidates.append(environment)
+        # Do not guess between nested compositors belonging to the same session.
+        if len(candidates) != 1:
+            return 1
+        for key, value in candidates[0].items():
+            sys.stdout.buffer.write(key + b'=' + value + b'\0')
+        return 0
+    except OSError:
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

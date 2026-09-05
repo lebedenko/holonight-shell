@@ -3,6 +3,12 @@ version: "3"
 vars:
   BUILD_DIR: build
   RELEASE_BUILD_DIR: build-release
+  LOCAL_INSTALL_BUILD_DIR: build-install-local
+  SYSTEM_INSTALL_BUILD_DIR: build-install-system
+  STAGE_BUILD_DIR: build-install-stage
+  STAGE_DIR: '{{.TASKFILE_DIR}}/build-stage'
+  LOCAL_INSTALL_PREFIX: '{{.HOME}}/.local'
+  SYSTEM_INSTALL_PREFIX: /usr
   HOLONIGHT_QT_PREFIX: /tmp/holonight-qt-prefix
   HOLONIGHT_QT_DIR: /tmp/holonight-qt-prefix/lib/cmake/HolonightQt
   HOLONIGHT_APPEARANCE_CONFIG_PREFIX: /tmp/holonight-config-prefix
@@ -28,12 +34,7 @@ tasks:
     desc: Configure (Release)
     deps: [build:dependencies]
     cmds:
-      - |
-        if [ -f "{{.RELEASE_BUILD_DIR}}/CMakeCache.txt" ] && ! grep -Fxq "CMAKE_HOME_DIRECTORY:INTERNAL={{.TASKFILE_DIR}}" "{{.RELEASE_BUILD_DIR}}/CMakeCache.txt"; then
-          cmake -E echo "Removing stale {{.RELEASE_BUILD_DIR}} CMake cache from another source directory"
-          cmake -E rm -rf "{{.RELEASE_BUILD_DIR}}"
-        fi
-      - cmake -S . -B {{.RELEASE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}}
+      - cmake -S . -B {{.RELEASE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}}
 
   configure-tests:
     desc: Configure CMake with tests enabled
@@ -51,7 +52,10 @@ tasks:
 
   build:dependencies:
     desc: Build and install sibling dependencies
-    deps: [build:appearance-config-dependency, build:qt-dependency, build:system-services-dependency]
+    cmds:
+      - task: build:appearance-config-dependency
+      - task: build:qt-dependency
+      - task: build:system-services-dependency
 
   build:system-services-dependency:
     desc: Build and install the shared system services provider
@@ -72,6 +76,7 @@ tasks:
     cmds:
       - |
         if [ -d "../holonight-qt" ]; then
+          cmake -S ../holonight-qt -B ../holonight-qt/build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR="{{.HOLONIGHT_APPEARANCE_CONFIG_DIR}}"
           cmake --build ../holonight-qt/build -j{{.NPROC}}
           cmake --install ../holonight-qt/build --prefix {{.HOLONIGHT_QT_PREFIX}}
         else
@@ -99,47 +104,68 @@ tasks:
     cmds:
       - ./{{.BUILD_DIR}}/holonight-shell
 
-  install:local:
-    desc: Build and install to ~/.local
-    deps: [build]
+  install:build:
+    internal: true
+    desc: Build installable binaries against installed dependencies
     cmds:
-      - cmake --install {{.BUILD_DIR}} --prefix ~/.local
+      - cmake -S . -B "{{.INSTALL_BUILD_DIR}}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_INSTALL_PREFIX="{{.INSTALL_PREFIX}}" -DCMAKE_PREFIX_PATH="{{.INSTALL_PREFIX}}"
+      - cmake --build "{{.INSTALL_BUILD_DIR}}" -j{{.NPROC}}
+
+  install:local:
+    desc: Build and install to ~/.local (installed HoloNight dependencies required)
+    cmds:
+      - task: install:build
+        vars:
+          INSTALL_BUILD_DIR: '{{.LOCAL_INSTALL_BUILD_DIR}}'
+          INSTALL_PREFIX: '{{.LOCAL_INSTALL_PREFIX}}'
+      - cmake --install "{{.LOCAL_INSTALL_BUILD_DIR}}"
+      - task: install:reload
 
   install:
     desc: Build and install to ~/.local
-    deps: [build]
     cmds:
-      - cmake --install {{.BUILD_DIR}} --prefix "$HOME/.local"
-
-  uninstall:
-    desc: Uninstall the debug build from ~/.local
-    cmds:
-      - |
-        if [ ! -f "{{.BUILD_DIR}}/install_manifest.txt" ]; then
-          echo "No install_manifest.txt found in {{.BUILD_DIR}}. Nothing to uninstall."
-          exit 0
-        fi
-        while IFS= read -r installed_file; do
-          rm -f -- "$installed_file"
-        done < "{{.BUILD_DIR}}/install_manifest.txt"
-        rm -f "{{.BUILD_DIR}}/install_manifest.txt"
+      - task: install:local
 
   install:system:
-    desc: Install to /usr (requires sudo)
-    deps: [build:release]
+    desc: Build and install to /usr (requires sudo and installed HoloNight dependencies)
     cmds:
-      - sudo cmake --install {{.RELEASE_BUILD_DIR}} --prefix /usr
+      - task: install:build
+        vars:
+          INSTALL_BUILD_DIR: '{{.SYSTEM_INSTALL_BUILD_DIR}}'
+          INSTALL_PREFIX: '{{.SYSTEM_INSTALL_PREFIX}}'
+      - sudo cmake --install "{{.SYSTEM_INSTALL_BUILD_DIR}}"
+      - task: install:reload
 
-  uninstall:system:
-    desc: Uninstall the release build from /usr (requires sudo)
+  install:stage:
+    desc: Build and stage a system installation without sudo
+    cmds:
+      - task: install:build
+        vars:
+          INSTALL_BUILD_DIR: '{{.STAGE_BUILD_DIR}}'
+          INSTALL_PREFIX: '{{.SYSTEM_INSTALL_PREFIX}}'
+      - DESTDIR="{{.STAGE_DIR}}" cmake --install "{{.STAGE_BUILD_DIR}}"
+
+  install:reload:
+    internal: true
     cmds:
       - |
-        if [ ! -f "{{.RELEASE_BUILD_DIR}}/install_manifest.txt" ]; then
-          echo "No install_manifest.txt found in {{.RELEASE_BUILD_DIR}}. Nothing to uninstall."
-          exit 0
+        if command -v systemctl >/dev/null && [ -z "${DESTDIR:-}" ]; then
+          systemctl --user daemon-reload || echo "User systemd manager unavailable; units will be loaded at login."
         fi
-        sudo xargs -r -d '\n' rm -f -- < "{{.RELEASE_BUILD_DIR}}/install_manifest.txt"
-        sudo rm -f "{{.RELEASE_BUILD_DIR}}/install_manifest.txt"
+
+  uninstall:
+    desc: Remove files from the dedicated local install manifest
+    prompt: Remove the HoloNight Shell files installed under {{.LOCAL_INSTALL_PREFIX}}?
+    cmds:
+      - python3 scripts/uninstall.py --manifest "{{.LOCAL_INSTALL_BUILD_DIR}}/install_manifest.txt" --prefix "{{.LOCAL_INSTALL_PREFIX}}" --delete
+      - task: install:reload
+
+  uninstall:system:
+    desc: Remove files from the dedicated system install manifest
+    prompt: Remove the HoloNight Shell files installed under {{.SYSTEM_INSTALL_PREFIX}}?
+    cmds:
+      - sudo python3 scripts/uninstall.py --manifest "{{.SYSTEM_INSTALL_BUILD_DIR}}/install_manifest.txt" --prefix "{{.SYSTEM_INSTALL_PREFIX}}" --delete
+      - task: install:reload
 
   test:
     desc: Build with tests and run ctest

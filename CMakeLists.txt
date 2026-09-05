@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(holonight-shell VERSION 0.1.0 LANGUAGES C CXX)
+set(HOLONIGHT_POLKIT_CONFLICT_EXIT_STATUS 78 CACHE STRING "Non-retriable Polkit registration conflict status")
+configure_file(cmake/AuthenticationConfig.h.in ${CMAKE_BINARY_DIR}/generated/AuthenticationConfig.h @ONLY)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,6 +9,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
+option(BUILD_TESTS "Build unit tests (requires network access at configure time)" OFF)
+option(ENABLE_COVERAGE "Instrument for gcov/gcovr coverage reporting" OFF)
 
 install(
   FILES LICENSE THIRD_PARTY_NOTICES.md
@@ -22,6 +26,7 @@ install(
 set(QT_SKIP_AUTO_QML_PLUGIN_INCLUSION ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent Sql QuickControls2)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(HolonightQt REQUIRED COMPONENTS Wayland)
 find_package(HoloNightSystemServices REQUIRED)
 find_package(Qt6 COMPONENTS WaylandClient WaylandClientPrivate QUIET)
@@ -36,6 +41,9 @@ pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 pkg_check_modules(WAYLAND_PROTOCOLS REQUIRED wayland-protocols)
 pkg_check_modules(TOMLPLUSPLUS REQUIRED IMPORTED_TARGET tomlplusplus)
 pkg_check_modules(LIBSECRET REQUIRED libsecret-1)
+pkg_check_modules(POLKIT_AGENT REQUIRED IMPORTED_TARGET polkit-agent-1)
+pkg_check_modules(POLKIT_QT_AGENT REQUIRED IMPORTED_TARGET polkit-qt6-agent-1>=0.200.0)
+pkg_check_modules(POLKIT_QT_CORE REQUIRED IMPORTED_TARGET polkit-qt6-core-1>=0.200.0)
 
 if(NOT COMMAND qt6_generate_wayland_protocol_client_sources)
   function(qt6_generate_wayland_protocol_client_sources target)
@@ -164,15 +172,19 @@ add_subdirectory(libs/holonight-shell-config)
 add_subdirectory(libs/holonight-core)
 add_subdirectory(libs/holonight-services)
 add_subdirectory(libs/holonight-surfaces)
+add_subdirectory(libs/holonight-authentication)
 add_subdirectory(qml/HoloNight)
+add_subdirectory(qml/Authentication)
 add_subdirectory(apps/shell)
+add_subdirectory(apps/authentication)
+
+set(HOLONIGHT_INSTALL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
+configure_file(cmake/InstallIntegration.cmake.in ${PROJECT_BINARY_DIR}/InstallIntegration.cmake @ONLY)
+install(SCRIPT ${PROJECT_BINARY_DIR}/InstallIntegration.cmake)
 
 # ============================================================
 # Tests
 # ============================================================
-option(BUILD_TESTS "Build unit tests (requires network access at configure time)" OFF)
-option(ENABLE_COVERAGE "Instrument for gcov/gcovr coverage reporting" OFF)
-
 if(DEFINED BUILD_TESTS AND
    NOT "${BUILD_TESTS}" STREQUAL "ON" AND
    NOT "${BUILD_TESTS}" STREQUAL "OFF" AND
@@ -260,6 +272,7 @@ file(GLOB_RECURSE ALL_QML_FILES
     CONFIGURE_DEPENDS
     apps/shell/qml/*.qml
     qml/HoloNight/*.qml
+    qml/Authentication/*.qml
 )
 
 if(CLANG_FORMAT)
@@ -376,6 +389,7 @@ if(QMLLINT)
             ${ALL_QML_FILES}
         DEPENDS
             holonight-shell_qmltyperegistration
+            holonight_authentication_qml_qmltyperegistration
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Running qmllint"
         VERBATIM

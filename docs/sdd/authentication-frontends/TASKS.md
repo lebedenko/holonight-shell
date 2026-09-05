@@ -1,5 +1,12 @@
 # Authentication Frontends — Implementation Tasks
 
+Fresh delivery evidence is recorded in [ACCEPTANCE.md](ACCEPTANCE.md). Unchecked
+items can have substantial implementation already present; their exact stated
+acceptance checks still have the gaps listed in that record. Historical notes
+below are retained as history, not substituted for fresh verification. T-016
+and T-024 were reopened because the historical evidence did not cover every
+claimed contract/environment case.
+
 ## 1. Delivery Strategy
 
 Tasks are ordered so each implementation slice has a narrow verification seam
@@ -21,7 +28,7 @@ replacement of a third-party Polkit agent.
 
 ## 2. Build and Core Foundations
 
-- [ ] T-001: Add required authentication dependencies and target skeletons
+- [x] T-001: Add required authentication dependencies and target skeletons
   - Add configuration-time checks for Qt 6 Quick/QML, PolkitQt6 Agent 0.200.0+
     and `polkit-agent-1`.
   - Declare the authentication core library, standalone QML module,
@@ -42,7 +49,7 @@ replacement of a third-party Polkit agent.
     C0/C1 controls, excessive lines, truncation boundaries, and rejected detail
     keys without loading resources or executing anything.
 
-- [ ] T-003: Implement askpass secret validation
+- [x] T-003: Implement askpass secret validation
   - Validate non-empty input, UTF-8 round-trip, absence of CR/LF/NUL, and the
     1022-byte encoded maximum.
   - Return only a validated byte array or a fixed safe error classification.
@@ -71,7 +78,7 @@ replacement of a third-party Polkit agent.
     operation/mode combination, retry, cancellation, completion idempotency,
     and callback count without starting any external protocol.
 
-- [ ] T-006: Add lifecycle and response-exposure regression tests
+- [x] T-006: Add lifecycle and response-exposure regression tests
   - Verify synchronous clearing events for submit, cancel, failure, retry,
     completion, shutdown, new request token, and session generation.
   - Scan model properties, signals, logs, and test persistence locations for a
@@ -82,7 +89,7 @@ replacement of a third-party Polkit agent.
 
 ## 3. Standalone QML Presentation
 
-- [ ] T-007: Create and register `Holonight.Authentication`
+- [x] T-007: Create and register `Holonight.Authentication`
   - Register the module under its own resource prefix with dependencies limited
     to Qt Quick and installed `Holonight`, `Holonight.Core`, and
     `Holonight.Controls` modules.
@@ -101,7 +108,7 @@ replacement of a third-party Polkit agent.
     confirmation, notification, busy, retryable error, completion, and cancel
     without recreating the component; delayed fake work leaves it responsive.
 
-- [ ] T-009: Harden secret entry and accessibility behavior
+- [x] T-009: Harden secret entry and accessibility behavior
   - Mask secret input, suppress selection/copy/cut and input-method learning,
     clear the control synchronously on every terminal or superseding edge, and
     exclude entered text from accessibility metadata.
@@ -110,7 +117,7 @@ replacement of a third-party Polkit agent.
   - Check: QML tests verify echo mode, copy suppression, input-method hints,
     clearing, accessible roles/names/states, and absence of the marker secret.
 
-- [ ] T-010: Complete keyboard, focus, busy, and palette behavior
+- [x] T-010: Complete keyboard, focus, busy, and palette behavior
   - Implement deterministic Tab/Backtab order, arrow identity navigation,
     Enter acceptance, Escape cancellation, retry focus, busy disabling, and
     visible focus indication in light and dark variants.
@@ -129,7 +136,7 @@ replacement of a third-party Polkit agent.
   - Check: table-driven tests cover every basename with unset, `confirm`,
     `none`, recognized secret, and unknown hint values.
 
-- [ ] T-012: Implement the stdout protocol writer
+- [x] T-012: Implement the stdout protocol writer
   - Write a validated payload plus one LF with partial-write and `EINTR`
     handling; reserve file descriptor 1 exclusively for protocol output.
   - Define accepted status `0` and rejection/cancellation/failure status `1`.
@@ -146,7 +153,7 @@ replacement of a third-party Polkit agent.
   - Check: controller tests assert exactly one terminal outcome, empty stdout on
     all failed/non-secret paths, and correction after validation failure.
 
-- [ ] T-014: Implement notification mode and Qt-safe `SIGTERM`
+- [x] T-014: Implement notification mode and Qt-safe `SIGTERM`
   - Present no editable or response controls and translate `SIGTERM` through a
     self-pipe or `signalfd`/`QSocketNotifier` path into clean Qt shutdown.
   - REQs: REQ-F-023, REQ-V-003, REQ-NF-002
@@ -154,7 +161,7 @@ replacement of a third-party Polkit agent.
     empty stdout, has no response path, and exits without a crash or error
     diagnostic.
 
-- [ ] T-015: Add pre-Qt process hardening and safe logging
+- [x] T-015: Add pre-Qt process hardening and safe logging
   - Set `RLIMIT_CORE=0` before application construction and fail closed if that
     boundary cannot be established.
   - Log only frontend, phase, opaque token, and fixed safe classifications to
@@ -173,8 +180,14 @@ replacement of a third-party Polkit agent.
   - Check: contract cases cover success, correction, cancellation, dismissal,
     setup/internal failure, UTF-8 boundaries, CR/LF/NUL, 1022/1023 bytes,
     compatibility precedence, confirmation, and notification termination.
+  - Historical verification (before this delivery, 2026-09-05): the `BUILD_TESTS`-only inherited FD 3
+    protocol and real-process suite pass for all three entry names. The suite
+    independently checks raw stdout/stderr/status, correction and cancellation,
+    UTF-8 and 1022/1023-byte boundaries, confirmation/notification, SIGTERM,
+    and the zero core limit without placing response bytes in argv, environment,
+    logs, or files.
 
-- [ ] T-017: Install the three askpass entry points
+- [x] T-017: Install the three askpass entry points
   - Install `holonight-sudo-askpass`, `holonight-ssh-askpass`, and
     `holonight-askpass` backed by the one implementation.
   - REQs: REQ-F-018, REQ-I-001
@@ -192,7 +205,7 @@ replacement of a third-party Polkit agent.
   - Check: an injected authority observes one correct registration and ordered
     request/cancellation mapping without blocking the render thread.
 
-- [ ] T-019: Implement immutable request records and the FIFO coordinator
+- [x] T-019: Implement immutable request records and the FIFO coordinator
   - Give every request an opaque token, ordered identities, cancellation
     handle, completion guard, and session generation.
   - Own one active request, queue later arrivals, remove cancelled queued
@@ -202,7 +215,7 @@ replacement of a third-party Polkit agent.
     active cancellation, reentrant completion, and exactly one terminal result
     for every record.
 
-- [ ] T-020: Implement Polkit identity selection policy
+- [x] T-020: Implement Polkit identity selection policy
   - Prefer an eligible current UID, otherwise the first authority identity;
     retain original order and require explicit choice when multiple identities
     are available.
@@ -212,7 +225,7 @@ replacement of a third-party Polkit agent.
     multi-identity explicit selection, stable IDs rather than labels, and empty
     identity behavior.
 
-- [ ] T-021: Implement the PolkitQt PAM session adapter
+- [x] T-021: Implement the PolkitQt PAM session adapter
   - Create one `PolkitQt1::Agent::Session` for the selected identity/cookie and
     map ordered visible/hidden prompts plus information/error messages.
   - Route each response only to its originating session.
@@ -221,7 +234,7 @@ replacement of a third-party Polkit agent.
     messages in order; no stdout, D-Bus, shell, or control-socket response path
     exists.
 
-- [ ] T-022: Implement retry, cancellation, and stale-callback defenses
+- [x] T-022: Implement retry, cancellation, and stale-callback defenses
   - On retry, destroy the old session, clear response state, increment the
     generation, permit identity reselection, and construct a fresh session.
   - Reject every callback whose token or generation is no longer active.
@@ -230,7 +243,7 @@ replacement of a third-party Polkit agent.
     authority, and session cancellation, shutdown, and late callbacks that
     cannot reopen or complete another request.
 
-- [ ] T-023: Implement agent startup and registration-conflict handling
+- [x] T-023: Implement agent startup and registration-conflict handling
   - Apply pre-Qt core-dump hardening, validate the bound session, register once,
     and keep the process persistent until orderly shutdown.
   - Exit with the dedicated non-retriable conflict status without touching the
@@ -248,10 +261,14 @@ replacement of a third-party Polkit agent.
   - Check: focused integration tests cover mapping, multi-step PAM, retries,
     FIFO/cancellation races, exactly-once completion, conflict, and distinct
     per-session routing without a live authority.
+  - Historical verification (before this delivery, 2026-09-05): injectable registration hooks compose
+    the real listener bridge, coordinator, and prompt model with fake PAM
+    sessions. Registration conflict preservation and two distinct session IDs
+    for one UID pass without a live authority.
 
 ## 6. Installation and Session Activation
 
-- [ ] T-025: Install the session-keyed Polkit user unit
+- [x] T-025: Install the session-keyed Polkit user unit
   - Add `holonight-polkit-agent@.service` independent of the shell with
     `LimitCORE=0`, bounded `Restart=on-failure`, and
     `RestartPreventExitStatus` matching the executable's conflict status.
@@ -260,8 +277,10 @@ replacement of a third-party Polkit agent.
   - REQs: REQ-I-002, REQ-I-003, REQ-I-006, REQ-C-001
   - Check: staged unit inspection verifies exact lifecycle directives and a
     conflict simulation does not restart-loop or mutate a third-party unit.
+  - Fresh evidence: installed runtime instance exited 78 with NRestarts=0 after
+    the restart window; the competing agent remained active at the same PID.
 
-- [ ] T-026: Implement the exact-session startup wrapper
+- [x] T-026: Implement the exact-session startup wrapper
   - Treat the service instance as the required `XDG_SESSION_ID`; wait a bounded
     time for its logind session and usable Wayland environment, validate owner
     and session type/state, capture the environment, then `exec` the agent.
@@ -271,8 +290,11 @@ replacement of a third-party Polkit agent.
   - Check: isolated script tests cover delayed compositor readiness, timeout,
     mismatched global state, direct post-compositor activation, and two sessions
     for one UID without cross-routing.
+  - Fresh evidence: seven real Unix-socket peer tests and wrapper regressions
+    cover UWSM routing, owner/session/runtime mismatches, ambiguity and failure.
+    Staged service activation and real Polkit authentication passed in session 4.
 
-- [ ] T-027: Export askpass paths from HoloNight session activation
+- [x] T-027: Export askpass paths from HoloNight session activation
   - Export absolute installed `SUDO_ASKPASS` and `SSH_ASKPASS` paths to process
     descendants, the systemd user manager, and D-Bus activation.
   - Do not export `SSH_ASKPASS_PROMPT`, use the compatibility entry point, or
@@ -282,7 +304,7 @@ replacement of a third-party Polkit agent.
     systemd-user, and D-Bus-activated processes and verify no sudo configuration
     write attempt or global prompt-mode export.
 
-- [ ] T-028: Complete install-manifest and architecture checks
+- [x] T-028: Complete install-manifest and architecture checks
   - Install both executable implementations, all askpass names, QML resources
     and qmltypes, the service, wrapper, and explicit session hook.
   - Add boundary checks that forbid shell/module/service/IPC dependencies.
@@ -293,7 +315,7 @@ replacement of a third-party Polkit agent.
 
 ## 7. Final Verification
 
-- [ ] T-029: Run focused and repository-wide automated verification
+- [x] T-029: Run focused and repository-wide automated verification
   - Run focused core, QML, askpass subprocess, Polkit integration, session
     wrapper, and install tests before the complete project checks.
   - REQs: REQ-V-007
@@ -301,8 +323,29 @@ replacement of a third-party Polkit agent.
     `task qml-lint`, `task qmltypes-check`, and `task architecture-check`,
     distinguishing feature regressions from environmental or pre-existing
     failures.
+  - Historical verification (before this delivery, 2026-09-05): focused authentication C++/process/
+    Polkit integration tests passed (22/22); focused offscreen QML passed
+    (6/6); wrapper, session-launcher, and staged-install scripts passed.
+    `dbus-run-session -- task test` passed 1117/1117. `task qml-lint` passed
+    with the existing unresolved `AudioService` warnings; `task qmltypes-check`
+    and `task architecture-check` passed. `task format-check` initially found
+    formatting in the new T-029 sources, which was corrected and rechecked.
+    `task tidy` remains failing on authentication code introduced before T-029,
+    primarily project-style diagnostics for braces, enum storage, nodiscard,
+    special members, and designated initializers; no unrelated test failure was
+    observed. Live acceptance was not performed and remains T-030.
 
 - [ ] T-030: Perform the live Hyprland acceptance matrix
+  - Guided continuation (2026-09-05): real sudo cancellation and authentication
+    passed; OpenSSH forced passphrase, Allow, and Reject passed with a disposable
+    encrypted key and isolated agent. Approved real Polkit authentication via
+    `pkexec --disable-internal-agent /usr/bin/true` passed, and the original
+    agent was restored active/running. The user confirmed Polkit initial focus,
+    Enter submission, and clean closing. Installed UWSM service activation,
+    non-restarting conflict handling and real authentication now pass. A SIGTERM
+    shutdown veto found during acceptance was fixed and verified with an isolated
+    process regression and a 54 ms clean live stop. The remaining live checks
+    are still pending; see ACCEPTANCE.md.
   - Exercise daemon reload and explicit instance activation, a real test policy,
     `sudo -A`, forced SSH passphrase and confirmation modes, notification
     termination, a competing Polkit agent, keyboard focus, and dark/light
@@ -315,7 +358,7 @@ replacement of a third-party Polkit agent.
     compositor-managed placement, and includes safe screenshots for both
     palettes.
 
-- [ ] T-031: Complete the security and scope audit
+- [x] T-031: Complete the security and scope audit
   - Inspect public interfaces, process arguments/environment, logs, IPC,
     persistence, crash behavior, and install/session scripts with marker data.
   - Confirm no credential cache and no support for out-of-scope password-agent,

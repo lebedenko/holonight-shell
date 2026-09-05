@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=HoloNight (Hyprland)
 Comment=Hyprland session with HoloNight desktop integration
-Exec=holonight-session hyprland
+Exec="@HOLONIGHT_EXEC_BINDIR@/holonight-session" hyprland
 TryExec=Hyprland
 DesktopNames=Hyprland
 Type=Application

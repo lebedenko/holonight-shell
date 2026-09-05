@@ -138,17 +138,61 @@ task clean        # remove build/
 
 **Without `task`:**
 
-```bash
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -S .
-cmake --build build -j$(nproc)
-sudo cmake --install build --prefix /usr
-```
-
-Install to a local prefix (no sudo):
+Install the HoloNight dependencies first: `holonight-config`, `holonight-qt`
+(including its Wayland component, QML modules and Qt plugins), and
+`holonight-system-services`. Install them into the destination prefix or a
+standard system location. Development tasks build sibling dependencies under
+`/tmp`; production installation builds use installed dependencies.
 
 ```bash
-cmake --install build --prefix ~/.local
+task install:system  # Release build, install to /usr using sudo
+task install:local   # Release build, install to ~/.local; task install is an alias
 ```
+
+These tasks use separate `build-install-system/` and `build-install-local/`
+directories, with tests and coverage disabled. They reload the current user's
+systemd unit files after installation. Existing services are not restarted.
+
+To inspect a system installation without changing `/usr`:
+
+```bash
+task install:stage   # builds in build-install-stage/, stages under build-stage/usr/
+```
+
+For a direct CMake installation:
+
+```bash
+cmake -S . -B build-install-system -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build-install-system -j$(nproc)
+sudo cmake --install build-install-system
+systemctl --user daemon-reload
+```
+
+Integration files are generated at installation time, so `cmake --install
+--prefix <prefix>` also updates their paths. `DESTDIR` stages files without
+embedding the staging directory in launchers or units. Askpass aliases resolve
+to the installed helper executable; the test automation executable is never
+installed.
+
+Uninstall uses the corresponding dedicated install manifest and asks for
+confirmation:
+
+```bash
+task uninstall         # local installation
+task uninstall:system  # system installation
+```
+
+To preview the files without removing them:
+
+```bash
+python3 scripts/uninstall.py --manifest build-install-system/install_manifest.txt --prefix /usr
+```
+
+Reinstall once with the updated task before using these uninstall commands for
+an older installation. Manifests are validated against the selected prefix
+before any file is removed; user configuration and dependency packages are
+outside the shell's install manifest.
 
 The install also writes the HoloNight Settings portal descriptor plus generic,
 Hyprland, and Sway routing configurations to the selected prefix:
@@ -176,11 +220,8 @@ holonight-shell --version    # -> holonight-shell 0.1.0
 ### Desktop session entry
 
 Installing also provides `HoloNight (Hyprland)` and `HoloNight (Sway)` Wayland
-login entries:
-
-```bash
-cmake --install build --prefix ~/.local
-```
+login entries. Use `task install:system` to make them available to the display
+manager; display managers generally do not discover entries under `~/.local`.
 
 Select the matching entry in the display manager. Both run the canonical
 `holonight-session` launcher with either `hyprland` or `sway`. The launcher
@@ -258,6 +299,27 @@ The integration check reports both installed login entries and the canonical
 launcher, identifies Hyprland or Sway from colon-separated desktop tokens,
 checks the matching compositor portal routing, and reports whether
 `org.freedesktop.impl.portal.desktop.holonight` is owned on the session bus.
+
+The session-keyed Polkit startup wrapper supports UWSM compositors outside their
+logind session scope. It verifies the Wayland socket's peer process against the
+requested session before starting the agent. This discovery requires Python 3
+and its standard library. Conflicting session/display state or multiple matching
+compositors cause startup to fail rather than route a prompt to an uncertain
+session. Existing authentication agents are never replaced automatically.
+
+After choosing HoloNight as the Polkit agent and stopping the previous agent,
+start the instance for the active session:
+
+```bash
+auth_session="${XDG_SESSION_ID:-$(loginctl show-seat seat0 -p ActiveSession --value)}"
+systemctl --user start "holonight-polkit-agent@${auth_session}.service"
+systemctl --user status "holonight-polkit-agent@${auth_session}.service"
+```
+
+The Polkit template is started by the HoloNight session launcher in UWSM mode;
+it has no global `enable` step. Direct compositor sessions must start their
+session's instance from their own startup configuration.
+
 
 ## Releases
 

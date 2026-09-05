@@ -6,8 +6,9 @@ After=graphical-session.target
 
 [Service]
 Type=simple
+Environment="QML_IMPORT_PATH=@HOLONIGHT_EXEC_LIBDIR@/qt6/qml" "QT_PLUGIN_PATH=@HOLONIGHT_EXEC_LIBDIR@/qt6/plugins"
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/bin/sh -lc 'exec holonight-shell-systemd'
+ExecStart="@HOLONIGHT_EXEC_BINDIR@/holonight-shell-systemd"
 Restart=on-failure
 RestartSec=2s
 Slice=session-graphical.slice

@@ -109,4 +109,5 @@ wait_for_compositor_environment() {
 }
 
 wait_for_compositor_environment
-exec holonight-shell "$@"
+shell_directory="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)"
+exec "${HOLONIGHT_SHELL_EXECUTABLE:-${shell_directory}/holonight-shell}" "$@"
