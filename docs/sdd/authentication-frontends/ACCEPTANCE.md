@@ -384,3 +384,9 @@ changed the routing wrapper and new peer helper, Polkit main's termination
 callback, root/authentication/test CMake files, routing/install/process tests,
 README, DESIGN.md, TASKS.md and this acceptance record. Earlier uncommitted
 implementation changes were preserved.
+
+## Shared avatar/dialog follow-up
+
+The current presentation requirements and outstanding manual checks are tracked in
+[AVATAR-DIALOG-VERIFICATION.md](AVATAR-DIALOG-VERIFICATION.md). Earlier screenshots
+and content-driven geometry measurements below are historical evidence.

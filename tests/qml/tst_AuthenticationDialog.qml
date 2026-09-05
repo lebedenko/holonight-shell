@@ -48,6 +48,8 @@ TestCase {
         ListElement { stableId: "user"; displayLabel: "Current user"; username: "user"; fullName: "Current User"; avatarUrl: "" }
     }
 
+    ListModel { id: manyIdentities }
+
     Component {
         id: dialogComponent
         AuthenticationDialog {}
@@ -354,15 +356,17 @@ TestCase {
 
     function test_avatarFailureAndRemoteSourceFallback() {
         model.identities = identityModel
-        const avatar = findChild(dialog, "accountAvatar")
-        const fallback = findChild(dialog, "accountAvatarFallback")
+        const control = findChild(dialog, "accountAvatar")
+        const avatar = findChild(control, "hnAvatarImage")
+        const fallback = findChild(control, "hnAvatarFallback")
+        const effect = findChild(control, "hnAvatarEffect")
         model.selectedAccount = ({username: "user", avatarUrl: "https://invalid/avatar.png"})
         compare(String(avatar.source), "")
-        verify(fallback.visible)
+        compare(effect.source, fallback)
         ignoreWarning(/.*Cannot open.*missing-auth-avatar.*/)
         model.selectedAccount = ({username: "user", avatarUrl: "file:///tmp/missing-auth-avatar.png"})
         tryCompare(avatar, "status", Image.Error)
-        verify(fallback.visible)
+        compare(effect.source, fallback)
     }
 
     function test_promptWordingAndMetadataVisibility() {
@@ -384,6 +388,116 @@ TestCase {
         verify(!findChild(dialog, "actionDetails").visible)
     }
 
+    function beginIdentitySelection() {
+        model.identities = identityModel
+        model.selectedIdentity = "user"
+        model.selectedAccount = ({username: "user", fullName: "Current User", avatarUrl: ""})
+        model.inputMode = 0
+        model.currentPrompt = ""
+        model.lifecycleState = 1
+        const selector = findChild(dialog, "identitySelector")
+        tryCompare(selector, "currentIndex", 1)
+        tryCompare(selector, "activeFocus", true)
+        return selector
+    }
+
+    function test_continueConfirmsDisplayedAccount() {
+        beginIdentitySelection()
+        const button = findChild(dialog, "continueButton")
+        verify(button.visible && button.enabled)
+        verify(findChild(dialog, "identityExplanation").visible)
+        verify(!findChild(dialog, "responseField").visible)
+        compare(model.operation, "")
+        button.clicked()
+        compare(model.operation, "identity:user")
+        verify(!button.visible)
+    }
+
+    function test_enterConfirmsAndRetryRequiresConfirmation() {
+        beginIdentitySelection()
+        keyClick(Qt.Key_Enter)
+        compare(model.operation, "identity:user")
+        model.lifecycleState = 4
+        findChild(dialog, "retryButton").clicked()
+        compare(model.lifecycleState, 1)
+        compare(model.operation, "retry")
+        const selector = findChild(dialog, "identitySelector")
+        tryCompare(selector, "activeFocus", true)
+        keyClick(Qt.Key_Return)
+        compare(model.operation, "identity:user")
+    }
+
+    function test_openPopupEnterConfirmsHighlightedAccount() {
+        const selector = beginIdentitySelection()
+        keyClick(Qt.Key_Space)
+        tryCompare(selector.popup, "opened", true)
+        keyClick(Qt.Key_Up)
+        compare(model.operation, "")
+        keyClick(Qt.Key_Return)
+        compare(model.operation, "identity:root")
+    }
+
+    function test_dropdownRolesAvatarsAndConstrainedScrolling() {
+        beginIdentitySelection()
+        manyIdentities.clear()
+        for (let i = 0; i < 12; ++i) {
+            manyIdentities.append({stableId: "account-" + i, username: "user-" + i,
+                fullName: "<b>Long plain-text account name</b> ".repeat(5),
+                displayLabel: "Account " + i, avatarUrl: "https://invalid/avatar.png"})
+        }
+        model.identities = manyIdentities
+        model.selectedIdentity = "account-0"
+        dialog.width = 400
+        dialog.height = 450
+        const selector = findChild(dialog, "identitySelector")
+        tryCompare(selector, "currentIndex", 0)
+        selector.popup.open()
+        tryCompare(selector.popup, "opened", true)
+        const list = selector.popup.contentItem
+        tryVerify(() => list.contentHeight > list.height)
+        tryVerify(() => list.itemAtIndex(0) !== null)
+        const first = list.itemAtIndex(0)
+        compare(first.height, 82)
+        compare(first.text, manyIdentities.get(0).fullName)
+        verify(first.highlighted)
+        const avatar = findChild(first, "identityOptionAvatar")
+        compare(avatar.width, 56)
+        compare(avatar.height, 56)
+        compare(String(avatar.source), "")
+        const position = list.mapToItem(dialog.contentItem, 0, 0)
+        verify(position.y >= 0)
+        verify(position.y + list.height <= dialog.height)
+        list.positionViewAtIndex(11, ListView.Contain)
+        tryVerify(() => list.contentY > 0)
+        selector.popup.close()
+    }
+
+    function test_stableGeometryAndNewRequestReset() {
+        beginIdentitySelection()
+        const initialHeight = dialog.height
+        compare(initialHeight, Math.min(720, dialog.maximumHeight))
+        compare(dialog.width, Math.min(740, dialog.maximumWidth))
+        for (const state of [3, 2, 3, 4, 1]) {
+            model.lifecycleState = state
+            model.inputMode = state === 2 ? 2 : 0
+            model.currentPrompt = state === 2 ? "Password:" : ""
+            waitForRendering(dialog.contentItem)
+            compare(dialog.height, initialHeight)
+        }
+        // A smaller compositor configure is preserved through state transitions.
+        dialog.height = 350
+        model.lifecycleState = 2
+        model.inputMode = 2
+        waitForRendering(dialog.contentItem)
+        compare(dialog.height, 350)
+        model.frontendKind = 2
+        model.requestToken += "askpass"
+        tryCompare(dialog, "height", Math.min(480, dialog.maximumHeight))
+        model.frontendKind = 1
+        model.requestToken += "polkit"
+        tryCompare(dialog, "height", initialHeight)
+    }
+
     function test_overflowKeepsActionsAccessible() {
         model.requestMessage = "Very long request ".repeat(500)
         model.currentPrompt = "Long challenge ".repeat(200)
@@ -398,10 +512,14 @@ TestCase {
             verify(point.x >= 0 && point.x + button.width <= dialog.width)
             verify(point.y >= 0 && point.y + button.height <= dialog.height)
         }
+        const frame = findChild(dialog, "authenticationOuterFrame")
+        compare(frame.height, dialog.height - 6)
         const field = findChild(dialog, "responseField")
         field.forceActiveFocus()
         dialog.revealFocusedControl()
         tryVerify(() => scroll.contentItem.contentY > 0)
+        const focused = field.mapToItem(scroll, 0, 0)
+        verify(focused.y >= 0 && focused.y + field.height <= scroll.height)
     }
 
 }

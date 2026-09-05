@@ -2,9 +2,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import Holonight as H
 import Holonight.Core
+import Holonight.Controls
 
-ComboBox {
+H.ComboBox {
     id: root
     objectName: "identitySelector"
     required property var promptModel
@@ -14,6 +16,7 @@ ComboBox {
     readonly property var account: promptModel.selectedAccount
     readonly property string accountName: account.fullName || account.username || account.displayLabel || ""
     implicitHeight: 82
+    delegateHeight: 82
     model: promptModel.identities
     textRole: "displayLabel"
     valueRole: "stableId"
@@ -22,6 +25,21 @@ ComboBox {
     Accessible.name: qsTr("Authentication account: %1").arg(accountName)
     leftPadding: 16
     rightPadding: 48
+
+    function confirmDisplayedIdentity() {
+        if (enabled && !popup.visible && currentIndex >= 0)
+            promptModel.selectIdentity(currentValue)
+    }
+    Keys.onReturnPressed: function(event) {
+        if (root.popup.visible) { event.accepted = false; return }
+        root.confirmDisplayedIdentity()
+        event.accepted = true
+    }
+    Keys.onEnterPressed: function(event) {
+        if (root.popup.visible) { event.accepted = false; return }
+        root.confirmDisplayedIdentity()
+        event.accepted = true
+    }
 
     function selectPreferred() {
         currentIndex = indexOfValue(root.promptModel.selectedIdentity)
@@ -42,32 +60,13 @@ ComboBox {
     }
     contentItem: RowLayout {
         spacing: 18
-        Rectangle {
+        HnAvatar {
+            objectName: "accountAvatar"
             Layout.preferredWidth: 56
             Layout.preferredHeight: 56
-            radius: 28
-            color: HoloniightPalette.background
-            border.color: HoloniightPalette.borderActive
-            Image {
-                id: avatar
-                objectName: "accountAvatar"
-                anchors.fill: parent
-                anchors.margins: 3
-                readonly property string localSource: String(root.account.avatarUrl || "")
-                source: localSource.startsWith("file:///") ? localSource : ""
-                sourceSize.width: 56
-                sourceSize.height: 56
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                visible: status === Image.Ready
-            }
-            AuthenticationIcon {
-                objectName: "accountAvatarFallback"
-                anchors.centerIn: parent
-                kind: "user"
-                size: 30
-                visible: avatar.status !== Image.Ready
-            }
+            readonly property string localSource: String(root.account.avatarUrl || "")
+            source: localSource.startsWith("file:///") ? localSource : ""
+            fallbackSource: Qt.resolvedUrl("user-avatar.svg")
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -101,32 +100,47 @@ ComboBox {
         size: 20
         color: HoloniightPalette.textMuted
     }
-    delegate: ItemDelegate {
+    delegate: H.ItemDelegate {
         id: option
         required property string stableId
         required property string displayLabel
         required property string username
         required property string fullName
+        required property url avatarUrl
         required property int index
-        width: root.popup.width
+        width: root.popup.availableWidth
+        height: root.delegateHeight
         highlighted: root.highlightedIndex === index
-        text: fullName || username || displayLabel
-        contentItem: ColumnLayout {
-            spacing: 3
-            Label {
-                Layout.fillWidth: true
-                text: option.text
-                textFormat: Text.PlainText
-                elide: Text.ElideRight
-                color: HoloniightPalette.textPrimary
+        text: option.fullName || option.username || option.displayLabel
+        contentItem: RowLayout {
+            spacing: 18
+            HnAvatar {
+                objectName: "identityOptionAvatar"
+                Layout.preferredWidth: 56
+                Layout.preferredHeight: 56
+                source: String(option.avatarUrl).startsWith("file:///") ? option.avatarUrl : ""
+                fallbackSource: Qt.resolvedUrl("user-avatar.svg")
             }
-            Label {
+            ColumnLayout {
                 Layout.fillWidth: true
-                visible: text.length > 0 && text !== option.text
-                text: option.username
-                textFormat: Text.PlainText
-                elide: Text.ElideRight
-                color: HoloniightPalette.textMuted
+                spacing: 4
+                Label {
+                    Layout.fillWidth: true
+                    text: option.text
+                    font.pixelSize: 20
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    color: HoloniightPalette.textPrimary
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: text.length > 0 && text !== option.text
+                    text: option.username
+                    font.pixelSize: 17
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    color: HoloniightPalette.textMuted
+                }
             }
         }
     }

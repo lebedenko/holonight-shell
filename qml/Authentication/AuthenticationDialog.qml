@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Holonight
 import Holonight.Core
 import Holonight.Controls
+import Holonight.Authentication
 
 ApplicationWindow {
     id: root
@@ -21,13 +22,13 @@ ApplicationWindow {
         default: return qsTr("APPLICATION AUTHENTICATION REQUEST")
         }
     }
-    x: Math.round((Screen.width - width) / 2)
-    y: Math.round((Screen.height - height) / 2)
-    maximumWidth: Math.max(1, Math.min(740, Screen.width - 48))
-    maximumHeight: Math.max(1, Math.min(body.implicitHeight + header.implicitHeight
-        + (actionRow.visible ? actionRow.implicitHeight + 30 : 0) + 125, Screen.height - 48))
-    width: maximumWidth
-    height: maximumHeight
+    readonly property int preferredWidth: 740
+    readonly property int preferredHeight: promptModel.frontendKind === 1 ? 720 : 480
+    readonly property bool selectingIdentity: promptModel.lifecycleState === 1
+    width: preferredWidth
+    height: preferredHeight
+    AuthenticationWindowGeometry { id: windowGeometry; window: root }
+    function resetSize() { windowGeometry.resetSize(preferredWidth, preferredHeight) }
     visible: promptModel.lifecycleState !== 0 && promptModel.lifecycleState !== 5 && promptModel.lifecycleState !== 6
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.FramelessWindowHint
@@ -45,7 +46,7 @@ ApplicationWindow {
 
     function cycleFocus(forward) {
         const controls = [identitySelector, responseField.inputControl, responseField.revealControl,
-            cancelButton, authenticateButton, retryButton, rejectButton, allowButton]
+            cancelButton, continueButton, authenticateButton, retryButton, rejectButton, allowButton]
             .filter(control => control.visible && control.enabled)
         if (controls.length === 0)
             return
@@ -94,6 +95,7 @@ ApplicationWindow {
 
     HnSurfaceFrame {
         anchors.fill: parent
+        objectName: "authenticationOuterFrame"
         anchors.margins: 3
         surfaceRole: HnSurfaceRole.Window
         cornerStyleOverride: HnCornerStyle.Chamfered
@@ -230,9 +232,20 @@ ApplicationWindow {
                     promptModel: root.promptModel
                     onNavigate: function(forward) { root.cycleFocus(forward) }
                 }
+                Label {
+                    objectName: "identityExplanation"
+                    Layout.fillWidth: true
+                    visible: root.selectingIdentity
+                    text: qsTr("Continue with this account, or choose another account to authenticate.")
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 15
+                    color: HoloniightPalette.textMuted
+                }
                 MessageList { Layout.fillWidth: true; promptModel: root.promptModel }
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.minimumHeight: root.promptModel.frontendKind === 1 && !root.textInput ? 140 : 0
                     spacing: 12
                     Label {
                         objectName: "promptLabel"
@@ -293,6 +306,16 @@ ApplicationWindow {
                 hint: qsTr("Esc")
                 enabled: root.promptModel.lifecycleState >= 1 && root.promptModel.lifecycleState <= 4
                 onClicked: root.promptModel.cancel()
+            }
+            ActionButton {
+                id: continueButton
+                objectName: "continueButton"
+                text: qsTr("Continue")
+                hint: qsTr("Enter")
+                primary: true
+                visible: root.selectingIdentity
+                enabled: visible && identitySelector.currentIndex >= 0
+                onClicked: identitySelector.confirmDisplayedIdentity()
             }
             ActionButton {
                 id: authenticateButton
@@ -393,9 +416,13 @@ ApplicationWindow {
         Keys.onReturnPressed: function(event) { button.clicked(); event.accepted = true }
         Keys.onEnterPressed: function(event) { button.clicked(); event.accepted = true }
     }
-    Component.onCompleted: if (visible) Qt.callLater(root.focusInitialControl)
+    Component.onCompleted: {
+        root.resetSize()
+        if (visible) Qt.callLater(root.focusInitialControl)
+    }
     Connections {
         target: root.promptModel
+        function onRequestTokenChanged() { Qt.callLater(root.resetSize) }
         function onLifecycleStateChanged() { Qt.callLater(root.focusInitialControl) }
         function onPromptChanged() { Qt.callLater(root.focusInitialControl) }
     }

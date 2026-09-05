@@ -633,3 +633,41 @@ HoloNight requirement also applies.
 - [sudo.conf(5): `Path askpass`](https://www.sudo.ws/docs/man/sudo.conf.man/)
 - [OpenSSH `ssh(1)`: `SSH_ASKPASS` and `SSH_ASKPASS_REQUIRE`](https://man.openbsd.org/ssh.1)
 - [OpenSSH portable 10.5p1 askpass prompt-mode contract](https://github.com/openssh/openssh-portable/blob/V_10_5_P1/readpass.c)
+
+## Shared avatar and stable dialog presentation (2026-09-05)
+
+The presentation contract below supersedes earlier content-driven sizing examples.
+
+- `Holonight.Controls.HnAvatar` owns image presentation in both Shell authentication
+  and Greeter. Its API is `source`, `size`, `fallbackSource`, `backgroundColor`,
+  `ringColor`, `ringWidth`, and `imageInset` (measured from the outer edge).
+  Images load asynchronously, crop to a circle, and decode for the rendered size
+  and display scale. Empty, loading, or failed sources show the consumer's fallback;
+  fallback failure leaves the background and ring. Account changes immediately hide
+  the previous image. Account lookup, local URL restrictions, and fallback assets
+  remain consumer responsibilities.
+- The Shell identity selector derives from `Holonight.ComboBox`, preserving its
+  themed popup, scrolling, highlighting, and constrained placement. Both collapsed
+  and expanded rows use 56-pixel avatars; dropdown rows are 82 pixels tall. Names
+  are plain text, with a secondary username when different. Selection uses stable IDs.
+- Multiple eligible Polkit identities still require explicit confirmation. The
+  selection stage explains the choice and offers **Continue** for the displayed
+  identity. Return/keypad Enter on the closed selector also confirms it. Enter in
+  an open popup confirms its highlighted row. Dropdown activation remains a
+  confirmation path. Retry preserves the existing identity-selection policy.
+  Single-identity requests remain automatic. Input appears only when PAM provides
+  a prompt; the initial body reserves space without showing a fake password field.
+- Preferred dimensions are 740 × 720 logical pixels for Polkit and 740 × 480 for
+  askpass. Maximum dimensions are the associated `QScreen::availableGeometry()`
+  minus 24 pixels on each edge, falling back to reported screen geometry if invalid.
+  Where Wayland does not report reserved areas, available geometry may equal the
+  full screen. Placement remains compositor controlled.
+- A new request reapplies its preferred size within those bounds. Screen/work-area
+  changes reclamp the current size, retaining smaller compositor-configured sizes.
+  Identity selection, prompts, busy states, failures, and retries do not resize the
+  window. Header and actions stay outside the shrinking, scrolling body; focus
+  reveals the active input. Both frames follow actual window bounds.
+- Both frontends remain ordinary frameless Wayland dialog windows. Compositor
+  decoration guidance and the manual acceptance matrix are in
+  [AVATAR-DIALOG-VERIFICATION.md](AVATAR-DIALOG-VERIFICATION.md). Personal compositor
+  configuration is not modified.
