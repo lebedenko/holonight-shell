@@ -27,6 +27,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install isolated acceptance tools
+        run: pacman -Syu --noconfirm bubblewrap sway
+
       - name: Checkout HoloNightConfig dependency
         uses: actions/checkout@v4
         with:
@@ -68,11 +71,6 @@ jobs:
           cmake --build holonight-system-services-dep/build --parallel
           cmake --install holonight-system-services-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
           rm -rf holonight-system-services-dep
-
-      - name: Install isolated acceptance tools
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends bubblewrap sway
 
       - name: Architecture checks
         run: scripts/check-architecture-boundaries.sh

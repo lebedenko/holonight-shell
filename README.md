@@ -118,6 +118,7 @@ Requires **hypridle ≥ 0.2.0** (or swayidle) to track idle time via `ext-idle-n
 - `libpulse`
 - `libsecret-1` (for CalDAV password lookup from the system keyring)
 - GTest (optional, for tests — fetched automatically if not installed)
+- Python 3, bubblewrap, D-Bus and Sway for isolated test acceptance (no live session required)
 
 See [`docs/dev-setup.md`](docs/dev-setup.md) for the Ubuntu package baseline used by CI.
 
@@ -129,7 +130,7 @@ All workflows go through [`task`](https://taskfile.dev):
 task configure    # configure CMake
 task build        # build the binary
 task run          # build and launch (requires a live Wayland/Hyprland session)
-task test         # build and run unit tests
+task test         # build and run isolated unit and launch acceptance tests
 task format       # auto-format with clang-format
 task tidy         # run clang-tidy
 task qml-lint     # lint QML files
@@ -141,8 +142,10 @@ task clean        # remove build/
 Install the HoloNight dependencies first: `holonight-config`, `holonight-qt`
 (including its Wayland component, QML modules and Qt plugins), and
 `holonight-system-services`. Install them into the destination prefix or a
-standard system location. Development tasks build sibling dependencies under
-`/tmp`; production installation builds use installed dependencies.
+standard system location. Development tasks verify the pinned provider/config revisions and build sibling dependencies under
+`build-dependencies/`, with a private `build-dependencies/prefix` installation. Production
+installation builds use installed dependencies. `task test` needs permission to create
+Linux namespaces for bubblewrap; it uses a private headless compositor and disposable services.
 
 ```bash
 task install:system  # Release build, install to /usr using sudo
