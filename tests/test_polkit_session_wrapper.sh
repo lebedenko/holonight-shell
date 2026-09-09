@@ -54,7 +54,7 @@ fi'
 make_fake socket-check '[[ -e "$1.usable" ]]'
 make_fake sleep 'printf "sleep\n" >>"${TEST_LOG}"'
 make_fake peer-environment 'cat "${FAKE_PEER_ENVIRONMENT:-/dev/null}"; exit "${FAKE_PEER_STATUS:-0}"'
-make_fake holonight-polkit-agent 'printf "agent session=%s runtime=%s wayland=%s display=%s qt=%s\n" "${XDG_SESSION_ID-}" "${XDG_RUNTIME_DIR-}" "${WAYLAND_DISPLAY-}" "${DISPLAY-}" "${QT_QPA_PLATFORM-}" >>"${TEST_LOG}"'
+make_fake holonight-polkit-agent 'printf "agent session=%s runtime=%s wayland=%s display=%s qt=%s quick=%s\n" "${XDG_SESSION_ID-}" "${XDG_RUNTIME_DIR-}" "${WAYLAND_DISPLAY-}" "${DISPLAY-}" "${QT_QPA_PLATFORM-}" "${QT_QUICK_CONTROLS_STYLE-}" >>"${TEST_LOG}"'
 
 set_metadata() {
   printf '%s\n' "${1:-1000}" >"${metadata}/User"
@@ -67,7 +67,7 @@ set_metadata() {
 
 write_environment() {
   local pid="$1" session="$2" wayland="$3"
-  printf 'XDG_SESSION_ID=%s\0XDG_RUNTIME_DIR=%s\0WAYLAND_DISPLAY=%s\0DISPLAY=:7\0QT_QPA_PLATFORM=wayland\0IGNORED_SECRET=never-export\0' \
+  printf 'XDG_SESSION_ID=%s\0XDG_RUNTIME_DIR=%s\0WAYLAND_DISPLAY=%s\0DISPLAY=:7\0QT_QPA_PLATFORM=wayland\0QT_QUICK_CONTROLS_STYLE=Fusion\0IGNORED_SECRET=never-export\0' \
     "${session}" "${runtime}" "${wayland}" >"${proc_root}/${pid}/environ"
 }
 
@@ -94,7 +94,7 @@ printf '202\n' >"${cgroup_root}/user.slice/session-b.scope/cgroup.procs"
 
 : >"${log_file}"
 run_wrapper HOLONIGHT_POLKIT_SESSION_TIMEOUT=0
-grep -Fqx "agent session=session-a runtime=${runtime} wayland=wayland-a display=:7 qt=wayland" "${log_file}"
+grep -Fqx "agent session=session-a runtime=${runtime} wayland=wayland-a display=:7 qt=wayland quick=Fusion" "${log_file}"
 
 : >"${log_file}"
 rm -f "${test_root}/scope-count"
@@ -134,12 +134,12 @@ assert_rejected session-not-ready
 set_metadata
 : >"${cgroup_root}/user.slice/session-a.scope/cgroup.procs"
 peer_environment="${test_root}/peer-environment"
-printf 'XDG_SESSION_ID=session-a\0XDG_RUNTIME_DIR=%s\0WAYLAND_DISPLAY=wayland-a\0QT_QPA_PLATFORM=wayland\0' \
+printf 'XDG_SESSION_ID=session-a\0XDG_RUNTIME_DIR=%s\0WAYLAND_DISPLAY=wayland-a\0QT_QPA_PLATFORM=wayland\0QT_QUICK_CONTROLS_STYLE=Fusion\0' \
   "${runtime}" >"${peer_environment}"
 : >"${log_file}"
 run_wrapper HOLONIGHT_POLKIT_SESSION_TIMEOUT=0 FAKE_PEER_ENVIRONMENT="${peer_environment}" \
   DISPLAY=:99 $'FAKE_SYSTEMD_ENV=WAYLAND_DISPLAY=wayland-a\nDISPLAY=:99\n'
-grep -Fqx "agent session=session-a runtime=${runtime} wayland=wayland-a display= qt=wayland" "${log_file}"
+grep -Fqx "agent session=session-a runtime=${runtime} wayland=wayland-a display= qt=wayland quick=Fusion" "${log_file}"
 assert_rejected conflicting-global-environment FAKE_PEER_ENVIRONMENT="${peer_environment}" \
   $'FAKE_SYSTEMD_ENV=XDG_SESSION_ID=session-b\nWAYLAND_DISPLAY=wayland-b\n'
 

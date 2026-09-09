@@ -73,6 +73,15 @@ class SessionEnvironmentTest(unittest.TestCase):
         self.assertNotIn(b'IGNORED_MARKER', values)
         self.assertEqual(result.stderr, b'')
 
+    def test_preserves_style_override_without_importing_peer_discovery(self):
+        self.server('wayland-1', 'session-a', QT_QUICK_CONTROLS_STYLE='Fusion',
+                    QML_IMPORT_PATH='/untrusted/qml', QT_PLUGIN_PATH='/untrusted/plugins')
+        result = self.discover('session-a')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(b'QT_QUICK_CONTROLS_STYLE=Fusion\0', result.stdout)
+        self.assertNotIn(b'QML_IMPORT_PATH', result.stdout)
+        self.assertNotIn(b'QT_PLUGIN_PATH', result.stdout)
+
     def test_two_sessions_for_one_uid_keep_distinct_displays(self):
         self.server('wayland-1', 'session-a')
         self.server('wayland-2', 'session-b')

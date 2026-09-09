@@ -1,6 +1,7 @@
 #include "AskpassMode.h"
 #include "ExternalText.h"
 #include "ProtocolWriter.h"
+#include "QuickControlsRuntime.h"
 #include "SecretValidator.h"
 
 #include <QFileInfo>
@@ -120,11 +121,6 @@ int main(int argc, char* argv[]) {
     dprintf(STDERR_FILENO, "frontend=askpass phase=startup classification=core-limit\n");
     return 1;
   }
-  if (argc > 2) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- POSIX/Linux API boundary.
-    dprintf(STDERR_FILENO, "frontend=askpass phase=arguments classification=extra-arguments\n");
-    return 1;
-  }
   std::signal(SIGPIPE, SIG_IGN);
   const int signal_fd = setupSignalFd();
   if (signal_fd < 0) {
@@ -133,6 +129,13 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   QGuiApplication application(argc, argv);
+  holonight::configureQuickControls();
+  if (argc > 2) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- POSIX/Linux API boundary.
+    dprintf(STDERR_FILENO, "frontend=askpass phase=arguments classification=extra-arguments\n");
+    return 1;
+  }
+
   const std::span<char*> arguments(argv, static_cast<size_t>(argc));
   const QString basename = QFileInfo(QString::fromLocal8Bit(arguments.front())).fileName();
   const auto mode = Holonight::Authentication::askpassMode(basename, qEnvironmentVariable("SSH_ASKPASS_PROMPT"));
@@ -178,6 +181,7 @@ int main(int argc, char* argv[]) {
     dprintf(STDERR_FILENO, "frontend=askpass phase=ui classification=load-failure\n");
     return 1;
   }
+  holonight::reportQuickControlsLoaded(engine.rootObjects().front());
 #ifdef HOLONIGHT_ASKPASS_TEST_CONTROL
   TestControl test_control(&model);
 #endif

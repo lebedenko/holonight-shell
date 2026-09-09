@@ -1,20 +1,21 @@
 # UQC-102 work and verification ledger
 
-Design checkpoint: 2026-09-09. Only D0 is complete in this iteration. All product
-changes and product verification below remain pending; no local acceptance claimed.
+Implementation iteration: 2026-09-09. D1–D5 are complete; D6 canonical publication
+and remote CI verification are in progress. See [IMPLEMENTATION.md](IMPLEMENTATION.md)
+for executed commands, evidence and remaining limitations.
 See [SPEC.md](SPEC.md) and [DESIGN.md](DESIGN.md) for contracts and file inventory.
 
 | ID | State | Dependency | Work and exact principal files |
 |---|---|---|---|
 | D0 | Done | Assigned published baseline | Inspect code/provider contracts; write SPEC.md, DESIGN.md and TASKS.md; review links, ordering, whitespace and documentation-only scope |
-| D1 | Planned | Published shell SDD and linked umbrella checkpoint | Prepare exact provider/config dependencies privately; Taskfile.yml, .github/workflows/ci.yml, inspect release.yml; preserve existing system-services pin |
-| D2 | Planned | D1 | Embed resources and process-local discovery; resources/qtquickcontrols2.conf, cmake/QuickControlsRuntime.cmake, libs/holonight-core/src/QuickControlsRuntime.h/.cpp, libs/holonight-core/CMakeLists.txt, CMakeLists.txt, apps/shell/CMakeLists.txt, apps/shell/main.cpp, apps/authentication/CMakeLists.txt, apps/authentication/askpass/main.cpp, apps/authentication/polkit/main.cpp, tests/CMakeLists.txt, tests/main.cpp, tests/test_qml_harness.cpp |
-| D3 | Planned | D2 | Migrate six QML files identified in DESIGN inventory; preserve public IdentitySelector geometry and Core/composites; correct CLAUDE.md, AGENTS.md and README.md |
-| D4 | Planned | D3 | Wire private selection/discovery diagnostics; verify scripts/holonight-session, scripts/holonight-polkit-agent-session, scripts/holonight-wayland-session-environment, cmake/InstallIntegration.cmake.in and data/systemd/user/holonight-polkit-agent@.service.in; edit only where propagation/discovery tests demonstrate a need |
-| D5 | Planned | D4 | Add policy, selector/discovery and compiled acceptance tests; run focused then broad checks below, resolve failures and record evidence |
-| D6 | Planned | D5 | Publish verified shell implementation and local acceptance record, require green remote CI, confirm canonical commit, hand off to umbrella coordinator |
+| D1 | Done | Published shell SDD and linked umbrella checkpoint | Prepare exact provider/config dependencies privately; Taskfile.yml, .github/workflows/ci.yml, inspect release.yml; preserve existing system-services pin |
+| D2 | Done | D1 | Embed resources and process-local discovery; resources/qtquickcontrols2.conf, cmake/QuickControlsRuntime.cmake, libs/holonight-core/src/QuickControlsRuntime.h/.cpp, libs/holonight-core/CMakeLists.txt, CMakeLists.txt, apps/shell/CMakeLists.txt, apps/shell/main.cpp, apps/authentication/CMakeLists.txt, apps/authentication/askpass/main.cpp, apps/authentication/polkit/main.cpp, tests/CMakeLists.txt, tests/main.cpp, tests/test_qml_harness.cpp |
+| D3 | Done | D2 | Migrate six QML files identified in DESIGN inventory; preserve public IdentitySelector geometry and Core/composites; correct CLAUDE.md, AGENTS.md and README.md |
+| D4 | Done | D3 | Wire private selection/discovery diagnostics; verify scripts/holonight-session, scripts/holonight-polkit-agent-session, scripts/holonight-wayland-session-environment, cmake/InstallIntegration.cmake.in and data/systemd/user/holonight-polkit-agent@.service.in; edit only where propagation/discovery tests demonstrate a need |
+| D5 | Done | D4 | Add policy, selector/discovery and compiled acceptance tests; run focused then broad checks below, resolve failures and record evidence |
+| D6 | In Progress | D5 | Publish verified shell implementation and local acceptance record, require green remote CI, confirm canonical commit, hand off to umbrella coordinator |
 
-## Test implementation inventory
+## Accepted test design inventory
 
 Extend existing `tests/test_askpass_process.cpp`, `tests/test_polkit_agent_process.cpp`,
 `tests/test_authentication_core.cpp`, `tests/test_polkit_bridge_integration.cpp`,
@@ -45,11 +46,11 @@ source/build dependency paths and verify native plugin origin as well as QML ori
 Provide missing-style and missing-Core/composite cases independently: Fusion cannot
 mask an unavailable required composite dependency.
 
-## Future verification commands
+## Accepted verification commands
 
 Run from the shell root after implementing and registering the proposed targets.
-New UQC test names/runner interface below are requirements for D5, not existing
-commands or executed results. Use a disposable configuration and isolated services
+The original planned command names are retained below; IMPLEMENTATION.md records
+the actual registered entries and commands executed. Use a disposable configuration and isolated services
 inside each runtime runner; never use `task run` for this acceptance.
 
 ```sh

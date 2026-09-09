@@ -79,3 +79,6 @@ assets/dont-commit/
 .claude/
 AGENTS.md
 CLAUDE.md
+
+# Python verification tools
+__pycache__/

@@ -29,6 +29,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(HolonightQt REQUIRED COMPONENTS Wayland)
 find_package(HoloNightSystemServices REQUIRED)
+include(cmake/QuickControlsRuntime.cmake)
 find_package(Qt6 COMPONENTS WaylandClient WaylandClientPrivate QUIET)
 find_package(Qt6WaylandScannerTools REQUIRED)
 if(NOT COMMAND qt6_generate_wayland_protocol_client_sources)
@@ -384,11 +385,10 @@ if(QMLLINT)
             --bare
             --unqualified disable
             --unused-imports disable
-            -I "/tmp/holonight-qt-prefix/lib/qt6/qml"
+            -I "${HOLONIGHT_RUNTIME_QML_PATH}"
             -I "${CMAKE_CURRENT_SOURCE_DIR}/tests/qmllint"
             -I "${CMAKE_CURRENT_BINARY_DIR}/apps/shell"
             -I "${CMAKE_BINARY_DIR}"
-            -I "$ENV{HOME}/.local/lib/qt6/qml"
             -I "${HOLONIGHT_QT_QML_DIR}"
             ${ALL_QML_FILES}
         DEPENDS

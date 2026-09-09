@@ -1,6 +1,7 @@
 #include "AccountProfileResolver.h"
 #include "PolkitListenerBridge.h"
 #include "PolkitSessionAdapter.h"
+#include "QuickControlsRuntime.h"
 #include "generated/AuthenticationConfig.h"
 
 #include <QGuiApplication>
@@ -48,6 +49,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   QGuiApplication application(argc, argv);
+  holonight::configureQuickControls();
   QGuiApplication::setQuitOnLastWindowClosed(false);
   QSocketNotifier notifier(signal_fd, QSocketNotifier::Read);
   QObject::connect(&notifier, &QSocketNotifier::activated, &application, [&] {
@@ -92,6 +94,7 @@ int main(int argc, char* argv[]) {
     dprintf(STDERR_FILENO, "frontend=polkit phase=ui classification=load-failure\n");
     return 1;
   }
+  holonight::reportQuickControlsLoaded(engine.rootObjects().front());
   QObject::connect(&application, &QCoreApplication::aboutToQuit, &coordinator, &PolkitRequestCoordinator::shutdown);
   return QGuiApplication::exec();
 }

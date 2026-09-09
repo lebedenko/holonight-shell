@@ -22,6 +22,7 @@ add_test(NAME test_authentication_install
 # Helper: define a test executable with common settings.
 function(holonight_add_test_exe name)
   add_executable(${name} ${ARGN})
+  holonight_quick_controls_runtime(${name} "${CMAKE_INSTALL_BINDIR}")
   set_target_properties(${name} PROPERTIES AUTOMOC ON)
   target_compile_features(${name} PRIVATE cxx_std_23)
   target_include_directories(${name} PRIVATE ${CMAKE_BINARY_DIR})
@@ -31,7 +32,7 @@ function(holonight_add_test_exe name)
   )
   gtest_discover_tests(${name}
     DISCOVERY_MODE PRE_TEST
-    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=/tmp/holonight-qt-prefix/lib/qt6/qml;QML2_IMPORT_PATH=/tmp/holonight-qt-prefix/lib/qt6/qml"
+    PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH};QML2_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH}"
   )
 endfunction()
 
@@ -259,9 +260,10 @@ qt6_add_resources(test_holonight_qml_harness "test_media_assets"
     "${PROJECT_SOURCE_DIR}/assets/media/artwork-frame.svg"
     "${PROJECT_SOURCE_DIR}/assets/media/now-playing-glyph.svg"
 )
+holonight_quick_controls_runtime(test_holonight_qml_harness "${CMAKE_INSTALL_BINDIR}")
 add_test(NAME test_holonight_qml_harness COMMAND test_holonight_qml_harness)
 set_tests_properties(test_holonight_qml_harness PROPERTIES
-  ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=/tmp/holonight-qt-prefix/lib/qt6/qml;QML2_IMPORT_PATH=/tmp/holonight-qt-prefix/lib/qt6/qml:${CMAKE_BINARY_DIR}"
+  ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH};QML2_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH}:${CMAKE_BINARY_DIR}"
 )
 
 # --- coverage instrumentation and report target ---
@@ -319,3 +321,61 @@ if(ENABLE_COVERAGE)
     COMMENT "Collecting coverage → build/coverage/index.html"
   )
 endif()
+
+add_test(NAME uqc_policy COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-qml-import-policy.py)
+add_test(NAME uqc_policy_fixtures COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_qml_import_policy.py)
+
+add_executable(test_holonight_compiled_controls test_qml_harness.cpp FakeQmlServices.h)
+target_include_directories(test_holonight_compiled_controls PRIVATE ${CMAKE_BINARY_DIR})
+target_compile_definitions(test_holonight_compiled_controls PRIVATE
+  TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+  QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/uqc_qml"
+  HOLONIGHT_TESTS HOLONIGHT_COMPILED_ACCEPTANCE)
+target_link_libraries(test_holonight_compiled_controls PRIVATE holonight_app holonight_componentsplugin
+  "$<LINK_LIBRARY:WHOLE_ARCHIVE,holonight_authentication_qml>" holonight_authentication_qmlplugin Qt6::QuickTest)
+holonight_quick_controls_runtime(test_holonight_compiled_controls "${CMAKE_INSTALL_BINDIR}")
+holonight_shell_qml(test_holonight_compiled_controls)
+foreach(style IN ITEMS Holonight Fusion)
+  foreach(scale IN ITEMS 1 1.25)
+    add_test(NAME uqc_compiled_${style}_${scale} COMMAND test_holonight_compiled_controls)
+    set_tests_properties(uqc_compiled_${style}_${scale} PROPERTIES
+      ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_SCALE_FACTOR=${scale};QT_QUICK_BACKEND=software")
+  endforeach()
+  add_test(NAME uqc_source_${style} COMMAND test_holonight_qml_harness)
+  set_tests_properties(uqc_source_${style} PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_QUICK_BACKEND=software")
+endforeach()
+
+foreach(style IN ITEMS Holonight Fusion)
+  foreach(scale IN ITEMS 1 1.25)
+    add_test(NAME uqc_authentication_${style}_${scale} COMMAND test_holonight_compiled_controls
+      -input ${CMAKE_CURRENT_SOURCE_DIR}/qml/tst_AuthenticationDialog.qml)
+    set_tests_properties(uqc_authentication_${style}_${scale} PROPERTIES
+      ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_SCALE_FACTOR=${scale};QT_QUICK_BACKEND=software")
+  endforeach()
+endforeach()
+
+foreach(mode IN ITEMS default environment cli precedence)
+  set(runtime_style "")
+  set(runtime_args "")
+  set(expected_style Fusion)
+  if(mode STREQUAL "default")
+    set(expected_style Holonight)
+  elseif(mode STREQUAL "environment")
+    set(runtime_style Fusion)
+  else()
+    set(runtime_args -style Fusion)
+    if(mode STREQUAL "precedence")
+      set(runtime_style Holonight)
+    endif()
+  endif()
+  add_test(NAME uqc_runtime_${mode} COMMAND test_holonight_compiled_controls ${runtime_args})
+  set_tests_properties(uqc_runtime_${mode} PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_QUICK_CONTROLS_STYLE=${runtime_style};QT_QUICK_CONTROLS_CONF=;UQC_EXPECTED_STYLE=${expected_style}")
+endforeach()
+
+add_test(NAME uqc_launch COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/run-isolated-test.py
+  --hide-host ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_quick_controls_launch.py
+  --build ${PROJECT_BINARY_DIR} --prefix ${HOLONIGHT_PROVIDER_PREFIX}
+  --logs ${PROJECT_BINARY_DIR}/uqc-launch-logs)
+set_tests_properties(uqc_launch PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)

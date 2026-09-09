@@ -1,5 +1,6 @@
 function(holonight_add_askpass target)
   add_executable(${target} askpass/main.cpp askpass/AskpassMode.cpp)
+  holonight_quick_controls_runtime(${target} "${CMAKE_INSTALL_LIBEXECDIR}")
   target_link_libraries(${target} PRIVATE
     holonight_authentication_core "$<LINK_LIBRARY:WHOLE_ARCHIVE,holonight_authentication_qml>"
     holonight_authentication_qmlplugin Qt6::Gui Qt6::Qml Qt6::Quick
@@ -20,6 +21,7 @@ add_executable(holonight-polkit-agent
   polkit/PolkitListenerBridge.cpp
   polkit/PolkitSessionAdapter.cpp
 )
+holonight_quick_controls_runtime(holonight-polkit-agent "${CMAKE_INSTALL_LIBEXECDIR}")
 target_include_directories(holonight-polkit-agent PRIVATE ${CMAKE_BINARY_DIR})
 target_compile_definitions(holonight-polkit-agent PRIVATE POLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE)
 target_link_libraries(holonight-polkit-agent PRIVATE

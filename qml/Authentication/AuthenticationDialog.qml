@@ -1,13 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls.Basic
+import QtQuick.Controls as Controls
 import QtQuick.Layouts
-import Holonight
 import Holonight.Core
 import Holonight.Controls
 import Holonight.Authentication
 
-ApplicationWindow {
+Controls.ApplicationWindow {
     id: root
     objectName: "authenticationDialog"
     required property var promptModel
@@ -135,21 +134,21 @@ ApplicationWindow {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label {
+                Controls.Label {
                     Layout.fillWidth: true
                     text: qsTr("Authentication Required")
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
-                    font.pixelSize: 25
+                    font.pointSize: 18.75
                     color: HoloniightPalette.textPrimary
                 }
-                Label {
+                Controls.Label {
                     objectName: "frontendSubtitle"
                     Layout.fillWidth: true
                     text: root.subtitle
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
-                    font.pixelSize: 13
+                    font.pointSize: 9.75
                     font.letterSpacing: 1.8
                     color: HoloniightPalette.accentViolet
                 }
@@ -164,7 +163,7 @@ ApplicationWindow {
                 GradientStop { position: 1; color: Qt.alpha(HoloniightPalette.accentViolet, 0.6) }
             }
         }
-        ScrollView {
+        Controls.ScrollView {
             id: bodyScroll
             objectName: "authenticationBodyScroll"
             Layout.fillWidth: true
@@ -177,19 +176,19 @@ ApplicationWindow {
             clip: true
             contentWidth: availableWidth
             contentHeight: body.implicitHeight
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
             ColumnLayout {
                 id: body
                 width: bodyScroll.availableWidth
                 spacing: 20
-                Label {
+                Controls.Label {
                     objectName: "requestMessage"
                     Layout.fillWidth: true
                     visible: text.length > 0
                     text: root.promptModel.requestMessage
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
-                    font.pixelSize: 18
+                    font.pointSize: 13.5
                     color: HoloniightPalette.textPrimary
                 }
                 Rectangle {
@@ -232,14 +231,14 @@ ApplicationWindow {
                     promptModel: root.promptModel
                     onNavigate: function(forward) { root.cycleFocus(forward) }
                 }
-                Label {
+                Controls.Label {
                     objectName: "identityExplanation"
                     Layout.fillWidth: true
                     visible: root.selectingIdentity
                     text: qsTr("Continue with this account, or choose another account to authenticate.")
                     textFormat: Text.PlainText
                     wrapMode: Text.Wrap
-                    font.pixelSize: 15
+                    font.pointSize: 11.25
                     color: HoloniightPalette.textMuted
                 }
                 MessageList { Layout.fillWidth: true; promptModel: root.promptModel }
@@ -247,7 +246,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.minimumHeight: root.promptModel.frontendKind === 1 && !root.textInput ? 140 : 0
                     spacing: 12
-                    Label {
+                    Controls.Label {
                         objectName: "promptLabel"
                         Layout.fillWidth: true
                         text: root.promptModel.currentPrompt || (root.textInput
@@ -255,7 +254,7 @@ ApplicationWindow {
                         visible: text.length > 0
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap
-                        font.pixelSize: 18
+                        font.pointSize: 13.5
                         color: HoloniightPalette.textPrimary
                     }
                     AuthenticationPrompt {
@@ -266,7 +265,7 @@ ApplicationWindow {
                         onNavigate: function(forward) { root.cycleFocus(forward) }
                         onSubmit: function(value) { root.promptModel.respond(value) }
                     }
-                    Label {
+                    Controls.Label {
                         objectName: "responseHelper"
                         Layout.fillWidth: true
                         visible: root.textInput && root.promptModel.lifecycleState === 2
@@ -276,11 +275,11 @@ ApplicationWindow {
                                 : qsTr("Your response is returned to the requesting application.")
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap
-                        font.pixelSize: 15
+                        font.pointSize: 11.25
                         color: HoloniightPalette.textMuted
                     }
                 }
-                BusyIndicator {
+                Controls.BusyIndicator {
                     Layout.alignment: Qt.AlignHCenter
                     running: root.promptModel.lifecycleState === 3
                     visible: running
@@ -363,26 +362,26 @@ ApplicationWindow {
         property string valueObjectName: ""
         Layout.fillWidth: true
         spacing: 16
-        Label {
+        Controls.Label {
             Layout.preferredWidth: root.width < 500 ? 90 : 138
             text: row.label
             textFormat: Text.PlainText
-            font.pixelSize: 17
+            font.pointSize: 12.75
             wrapMode: Text.Wrap
             color: HoloniightPalette.textMuted
         }
-        Label {
+        Controls.Label {
             objectName: row.valueObjectName
             Layout.fillWidth: true
             text: row.value
             textFormat: Text.PlainText
             wrapMode: Text.WrapAnywhere
             font.family: HolonightTheme.monospaceFont
-            font.pixelSize: 16
+            font.pointSize: 12
             color: HoloniightPalette.textSecondary
         }
     }
-    component ActionButton: Button {
+    component ActionButton: Controls.Button {
         id: button
         property string hint: ""
         property bool primary: false
@@ -396,10 +395,10 @@ ApplicationWindow {
         contentItem: RowLayout {
             id: buttonContent
             spacing: 18
-            Label {
+            Controls.Label {
                 text: button.text
                 textFormat: Text.PlainText
-                font.pixelSize: 18
+                font.pointSize: 13.5
                 color: button.enabled ? HoloniightPalette.textPrimary : HoloniightPalette.textMuted
             }
             HnKeyHint { visible: button.hint.length > 0; text: button.hint }

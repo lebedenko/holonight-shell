@@ -1,7 +1,10 @@
 #include "PerMonitorLayerManager.h"
 
+#include "QuickControlsRuntime.h"
+
 #include <QGuiApplication>
 #include <QQmlEngine>
+#include <QQuickItem>
 #include <QQuickView>
 #include <QScreen>
 
@@ -86,6 +89,9 @@ void PerMonitorLayerManager::createSurface(QScreen* screen) {
       [this, output_name, isCurrent]() {
         if (isCurrent()) {
           onHostConfigured(output_name);
+          if (auto* view = viewForMonitor(output_name)) {
+            holonight::reportQuickControlsLoaded(view->rootObject());
+          }
         }
       },
       Qt::QueuedConnection);

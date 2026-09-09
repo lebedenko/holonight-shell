@@ -9,11 +9,11 @@ vars:
   STAGE_DIR: '{{.TASKFILE_DIR}}/build-stage'
   LOCAL_INSTALL_PREFIX: '{{.HOME}}/.local'
   SYSTEM_INSTALL_PREFIX: /usr
-  HOLONIGHT_QT_PREFIX: /tmp/holonight-qt-prefix
-  HOLONIGHT_QT_DIR: /tmp/holonight-qt-prefix/lib/cmake/HolonightQt
-  HOLONIGHT_APPEARANCE_CONFIG_PREFIX: /tmp/holonight-config-prefix
-  HOLONIGHT_APPEARANCE_CONFIG_DIR: /tmp/holonight-config-prefix/lib/cmake/HoloNightConfig
-  HOLONIGHT_SYSTEM_SERVICES_PREFIX: /tmp/holonight-system-services-prefix
+  HOLONIGHT_QT_PREFIX: '{{.TASKFILE_DIR}}/build-dependencies/prefix'
+  HOLONIGHT_QT_DIR: '{{.TASKFILE_DIR}}/build-dependencies/prefix/lib/cmake/HolonightQt'
+  HOLONIGHT_APPEARANCE_CONFIG_PREFIX: '{{.TASKFILE_DIR}}/build-dependencies/prefix'
+  HOLONIGHT_APPEARANCE_CONFIG_DIR: '{{.TASKFILE_DIR}}/build-dependencies/prefix/lib/cmake/HoloNightConfig'
+  HOLONIGHT_SYSTEM_SERVICES_PREFIX: '{{.TASKFILE_DIR}}/build-dependencies/prefix'
   NPROC:
     sh: nproc
 
@@ -27,7 +27,7 @@ tasks:
     desc: Configure CMake (debug, no tests)
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   configure:release:
@@ -40,19 +40,21 @@ tasks:
     desc: Configure CMake with tests enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   configure-coverage:
     desc: Configure CMake with tests and coverage enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   build:dependencies:
-    desc: Build and install sibling dependencies
+    desc: Build and install pinned sibling dependencies privately
     cmds:
+      - test "$(git -C ../holonight-config rev-parse HEAD)" = fe69a59e6b73167fd5349223a4d265d75386c139
+      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 00e6e208b6c9b30d89b66ef3aeb4ef8175050764
       - task: build:appearance-config-dependency
       - task: build:qt-dependency
       - task: build:system-services-dependency
@@ -60,25 +62,25 @@ tasks:
   build:system-services-dependency:
     desc: Build and install the shared system services provider
     cmds:
-      - cmake -S ../holonight-system-services -B ../holonight-system-services/build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF
-      - cmake --build ../holonight-system-services/build -j{{.NPROC}}
-      - cmake --install ../holonight-system-services/build --prefix {{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}
+      - cmake -S ../holonight-system-services -B build-dependencies/system-services -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF
+      - cmake --build build-dependencies/system-services -j{{.NPROC}}
+      - cmake --install build-dependencies/system-services --prefix {{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}
 
   build:appearance-config-dependency:
     desc: Build and install the canonical appearance configuration provider
     cmds:
-      - cmake -S ../holonight-config -B ../holonight-config/build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF
-      - cmake --build ../holonight-config/build -j{{.NPROC}}
-      - cmake --install ../holonight-config/build --prefix {{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}
+      - cmake -S ../holonight-config -B build-dependencies/config -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF
+      - cmake --build build-dependencies/config -j{{.NPROC}}
+      - cmake --install build-dependencies/config --prefix {{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}
 
   build:qt-dependency:
-    desc: Build and install holonight-qt debug dependency to /tmp/holonight-qt-prefix
+    desc: Build and install holonight-qt debug dependency to {{.TASKFILE_DIR}}/build-dependencies/prefix
     cmds:
       - |
         if [ -d "../holonight-qt" ]; then
-          cmake -S ../holonight-qt -B ../holonight-qt/build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR="{{.HOLONIGHT_APPEARANCE_CONFIG_DIR}}"
-          cmake --build ../holonight-qt/build -j{{.NPROC}}
-          cmake --install ../holonight-qt/build --prefix {{.HOLONIGHT_QT_PREFIX}}
+          cmake -S ../holonight-qt -B build-dependencies/qt -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR="{{.HOLONIGHT_APPEARANCE_CONFIG_DIR}}"
+          cmake --build build-dependencies/qt -j{{.NPROC}}
+          cmake --install build-dependencies/qt --prefix {{.HOLONIGHT_QT_PREFIX}}
         else
           echo "Warning: holonight-qt not found at ../holonight-qt"
         fi
@@ -172,7 +174,7 @@ tasks:
     deps: [configure-tests]
     cmds:
       - cmake --build {{.BUILD_DIR}} -j{{.NPROC}}
-      - ctest --test-dir {{.BUILD_DIR}} --output-on-failure
+      - python3 scripts/run-isolated-test.py --hide-host ctest --test-dir {{.BUILD_DIR}} --output-on-failure
 
   test:shell-config-package:
     desc: Build, install, and consume the standalone Shell product-config package
@@ -235,9 +237,9 @@ tasks:
           echo "ERROR: Neither docker nor podman is available." >&2
           exit 1
         fi
-        $CONTAINER_RUNNER run --rm -v "$(pwd):/workspace" -v "/tmp/holonight-qt-prefix:/tmp/holonight-qt-prefix" -w /workspace ghcr.io/lebedenko/holonight-shell-ci:latest bash -c "
+        $CONTAINER_RUNNER run --rm -v "$(pwd):/workspace" -v "{{.TASKFILE_DIR}}/build-dependencies/prefix:{{.TASKFILE_DIR}}/build-dependencies/prefix" -w /workspace ghcr.io/lebedenko/holonight-shell-ci:latest bash -c "
           rm -rf build-ci-check &&
-          cmake -B build-ci-check -G Ninja -S . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH=/tmp/holonight-qt-prefix &&
+          cmake -B build-ci-check -G Ninja -S . -DCMAKE_BUILD_TYPE=Debug -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH={{.TASKFILE_DIR}}/build-dependencies/prefix &&
           cmake --build build-ci-check --target format-check &&
           cmake --build build-ci-check --target tidy
         "

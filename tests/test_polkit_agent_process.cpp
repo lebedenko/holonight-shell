@@ -4,6 +4,7 @@
 #include <QDBusMetaType>
 #include <QDBusPendingCallWatcher>
 #include <QDBusVirtualObject>
+#include <QFile>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QScopeGuard>
@@ -87,8 +88,15 @@ TEST(PolkitAgentProcess, SigtermExitsPersistentDialogAndUnregisters) {
   environment.insert(QStringLiteral("XDG_SESSION_ID"), QStringLiteral("isolated-test-session"));
   environment.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
   environment.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
+  environment.remove(QStringLiteral("QML_IMPORT_PATH"));
+  environment.remove(QStringLiteral("QML2_IMPORT_PATH"));
   agent.setProcessEnvironment(environment);
-  agent.start(QStringLiteral(TEST_POLKIT_AGENT_PATH), {});
+  const QString executable = qEnvironmentVariable("UQC_POLKIT_EXECUTABLE", QStringLiteral(TEST_POLKIT_AGENT_PATH));
+  QStringList arguments;
+  if (qEnvironmentVariableIsSet("UQC_STYLE_CLI")) {
+    arguments = {QStringLiteral("-style"), QStringLiteral("Fusion")};
+  }
+  agent.start(executable, arguments);
   ASSERT_TRUE(agent.waitForStarted());
   ASSERT_TRUE(QTest::qWaitFor([&] { return authority.registered; }, 5000)) << agent.readAllStandardError().constData();
   // Present identity selection without starting PAM. Allow the offscreen window
@@ -106,13 +114,19 @@ TEST(PolkitAgentProcess, SigtermExitsPersistentDialogAndUnregisters) {
                         QVariant::fromValue(QMap<QString, QString>{}), QStringLiteral("test-cookie"),
                         QVariant::fromValue(identities)});
   QDBusPendingCallWatcher pending(connection.asyncCall(request));
-  QTest::qWait(250);
+  QTest::qWait(qEnvironmentVariableIsSet("UQC_POLKIT_LOG") ? 1500 : 250);
   ASSERT_FALSE(pending.isFinished()) << pending.error().message().toStdString();
   agent.terminate();
   ASSERT_TRUE(QTest::qWaitFor([&] { return agent.state() == QProcess::NotRunning; }, 5000))
       << "SIGTERM did not stop the persistent authentication window";
   EXPECT_EQ(agent.exitStatus(), QProcess::NormalExit);
-  EXPECT_EQ(agent.exitCode(), 0) << agent.readAllStandardError().constData();
+  const QByteArray diagnostics = agent.readAllStandardError();
+  EXPECT_EQ(agent.exitCode(), 0) << diagnostics.constData();
+  if (qEnvironmentVariableIsSet("UQC_POLKIT_LOG")) {
+    QFile log(qEnvironmentVariable("UQC_POLKIT_LOG"));
+    ASSERT_TRUE(log.open(QIODevice::WriteOnly));
+    EXPECT_EQ(log.write(diagnostics), diagnostics.size());
+  }
   EXPECT_TRUE(authority.unregistered);
   EXPECT_TRUE(agent.readAllStandardOutput().isEmpty());
 }

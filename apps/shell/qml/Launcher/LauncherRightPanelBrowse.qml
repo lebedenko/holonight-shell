@@ -1,9 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls as Controls
 import QtQuick.Layouts
-import Holonight
 import Holonight.Components
 import Holonight.Core
 import Holonight.Controls
@@ -16,12 +15,12 @@ Item {
     property var recentEntries: RecentAppsTracker.recentEntries(5)
     readonly property bool recentAppsEmpty: recentEntries.length === 0
 
-    ScrollView {
+    Controls.ScrollView {
         id: scrollView
 
         anchors.fill: parent
         clip: true
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
 
         ColumnLayout {
             width: scrollView.width

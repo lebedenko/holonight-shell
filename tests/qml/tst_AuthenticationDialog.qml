@@ -1,7 +1,6 @@
 import QtQuick
-import QtQuick.Controls.Basic
+import QtQuick.Controls as Controls
 import QtTest
-import Holonight
 import Holonight.Core
 import Holonight.Authentication
 
@@ -437,7 +436,10 @@ TestCase {
         compare(model.operation, "identity:root")
     }
 
-    function test_dropdownRolesAvatarsAndConstrainedScrolling() {
+    function test_dropdownRolesAvatarsAndConstrainedScrolling_data() {
+        return [{tag: "small", scale: 0.78}, {tag: "normal", scale: 1}, {tag: "large", scale: 1.25}]
+    }
+    function test_dropdownRolesAvatarsAndConstrainedScrolling(data) {
         beginIdentitySelection()
         manyIdentities.clear()
         for (let i = 0; i < 12; ++i) {
@@ -450,6 +452,8 @@ TestCase {
         dialog.width = 400
         dialog.height = 450
         const selector = findChild(dialog, "identitySelector")
+        selector.scale = data.scale
+        waitForRendering(dialog.contentItem)
         tryCompare(selector, "currentIndex", 0)
         selector.popup.open()
         tryCompare(selector.popup, "opened", true)
@@ -466,7 +470,8 @@ TestCase {
         compare(String(avatar.source), "")
         const position = list.mapToItem(dialog.contentItem, 0, 0)
         verify(position.y >= 0)
-        verify(position.y + list.height <= dialog.height)
+        const bottom = list.mapToItem(dialog.contentItem, 0, list.height)
+        verify(bottom.y <= dialog.height, JSON.stringify({bottom: bottom.y, height: dialog.height, scale: data.scale}))
         list.positionViewAtIndex(11, ListView.Contain)
         tryVerify(() => list.contentY > 0)
         selector.popup.close()

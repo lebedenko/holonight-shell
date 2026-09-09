@@ -549,10 +549,15 @@ class FakeNotificationModel : public QAbstractListModel {
 
 class FakeNotificationService : public QObject {
   Q_OBJECT
+  Q_PROPERTY(bool dndEnabled MEMBER dnd_enabled_ NOTIFY dndEnabledChanged)
+  Q_PROPERTY(bool daemonConflict READ daemonConflict CONSTANT)
+  Q_PROPERTY(QString daemonConflictOwner READ daemonConflictOwner CONSTANT)
   Q_PROPERTY(int unreadCount READ unreadCount NOTIFY unreadCountChanged)
   Q_PROPERTY(QString unreadAppNames READ unreadAppNames NOTIFY unreadCountChanged)
 
  public:
+  [[nodiscard]] bool daemonConflict() const { return false; }
+  [[nodiscard]] QString daemonConflictOwner() const { return {}; }
   FakeNotificationService() : visible_model_(this) {
     visible_model_.setNotifications({QVariantMap{
         {QStringLiteral("notifId"), 42},
@@ -602,8 +607,11 @@ class FakeNotificationService : public QObject {
 
  Q_SIGNALS:
   void unreadCountChanged();
+  void notificationClosed(uint id, uint reason);
+  void dndEnabledChanged();
 
  private:
+  bool dnd_enabled_{false};
   int unread_count_{0};
   QString unread_app_names_;
   QVariantList history_groups_;
@@ -616,9 +624,56 @@ class FakeNotificationService : public QObject {
 class FakeCalendarService : public QObject {
   Q_OBJECT
   Q_PROPERTY(QString weekStartDay READ weekStartDay CONSTANT)
-
+  Q_PROPERTY(QAbstractItemModel* upcomingEvents READ upcomingEvents CONSTANT)
+  Q_PROPERTY(int upcomingState READ upcomingState CONSTANT)
+  Q_PROPERTY(QString lastError READ lastError CONSTANT)
  public:
+  enum State { Ready, Loading, ConnectError, Offline };
+  Q_ENUM(State)
   [[nodiscard]] QString weekStartDay() const { return QStringLiteral("Mon"); }
+  [[nodiscard]] QAbstractItemModel* upcomingEvents() { return &events_; }
+  [[nodiscard]] int upcomingState() const { return Ready; }
+  [[nodiscard]] QString lastError() const { return {}; }
+  Q_INVOKABLE void notifySidebarOpened() {}
+
+ private:
+  QStringListModel events_;
+};
+
+class FakeSessionIntegrationService : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QVariantList diagnostics READ diagnostics CONSTANT)
+  Q_PROPERTY(QString overallStatus READ overallStatus CONSTANT)
+  Q_PROPERTY(bool refreshInProgress READ busy CONSTANT)
+  Q_PROPERTY(bool rebuildInProgress READ busy CONSTANT)
+ public:
+  [[nodiscard]] QVariantList diagnostics() const { return {}; }
+  [[nodiscard]] QString overallStatus() const { return QStringLiteral("ok"); }
+  [[nodiscard]] bool busy() const { return false; }
+  Q_INVOKABLE void refresh() {}
+  Q_INVOKABLE void rebuildCaches() {}
+};
+
+class FakeMimeService : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QString defaultBrowser READ defaultApp CONSTANT)
+  Q_PROPERTY(QString defaultTerminal READ defaultApp CONSTANT)
+  Q_PROPERTY(QString defaultFileManager READ defaultApp CONSTANT)
+  Q_PROPERTY(QString defaultImageViewer READ defaultApp CONSTANT)
+  Q_PROPERTY(QString defaultTextEditor READ defaultApp CONSTANT)
+  Q_PROPERTY(QString defaultVideoPlayer READ defaultApp CONSTANT)
+ public:
+  [[nodiscard]] QString defaultApp() const { return {}; }
+};
+
+class FakeIdleService : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(bool idleInhibited MEMBER inhibited_ NOTIFY idleInhibitedChanged)
+ Q_SIGNALS:
+  void idleInhibitedChanged();
+
+ private:
+  bool inhibited_{false};
 };
 
 class FakeNotificationRuleModel : public QAbstractListModel {
@@ -987,7 +1042,10 @@ class FakeQmlServices {
   }
 
   [[nodiscard]] bool registerSingletons() {  // NOLINT(readability-function-cognitive-complexity)
-    return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
+    return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SessionIntegrationService", &integration_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "MimeService", &mime_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IdleService", &idle_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PowerProfilesService", &power_profiles_) >= 0 &&
@@ -1034,6 +1092,9 @@ class FakeQmlServices {
   }
 
   XdgTempIsolation xdg_isolation_;  // must be first — sets XDG_CONFIG_HOME before config_service
+  FakeSessionIntegrationService integration_;
+  FakeMimeService mime_;
+  FakeIdleService idle_;
   ConfigService config_service_;
   CompositorService compositor_{CompositorKind::Hyprland};
   BatteryService battery_;

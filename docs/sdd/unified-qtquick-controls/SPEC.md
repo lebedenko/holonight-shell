@@ -1,13 +1,15 @@
 # UQC-102: Unified QtQuick Controls adoption
 
-Status: Design checkpoint, 2026-09-09. Product implementation and acceptance are pending.
+Status: Implemented and locally verified; canonical CI publication in progress, 2026-09-09.
+See [implementation evidence](IMPLEMENTATION.md).
 
 Repository assignment: `holonight-shell` at published upstream
 `723763e09ff815d344a6cb01529dd8345a43b316`. Required published provider:
 `00e6e208b6c9b30d89b66ef3aeb4ef8175050764`; configuration:
 `fe69a59e6b73167fd5349223a4d265d75386c139`.
-The umbrella gitlinks remain authoritative. Publish this SDD, then publish its linked
-umbrella checkpoint before starting implementation.
+The umbrella gitlinks remain authoritative. The design was published as
+`5324b47fb01501d4fa3e90e7865b23065efce970` and coordinated in umbrella
+`e3b85b5a339207ee421cb70f53311b1120f6b2c6` before this implementation.
 
 See [design and file inventory](DESIGN.md) and [ordered work and verification](TASKS.md).
 The accepted upstream contract is in the provider's
@@ -35,9 +37,9 @@ The accepted upstream contract is in the provider's
   compositor contract is planned. A provider gap becomes a separately coordinated,
   published prerequisite before dependent shell work proceeds.
 
-## Future acceptance matrix
+## Acceptance matrix
 
-All rows are pending implementation. Use separate processes for every selector:
+Results and limitations are recorded in IMPLEMENTATION.md. Use separate processes for every selector:
 (1) environment/CLI/config overrides unset → Holonight; (2) environment Fusion;
 (3) CLI `-style Fusion` with environment unset; (4) CLI Fusion over environment
 Holonight. Also cover an explicit external Controls configuration and missing style.

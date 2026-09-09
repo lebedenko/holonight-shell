@@ -36,6 +36,8 @@ packages=(
   ca-certificates
   cmake
   dbus
+  bubblewrap
+  sway
   g++
   git
   libgmock-dev

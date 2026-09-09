@@ -39,7 +39,7 @@ void closeUnless(int descriptor, int preserved) {
 }
 
 ChildProcess startAskpass(const char* basename, const char* hint = nullptr, bool extra_argument = false,
-                          const char* executable = TEST_ASKPASS_PATH) {
+                          const char* executable = TEST_ASKPASS_PATH, bool fusion_cli = false) {
   std::array<int, 2> control_pipe{};
   std::array<int, 2> output_pipe{};
   std::array<int, 2> error_pipe{};
@@ -59,7 +59,8 @@ ChildProcess startAskpass(const char* basename, const char* hint = nullptr, bool
     closeUnless(error_pipe[0], 3);
     closeUnless(error_pipe[1], 3);
     setenv("QT_QPA_PLATFORM", "offscreen", 1);
-    setenv("QML_IMPORT_PATH", "/tmp/holonight-qt-prefix/lib/qt6/qml", 1);
+    unsetenv("QML_IMPORT_PATH");
+    unsetenv("QML2_IMPORT_PATH");
     if (hint != nullptr) {
       setenv("SSH_ASKPASS_PROMPT", hint, 1);
     } else {
@@ -68,7 +69,14 @@ ChildProcess startAskpass(const char* basename, const char* hint = nullptr, bool
     QByteArray entry_name(basename);
     QByteArray prompt("Test prompt");
     QByteArray extra("extra");
-    std::array<char*, 4> arguments{entry_name.data(), prompt.data(), extra_argument ? extra.data() : nullptr, nullptr};
+    QByteArray style_option("-style");
+    QByteArray fusion("Fusion");
+    std::array<char*, 6> arguments{entry_name.data(), prompt.data(), extra_argument ? extra.data() : nullptr,
+                                   nullptr,           nullptr,       nullptr};
+    if (fusion_cli) {
+      arguments = {entry_name.data(), style_option.data(), fusion.data(), prompt.data(), nullptr, nullptr};
+      setenv("QT_QUICK_CONTROLS_STYLE", "Holonight", 1);
+    }
     execv(executable, arguments.data());
     _exit(127);
   }
@@ -284,3 +292,12 @@ TEST(AskpassProcess, SupplementaryUnicodeHonorsEncodedByteLimit) {
 }
 
 }  // namespace
+
+TEST(AskpassProcess, CommandLineStylePreservesProtocol) {
+  auto child = startAskpass("holonight-sudo-askpass", nullptr, false, TEST_ASKPASS_PATH, true);
+  sendFrame(child, 'T', QByteArrayLiteral("style-override-response"));
+  const auto result = finish(child);
+  EXPECT_EQ(result.status, 0) << result.error.constData();
+  EXPECT_EQ(result.output, QByteArrayLiteral("style-override-response\n"));
+  EXPECT_TRUE(result.error.isEmpty()) << result.error.constData();
+}

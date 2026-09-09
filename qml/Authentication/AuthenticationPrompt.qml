@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls.Basic
+import QtQuick.Controls as Controls
 import Holonight.Core
 
 FocusScope {
@@ -25,7 +25,7 @@ FocusScope {
     function forceFocus() { field.forceActiveFocus(Qt.TabFocusReason) }
     function clear() { field.clear(); root.revealed = false }
 
-    TextField {
+    Controls.TextField {
         id: field
         objectName: "responseField"
         anchors.fill: parent
@@ -37,7 +37,7 @@ FocusScope {
         inputMethodHints: root.secret
                           ? Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                           : Qt.ImhNone
-        font.pixelSize: 19
+        font.pointSize: 14.25
         color: HoloniightPalette.textPrimary
         leftPadding: 18
         rightPadding: revealButton.visible ? 58 : 18
@@ -70,7 +70,7 @@ FocusScope {
             event.accepted = true
         }
     }
-    Button {
+    Controls.Button {
         id: revealButton
         objectName: "revealButton"
         anchors.right: parent.right

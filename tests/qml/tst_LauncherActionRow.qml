@@ -1,5 +1,6 @@
 import QtQuick
 import QtTest
+import Holonight.Core
 import Holonight.Controls
 import HolonightShell
 

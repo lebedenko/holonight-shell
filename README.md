@@ -343,7 +343,11 @@ orchestration over service state; `holonight_app` wires the shell runtime togeth
 `apps/shell/main.cpp` remains the shell executable entry point, and tests link the smallest target that covers each
 behavior.
 
-QML is registered as the `HolonightShell` module with resource paths under `qrc:/HolonightShell/`. Shell QML files live under `apps/shell/qml/` and are registered by `apps/shell/CMakeLists.txt`. Shared QML components used by both binaries live under `qml/HoloNight/` and are registered as the `Holonight.Components` module — import with `import Holonight.Components`.
+QML is registered as the `HolonightShell` module with resource paths under `qrc:/HolonightShell/`. Shell QML files live under `apps/shell/qml/` and are registered by `apps/shell/CMakeLists.txt`. Compatibility QML components live under `qml/HoloNight/` and are registered as the `Holonight.Components` module — import with `import Holonight.Components`.
+
+Qt Quick standard controls use `import QtQuick.Controls as Controls`, including enums and attached properties.
+Use `Holonight.Core` for palette/primitives and `Holonight.Controls` for composites. Graphical executables
+embed an overridable Holonight default; do not import a concrete style or select one imperatively.
 
 Wayland client code is generated from XML files in `protocols/` plus the system `xdg-shell` protocol. Runtime integration expects Hyprland IPC, NetworkManager D-Bus, UPower D-Bus, PipeWire or PulseAudio (via libpulse), and StatusNotifierItem-compatible tray clients. The standalone `holonight-chat` application is optional; when installed, its D-Bus activation service backs the shell's AI quick-panel command. power-profiles-daemon D-Bus is optional — its profile selector in the battery popup is hidden when the daemon is not running. xdg-desktop-portal is optional — `PortalService` probes for it at startup and exposes availability diagnostics and system color-scheme/accent-color settings to QML; the shell runs normally without it.
 

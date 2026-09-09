@@ -295,7 +295,8 @@ QVariantList SessionIntegrationService::addProcessEnvironmentDiagnostics() const
         QStringLiteral("qt-activation-%1").arg(name.toLower().replace(QLatin1Char('_'), QLatin1Char('-'))),
         QStringLiteral("Qt activation %1").arg(name), matches ? QStringLiteral("ok") : QStringLiteral("warning"),
         value.isEmpty() ? QStringLiteral("missing") : value, expected,
-        matches ? QStringLiteral("The HoloNight Qt session default is active.")
+        matches ? QStringLiteral("The HoloNight Qt session selector is configured; module discovery and control "
+                                 "loading are not verified.")
                 : QStringLiteral("The value is missing or is an explicit non-HoloNight override.")));
   }
   const QString style_override = envValue(QStringLiteral("QT_STYLE_OVERRIDE"));

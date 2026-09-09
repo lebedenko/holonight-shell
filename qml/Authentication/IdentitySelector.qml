@@ -1,12 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls.Basic
+import QtQuick.Controls as Controls
 import QtQuick.Layouts
-import Holonight as H
 import Holonight.Core
 import Holonight.Controls
 
-H.ComboBox {
+HnIconComboBox {
+    iconRole: ""
     id: root
     objectName: "identitySelector"
     required property var promptModel
@@ -71,22 +71,22 @@ H.ComboBox {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 4
-            Label {
+            Controls.Label {
                 objectName: "accountName"
                 Layout.fillWidth: true
                 text: root.accountName
                 textFormat: Text.PlainText
-                font.pixelSize: 20
+                font.pointSize: 15
                 elide: Text.ElideRight
                 color: HoloniightPalette.textPrimary
             }
-            Label {
+            Controls.Label {
                 objectName: "accountUsername"
                 Layout.fillWidth: true
                 text: root.account.username || ""
                 visible: text.length > 0 && text !== root.accountName
                 textFormat: Text.PlainText
-                font.pixelSize: 17
+                font.pointSize: 12.75
                 elide: Text.ElideRight
                 color: HoloniightPalette.textMuted
             }
@@ -100,7 +100,7 @@ H.ComboBox {
         size: 20
         color: HoloniightPalette.textMuted
     }
-    delegate: H.ItemDelegate {
+    delegate: Controls.ItemDelegate {
         id: option
         required property string stableId
         required property string displayLabel
@@ -124,19 +124,19 @@ H.ComboBox {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 4
-                Label {
+                Controls.Label {
                     Layout.fillWidth: true
                     text: option.text
-                    font.pixelSize: 20
+                    font.pointSize: 15
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     color: HoloniightPalette.textPrimary
                 }
-                Label {
+                Controls.Label {
                     Layout.fillWidth: true
                     visible: text.length > 0 && text !== option.text
                     text: option.username
-                    font.pixelSize: 17
+                    font.pointSize: 12.75
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     color: HoloniightPalette.textMuted

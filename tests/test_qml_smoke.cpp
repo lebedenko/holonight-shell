@@ -121,7 +121,7 @@ void expectBatteryIndicatorState(QQmlEngine* engine, const QString& source_root,
 
 TEST(QmlSmoke, CanonicalModulesResolveOwnedTypes) {
   QQmlEngine engine;
-  engine.addImportPath(QStringLiteral("/tmp/holonight-qt-prefix/lib/qt6/qml"));
+  engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
 
   expectLoads(&engine, R"(
       import QtQuick
@@ -144,7 +144,7 @@ TEST(QmlSmoke, CanonicalModulesResolveOwnedTypes) {
 }
 
 TEST(QmlSmoke, CanonicalModuleArtifactsExistInDependencyPrefix) {
-  const QString module_root = QStringLiteral("/tmp/holonight-qt-prefix/lib/qt6/qml/Holonight");
+  const QString module_root = QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH "/Holonight");
   const QStringList artifacts = {
       QStringLiteral("Core/qmldir"),
       QStringLiteral("Core/holonight_core_qml.qmltypes"),
@@ -245,7 +245,7 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
   ASSERT_TRUE(services.registerSingletons());
 
   QQmlEngine engine;
-  engine.addImportPath(QStringLiteral("/tmp/holonight-qt-prefix/lib/qt6/qml"));
+  engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
   engine.addImportPath(modules.path());
 
   expectFileLoads(&engine, QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Topbar/TopBar.qml")),

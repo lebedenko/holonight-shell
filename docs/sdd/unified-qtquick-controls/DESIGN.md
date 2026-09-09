@@ -3,6 +3,8 @@
 This design was reviewed against the assigned shell code and pinned provider on
 2026-09-09. [SPEC.md](SPEC.md) defines acceptance; [TASKS.md](TASKS.md) orders work.
 Paths below are shell-relative unless explicitly identified as provider paths.
+This is the accepted design inventory; [IMPLEMENTATION.md](IMPLEMENTATION.md) records
+the final file choices, verification and deviations.
 
 ## QML inventory and migration
 
@@ -68,8 +70,8 @@ GTest targets using `tests/main.cpp`, `test_holonight_qml_harness` and new compi
 acceptance targets. Link Qt6::QuickControls2 where used. Authentication aliases are
 symlinks to the same libexec askpass binary, not separate resource owners.
 
-Add private `libs/holonight-core/src/QuickControlsRuntime.h/.cpp`, wired by
-`libs/holonight-core/CMakeLists.txt`, with no public provider API. Configure discovery
+Add private `libs/holonight-core/src/QuickControlsRuntime.h/.cpp`, compiled privately into each executable by the CMake helper, with no public provider
+API or dependency on the complete shell core library for authentication. Configure discovery
 before any engine or standard control is created. Shell has multiple engines:
 process-local QML discovery must reach all, including surface-owned engines.
 Derive provider QML/native locations from configured package prefixes/targets,

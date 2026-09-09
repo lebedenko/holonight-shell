@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "QuickControlsRuntime.h"
 #include "app/ControlServer.h"
 #include "app/ShellApplication.h"
 #include "version.h"
@@ -68,6 +69,7 @@ int main(int argc, char* argv[]) {
   }
 
   QGuiApplication app(argc, argv);
+  holonight::configureQuickControls();
   ShellApplication shell(&app);
   shell.registerQmlTypes();
   shell.startServices();

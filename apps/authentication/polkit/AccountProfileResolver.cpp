@@ -43,6 +43,8 @@ void queryAccountsService(uint uid, QObject* context, AccountProfileResolver::Pr
                              callback(reply.value());
                            }
                          });
+        // Qt parenting retains properties through completion or request cancellation.
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
       });
 }
 }  // namespace
