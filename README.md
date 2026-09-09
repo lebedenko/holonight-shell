@@ -117,6 +117,7 @@ Requires **hypridle ≥ 0.2.0** (or swayidle) to track idle time via `ext-idle-n
 - `tomlplusplus`
 - `libpulse`
 - `libsecret-1` (for CalDAV password lookup from the system keyring)
+- Polkit agent development files and polkit-qt6 0.200.0+
 - GTest (optional, for tests — fetched automatically if not installed)
 - Python 3, bubblewrap, D-Bus and Sway for isolated test acceptance (no live session required)
 

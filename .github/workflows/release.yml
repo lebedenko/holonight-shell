@@ -24,7 +24,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: scripts/install-ci-dependencies.sh
+        run: |
+          scripts/install-ci-dependencies.sh
+          apt-get install -y --no-install-recommends libpolkit-agent-1-dev libpolkit-qt6-1-dev
 
       - name: Checkout HoloNightConfig dependency
         uses: actions/checkout@v4
@@ -81,7 +83,13 @@ jobs:
 
       - name: Test
         run: |
+          # The Ubuntu host restricts user-namespace capabilities even in privileged
+          # containers. This setting is confined to the disposable CI runner.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
           useradd -m uqc
+          runuser -u uqc -- bwrap --unshare-net --ro-bind / / -- true
           chown -R uqc:uqc "$GITHUB_WORKSPACE"
           runuser -u uqc -- python3 scripts/run-isolated-test.py --hide-host ctest --test-dir build --output-on-failure --no-tests=error
 
