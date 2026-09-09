@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install isolated acceptance tools
-        run: pacman -Syu --noconfirm bubblewrap sway
+        run: pacman -Syu --noconfirm bubblewrap sway polkit polkit-qt6
 
       - name: Checkout HoloNightConfig dependency
         uses: actions/checkout@v4
@@ -113,6 +113,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install authentication development dependencies
+        run: pacman -Syu --noconfirm polkit polkit-qt6
 
       - name: Checkout HoloNightConfig dependency
         uses: actions/checkout@v4
