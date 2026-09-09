@@ -21,7 +21,7 @@ def stop(process):
         raise AssertionError('child did not terminate promptly')
 
 
-def verify(log, style, installed, prefix):
+def verify(log, style, installed, prefix, build):
     assert 'phase=ui classification=loaded' in log, 'no created root evidence'
     implementation = re.search(rf'phase=implementation origin=.*?/{style}/(?:Button|Label|ComboBox|ScrollView)\.qml', log)
     # Fusion Label has no implementation child with a separate QML context.
@@ -39,6 +39,7 @@ def verify(log, style, installed, prefix):
     errors = re.findall(r'^.*(?:ReferenceError|TypeError|Cannot assign|Unable to assign|Binding loop|is not a type|is not installed|Required property).*$', log, re.M)
     assert not errors, '\n'.join(errors)
     if installed:
+        assert str(build) not in log, 'installed process discovered the shell build directory'
         assert '/build-dependencies/' not in log, 'installed process discovered build dependencies'
         assert '/apps/shell/qml/' not in log, 'installed process discovered source QML'
 
@@ -97,7 +98,7 @@ def main():
                                                  '--gtest_filter=PolkitAgentProcess.SigtermExitsPersistentDialogAndUnregisters'],
                                                 env=env, capture_output=True, timeout=20)
                         assert result.returncode == 0, result.stdout.decode() + result.stderr.decode()
-                        verify(logfile.read_text(), expected, installed, dependency)
+                        verify(logfile.read_text(), expected, installed, dependency, build)
                         print(f'PASS {name}', flush=True)
                         continue
                     compositor = None
@@ -139,7 +140,7 @@ def main():
                             if frontend != 'shell':
                                 output.seek(0)
                                 assert output.read() == b'', 'askpass polluted its protocol'
-                        verify(logfile.read_text(), expected, installed, dependency)
+                        verify(logfile.read_text(), expected, installed, dependency, build)
                         print(f'PASS {name}', flush=True)
                     finally:
                         if compositor is not None:

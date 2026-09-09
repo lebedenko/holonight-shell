@@ -1,7 +1,8 @@
 # UQC-102 work and verification ledger
 
-Implementation iteration: 2026-09-09. D1–D5 are complete; D6 canonical publication
-and remote CI verification are in progress. See [IMPLEMENTATION.md](IMPLEMENTATION.md)
+Implementation iteration: 2026-09-09. D1–D6 are complete. Canonical build/test, static and licensing
+checks passed for the published implementation. The coordinator must confirm green
+CI for the final handoff revision before pinning it. See [IMPLEMENTATION.md](IMPLEMENTATION.md)
 for executed commands, evidence and remaining limitations.
 See [SPEC.md](SPEC.md) and [DESIGN.md](DESIGN.md) for contracts and file inventory.
 
@@ -13,7 +14,7 @@ See [SPEC.md](SPEC.md) and [DESIGN.md](DESIGN.md) for contracts and file invento
 | D3 | Done | D2 | Migrate six QML files identified in DESIGN inventory; preserve public IdentitySelector geometry and Core/composites; correct CLAUDE.md, AGENTS.md and README.md |
 | D4 | Done | D3 | Wire private selection/discovery diagnostics; verify scripts/holonight-session, scripts/holonight-polkit-agent-session, scripts/holonight-wayland-session-environment, cmake/InstallIntegration.cmake.in and data/systemd/user/holonight-polkit-agent@.service.in; edit only where propagation/discovery tests demonstrate a need |
 | D5 | Done | D4 | Add policy, selector/discovery and compiled acceptance tests; run focused then broad checks below, resolve failures and record evidence |
-| D6 | In Progress | D5 | Publish verified shell implementation and local acceptance record, require green remote CI, confirm canonical commit, hand off to umbrella coordinator |
+| D6 | Done | D5 | Publish verified shell implementation and local acceptance record, require green remote CI, confirm canonical commit, hand off to umbrella coordinator |
 
 ## Accepted test design inventory
 

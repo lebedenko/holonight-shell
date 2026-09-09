@@ -1,6 +1,6 @@
 # UQC-102 implementation and local acceptance
 
-Date: 2026-09-09. Local implementation and acceptance complete; canonical CI publication pending.
+Date: 2026-09-09. Local implementation and canonical CI acceptance complete.
 [Requirements](SPEC.md), [design](DESIGN.md), [ordered ledger](TASKS.md).
 
 ## Baselines and ownership
@@ -56,7 +56,11 @@ in shell-owned `build-dependencies/{config,qt,system-services,prefix}`.
   CI/release workflows and `scripts/install-ci-dependencies.sh` provide private
   configuration, buses without activation, hidden host provider discovery and
   headless Sway launch acceptance. CI uses a dedicated non-root test account inside
-  a privileged ephemeral container so bubblewrap can create namespaces.
+  a privileged ephemeral container so bubblewrap can create namespaces. The disposable
+  Ubuntu runner disables its AppArmor unprivileged-userns restriction for this job
+  and runs a bubblewrap network-namespace preflight. This changes no developer host
+  setting. Arch CI installs bubblewrap/Sway and Polkit development dependencies before
+  building; the Debian release job installs the corresponding development packages.
 - `README.md` publishes canonical import/default guidance. Local ignored AGENTS.md
   and CLAUDE.md advice was corrected, but these files are not repository-tracked and
   are not force-added. A narrowly documented Qt-parenting analyzer suppression in
@@ -97,7 +101,9 @@ missing-module cases. Five modes (default, environment Fusion, CLI Fusion, confl
 environment plus CLI, external configuration) cover shell, askpass and polkit from
 build outputs and relocated staged installation, plus all three installed bin askpass
 aliases. Assertions prove created control origins and native provider plugin paths;
-installed evidence rejects build dependency and source-QML paths. Missing style,
+installed evidence rejects the exact shell build directory, build dependency and
+source-QML paths. The final tightened launch assertion was rerun successfully
+through `ctest -R '^uqc_launch$'` in 124.29 seconds. Missing style,
 Core and Controls cases fail with actionable diagnostics and empty askpass stdout.
 CTest entry `uqc_launch` retains logs in `build/uqc-launch-logs`; CI uploads them.
 
@@ -107,7 +113,27 @@ QML lint, all three metadata/packaging checks, architecture checks, import scan 
 17 policy fixtures pass. REUSE passes for 1220 files. Full clang-tidy found only four
 style issues in the new test harness; those were corrected and both compiled/source
 harness variants pass `clang-tidy --quiet -p build/tidy tests/test_qml_harness.cpp`.
-Canonical CI publication remains pending.
+Remote static analysis and licensing pass in
+[CI run 34346937932](https://github.com/lebedenko/holonight-shell/actions/runs/34346937932).
+That run's tests stopped before execution because the Ubuntu host denied bubblewrap's
+network setup. Earlier runs exposed stale-image package omissions; the workflow
+now installs the required Polkit development packages and uses Arch's package manager.
+The corrected published revision `b4da0ff6d973a7020dd4a02e1377b3a10816d769` passed
+all required gates in [CI run 34351602771](https://github.com/lebedenko/holonight-shell/actions/runs/34351602771):
+build/test (22m51s), static checks including full clang-tidy (34m54s), and licensing.
+This handoff adds the locally rerun exact-build-path assertion and the completion
+record. Its own remote CI must also pass before the coordinator updates the gitlink;
+the umbrella handoff records that final documentation revision and CI result.
+
+The auxiliary [CI image run 34344665413](https://github.com/lebedenko/holonight-shell/actions/runs/34344665413)
+built its image successfully but GHCR denied publication with `permission_denied:
+write_package`. Registry permissions require owner maintenance; required build/test,
+static and licensing verification uses the existing image with explicit job-local
+package installation. No registry credentials or permissions were modified.
+The Debian release package names were checked against the distribution's
+[Polkit agent development package](https://packages.debian.org/trixie/libpolkit-agent-1-dev)
+and [Qt 6 development package](https://packages.debian.org/trixie/libpolkit-qt6-1-dev).
+No release was created or deployed.
 
 ## Limits and reserved integration work
 

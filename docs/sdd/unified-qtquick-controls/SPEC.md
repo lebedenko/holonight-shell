@@ -1,6 +1,6 @@
 # UQC-102: Unified QtQuick Controls adoption
 
-Status: Implemented and locally verified; canonical CI publication in progress, 2026-09-09.
+Status: Implemented and verified locally and in canonical CI, 2026-09-09.
 See [implementation evidence](IMPLEMENTATION.md).
 
 Repository assignment: `holonight-shell` at published upstream
