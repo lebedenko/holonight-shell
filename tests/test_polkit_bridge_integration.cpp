@@ -86,7 +86,11 @@ void authenticationFinished(GObject* /*unused*/, GAsyncResult* result, gpointer 
   auto* state = static_cast<AsyncResult*>(data);
   GError* error = nullptr;
   state->authorized = (g_task_propagate_boolean(G_TASK(result), &error) != 0);
-  EXPECT_EQ(error, nullptr);
+  if (state->authorized) {
+    EXPECT_EQ(error, nullptr);
+  } else {
+    EXPECT_TRUE(g_error_matches(error, POLKIT_ERROR, POLKIT_ERROR_CANCELLED));
+  }
   g_clear_error(&error);
   ++state->calls;
 }
@@ -161,5 +165,54 @@ TEST(PolkitBridgeIntegration, TwoSessionsForOneUidRemainIndependentlyRouted) {
   EXPECT_TRUE(first_result.authorized);
   EXPECT_EQ(second_result.calls, 1);
   EXPECT_FALSE(second_result.authorized);
+}
+
+TEST(PolkitBridgeIntegration, FailureThenModelCancelCompletesOnceAndIgnoresLateCallbacks) {
+  Agent agent;
+  PolkitListenerBridge bridge([&](PolkitRequest request) { agent.coordinator.enqueue(std::move(request)); },
+                              [&](const QString& token) { agent.coordinator.cancel(token); });
+  AsyncResult first;
+  AsyncResult second;
+  submitRequest(bridge, &first);
+  submitRequest(bridge, &second);
+  drainEvents();
+  ASSERT_EQ(agent.sessions.size(), 1);
+  const auto stale = agent.sessions.front()->callbacks;
+  stale.error(QStringLiteral("Synthetic failure"));
+  stale.completed(false);
+  EXPECT_EQ(agent.model.lifecycleState(), AuthenticationPromptModel::LifecycleState::RetryableError);
+  EXPECT_EQ(first.calls, 0);
+  agent.model.cancel();
+  agent.model.cancel();
+  drainEvents();
+  EXPECT_EQ(first.calls, 1);
+  EXPECT_FALSE(first.authorized);
+  ASSERT_EQ(agent.sessions.size(), 2);
+  stale.completed(true);
+  stale.prompt(QStringLiteral("Late prompt"), false);
+  EXPECT_EQ(second.calls, 0);
+  agent.model.cancel();
+  drainEvents();
+  EXPECT_EQ(first.calls, 1);
+  EXPECT_EQ(second.calls, 1);
+  EXPECT_FALSE(second.authorized);
+}
+
+TEST(PolkitBridgeIntegration, ShutdownCompletesActiveAndQueuedTasksOnce) {
+  Agent agent;
+  PolkitListenerBridge bridge([&](PolkitRequest request) { agent.coordinator.enqueue(std::move(request)); },
+                              [&](const QString& token) { agent.coordinator.cancel(token); });
+  AsyncResult first;
+  AsyncResult second;
+  submitRequest(bridge, &first);
+  submitRequest(bridge, &second);
+  drainEvents();
+  agent.coordinator.shutdown();
+  agent.coordinator.shutdown();
+  drainEvents();
+  EXPECT_EQ(first.calls, 1);
+  EXPECT_EQ(second.calls, 1);
+  EXPECT_FALSE(first.authorized);
+  EXPECT_FALSE(second.authorized);
 }
 }  // namespace

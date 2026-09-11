@@ -40,7 +40,13 @@ struct Completion {
     if (done.exchange(true)) {
       return;
     }
-    g_task_return_boolean(task, static_cast<gboolean>(authorized));
+    // The listener result describes completion of BeginAuthentication. Returning
+    // false without an error prevents libpolkit from sending its D-Bus reply.
+    if (authorized) {
+      g_task_return_boolean(task, TRUE);
+    } else {
+      g_task_return_error(task, g_error_new_literal(POLKIT_ERROR, POLKIT_ERROR_CANCELLED, "Authentication cancelled"));
+    }
   }
   GTask* task;
   std::atomic_bool done;

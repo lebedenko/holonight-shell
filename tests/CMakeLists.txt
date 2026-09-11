@@ -1,4 +1,7 @@
 include(GoogleTest)
+add_test(NAME test_bounded_authentication_challenge
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_bounded_authentication_challenge.py
+)
 add_test(NAME test_installation
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_installation.py
 )
@@ -36,6 +39,14 @@ function(holonight_add_test_exe name)
   )
 endfunction()
 
+# Synthetic PAM behavior is linked only into this private-process fixture.
+add_executable(test_polkit_cancellation_agent
+  polkit_cancellation_agent.cpp
+  ${PROJECT_SOURCE_DIR}/apps/authentication/polkit/PolkitListenerBridge.cpp)
+target_include_directories(test_polkit_cancellation_agent PRIVATE ${PROJECT_SOURCE_DIR}/apps/authentication/polkit)
+target_compile_definitions(test_polkit_cancellation_agent PRIVATE POLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE)
+target_link_libraries(test_polkit_cancellation_agent PRIVATE holonight_authentication_core PkgConfig::POLKIT_AGENT)
+
 holonight_add_test_exe(test_holonight_authentication
   main.cpp
   test_authentication_core.cpp
@@ -54,10 +65,11 @@ target_include_directories(test_holonight_authentication PRIVATE
 target_compile_definitions(test_holonight_authentication PRIVATE
   TEST_ASKPASS_PATH="$<TARGET_FILE:holonight-askpass-test>"
   TEST_PRODUCTION_ASKPASS_PATH="$<TARGET_FILE:holonight-askpass-bin>"
+  TEST_CANCELLATION_AGENT_PATH="$<TARGET_FILE:test_polkit_cancellation_agent>"
   TEST_POLKIT_AGENT_PATH="$<TARGET_FILE:holonight-polkit-agent>"
   POLKIT_AGENT_I_KNOW_API_IS_SUBJECT_TO_CHANGE
 )
-add_dependencies(test_holonight_authentication holonight-askpass-test holonight-askpass-bin holonight-polkit-agent)
+add_dependencies(test_holonight_authentication test_polkit_cancellation_agent holonight-askpass-test holonight-askpass-bin holonight-polkit-agent)
 target_link_libraries(test_holonight_authentication PRIVATE
   holonight_authentication_core PkgConfig::POLKIT_AGENT GTest::gtest GTest::gmock Qt6::Gui Qt6::Test Qt6::DBus
 )

@@ -54,7 +54,7 @@ tasks:
     desc: Build and install pinned sibling dependencies privately
     cmds:
       - test "$(git -C ../holonight-config rev-parse HEAD)" = fe69a59e6b73167fd5349223a4d265d75386c139
-      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 00e6e208b6c9b30d89b66ef3aeb4ef8175050764
+      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 65c806fb6a65cae9652dde7a69d595813973c1a9
       - task: build:appearance-config-dependency
       - task: build:qt-dependency
       - task: build:system-services-dependency

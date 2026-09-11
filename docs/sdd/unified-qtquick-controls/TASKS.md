@@ -99,3 +99,10 @@ Publish the three shell documents first and confirm the commit on canonical orig
 Only then link the SDD in the umbrella, set UQC-102 In Progress and pin that published
 documentation revision. Publish the umbrella checkpoint and stop. Initiative stays
 Accepted; UQC-201 stays Planned. Preserve unrelated package-manager mockups.
+
+## UQC-205 — A03 cancellation completion
+
+[Local diagnosis, changes and verification](UQC-205.md). Assigned at canonical clean
+`1320f37093e2148a224a4e8fbfaf4ac1b536c6a8`; Ready then In Progress on 2026-09-11.
+A03 only. Automated completion is repaired; manual direct-cancel acceptance remains
+open. A01/A02/A04 are deferred until after the dropdown checkpoint.
