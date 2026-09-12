@@ -349,6 +349,10 @@ holonight_quick_controls_runtime(test_holonight_compiled_controls "${CMAKE_INSTA
 holonight_shell_qml(test_holonight_compiled_controls)
 foreach(style IN ITEMS Holonight Fusion)
   foreach(scale IN ITEMS 1 1.25)
+    add_test(NAME launcher_input_${style}_${scale}
+      COMMAND test_holonight_compiled_controls -input "${CMAKE_CURRENT_SOURCE_DIR}/qml/tst_LauncherInput.qml")
+    set_tests_properties(launcher_input_${style}_${scale} PROPERTIES
+      ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_SCALE_FACTOR=${scale};QT_QUICK_BACKEND=software;QML_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH}")
     add_test(NAME uqc_compiled_${style}_${scale} COMMAND test_holonight_compiled_controls)
     set_tests_properties(uqc_compiled_${style}_${scale} PROPERTIES
       ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_SCALE_FACTOR=${scale};QT_QUICK_BACKEND=software")

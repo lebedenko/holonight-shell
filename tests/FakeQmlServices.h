@@ -26,6 +26,7 @@
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QSignalSpy>
+#include <QStandardItemModel>
 #include <QStringListModel>
 #include <QTemporaryDir>
 #include <QTest>
@@ -741,6 +742,7 @@ class FakeSidebarManager : public QObject {
 
 class FakeLauncherService : public QObject {
   Q_OBJECT
+  Q_PROPERTY(int lastLaunchedIndex READ lastLaunchedIndex NOTIFY launchRecorded)
   Q_PROPERTY(QString query READ query WRITE setQuery NOTIFY queryChanged)
   Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
   Q_PROPERTY(int resultCount READ resultCount NOTIFY resultCountChanged)
@@ -754,11 +756,44 @@ class FakeLauncherService : public QObject {
   Q_PROPERTY(QVariantList selectedEntryActions READ selectedEntryActions CONSTANT)
 
  public:
-  FakeLauncherService() { results_.setStringList({QStringLiteral("App 1"), QStringLiteral("App 2")}); }
+  FakeLauncherService() {
+    results_.setItemRoleNames({{Qt::UserRole, "name"},
+                               {Qt::UserRole + 1, "subtitle"},
+                               {Qt::UserRole + 2, "iconName"},
+                               {Qt::UserRole + 3, "desktopFile"},
+                               {Qt::UserRole + 4, "isAction"},
+                               {Qt::UserRole + 5, "actionParent"},
+                               {Qt::UserRole + 6, "actionExec"},
+                               {Qt::UserRole + 7, "actionIndex"},
+                               {Qt::UserRole + 8, "isActionSection"}});
+    seedResults({QVariantMap{{"name", "App 1"}}, QVariantMap{{"name", "App 2"}}});
+  }
+  [[nodiscard]] int lastLaunchedIndex() const { return last_launched_index_; }
+  Q_INVOKABLE void resetLaunchRecord() {
+    last_launched_index_ = -1;
+    emit launchRecorded();
+  }
+  Q_INVOKABLE void seedResults(const QVariantList& rows) {
+    results_.removeRows(0, results_.rowCount());
+    const auto roles = results_.roleNames();
+    for (const auto& row : rows) {
+      const auto values = row.toMap();
+      auto* item = new QStandardItem;
+      for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
+        QVariant fallback = QString();
+        if (it.value() == "isAction") fallback = false;
+        if (it.value() == "actionIndex") fallback = -1;
+        item->setData(values.value(QString::fromUtf8(it.value()), fallback), it.key());
+      }
+      results_.appendRow(item);
+    }
+    setSelectedIndex(rows.isEmpty() ? -1 : 0);
+    emit resultCountChanged();
+  }
 
   [[nodiscard]] QString query() const { return query_; }
   [[nodiscard]] int selectedIndex() const { return selected_index_; }
-  [[nodiscard]] int resultCount() const { return results_.stringList().size(); }
+  [[nodiscard]] int resultCount() const { return results_.rowCount(); }
   [[nodiscard]] QAbstractItemModel* results() { return &results_; }
   [[nodiscard]] QString activeCategory() const { return active_category_; }
   [[nodiscard]] int appResultCount() const { return 2; }
@@ -775,6 +810,7 @@ class FakeLauncherService : public QObject {
       return;
     }
     query_ = query;
+    setSelectedIndex(resultCount() > 0 ? 0 : -1);
     emit queryChanged();
   }
   Q_INVOKABLE void setSelectedIndex(int index) {
@@ -784,9 +820,15 @@ class FakeLauncherService : public QObject {
     selected_index_ = index;
     emit selectedIndexChanged();
   }
-  Q_INVOKABLE void moveSelection(int /*delta*/) {}
-  Q_INVOKABLE bool launchSelected() { return false; }
-  Q_INVOKABLE bool launch(int /*index*/) { return false; }
+  Q_INVOKABLE void moveSelection(int delta) {
+    setSelectedIndex(resultCount() ? (selected_index_ + delta + resultCount()) % resultCount() : -1);
+  }
+  Q_INVOKABLE bool launchSelected() { return launch(selected_index_); }
+  Q_INVOKABLE bool launch(int index) {
+    last_launched_index_ = index;
+    emit launchRecorded();
+    return index >= 0 && index < resultCount();
+  }
   Q_INVOKABLE void reload() {}
   Q_INVOKABLE void setActiveCategory(const QString& category) {
     if (active_category_ == category) {
@@ -805,7 +847,7 @@ class FakeLauncherService : public QObject {
     return QStringList{QStringLiteral("Internet"), QStringLiteral("Development")};
   }
   Q_INVOKABLE int countForCategory(const QString& /*category*/) const { return 5; }
-  Q_INVOKABLE void launchAction(int /*index*/, int /*actionIndex*/) {}
+  Q_INVOKABLE void launchAction(int index, int /*actionIndex*/) { launch(index); }
   Q_INVOKABLE QVariantList defaultAppEntriesForMimeTypes(const QStringList& /*mime_types*/) const {
     return defaultAppEntries();
   }
@@ -823,6 +865,7 @@ class FakeLauncherService : public QObject {
   void resultCountChanged();
   void activeCategoryChanged();
   void launched();
+  void launchRecorded();
 
  private:
   [[nodiscard]] static QVariantList defaultAppEntries() {
@@ -841,7 +884,8 @@ class FakeLauncherService : public QObject {
   QString query_;
   int selected_index_{-1};
   QString active_category_;
-  QStringListModel results_;
+  QStandardItemModel results_;
+  int last_launched_index_ = -1;
 };
 
 class FakeRecentAppsTracker : public QObject {

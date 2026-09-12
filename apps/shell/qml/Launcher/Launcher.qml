@@ -20,16 +20,40 @@ Item {
     readonly property int panelHeight: Math.min(560, root.height - 96)
     readonly property bool isSearchMode: LauncherService.query.length > 0
 
+    HnInputInteraction.onPointerMoved: function(scenePosition) {
+        if (!root.visible || panel.opacity <= 0)
+            return
+        const list = root.isSearchMode ? searchList : browseList
+        const point = list.mapFromItem(null, scenePosition.x, scenePosition.y)
+        if (!list.contains(point))
+            return
+        const index = list.indexAt(point.x + list.contentX, point.y + list.contentY)
+        const row = list.itemAtIndex(index)
+        if (!row || !row.visible || !row.enabled || row.height <= 0)
+            return
+        const rowPoint = row.mapFromItem(null, scenePosition.x, scenePosition.y)
+        if (!row.contains(rowPoint))
+            return
+        // Search delegates also contain action rows; headers and filtered rows
+        // have no selectable child at this point.
+        const target = root.isSearchMode ? row.childAt(rowPoint.x, rowPoint.y) : row
+        if (target && target.visible && target.enabled)
+            LauncherService.setSelectedIndex(index)
+    }
+
     function resetAndFocus() {
+        root.HnInputInteraction.suppressHover()
         searchField.clearInput()
         LauncherService.setQuery("")
         LauncherService.setActiveCategory("")
         searchPanel.resetFilter()
+        LauncherService.setSelectedIndex(LauncherService.resultCount > 0 ? 0 : -1)
         root.forceActiveFocus()
         searchField.forceInputFocus()
     }
 
     function forceReopen() {
+        root.HnInputInteraction.suppressHover()
         closeAnimation.stop()
         panel.scale = 0.95
         panel.opacity = 0.0
@@ -45,6 +69,9 @@ Item {
 
     Connections {
         target: LauncherService
+        function onQueryChanged() {
+            root.HnInputInteraction.suppressHover()
+        }
         function onLaunched() {
             root.startClose()
         }
@@ -175,6 +202,7 @@ Item {
                     // Browse mode: alphabetical all-apps list
                     ListView {
                         id: browseList
+                        objectName: "launcherBrowseList"
                         anchors.fill: parent
                         visible: !root.isSearchMode
                         clip: true
@@ -196,10 +224,6 @@ Item {
                             appSubtitle: model.subtitle
                             appIconName: iconName
                             appDesktopFile: desktopFile
-                            onHoveredChanged: {
-                                if (hovered)
-                                    LauncherService.setSelectedIndex(index)
-                            }
                             onActivated: LauncherService.launch(index)
                         }
 
@@ -214,6 +238,7 @@ Item {
                     // Search mode: results with section headers
                     ListView {
                         id: searchList
+                        objectName: "launcherSearchList"
                         anchors.fill: parent
                         visible: root.isSearchMode
                         clip: true
@@ -294,10 +319,6 @@ Item {
                                 appSubtitle: searchDelegate.subtitle
                                 appIconName: searchDelegate.iconName
                                 appDesktopFile: searchDelegate.desktopFile
-                                onHoveredChanged: {
-                                    if (hovered)
-                                        LauncherService.setSelectedIndex(searchDelegate.index)
-                                }
                                 onActivated: LauncherService.launch(searchDelegate.index)
                             }
 
@@ -342,6 +363,8 @@ Item {
 
                     LauncherRightPanelSearch {
                         id: searchPanel
+                        objectName: "launcherSearchPanel"
+                        onActiveFilterChanged: root.HnInputInteraction.suppressHover()
                         anchors.fill: parent
                         visible: root.isSearchMode
                     }
