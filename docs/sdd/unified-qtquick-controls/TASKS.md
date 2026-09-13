@@ -106,3 +106,9 @@ Accepted; UQC-201 stays Planned. Preserve unrelated package-manager mockups.
 `1320f37093e2148a224a4e8fbfaf4ac1b536c6a8`; Ready then In Progress on 2026-09-11.
 A03 only. Automated completion is repaired; manual direct-cancel acceptance remains
 open. A01/A02/A04 are deferred until after the dropdown checkpoint.
+
+## UQC-205 Batch 2 follow-up
+
+| ID | State | Work and verification |
+|---|---|---|
+| UQC-205-B2 | Done | Shell-only A01/A02/A04 follow-up from `f55cb5f` with accepted provider `68b7069`; [contract, reproduction, repairs and verification](UQC-205.md#batch-2-follow-up--a01a02a04--2026-09-14). 1171/1171 tests and graphics matrix pass. A01/A04 manual gates remain in the umbrella; A03 history is preserved. |

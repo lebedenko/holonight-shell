@@ -245,6 +245,7 @@ target_link_libraries(test_holonight_qml PRIVATE
 
 # --- qml unit tests harness (uses QtQuickTest/TestCase) ---
 add_executable(test_holonight_qml_harness
+  AuthenticationUiFixture.h
   test_qml_harness.cpp
   FakeQmlServices.h
 )
@@ -337,7 +338,7 @@ endif()
 add_test(NAME uqc_policy COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-qml-import-policy.py)
 add_test(NAME uqc_policy_fixtures COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_qml_import_policy.py)
 
-add_executable(test_holonight_compiled_controls test_qml_harness.cpp FakeQmlServices.h)
+add_executable(test_holonight_compiled_controls test_qml_harness.cpp FakeQmlServices.h AuthenticationUiFixture.h)
 target_include_directories(test_holonight_compiled_controls PRIVATE ${CMAKE_BINARY_DIR})
 target_compile_definitions(test_holonight_compiled_controls PRIVATE
   TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
@@ -366,6 +367,10 @@ foreach(style IN ITEMS Holonight Fusion)
   foreach(scale IN ITEMS 1 1.25)
     add_test(NAME uqc_authentication_${style}_${scale} COMMAND test_holonight_compiled_controls
       -input ${CMAKE_CURRENT_SOURCE_DIR}/qml/tst_AuthenticationDialog.qml)
+    add_test(NAME uqc_authentication_real_${style}_${scale} COMMAND test_holonight_compiled_controls
+      -input ${CMAKE_CURRENT_SOURCE_DIR}/qml/tst_AuthenticationRealModel.qml)
+    set_tests_properties(uqc_authentication_real_${style}_${scale} PROPERTIES
+      ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_SCALE_FACTOR=${scale};QT_QUICK_BACKEND=software")
     set_tests_properties(uqc_authentication_${style}_${scale} PROPERTIES
       ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=${style};QT_SCALE_FACTOR=${scale};QT_QUICK_BACKEND=software")
   endforeach()

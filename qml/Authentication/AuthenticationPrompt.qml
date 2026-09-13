@@ -44,6 +44,9 @@ FocusScope {
         selectByMouse: !root.secret
         enabled: root.promptModel.lifecycleState === 2
         background: Rectangle {
+            // Leave room for fractional-scale edge coverage inside the scrolling clip.
+            anchors.fill: parent
+            anchors.margins: 1
             radius: 5
             color: HoloniightPalette.background
             border.color: field.activeFocus ? HoloniightPalette.accentCyan : HoloniightPalette.borderActive

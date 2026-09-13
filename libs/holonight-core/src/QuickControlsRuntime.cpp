@@ -7,6 +7,7 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QSet>
 
 Q_LOGGING_CATEGORY(lcControlsRuntime, "holonight.controls.runtime", QtWarningMsg)
@@ -53,6 +54,9 @@ void reportQuickControlsLoaded(QObject* root) {
     return;
   }
   qCDebug(lcControlsRuntime) << "phase=ui classification=loaded" << root->metaObject()->className();
+  if (const auto* window = qobject_cast<QQuickWindow*>(root)) {
+    qCDebug(lcControlsRuntime) << "phase=window devicePixelRatio=" << window->devicePixelRatio();
+  }
   auto objects = root->findChildren<QObject*>();
   objects.prepend(root);
   QSet<QString> origins;

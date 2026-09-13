@@ -1,3 +1,4 @@
+#include "AuthenticationUiFixture.h"
 #include "FakeQmlServices.h"
 #include "QuickControlsRuntime.h"
 
@@ -71,6 +72,7 @@ class Setup : public QObject {
  public slots:
   void applicationAvailable() {
     holonight::configureQuickControls();
+    qmlRegisterType<AuthenticationUiFixture>("Holonight.Authentication.Test", 1, 0, "AuthenticationUiFixture");
     services_ = std::make_unique<FakeQmlServices>();
     if (!services_->registerSingletons()) {
       qFatal("Failed to register FakeQmlServices singletons");

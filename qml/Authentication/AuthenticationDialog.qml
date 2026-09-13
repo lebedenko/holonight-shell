@@ -11,6 +11,7 @@ Controls.ApplicationWindow {
     objectName: "authenticationDialog"
     required property var promptModel
     readonly property bool textInput: promptModel.inputMode === 1 || promptModel.inputMode === 2
+    readonly property bool awaitingTextInput: promptModel.lifecycleState === 2 && textInput
     readonly property string requester: [promptModel.requesterDetails.application || "",
         promptModel.requesterDetails.vendor || ""].filter(value => value.length > 0).join(" · ")
     readonly property string subtitle: {
@@ -251,7 +252,7 @@ Controls.ApplicationWindow {
                         Layout.fillWidth: true
                         text: root.promptModel.currentPrompt || (root.textInput
                               ? (root.promptModel.inputMode === 2 ? qsTr("Password") : qsTr("Response")) : "")
-                        visible: text.length > 0
+                        visible: root.awaitingTextInput
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap
                         font.pointSize: 13.5
@@ -260,7 +261,7 @@ Controls.ApplicationWindow {
                     AuthenticationPrompt {
                         id: responseField
                         Layout.fillWidth: true
-                        visible: root.promptModel.lifecycleState === 2 && root.textInput
+                        visible: root.awaitingTextInput
                         promptModel: root.promptModel
                         onNavigate: function(forward) { root.cycleFocus(forward) }
                         onSubmit: function(value) { root.promptModel.respond(value) }
@@ -268,7 +269,7 @@ Controls.ApplicationWindow {
                     Controls.Label {
                         objectName: "responseHelper"
                         Layout.fillWidth: true
-                        visible: root.textInput && root.promptModel.lifecycleState === 2
+                        visible: root.awaitingTextInput
                         text: root.promptModel.inputMode === 1 ? qsTr("Enter the response requested by the authentication service.")
                               : root.promptModel.frontendKind === 1
                                 ? qsTr("Your response is sent directly to the system authentication service.")

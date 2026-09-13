@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-qt
-          ref: 4dfa8030df59b896ee7d8ef6a8d6ff6ab960c040
+          ref: 68b7069cc10b85cf0ce591b89cf8c1494bf316b3
           path: holonight-qt-dep
 
       - name: Build and install holonight-qt dependency
