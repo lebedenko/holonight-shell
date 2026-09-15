@@ -373,23 +373,45 @@ class FakePopupSurface : public QObject {
 
 class FakeStatusPopupSurface : public QObject {
   Q_OBJECT
+  Q_PROPERTY(bool popupVisible READ popupVisible NOTIFY popupVisibleChanged)
+  Q_PROPERTY(QString activePopupId READ activePopupId NOTIFY popupVisibleChanged)
   Q_PROPERTY(int pointerX READ pointerX CONSTANT)
   Q_PROPERTY(int hideCount READ hideCount NOTIFY hideCountChanged)
 
  public:
+  [[nodiscard]] bool popupVisible() const { return !active_popup_id_.isEmpty(); }
+  [[nodiscard]] QString activePopupId() const { return active_popup_id_; }
+  Q_INVOKABLE void setActivePopupId(const QString& popup_id) {
+    active_popup_id_ = popup_id;
+    Q_EMIT popupVisibleChanged();
+  }
   [[nodiscard]] int pointerX() const { return 120; }
   [[nodiscard]] int hideCount() const { return hide_count_; }
   Q_INVOKABLE void hide() {
     ++hide_count_;
+    setActivePopupId({});
     Q_EMIT hideCountChanged();
   }
 
  Q_SIGNALS:
   void geometryChanged();
   void hideCountChanged();
+  void popupVisibleChanged();
 
  private:
   int hide_count_{0};
+  QString active_popup_id_;
+};
+
+class FakeTrayMenuSurface : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(bool menuVisible READ menuVisible NOTIFY menuVisibleChanged)
+
+ public:
+  [[nodiscard]] bool menuVisible() const { return false; }
+
+ Q_SIGNALS:
+  void menuVisibleChanged();
 };
 
 class FakeSettingsNavigationService : public QObject {
@@ -1110,6 +1132,7 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "LauncherSurface", &launcher_surface_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PopupSurface", &popup_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StatusPopupSurface", &status_popup_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TrayMenuSurface", &tray_menu_surface_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SettingsNavigationService", &settings_navigation_) >=
                0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TooltipSurface", &tooltip_) >= 0 &&
@@ -1162,6 +1185,7 @@ class FakeQmlServices {
   FakeLauncherSurface launcher_surface_;
   FakePopupSurface popup_;
   FakeStatusPopupSurface status_popup_;
+  FakeTrayMenuSurface tray_menu_surface_;
   FakeSettingsNavigationService settings_navigation_;
   FakeTooltipSurface tooltip_;
   FakeRecentAppsTracker recent_apps_tracker_;
