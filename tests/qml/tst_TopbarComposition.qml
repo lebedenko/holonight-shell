@@ -70,8 +70,8 @@ TestCase {
     function test_status_backgrounds_preserve_frame_at_rest() {
         waitForRendering(statuses, 100)
         waitForRendering(reference, 100)
-        const actual = grabImage(statuses)
-        const expected = grabImage(reference)
+        const actual = controlsEvidence.captureItem(statuses)
+        const expected = controlsEvidence.captureItem(reference)
         compare(actual.width, expected.width)
         compare(actual.height, expected.height)
         const ratio = actual.width / statuses.width
@@ -93,16 +93,25 @@ TestCase {
 
     function test_active_feedback_returns_to_transparent_resting_fill() {
         const row = statuses.children[1].children[1]
-        const point = row.children[0].mapToItem(statuses, 0, 32)
-        const initial = grabImage(statuses)
-        const ratio = initial.width / statuses.width
-        const x = Math.floor(point.x * ratio)
-        const y = Math.floor(point.y * ratio)
-        const resting = initial.pixel(x, y)
+        function feedbackStrip() {
+            const image = controlsEvidence.captureItem(statuses)
+            const ratio = image.width / statuses.width
+            const pixels = []
+            // Cover the rasterized left border rather than assuming its stroke
+            // lands on one exact pixel at every fractional DPR.
+            for (let offset = -1; offset <= 5; ++offset) {
+                for (let height = 24; height <= 40; ++height) {
+                    const point = row.children[0].mapToItem(statuses, offset, height)
+                    pixels.push(String(image.pixel(Math.floor(point.x * ratio), Math.floor(point.y * ratio))))
+                }
+            }
+            return JSON.stringify(pixels)
+        }
+        const resting = feedbackStrip()
         StatusPopupSurface.setActivePopupId("network")
-        tryVerify(function() { return grabImage(statuses).pixel(x, y) !== resting })
+        tryVerify(function() { return feedbackStrip() !== resting })
         StatusPopupSurface.setActivePopupId("")
-        tryVerify(function() { return grabImage(statuses).pixel(x, y) === resting })
+        tryVerify(function() { return feedbackStrip() === resting })
     }
 
 }

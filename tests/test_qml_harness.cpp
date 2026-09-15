@@ -7,8 +7,10 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickImageProvider>
+#include <QQuickItem>
 #include <QQuickStyle>
 #include <QTemporaryDir>
+#include <QtMath>
 #include <QtQuickTest/quicktest.h>
 
 #include <algorithm>
@@ -66,6 +68,16 @@ class Setup : public QObject {
       }
       return false;
     });
+  }
+  Q_INVOKABLE QObject* captureItem(QQuickItem* item) {
+    if (item == nullptr || item->window() == nullptr) return nullptr;
+    const auto bounds = item->mapRectToScene(QRectF(0, 0, item->width(), item->height()));
+    const qreal ratio = item->window()->devicePixelRatio();
+    const QRect pixels(qFloor(bounds.x() * ratio), qFloor(bounds.y() * ratio), qCeil(bounds.width() * ratio),
+                       qCeil(bounds.height() * ratio));
+    // Reuse the image wrapper used by authentication rendering tests. QtTest's
+    // grabImage crops in logical coordinates, which truncates fractional-DPR captures.
+    return new AuthenticationImage(item->window()->grabWindow().copy(pixels), this);
   }
   // NOLINTEND(readability-convert-member-functions-to-static)
 
