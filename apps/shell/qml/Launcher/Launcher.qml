@@ -374,7 +374,7 @@ Item {
             // Footer: keyboard shortcut hints
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 30
+                Layout.preferredHeight: footerHints.implicitHeight + 16
 
                 HnSeparator {
                     orientation: Qt.Horizontal
@@ -383,35 +383,21 @@ Item {
                     opacity: 0.5
                 }
 
-                Row {
+                Flow {
+                    id: footerHints
+                    width: parent.width - 24
                     anchors.centerIn: parent
                     spacing: 24
 
                     // ↵ Launch
                     Row {
                         spacing: 6
-                        anchors.verticalCenter: parent.verticalCenter
 
-                        Item {
-                            width: launchKey.width + 10
-                            height: launchKey.height + 4
+                        HnKeyHint {
+                            id: launchKey
+                            objectName: "launcher-launchKey"
                             anchors.verticalCenter: parent.verticalCenter
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 3
-                                color: HoloniightPalette.borderPassive
-                                opacity: 0.4
-                            }
-
-                            Text {
-                                id: launchKey
-                                anchors.centerIn: parent
-                                text: "↵"
-                                color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.monospaceFont
-                                font.pointSize: 7.5
-                            }
+                            keyGroups: [[Qt.Key_Return]]
                         }
 
                         Text {
@@ -426,28 +412,12 @@ Item {
                     // Ctrl+↵ Launch in Terminal
                     Row {
                         spacing: 6
-                        anchors.verticalCenter: parent.verticalCenter
 
-                        Item {
-                            width: termKey.width + 10
-                            height: termKey.height + 4
+                        HnKeyHint {
+                            id: termKey
+                            objectName: "launcher-termKey"
                             anchors.verticalCenter: parent.verticalCenter
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 3
-                                color: HoloniightPalette.borderPassive
-                                opacity: 0.4
-                            }
-
-                            Text {
-                                id: termKey
-                                anchors.centerIn: parent
-                                text: "Ctrl+↵"
-                                color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.monospaceFont
-                                font.pointSize: 7.5
-                            }
+                            keyGroups: [[Qt.Key_Control, Qt.Key_Return]]
                         }
 
                         Text {
@@ -462,28 +432,12 @@ Item {
                     // ↑↓ Navigate
                     Row {
                         spacing: 6
-                        anchors.verticalCenter: parent.verticalCenter
 
-                        Item {
-                            width: navKey.width + 10
-                            height: navKey.height + 4
+                        HnKeyHint {
+                            id: navKey
+                            objectName: "launcher-navKey"
                             anchors.verticalCenter: parent.verticalCenter
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 3
-                                color: HoloniightPalette.borderPassive
-                                opacity: 0.4
-                            }
-
-                            Text {
-                                id: navKey
-                                anchors.centerIn: parent
-                                text: "↑↓"
-                                color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.monospaceFont
-                                font.pointSize: 7.5
-                            }
+                            keyGroups: [[Qt.Key_Up], [Qt.Key_Down]]
                         }
 
                         Text {
@@ -498,28 +452,12 @@ Item {
                     // Esc Close
                     Row {
                         spacing: 6
-                        anchors.verticalCenter: parent.verticalCenter
 
-                        Item {
-                            width: escKey.width + 10
-                            height: escKey.height + 4
+                        HnKeyHint {
+                            id: escKey
+                            objectName: "launcher-escKey"
                             anchors.verticalCenter: parent.verticalCenter
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 3
-                                color: HoloniightPalette.borderPassive
-                                opacity: 0.4
-                            }
-
-                            Text {
-                                id: escKey
-                                anchors.centerIn: parent
-                                text: "Esc"
-                                color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.uiFont
-                                font.pointSize: 7.5
-                            }
+                            keyGroups: [[Qt.Key_Escape]]
                         }
 
                         Text {

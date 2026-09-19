@@ -26,6 +26,23 @@ TestCase {
         LauncherService.resetLaunchRecord()
     }
 
+    function test_footer_uses_semantic_hints_within_its_bounds() {
+        const launcher = createTemporaryObject(launcherComponent, test)
+        verify(launcher)
+        waitForRendering(launcher)
+        const expected = [
+            ["launchKey", "Return"], ["termKey", "Ctrl plus Return"],
+            ["navKey", "Up or Down"], ["escKey", "Esc"]
+        ]
+        for (const hint of expected) {
+            const badge = findChild(launcher, "launcher-" + hint[0])
+            verify(badge)
+            compare(badge.accessibleText, hint[1])
+            verify(badge.parent.x + badge.parent.width <= badge.parent.parent.width)
+            verify(badge.height <= badge.parent.parent.parent.height)
+        }
+    }
+
     function test_stationary_open_preserves_initial_enter_target() {
         let launcher = createTemporaryObject(launcherComponent, test)
         verify(launcher)

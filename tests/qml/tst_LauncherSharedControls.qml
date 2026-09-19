@@ -113,7 +113,8 @@ TestCase {
         compare(row.sizeRole, HnControlSize.Hero)
         compare(row.implicitHeight, 76)
         tryVerify(function() { return row.trailingItem !== null })
-        compare(row.trailingItem.text, "Enter")
+        compare(row.trailingItem.accessibleText, "Return")
+        compare(row.trailingItem.keyGroups[0][0], Qt.Key_Return)
 
         row.isBestMatch = false
         row.highlighted = false

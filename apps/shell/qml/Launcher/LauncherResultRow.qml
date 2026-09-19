@@ -52,7 +52,7 @@ HnListDelegate {
         id: enterHintComponent
 
         HnKeyHint {
-            text: qsTr("Enter")
+            keyGroups: [[Qt.Key_Return]]
         }
     }
 }

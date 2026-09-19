@@ -16,27 +16,6 @@ Item {
 
   implicitHeight: 48
 
-  component FooterKeyHint: HnKeyHint {
-    id: keyHint
-
-    property bool navigationKey: false
-
-    Layout.alignment: Qt.AlignVCenter
-    topPadding: 3
-    bottomPadding: 3
-    leftPadding: navigationKey ? 10 : 9
-    rightPadding: navigationKey ? 10 : 9
-    font.pointSize: HolonightTheme.monospaceFontSize + (navigationKey ? 1 : 0)
-    font.bold: navigationKey
-
-    background: Rectangle {
-      color: HoloniightPalette.surfaceRaised
-      radius: HnAppearance.roundedRadius(HnSurfaceRole.Control, width, height, HnAppearance.revision)
-      border.width: HnMetrics.borderWidth
-      border.color: HoloniightPalette.borderPassive
-    }
-  }
-
   Rectangle {
     anchors.fill: parent
     color: HoloniightPalette.surfaceRaised
@@ -61,7 +40,7 @@ Item {
       objectName: "navigateHint"
       visible: root.focusContext === "deviceRow"
       spacing: 6
-      FooterKeyHint { objectName: "navigationKeyHint"; text: "↑ ↓"; navigationKey: true }
+      HnKeyHint { objectName: "navigationKeyHint"; keyGroups: [[Qt.Key_Up], [Qt.Key_Down]] }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Navigate"); color: HoloniightPalette.textMuted }
     }
 
@@ -69,7 +48,7 @@ Item {
       objectName: "selectHint"
       visible: root.focusContext === "deviceRow"
       spacing: 6
-      FooterKeyHint { objectName: "enterKeyHint"; text: "Enter" }
+      HnKeyHint { objectName: "enterKeyHint"; keyGroups: [[Qt.Key_Return]] }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Select"); color: HoloniightPalette.textMuted }
     }
 
@@ -77,7 +56,7 @@ Item {
       objectName: "adjustHint"
       visible: root.focusContext === "slider"
       spacing: 6
-      FooterKeyHint { text: "← →"; navigationKey: true }
+      HnKeyHint { keyGroups: [[Qt.Key_Left], [Qt.Key_Right]] }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Adjust"); color: HoloniightPalette.textMuted }
     }
 
@@ -85,7 +64,7 @@ Item {
       objectName: "minMaxHint"
       visible: root.focusContext === "slider"
       spacing: 6
-      FooterKeyHint { text: "Home End" }
+      HnKeyHint { keyGroups: [[Qt.Key_Home], [Qt.Key_End]] }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Min/Max"); color: HoloniightPalette.textMuted }
     }
 
@@ -93,7 +72,7 @@ Item {
       objectName: "expandHint"
       visible: root.focusContext === "summaryRow"
       spacing: 6
-      FooterKeyHint { text: "Enter" }
+      HnKeyHint { keyGroups: [[Qt.Key_Return]] }
       HnLabel {
         Layout.alignment: Qt.AlignVCenter
         role: HnTypographyRole.Caption
@@ -106,7 +85,7 @@ Item {
       objectName: "muteHint"
       visible: root.focusContext !== "other"
       spacing: 6
-      FooterKeyHint { objectName: "muteKeyHint"; text: "M" }
+      HnKeyHint { objectName: "muteKeyHint"; keyGroups: [[Qt.Key_M]] }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Mute"); color: HoloniightPalette.textMuted }
     }
 
@@ -114,7 +93,7 @@ Item {
       objectName: "tabFocusHint"
       visible: root.focusContext === "other"
       spacing: 6
-      FooterKeyHint { objectName: "tabKeyHint"; text: "Tab" }
+      HnKeyHint { objectName: "tabKeyHint"; keyGroups: [[Qt.Key_Tab]] }
       HnLabel { Layout.alignment: Qt.AlignVCenter; role: HnTypographyRole.Caption; rawText: qsTr("Focus"); color: HoloniightPalette.textMuted }
     }
   }

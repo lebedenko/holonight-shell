@@ -72,6 +72,13 @@ TestCase {
         tryCompare(dialog, "visible", true)
     }
 
+    function test_semantic_keyboard_hints_preserve_actions() {
+        const cancel = findChild(dialog, "cancelButton")
+        verify(cancel)
+        compare(cancel.hintKeys[0][0], Qt.Key_Escape)
+        compare(cancel.Accessible.name, cancel.text)
+    }
+
     function cleanup() {
         dialog.destroy()
         dialog = null

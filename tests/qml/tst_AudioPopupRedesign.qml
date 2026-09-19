@@ -306,7 +306,8 @@ TestCase {
         verify(tabHint)
         compare(findChild(popup, "tabFocusHint").visible, true)
         compare(findChild(popup, "navigateHint").visible, false)
-        verify(tabHint.leftPadding > 6)
+        compare(tabHint.accessibleText, "Tab")
+        compare(tabHint.keyGroups[0][0], Qt.Key_Tab)
         verify(tabHint.background.radius < tabHint.height / 2)
     }
 

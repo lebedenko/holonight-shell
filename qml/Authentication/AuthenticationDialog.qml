@@ -303,7 +303,7 @@ Controls.ApplicationWindow {
                 id: cancelButton
                 objectName: "cancelButton"
                 text: qsTr("Cancel")
-                hint: qsTr("Esc")
+                hintKeys: [[Qt.Key_Escape]]
                 enabled: root.promptModel.lifecycleState >= 1 && root.promptModel.lifecycleState <= 4
                 onClicked: root.promptModel.cancel()
             }
@@ -311,7 +311,7 @@ Controls.ApplicationWindow {
                 id: continueButton
                 objectName: "continueButton"
                 text: qsTr("Continue")
-                hint: qsTr("Enter")
+                hintKeys: [[Qt.Key_Return]]
                 primary: true
                 visible: root.selectingIdentity
                 enabled: visible && identitySelector.currentIndex >= 0
@@ -321,7 +321,7 @@ Controls.ApplicationWindow {
                 id: authenticateButton
                 objectName: "authenticateButton"
                 text: qsTr("Authenticate")
-                hint: qsTr("Enter")
+                hintKeys: [[Qt.Key_Return]]
                 primary: true
                 visible: root.textInput && root.promptModel.lifecycleState !== 4
                 enabled: root.promptModel.lifecycleState === 2
@@ -331,7 +331,7 @@ Controls.ApplicationWindow {
                 id: retryButton
                 objectName: "retryButton"
                 text: qsTr("Retry")
-                hint: qsTr("Enter")
+                hintKeys: [[Qt.Key_Return]]
                 primary: true
                 visible: root.promptModel.lifecycleState === 4
                 enabled: visible
@@ -384,7 +384,7 @@ Controls.ApplicationWindow {
     }
     component ActionButton: Controls.Button {
         id: button
-        property string hint: ""
+        property var hintKeys: []
         property bool primary: false
         leftPadding: 20
         rightPadding: 20
@@ -402,7 +402,7 @@ Controls.ApplicationWindow {
                 font.pointSize: 13.5
                 color: button.enabled ? HoloniightPalette.textPrimary : HoloniightPalette.textMuted
             }
-            HnKeyHint { visible: button.hint.length > 0; text: button.hint }
+            HnKeyHint { visible: button.hintKeys.length > 0; keyGroups: button.hintKeys; Accessible.ignored: true }
         }
         background: Rectangle {
             radius: 5
