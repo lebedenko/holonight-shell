@@ -19,7 +19,6 @@ Item {
   property bool outputExpanded: true
   property bool inputExpanded: false
 
-  readonly property real sectionSeparatorThickness: 1 / Screen.devicePixelRatio
   readonly property real separatorBleed: 16
 
   Component.onCompleted: AudioService.startInputLevelMonitoring()
@@ -56,13 +55,10 @@ Item {
 
     HnSeparator {
       objectName: "audioHeaderSeparator"
-      thickness: root.sectionSeparatorThickness
       fadeMode: HnSeparator.Solid
       Layout.fillWidth: true
       Layout.leftMargin: -root.separatorBleed
       Layout.rightMargin: -root.separatorBleed
-      Layout.minimumHeight: root.sectionSeparatorThickness
-      Layout.preferredHeight: root.sectionSeparatorThickness
     }
 
     AudioMasterPanel {
@@ -78,13 +74,10 @@ Item {
 
     HnSeparator {
       objectName: "audioHeroSeparator"
-      thickness: root.sectionSeparatorThickness
       fadeMode: HnSeparator.Solid
       Layout.fillWidth: true
       Layout.leftMargin: -root.separatorBleed
       Layout.rightMargin: -root.separatorBleed
-      Layout.minimumHeight: root.sectionSeparatorThickness
-      Layout.preferredHeight: root.sectionSeparatorThickness
     }
   }
 
@@ -122,26 +115,20 @@ Item {
 
       HnSeparator {
         objectName: "audioOutputSeparator"
-        thickness: root.sectionSeparatorThickness
         fadeMode: HnSeparator.Solid
         Layout.fillWidth: true
         Layout.leftMargin: -root.separatorBleed
         Layout.rightMargin: -root.separatorBleed
-        Layout.minimumHeight: root.sectionSeparatorThickness
-        Layout.preferredHeight: root.sectionSeparatorThickness
       }
 
       AudioApplicationsSection { Layout.fillWidth: true }
 
       HnSeparator {
         objectName: "audioApplicationsSeparator"
-        thickness: root.sectionSeparatorThickness
         fadeMode: HnSeparator.Solid
         Layout.fillWidth: true
         Layout.leftMargin: -root.separatorBleed
         Layout.rightMargin: -root.separatorBleed
-        Layout.minimumHeight: root.sectionSeparatorThickness
-        Layout.preferredHeight: root.sectionSeparatorThickness
       }
 
       AudioDeviceSection {

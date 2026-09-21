@@ -27,7 +27,6 @@ Item {
       anchors.right: parent.right
       anchors.leftMargin: -root.separatorBleed
       anchors.rightMargin: -root.separatorBleed
-      thickness: HnMetrics.separatorWidth
       fadeMode: HnSeparator.Solid
     }
   }

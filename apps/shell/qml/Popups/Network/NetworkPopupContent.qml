@@ -9,7 +9,6 @@ Item {
   id: root
 
   readonly property real sectionSeparatorOpacity: 0.48
-  readonly property real sectionSeparatorThickness: 1 / Screen.devicePixelRatio
 
   WifiPasswordDialog {
     id: passwordDialog
@@ -24,12 +23,9 @@ Item {
     NetworkToggleRow {}
 
     HnSeparator {
-      thickness: root.sectionSeparatorThickness
-      centerOpacity: root.sectionSeparatorOpacity
+      opacity: root.sectionSeparatorOpacity
       fadeMode: HnSeparator.Solid
       Layout.fillWidth: true
-      Layout.minimumHeight: root.sectionSeparatorThickness
-      Layout.preferredHeight: root.sectionSeparatorThickness
     }
 
     NetworkCurrentCard {}
@@ -130,12 +126,9 @@ Item {
     }
 
     HnSeparator {
-      thickness: root.sectionSeparatorThickness
-      centerOpacity: root.sectionSeparatorOpacity
+      opacity: root.sectionSeparatorOpacity
       fadeMode: HnSeparator.Solid
       Layout.fillWidth: true
-      Layout.minimumHeight: root.sectionSeparatorThickness
-      Layout.preferredHeight: root.sectionSeparatorThickness
     }
 
     Text {
