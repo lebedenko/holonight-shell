@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="${ARCHITECTURE_CHECK_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+python3 "$(dirname -- "${BASH_SOURCE[0]}")/check-target-edges.py" \
+  "${repo_root}"/libs/holonight-*/CMakeLists.txt
+if [[ -z "${ARCHITECTURE_CHECK_ROOT:-}" ]]; then
+  python3 "${repo_root}/tests/test_target_edges.py" -q
+  python3 "${repo_root}/tests/test_architecture_boundary_fixtures.py" -q
+fi
 
 allowed_surface_service_includes=(
   "NotificationService.h"

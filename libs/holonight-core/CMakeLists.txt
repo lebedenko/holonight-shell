@@ -5,8 +5,6 @@ add_library(holonight_core STATIC
     src/KeyboardLayoutService.cpp
     src/BatteryState.h
     src/BatteryState.cpp
-    src/AudioState.h
-    src/AudioState.cpp
     src/SystemInfo.h
     src/SystemInfo.cpp
     src/Logger.h

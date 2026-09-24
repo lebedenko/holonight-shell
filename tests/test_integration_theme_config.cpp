@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMetaProperty>
+#include <QSaveFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -60,6 +61,13 @@ void writeAppearance(const QString& path, const QByteArray& content) {
   ASSERT_TRUE(file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text));
   ASSERT_EQ(file.write(content), content.size());
   file.close();
+}
+
+void replaceAppearanceAtomically(const QString& path, const QByteArray& content) {
+  QSaveFile file(path);
+  ASSERT_TRUE(file.open(QIODevice::WriteOnly | QIODevice::Text));
+  ASSERT_EQ(file.write(content), content.size());
+  ASSERT_TRUE(file.commit());
 }
 
 class AppearanceIntegrationTest : public ::testing::Test {
@@ -128,7 +136,7 @@ TEST_F(AppearanceIntegrationTest, LiveReplacementEmitsPreciseSignalsBeforeRevisi
   EXPECT_EQ(signal_order, (QStringList{QStringLiteral("uiFont"), QStringLiteral("revision")}));
 }
 
-TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionDrivenPaletteReload) {
+TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionNotification) {
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
   QStringList signal_order;
@@ -137,9 +145,7 @@ TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionDrivenPaletteR
   auto* portal = theme.findChild<SettingsPortalBackend*>();
   ASSERT_NE(portal, nullptr);
   QSignalSpy portal_spy(portal, &SettingsPortalBackend::SettingChanged);
-  QSignalSpy palette_spy(&theme, &ThemeService::paletteReloadRequested);
   QObject::connect(portal, &SettingsPortalBackend::SettingChanged, [&signal_order]() { signal_order << "portal"; });
-  QObject::connect(&theme, &ThemeService::paletteReloadRequested, [&signal_order]() { signal_order << "palette"; });
 
   QByteArray edited(kCustomAppearance);
   edited.replace("scheme = \"holonight-dark\"", "scheme = \"holonight-day\"");
@@ -148,10 +154,8 @@ TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionDrivenPaletteR
 
   QTRY_COMPARE_WITH_TIMEOUT(appearance.scheme(), QStringLiteral("holonight-day"), 2000);
   ASSERT_GE(portal_spy.count(), 1);
-  EXPECT_EQ(palette_spy.count(), 1);
   EXPECT_EQ(signal_order.first(), QStringLiteral("portal"));
-  EXPECT_EQ(signal_order.at(signal_order.size() - 2), QStringLiteral("revision"));
-  EXPECT_EQ(signal_order.last(), QStringLiteral("palette"));
+  EXPECT_EQ(signal_order.last(), QStringLiteral("revision"));
 }
 
 TEST_F(AppearanceIntegrationTest, SemanticallyUnchangedReplacementDoesNotAdvanceRevision) {
@@ -166,7 +170,7 @@ TEST_F(AppearanceIntegrationTest, SemanticallyUnchangedReplacementDoesNotAdvance
   EXPECT_EQ(revision_spy.count(), 0);
 }
 
-TEST_F(AppearanceIntegrationTest, InvalidLiveReplacementPreservesLastKnownGoodAppearance) {
+TEST_F(AppearanceIntegrationTest, InvalidLiveReplacementPreservesLastKnownGoodAppearanceAndRecovers) {
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
   QSignalSpy ui_font_spy(&appearance, &AppearanceService::uiFontChanged);
@@ -180,6 +184,34 @@ TEST_F(AppearanceIntegrationTest, InvalidLiveReplacementPreservesLastKnownGoodAp
   EXPECT_EQ(appearance.revision(), 0);
   EXPECT_EQ(ui_font_spy.count(), 0);
   EXPECT_EQ(revision_spy.count(), 0);
+
+  QByteArray recovered(kCustomAppearance);
+  recovered.replace("ui_family = \"Fira Code\"", "ui_family = \"Cascadia Code\"");
+  replaceAppearanceAtomically(path, recovered);
+
+  QTRY_COMPARE_WITH_TIMEOUT(appearance.uiFont(), QStringLiteral("Cascadia Code"), 2000);
+  EXPECT_EQ(appearance.revision(), 1);
+  EXPECT_EQ(ui_font_spy.count(), 1);
+  EXPECT_EQ(revision_spy.count(), 1);
+}
+
+TEST_F(AppearanceIntegrationTest, MissingAppearanceProjectsDefaultsAndRecoversAfterAtomicReplacement) {
+  writeAppearance(path, kCustomAppearance);
+  AppearanceService appearance;
+  QSignalSpy revision_spy(&appearance, &AppearanceService::revisionChanged);
+
+  ASSERT_TRUE(QFile::remove(path));
+  QTRY_COMPARE_WITH_TIMEOUT(appearance.uiFont(), QStringLiteral("Inter"), 2000);
+  EXPECT_EQ(appearance.revision(), 1);
+  EXPECT_EQ(revision_spy.count(), 1);
+
+  QByteArray recovered(kCustomAppearance);
+  recovered.replace("ui_family = \"Fira Code\"", "ui_family = \"Cascadia Code\"");
+  replaceAppearanceAtomically(path, recovered);
+
+  QTRY_COMPARE_WITH_TIMEOUT(appearance.uiFont(), QStringLiteral("Cascadia Code"), 2000);
+  EXPECT_EQ(appearance.revision(), 2);
+  EXPECT_EQ(revision_spy.count(), 2);
 }
 
 TEST_F(AppearanceIntegrationTest, AppearanceReloadDoesNotTouchProductConfig) {

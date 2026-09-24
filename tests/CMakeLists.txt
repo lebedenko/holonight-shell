@@ -94,7 +94,6 @@ holonight_add_test_exe(test_holonight_core
   main.cpp
   test_config_service.cpp
   test_keyboard_layout_service.cpp
-  test_audio_state.cpp
   test_battery_state.cpp
   test_system_info.cpp
 )
@@ -283,14 +282,17 @@ set_tests_properties(test_holonight_qml_harness PROPERTIES
 # --- coverage instrumentation and report target ---
 if(ENABLE_COVERAGE)
   foreach(test_exe IN ITEMS
+      test_holonight_authentication
       test_holonight_platform
       test_holonight_core
       test_holonight_compositor
+      test_holonight_shell_config
       test_holonight_services
       test_holonight_surfaces
       test_holonight_app
       test_holonight_qml
-      test_holonight_qml_harness)
+      test_holonight_qml_harness
+      test_polkit_cancellation_agent)
     target_compile_options(${test_exe} PRIVATE --coverage)
     target_link_options(${test_exe} PRIVATE --coverage)
   endforeach()
@@ -299,17 +301,16 @@ if(ENABLE_COVERAGE)
     COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcda" -delete
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/coverage
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
-    COMMAND $<TARGET_FILE:test_holonight_platform>
-    COMMAND $<TARGET_FILE:test_holonight_core>
-    COMMAND $<TARGET_FILE:test_holonight_compositor>
-    COMMAND $<TARGET_FILE:test_holonight_services>
-    COMMAND $<TARGET_FILE:test_holonight_surfaces>
-    COMMAND $<TARGET_FILE:test_holonight_app>
-    COMMAND $<TARGET_FILE:test_holonight_qml>
-    COMMAND $<TARGET_FILE:test_holonight_qml_harness>
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/run-isolated-test.py
+            --hide-host ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
     COMMAND ${GCOVR}
         --root ${CMAKE_SOURCE_DIR}
         --filter "${CMAKE_SOURCE_DIR}/apps/shell/"
+        --filter "${CMAKE_SOURCE_DIR}/apps/authentication/"
+        --filter "${CMAKE_SOURCE_DIR}/qml/Authentication/"
+        --filter "${CMAKE_SOURCE_DIR}/qml/HoloNight/"
+        --filter "${CMAKE_SOURCE_DIR}/libs/holonight-authentication/"
+        --filter "${CMAKE_SOURCE_DIR}/libs/holonight-shell-config/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-core/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-compositor/"
         --filter "${CMAKE_SOURCE_DIR}/libs/holonight-platform/"
@@ -324,15 +325,18 @@ if(ENABLE_COVERAGE)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     DEPENDS
       test_holonight_platform
+      test_holonight_authentication
       test_holonight_core
       test_holonight_compositor
+      test_holonight_shell_config
       test_holonight_services
       test_holonight_surfaces
       test_holonight_app
       test_holonight_qml
       test_holonight_qml_harness
+      test_holonight_compiled_controls
       holonight-shell
-    COMMENT "Collecting coverage → build/coverage/index.html"
+    COMMENT "Collecting coverage → build-coverage/coverage/index.html"
   )
 endif()
 
@@ -340,6 +344,10 @@ add_test(NAME uqc_policy COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scr
 add_test(NAME uqc_policy_fixtures COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_qml_import_policy.py)
 
 add_executable(test_holonight_compiled_controls test_qml_harness.cpp FakeQmlServices.h AuthenticationUiFixture.h)
+if(ENABLE_COVERAGE)
+  target_compile_options(test_holonight_compiled_controls PRIVATE --coverage)
+  target_link_options(test_holonight_compiled_controls PRIVATE --coverage)
+endif()
 target_include_directories(test_holonight_compiled_controls PRIVATE ${CMAKE_BINARY_DIR})
 target_compile_definitions(test_holonight_compiled_controls PRIVATE
   TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"

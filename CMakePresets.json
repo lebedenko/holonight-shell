@@ -10,6 +10,7 @@
         "BUILD_TESTS": "OFF",
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_PREFIX_PATH": "${sourceDir}/build-dependencies/prefix",
         "ENABLE_COVERAGE": "OFF"
       }
     },
@@ -17,6 +18,7 @@
       "name": "debug-tests",
       "displayName": "Debug with tests",
       "inherits": "debug",
+      "binaryDir": "${sourceDir}/build-tests",
       "cacheVariables": {
         "BUILD_TESTS": "ON"
       }
@@ -25,6 +27,7 @@
       "name": "coverage",
       "displayName": "Coverage",
       "inherits": "debug-tests",
+      "binaryDir": "${sourceDir}/build-coverage",
       "cacheVariables": {
         "ENABLE_COVERAGE": "ON"
       }

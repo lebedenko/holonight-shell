@@ -22,8 +22,9 @@ target_link_libraries(holonight_services PUBLIC
     Qt6::Network
     Qt6::Concurrent
     Qt6::Sql
-    ${LIBSECRET_LIBRARIES}
 )
+
+target_link_libraries(holonight_services PRIVATE ${LIBSECRET_LIBRARIES})
 
 target_include_directories(holonight_services PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -43,7 +44,8 @@ target_include_directories(holonight_services PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/weather-icon
     ${CMAKE_CURRENT_SOURCE_DIR}/src/notifications
     ${CMAKE_CURRENT_SOURCE_DIR}/src/osd
-    ${LIBSECRET_INCLUDE_DIRS}
 )
+
+target_include_directories(holonight_services PRIVATE ${LIBSECRET_INCLUDE_DIRS})
 
 target_compile_features(holonight_services PUBLIC cxx_std_23)

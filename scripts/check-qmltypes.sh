@@ -52,6 +52,8 @@ if (( ${#missing_types[@]} > 0 )); then
 fi
 
 echo "QML type metadata check passed."
+python3 "${repo_root}/scripts/check-qmltype-interfaces.py" "${qmltypes_file}" \
+  "${repo_root}/apps/shell/app/ShellApplication.cpp"
 
 required_qml_entries=(
   "AppearanceReloadBridge 1.0 Utility/AppearanceReloadBridge.qml"

@@ -223,12 +223,16 @@ if(BUILD_TESTS)
       COMMENT "Cleaning stale gcov counters"
       VERBATIM
     )
-    foreach(lib IN ITEMS holonight_platform holonight_core holonight_services holonight_surfaces holonight_app)
+    foreach(lib IN ITEMS holonight_platform holonight_shell_config holonight_authentication_core
+                         holonight_core holonight_compositor holonight_services holonight_surfaces holonight_app)
       target_compile_options(${lib} PRIVATE --coverage)
       target_link_options(${lib} PRIVATE --coverage)
     endforeach()
-    target_compile_options(holonight-shell PRIVATE --coverage)
-    target_link_options(holonight-shell PRIVATE --coverage)
+    foreach(target IN ITEMS holonight-shell holonight-polkit-agent holonight-askpass-bin
+                            holonight-askpass-test holonight_authentication_qml holonight_components)
+      target_compile_options(${target} PRIVATE --coverage)
+      target_link_options(${target} PRIVATE --coverage)
+    endforeach()
   endif()
 
   add_subdirectory(tests)

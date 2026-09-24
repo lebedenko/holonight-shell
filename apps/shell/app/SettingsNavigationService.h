@@ -2,12 +2,15 @@
 
 #include <QObject>
 #include <QString>
+#include <QtQml/qqmlregistration.h>
 
 class QDBusMessage;
 class QDBusPendingCall;
 
 class SettingsNavigationService : public QObject {
   Q_OBJECT
+  QML_ELEMENT
+  QML_SINGLETON
 
  public:
   explicit SettingsNavigationService(QObject* parent = nullptr);

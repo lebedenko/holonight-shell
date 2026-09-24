@@ -24,5 +24,13 @@ remain backlog work; this document does not change runtime behavior.
 
 ## Completion criteria
 
+The draft [Shell Architecture Alignment SDD](../architecture-alignment/README.md) details overlapping
+follow-up work: control semantics and typography support `HOLONIGHT_SHELL-02`; coverage, QML metadata,
+workflow consistency, and dependency enforcement support `HOLONIGHT_SHELL-03`. These proposals do not
+change either task's current `Planned` state or authorize implementation. The broader controls audit and
+intentional-exception inventory remain required, as do mandatory CI qmllint, qmltypes, resource-alias,
+architecture, and installed-package checks. Completion of an overlapping architecture task alone does
+not satisfy those obligations.
+
 The local work package is complete only when the tasks in [TASKS.md](TASKS.md) pass repository-local verification,
 the commit is published to the canonical remote, and the umbrella coordinator accepts the handoff.

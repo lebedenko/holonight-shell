@@ -3,6 +3,7 @@
 #include <QHash>
 #include <QObject>
 #include <QString>
+#include <QtQml/qqmlregistration.h>
 
 #include <functional>
 #include <holonight/wayland/layersurfacehost.h>
@@ -15,6 +16,8 @@ class QScreen;
 // terminal callback.
 class SidebarManager : public QObject {
   Q_OBJECT
+  QML_ELEMENT
+  QML_SINGLETON
 
  public:
   explicit SidebarManager(QObject* parent = nullptr);

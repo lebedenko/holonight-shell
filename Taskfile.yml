@@ -2,6 +2,8 @@ version: "3"
 
 vars:
   BUILD_DIR: build
+  TEST_BUILD_DIR: build-tests
+  COVERAGE_BUILD_DIR: build-coverage
   RELEASE_BUILD_DIR: build-release
   LOCAL_INSTALL_BUILD_DIR: build-install-local
   SYSTEM_INSTALL_BUILD_DIR: build-install-system
@@ -40,15 +42,13 @@ tasks:
     desc: Configure CMake with tests enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
-      - ln -sf {{.BUILD_DIR}}/compile_commands.json .
+      - cmake -B {{.TEST_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
 
   configure-coverage:
     desc: Configure CMake with tests and coverage enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
-      - ln -sf {{.BUILD_DIR}}/compile_commands.json .
+      - cmake -B {{.COVERAGE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
 
   build:dependencies:
     desc: Build and install pinned sibling dependencies privately
@@ -174,8 +174,8 @@ tasks:
     desc: Build with tests and run ctest
     deps: [configure-tests]
     cmds:
-      - cmake --build {{.BUILD_DIR}} -j{{.NPROC}}
-      - python3 scripts/run-isolated-test.py --hide-host ctest --test-dir {{.BUILD_DIR}} --output-on-failure
+      - cmake --build {{.TEST_BUILD_DIR}} -j{{.NPROC}}
+      - python3 scripts/run-isolated-test.py --hide-host ctest --test-dir {{.TEST_BUILD_DIR}} --output-on-failure
 
   test:shell-config-package:
     desc: Build, install, and consume the standalone Shell product-config package
@@ -191,9 +191,9 @@ tasks:
     desc: Build with coverage and open HTML report
     deps: [configure-coverage]
     cmds:
-      - cmake --build {{.BUILD_DIR}} --target coverage
+      - cmake --build {{.COVERAGE_BUILD_DIR}} --target coverage
     generates:
-      - "{{.BUILD_DIR}}/coverage/index.html"
+      - "{{.COVERAGE_BUILD_DIR}}/coverage/index.html"
 
   format:
     desc: Auto-format source files with clang-format
@@ -211,24 +211,26 @@ tasks:
     desc: Run clang-tidy
     deps: [configure-tests]
     cmds:
-      - cmake --build {{.BUILD_DIR}} --target tidy
+      - cmake --build {{.TEST_BUILD_DIR}} --target tidy
 
   tidy-src:
     desc: Run clang-tidy on production sources
     deps: [configure-tests]
     cmds:
-      - cmake --build {{.BUILD_DIR}} --target tidy-src
+      - cmake --build {{.TEST_BUILD_DIR}} --target tidy-src
 
   tidy-tests:
     desc: Run clang-tidy on tests
     deps: [configure-tests]
     cmds:
-      - cmake --build {{.BUILD_DIR}} --target tidy-tests
+      - cmake --build {{.TEST_BUILD_DIR}} --target tidy-tests
 
   tidy-container:
     desc: Run static checks inside the CI container (Docker/Podman) for predictable results
     cmds:
-      - task: build:qt-dependency
+      - test "$(git -C ../holonight-config rev-parse HEAD)" = fe69a59e6b73167fd5349223a4d265d75386c139
+      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 863af4183bdf09ce05199b37e8f5dfb46a311ba1
+      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 5f2ecda7eea653995f4c860bfb7f3a3f53beb279
       - |
         if command -v docker >/dev/null 2>&1; then
           CONTAINER_RUNNER="docker"
@@ -238,12 +240,30 @@ tasks:
           echo "ERROR: Neither docker nor podman is available." >&2
           exit 1
         fi
-        $CONTAINER_RUNNER run --rm -v "$(pwd):/workspace" -v "{{.TASKFILE_DIR}}/build-dependencies/prefix:{{.TASKFILE_DIR}}/build-dependencies/prefix" -w /workspace ghcr.io/lebedenko/holonight-shell-ci:latest bash -c "
-          rm -rf build-ci-check &&
-          cmake -B build-ci-check -G Ninja -S . -DCMAKE_BUILD_TYPE=Debug -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH={{.TASKFILE_DIR}}/build-dependencies/prefix &&
-          cmake --build build-ci-check --target format-check &&
-          cmake --build build-ci-check --target tidy
-        "
+        $CONTAINER_RUNNER run --rm \
+          -v "$(pwd):/workspace" \
+          -v "{{.TASKFILE_DIR}}/../holonight-config:/deps/config:ro" \
+          -v "{{.TASKFILE_DIR}}/../holonight-qt:/deps/qt:ro" \
+          -v "{{.TASKFILE_DIR}}/../holonight-system-services:/deps/system-services:ro" \
+          -w /workspace ghcr.io/lebedenko/holonight-shell-ci:latest bash -ec '
+            if ! pkg-config --exists polkit-qt6-agent-1 polkit-qt6-core-1; then
+              echo "CI image lacks polkit-qt6 development packages required by the shell" >&2
+              exit 1
+            fi
+            prefix=/workspace/build-ci-dependencies/prefix
+            cmake --fresh -S /deps/config -B build-ci-dependencies/config -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX="$prefix"
+            cmake --build build-ci-dependencies/config
+            cmake --install build-ci-dependencies/config
+            cmake --fresh -S /deps/qt -B build-ci-dependencies/qt -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR="$prefix/lib/cmake/HoloNightConfig" -DCMAKE_INSTALL_PREFIX="$prefix"
+            cmake --build build-ci-dependencies/qt
+            cmake --install build-ci-dependencies/qt
+            cmake --fresh -S /deps/system-services -B build-ci-dependencies/system-services -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX="$prefix"
+            cmake --build build-ci-dependencies/system-services
+            cmake --install build-ci-dependencies/system-services
+            cmake --fresh -S . -B build-ci-check -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$prefix" -DHoloNightConfig_DIR="$prefix/lib/cmake/HoloNightConfig" -DHolonightQt_DIR="$prefix/lib/cmake/HolonightQt" -DHoloNightSystemServices_DIR="$prefix/lib/cmake/HoloNightSystemServices"
+            cmake --build build-ci-check --target format-check
+            cmake --build build-ci-check --target tidy
+          '
 
   build-ci-image:
     desc: Build the CI container image locally
