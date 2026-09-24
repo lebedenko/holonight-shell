@@ -10,6 +10,7 @@
 #include "MprisDbus.h"
 #include "MprisService.h"
 #include "PowerProfilesService.h"
+#include "StorageService.h"
 #include "SuspendInhibitorService.h"
 #include "TrayModel.h"
 #include "WeatherIconBridge.h"
@@ -1069,6 +1070,12 @@ class FakeTopbarTestSeed : public QObject {
   FakeNetworkService& network_;
 };
 
+class NullStorageBackend : public HoloNight::System::StorageBackend {
+ public:
+  void start() override {}
+  void stop() override {}
+  void execute(const QString&, HoloNight::System::StorageOperation, const QString&) override {}
+};
 class FakeQmlServices {
  public:
   FakeQmlServices()
@@ -1107,6 +1114,22 @@ class FakeQmlServices {
         {QStringLiteral("power-saver"), QStringLiteral("balanced"), QStringLiteral("performance")});
   }
 
+  void seedStorage() {
+    HoloNight::System::StorageDrive drive;
+    drive.id = "test-drive";
+    drive.model = "USB SSD";
+    drive.removable = true;
+    drive.mediaPresent = true;
+    drive.canPowerOff = true;
+    HoloNight::System::StorageVolume volume;
+    volume.id = "test-volume";
+    volume.driveId = drive.id;
+    volume.label = "Documents";
+    volume.usage = "filesystem";
+    volume.canMount = true;
+    emit storage_backend_.snapshotChanged({drive}, {volume}, true);
+  }
+
   [[nodiscard]] bool registerSingletons() {  // NOLINT(readability-function-cognitive-complexity)
     return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SessionIntegrationService", &integration_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "MimeService", &mime_) >= 0 &&
@@ -1114,6 +1137,7 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StorageService", &storage_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PowerProfilesService", &power_profiles_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TrayModel", &tray_model_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "KeyboardLayoutService", &keyboard_layout_) >= 0 &&
@@ -1167,6 +1191,9 @@ class FakeQmlServices {
   BatteryService battery_;
   SuspendInhibitorService suspend_inhibitor_service_{SuspendInhibitorService::SkipInit};
   AudioService audio_;
+  NullStorageBackend storage_backend_;
+  HoloNight::System::StorageController storage_controller_{&storage_backend_};
+  StorageService storage_{&storage_controller_};
   PowerProfilesService power_profiles_;
   TrayModel tray_model_{&config_service_};
   FakeKeyboardLayoutService keyboard_layout_;

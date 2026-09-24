@@ -15,6 +15,7 @@ target_link_libraries(holonight_services PUBLIC
     HolonightQt::Appearance
     HolonightQt::Theme
     HoloNightSystem::Audio
+    HoloNightSystem::Storage
     Qt6::Core
     Qt6::Qml
     Qt6::DBus
@@ -26,6 +27,7 @@ target_link_libraries(holonight_services PUBLIC
 
 target_include_directories(holonight_services PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/storage
     ${CMAKE_CURRENT_SOURCE_DIR}/src/audio
     ${CMAKE_CURRENT_SOURCE_DIR}/src/calendar
     ${CMAKE_CURRENT_SOURCE_DIR}/src/brightness

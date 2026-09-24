@@ -22,6 +22,7 @@ class SettingsNavigationService;
 class ConfigService;
 class ControlServer;
 class AudioService;
+class StorageService;
 class BatteryService;
 class KeyboardLayoutService;
 class LayerShellManager;
@@ -127,6 +128,7 @@ class ShellApplication : public QObject {
   SettingsNavigationService* settings_navigation_service_ = nullptr;
   BatteryService* battery_ = nullptr;
   AudioService* audio_ = nullptr;
+  StorageService* storage_ = nullptr;
   NetworkService* network_ = nullptr;
   PowerProfilesService* power_profiles_ = nullptr;
   SessionService* session_ = nullptr;

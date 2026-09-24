@@ -30,6 +30,7 @@ Item {
     // (audio/network/battery/keyboard-layout); weather supplies a full content column and
     // hides the title bar so the panel is owned entirely by the loaded component.
     readonly property var popupSources: ({
+        "storage": "qrc:/HolonightShell/Popups/Storage/StoragePopupContent.qml",
         "weather": "qrc:/HolonightShell/Popups/Weather/WeatherPopupContent.qml",
         "audio": "qrc:/HolonightShell/Popups/Audio/AudioPopupContent.qml",
         "network": "qrc:/HolonightShell/Popups/Network/NetworkPopupContent.qml",

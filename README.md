@@ -487,3 +487,13 @@ Coordinates are compositor-space (use `hyprctl monitors` to find monitor offsets
 ## License
 
 GPL-3.0-or-later — see [LICENSE](LICENSE).
+
+## Storage devices
+
+Storage uses the independently instantiated `HoloNightSystem::Storage` component and UDisks2 on the system bus.
+Install the `udisks2` runtime package and retain an existing polkit agent for authorization prompts.
+Operations are manual: no automatic mounting, encrypted-volume unlocking or disk administration is provided.
+Eject and power-off are distinct actions; power-off first presents all affected drives and volumes, including
+siblings. Busy devices and authorization failures are reported without forced unmounts or automatic retries.
+
+The Storage status indicator appears for removable media, including external SSDs, and opens a popup grouped by drive. Empty readers and fixed volumes are hidden.

@@ -27,27 +27,27 @@ tasks:
     desc: Configure CMake (debug, no tests)
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   configure:release:
     desc: Configure (Release)
     deps: [build:dependencies]
     cmds:
-      - cmake -S . -B {{.RELEASE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}}
+      - cmake -S . -B {{.RELEASE_BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}}
 
   configure-tests:
     desc: Configure CMake with tests enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=OFF -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   configure-coverage:
     desc: Configure CMake with tests and coverage enabled
     deps: [build:dependencies]
     cmds:
-      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
+      - cmake -B {{.BUILD_DIR}} -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DHoloNightSystemServices_DIR={{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}/lib/cmake/HoloNightSystemServices -DCMAKE_PREFIX_PATH="{{.HOLONIGHT_QT_PREFIX}};{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}};{{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}" -DHoloNightConfig_DIR={{.HOLONIGHT_APPEARANCE_CONFIG_DIR}} -DHolonightQt_DIR={{.HOLONIGHT_QT_DIR}} -S .
       - ln -sf {{.BUILD_DIR}}/compile_commands.json .
 
   build:dependencies:
@@ -62,6 +62,7 @@ tasks:
   build:system-services-dependency:
     desc: Build and install the shared system services provider
     cmds:
+      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 5f2ecda7eea653995f4c860bfb7f3a3f53beb279
       - cmake -S ../holonight-system-services -B build-dependencies/system-services -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF
       - cmake --build build-dependencies/system-services -j{{.NPROC}}
       - cmake --install build-dependencies/system-services --prefix {{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}

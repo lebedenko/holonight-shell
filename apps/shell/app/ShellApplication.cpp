@@ -34,6 +34,7 @@
 #include "OsdController.h"
 #include "OsdSurface.h"
 #include "PortalService.h"
+#include "StorageService.h"
 
 using namespace HoloNight::ShellConfig;
 #include "PowerProfilesService.h"
@@ -111,6 +112,7 @@ ShellApplication::ShellApplication(QObject* parent)
       settings_navigation_service_(new SettingsNavigationService(this)),
       battery_(new BatteryService(this)),
       audio_(new AudioService(this)),
+      storage_(new StorageService(this)),
       network_(new NetworkService(this)),
       power_profiles_(new PowerProfilesService(this)),
       session_(new SessionService(compositor_->backendKind(), this)),
@@ -181,6 +183,7 @@ void ShellApplication::registerQmlTypes() {
   reg(keyboard_layout_, "KeyboardLayoutService");
   reg(battery_, "BatteryService");
   reg(audio_, "AudioService");
+  reg(storage_, "StorageService");
   reg(settings_navigation_service_, "SettingsNavigationService");
   reg(network_, "NetworkService");
   reg(power_profiles_, "PowerProfilesService");

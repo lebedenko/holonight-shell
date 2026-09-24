@@ -21,6 +21,12 @@ QSize boundedDimension(const QSize& minimum, const QSize& preferred, const QSize
 }  // namespace
 
 StatusPopupSizePolicy statusPopupSizePolicy(const QString& popup_id) {
+  if (popup_id == QLatin1String("storage")) {
+    return {.minimum_content_size = {360, 280},
+            .preferred_content_size = {480, 560},
+            .maximum_content_size = {600, 820},
+            .overflow_mode = StatusPopupOverflowMode::InternalList};
+  }
   if (popup_id == QLatin1String("audio")) {
     return {.minimum_content_size = {600, 480},
             .preferred_content_size = {780, 820},

@@ -292,6 +292,14 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
                    {QStringLiteral("active"), true},
                    {QStringLiteral("width"), 380},
                    {QStringLiteral("height"), 760}});
+  services.seedStorage();
+  expectFileLoads(&engine,
+                  QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Topbar/StorageWidget.qml")),
+                  bar_properties);
+  expectFileLoads(
+      &engine,
+      QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Popups/Storage/StoragePopupContent.qml")),
+      {{QStringLiteral("width"), 480}, {QStringLiteral("height"), 560}});
   expectFileLoads(
       &engine, QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Popups/Audio/AudioPopupContent.qml")),
       {{QStringLiteral("width"), 600}, {QStringLiteral("height"), 640}});

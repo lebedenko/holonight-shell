@@ -18,6 +18,7 @@ taskfile="${repo_root}/Taskfile.yml"
 required_types=(
   "AppearanceService"
   "AudioService"
+  "StorageService"
   "NotificationService"
   "CompositorService"
 )
