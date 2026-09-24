@@ -44,7 +44,7 @@ ColumnLayout {
 
       HnLabel {
         objectName: "inputDeviceVolumePercentage"
-        Layout.preferredWidth: 40
+        Layout.preferredWidth: Math.max(40, implicitWidth)
         horizontalAlignment: Text.AlignRight
         rawText: qsTr("%1%").arg(root.defaultDeviceInfo.volume ?? 0)
         role: HnTypographyRole.Caption
@@ -52,16 +52,15 @@ ColumnLayout {
     }
   }
 
-  Text {
+  HnLabel {
     objectName: "audioCurrentDeviceLabel"
 
     Layout.fillWidth: true
     Layout.leftMargin: 16
-    text: root.currentDeviceLabel
+    rawText: root.currentDeviceLabel
+    role: HnTypographyRole.MicroHeader
     color: root.accentColor
-    font.pointSize: 8.25
-    font.bold: true
-    font.capitalization: Font.AllUppercase
+    font.family: AppearanceService.uiFont
   }
 
   AudioCurrentDeviceRow {
@@ -88,17 +87,16 @@ ColumnLayout {
     onToggled: root.expandRequested()
   }
 
-  Text {
+  HnLabel {
     objectName: "audioDeviceSectionLabel"
 
     Layout.fillWidth: true
     Layout.leftMargin: 16
     visible: root.expanded
-    text: root.sectionLabel
+    rawText: root.sectionLabel
+    role: HnTypographyRole.MicroHeader
     color: root.accentColor
-    font.pointSize: 8.25
-    font.bold: true
-    font.capitalization: Font.AllUppercase
+    font.family: AppearanceService.uiFont
   }
 
   AudioDeviceList {

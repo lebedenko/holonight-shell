@@ -1,6 +1,7 @@
 import QtQuick
 import HolonightShell
 import Holonight.Core
+import Holonight.Controls
 
 import "../Controls"
 
@@ -86,12 +87,12 @@ BarSection {
                 font.weight: Font.Normal
             }
 
-            Text {
+            HnLabel {
                 id: condText
-                text: root.ready ? root.shortCondition(WeatherService.current.condition).toUpperCase() : ""
+                rawText: root.ready ? root.shortCondition(WeatherService.current.condition).toUpperCase() : ""
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.accentViolet
                 opacity: 0.6
-                font.pointSize: 7.5
                 font.letterSpacing: 0.5
                 elide: Text.ElideRight
                 maximumLineCount: 1

@@ -25,12 +25,12 @@ Item {
   Component.onDestruction: AudioService.stopInputLevelMonitoring()
 
   // Unavailable state.
-  Text {
+  HnLabel {
     anchors.centerIn: parent
     visible: !AudioService.available
-    text: qsTr("Audio service unavailable")
+    rawText: qsTr("Audio service unavailable")
+    role: HnTypographyRole.Body
     color: HoloniightPalette.textSecondary
-    font.pointSize: 12
   }
 
   ColumnLayout {

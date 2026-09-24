@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import Holonight.Core
+import Holonight.Controls
 
 ListView {
     id: root
@@ -11,15 +12,14 @@ ListView {
     implicitHeight: Math.min(contentHeight, 160)
     model: promptModel.messages
     boundsBehavior: Flickable.StopAtBounds
-    delegate: Controls.Label {
+    delegate: HnLabel {
         required property var model
         required property int severity
         width: ListView.view.width
-        text: model.text
-        textFormat: Text.PlainText
+        rawText: model.text
+        role: HnTypographyRole.Body
         wrapMode: Text.Wrap
         color: severity === 1 ? HoloniightPalette.error : HoloniightPalette.textSecondary
-        font.pointSize: 12
         Accessible.role: Accessible.StaticText
         Accessible.name: text
     }

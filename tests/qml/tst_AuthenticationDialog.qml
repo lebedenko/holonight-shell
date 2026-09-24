@@ -458,6 +458,8 @@ TestCase {
         model.selectedIdentity = "account-0"
         dialog.width = 400
         dialog.height = 450
+        tryCompare(dialog.contentItem, "width", dialog.width)
+        tryCompare(dialog.contentItem, "height", dialog.height)
         const selector = findChild(dialog, "identitySelector")
         selector.scale = data.scale
         waitForRendering(dialog.contentItem)
@@ -515,6 +517,8 @@ TestCase {
         model.currentPrompt = "Long challenge ".repeat(200)
         dialog.width = 400
         dialog.height = 450
+        tryCompare(dialog.contentItem, "width", dialog.width)
+        tryCompare(dialog.contentItem, "height", dialog.height)
         const cancel = findChild(dialog, "cancelButton")
         const authenticate = findChild(dialog, "authenticateButton")
         const scroll = findChild(dialog, "authenticationBodyScroll")

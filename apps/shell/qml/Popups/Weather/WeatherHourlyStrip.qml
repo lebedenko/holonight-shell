@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import HolonightShell
 import Holonight.Core
+import Holonight.Controls
 import "../../Topbar"
 
 import "../../WeatherIcon"
@@ -39,7 +40,7 @@ Column {
     ListView {
         id: strip
         width: parent.width
-        height: 144
+        height: Math.max(144, 64 + AppearanceService.uiFontSize * 7)
         orientation: ListView.Horizontal
         clip: true
         flickableDirection: Flickable.HorizontalFlick
@@ -108,14 +109,16 @@ Column {
                 anchors.rightMargin: 8
                 spacing: 4
 
-                Text {
+                HnLabel {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: card.isCurrent
+                    width: card.width - 16
+                    rawText: card.isCurrent
                         ? qsTr("Now")
                         : Qt.formatTime(new Date(card.modelData.timestamp * 1000), "HH:mm")
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 10.5
-                    font.family: AppearanceService.uiFont
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
                 }
 
                 WeatherIconCompositor {
@@ -132,13 +135,14 @@ Column {
                     }
                 }
 
-                Text {
+                HnLabel {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: Math.round(card.modelData.temperature) + "°C"
+                    width: card.width - 16
+                    rawText: Math.round(card.modelData.temperature) + "°C"
+                    role: HnTypographyRole.Subheading
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 12
-                    font.family: AppearanceService.uiFont
-                    font.weight: Font.DemiBold
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
                 }
 
                 Row {
@@ -154,11 +158,10 @@ Column {
                     }
                     // qmllint enable import unresolved-type
 
-                    Text {
-                        text: Math.round(card.modelData.pop * 100) + "%"
+                    HnLabel {
+                        rawText: Math.round(card.modelData.pop * 100) + "%"
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.accentBlue
-                        font.pointSize: 7.5
-                        font.family: AppearanceService.uiFont
                     }
                 }
             }

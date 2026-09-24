@@ -4,6 +4,7 @@ import QtQuick.Effects
 import HolonightShell
 import Holonight.Core
 import Holonight.Components
+import Holonight.Controls
 
 import "../Controls"
 
@@ -24,6 +25,11 @@ Item {
   readonly property bool hasDefaultAction: root.model.hasDefaultAction ?? false
   readonly property string accentKind: root.model.accentKind ?? "cyan"
   readonly property real createdAtMs: root.model.createdAtMs ?? Date.now()
+  property int timeRefresh: 0
+  readonly property string timeLabel: {
+    root.timeRefresh;
+    return root.relativeTime();
+  }
 
   readonly property color accentColor: {
     if (root.accentKind === "critical")
@@ -143,7 +149,7 @@ Item {
     interval: 60000
     running: root.visible
     repeat: true
-    onTriggered: timeText.text = root.relativeTime()
+    onTriggered: root.timeRefresh++
   }
 
   Item {
@@ -222,26 +228,26 @@ Item {
       }
       spacing: 5
 
-      Text {
+      HnLabel {
         width: parent.width
-        text: root.summaryText
+        rawText: root.summaryText
+        role: HnTypographyRole.Subheading
         color: HoloniightPalette.textPrimary
         elide: Text.ElideRight
         maximumLineCount: 1
-        font.weight: Font.DemiBold
-        font.pointSize: 10.5
       }
 
-      Text {
+      HnLabel {
+        objectName: "toastBody"
         width: parent.width
         visible: root.bodyText.length > 0
-        text: root.sanitizeBody(root.bodyText)
+        rawText: root.sanitizeBody(root.bodyText)
+        role: HnTypographyRole.Caption
         textFormat: Text.StyledText
         color: HoloniightPalette.textMuted
         wrapMode: Text.WordWrap
         maximumLineCount: root.actionList.length > 0 ? 2 : 3
         elide: Text.ElideRight
-        font.pointSize: 9
         lineHeight: 0.98
       }
     }
@@ -254,15 +260,15 @@ Item {
       }
       spacing: 10
 
-      Text {
-        id: timeText
-        width: 44
+      HnLabel {
+        objectName: "toastRelativeTime"
+        width: Math.max(44, implicitWidth)
         anchors.verticalCenter: parent.verticalCenter
-        text: root.relativeTime()
+        rawText: root.timeLabel
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textSecondary
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignRight
-        font.pointSize: 8.25
       }
 
       Item {

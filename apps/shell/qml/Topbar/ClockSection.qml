@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import Holonight.Core
+import Holonight.Controls
 import HolonightShell
 
 import "../Controls"
@@ -55,14 +56,14 @@ BarSection {
             font.weight: Font.Light
         }
 
-        Controls.Label {
+        HnLabel {
             id: dateLabel
             width: parent.width
             horizontalAlignment: Text.AlignRight
             color: HoloniightPalette.accentViolet
             opacity: 0.6
-            text: Qt.formatDateTime(root.currentDateTime, "ddd d MMM").toUpperCase()
-            font.pointSize: 7.5
+            rawText: Qt.formatDateTime(root.currentDateTime, "ddd d MMM").toUpperCase()
+            role: HnTypographyRole.Caption
         }
     }
 

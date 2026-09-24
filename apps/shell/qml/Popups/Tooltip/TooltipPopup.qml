@@ -157,15 +157,15 @@ Item {
                 font.weight: Font.DemiBold
             }
 
-            Controls.Label {
+            HnLabel {
                 width: parent.width
-                text: TooltipSurface.description
+                rawText: TooltipSurface.description
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.textSecondary
                 opacity: 0.78
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
-                font.pointSize: 9
                 lineHeight: 0.92
             }
         }

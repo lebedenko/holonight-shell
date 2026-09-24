@@ -42,12 +42,12 @@ Item {
     anchors.fill: parent
     spacing: 10
 
-    Text {
+    HnLabel {
       Layout.fillWidth: true
-      text: qsTr("CURRENT CONNECTION")
+      rawText: qsTr("CURRENT CONNECTION")
+      role: HnTypographyRole.MicroHeader
       color: HoloniightPalette.accentBlue
-      font.pointSize: 9
-      font.weight: Font.DemiBold
+      font.family: AppearanceService.uiFont
       elide: Text.ElideRight
     }
 
@@ -82,24 +82,24 @@ Item {
         Layout.fillWidth: true
         spacing: 5
 
-        Text {
+        HnLabel {
           Layout.fillWidth: true
-          text: NetworkService.activeConnectionName.length > 0
+          rawText: NetworkService.activeConnectionName.length > 0
                 ? NetworkService.activeConnectionName
                 : (NetworkService.online ? qsTr("Connected") : qsTr("No active connection"))
+          role: HnTypographyRole.Subheading
           color: NetworkService.online ? HoloniightPalette.textPrimary : HoloniightPalette.textSecondary
-          font.pointSize: 13.5
           font.weight: Font.Medium
           elide: Text.ElideRight
         }
 
-        Text {
+        HnLabel {
           objectName: "connectionSubtitle"
 
           Layout.fillWidth: true
-          text: root.connectionSubtitle()
+          rawText: root.connectionSubtitle()
+          role: HnTypographyRole.Body
           color: NetworkService.vpnActive ? HoloniightPalette.accentViolet : HoloniightPalette.textMuted
-          font.pointSize: 10.5
           elide: Text.ElideRight
         }
       }
@@ -122,15 +122,15 @@ Item {
           signalStrength: NetworkService.online ? NetworkService.strength : 0
         }
 
-        Text {
+        HnLabel {
           id: signalPercent
           anchors {
             right: parent.right
             verticalCenter: parent.verticalCenter
           }
-          text: qsTr("%1%").arg(NetworkService.strength)
+          rawText: qsTr("%1%").arg(NetworkService.strength)
+          role: HnTypographyRole.Subheading
           color: NetworkService.online ? HoloniightPalette.accentCyan : HoloniightPalette.textSecondary
-          font.pointSize: 13.5
           font.weight: Font.Medium
         }
       }
@@ -239,20 +239,20 @@ Item {
       }
       spacing: 2
 
-      Text {
+      HnLabel {
         width: parent.width
-        text: tile.label
+        rawText: tile.label
+        role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.accentBlue
-        font.pointSize: 7.5
-        font.weight: Font.DemiBold
+        font.family: AppearanceService.uiFont
         elide: Text.ElideRight
       }
 
-      Text {
+      HnLabel {
         width: parent.width
-        text: tile.value
+        rawText: tile.value
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textSecondary
-        font.pointSize: 9
         elide: Text.ElideRight
       }
     }

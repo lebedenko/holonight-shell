@@ -1,6 +1,6 @@
 import QtQuick
-import QtQuick.Controls as Controls
 import Holonight.Core
+import Holonight.Controls
 
 Item {
     id: root
@@ -8,10 +8,10 @@ Item {
     property int preferredWidth: 300
     property int preferredHeight: 340
 
-    Controls.Label {
+    HnLabel {
         anchors.centerIn: parent
-        text: "Media"
+        rawText: qsTr("Media")
+        role: HnTypographyRole.Body
         color: HoloniightPalette.textPrimary
-        font.pointSize: 10.5
     }
 }

@@ -63,29 +63,30 @@ HnListDelegate {
         onMuteRequested: AudioService.setStreamMuted(root.model.streamId, !root.model.muted)
       }
 
-      Text {
+      HnLabel {
         objectName: "streamVolumeText"
 
-        Layout.preferredWidth: 40
+        Layout.preferredWidth: Math.max(40, implicitWidth)
         horizontalAlignment: Text.AlignRight
-        text: root.volumePct + "%"
+        rawText: root.volumePct + "%"
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textMuted
-        font.pointSize: 9.75
       }
 
       Item {
         objectName: "streamMoreOptionsButton"
 
         visible: root.width >= 460
-        Layout.preferredWidth: visible ? 28 : 0
-        Layout.preferredHeight: 28
+        Layout.preferredWidth: visible ? Math.max(28, moreOptionsGlyph.implicitWidth + 8) : 0
+        Layout.preferredHeight: Math.max(28, moreOptionsGlyph.implicitHeight + 8)
         Layout.alignment: Qt.AlignVCenter
 
         Text {
+          id: moreOptionsGlyph
           anchors.centerIn: parent
           text: "⋯"
           color: HoloniightPalette.textDisabled
-          font.pointSize: 14
+          font.pointSize: HolonightTheme.subheadingSize
           font.bold: true
         }
       }

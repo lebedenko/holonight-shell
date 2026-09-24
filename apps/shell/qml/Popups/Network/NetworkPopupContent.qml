@@ -30,12 +30,12 @@ Item {
 
     NetworkCurrentCard {}
 
-    Text {
+    HnLabel {
       Layout.fillWidth: true
       visible: NetworkService.lastError.length > 0
-      text: NetworkService.lastError
+      rawText: NetworkService.lastError
+      role: HnTypographyRole.Caption
       color: NetworkService.lastError === qsTr("Password required") ? HoloniightPalette.textSecondary : HoloniightPalette.error
-      font.pointSize: 9
       elide: Text.ElideRight
     }
 
@@ -56,12 +56,12 @@ Item {
       Layout.preferredHeight: 20
       spacing: 12
 
-      Text {
+      HnLabel {
         Layout.fillWidth: true
-        text: qsTr("WI-FI NETWORKS")
+        rawText: qsTr("WI-FI NETWORKS")
+        role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.accentBlue
-        font.pointSize: 9
-        font.weight: Font.DemiBold
+        font.family: AppearanceService.uiFont
         elide: Text.ElideRight
       }
 
@@ -89,14 +89,14 @@ Item {
             strokeWidth: 1.8
           }
 
-          Text {
+          HnLabel {
             objectName: "rescanLabel"
 
-            text: NetworkService.scanning ? qsTr("Scanning") : qsTr("Rescan")
+            rawText: NetworkService.scanning ? qsTr("Scanning") : qsTr("Rescan")
+            role: HnTypographyRole.Caption
             color: !NetworkService.available || !NetworkService.wifiEnabled || NetworkService.scanning
                    ? HoloniightPalette.textSecondary
                    : rescanHover.hovered ? HoloniightPalette.accentCyan : HoloniightPalette.textSecondary
-            font.pointSize: 9
             font.weight: Font.Medium
           }
         }
@@ -131,12 +131,12 @@ Item {
       Layout.fillWidth: true
     }
 
-    Text {
+    HnLabel {
       Layout.fillWidth: true
-      text: qsTr("ACTIONS")
+      rawText: qsTr("ACTIONS")
+      role: HnTypographyRole.MicroHeader
       color: HoloniightPalette.accentBlue
-      font.pointSize: 9
-      font.weight: Font.DemiBold
+      font.family: AppearanceService.uiFont
       elide: Text.ElideRight
     }
 
@@ -147,15 +147,15 @@ Item {
       onInfoRequested: root.infoOpen = !root.infoOpen
     }
 
-    Text {
+    HnLabel {
       Layout.fillWidth: true
       Layout.preferredHeight: root.infoOpen ? implicitHeight : 0
       visible: root.infoOpen
-      text: qsTr("Connection: %1\nIPv4: %2")
+      rawText: qsTr("Connection: %1\nIPv4: %2")
             .arg(NetworkService.activeConnectionName.length > 0 ? NetworkService.activeConnectionName : qsTr("Unknown"))
             .arg(NetworkService.activeIp4Address.length > 0 ? NetworkService.activeIp4Address : qsTr("Unavailable"))
+      role: HnTypographyRole.Caption
       color: HoloniightPalette.textSecondary
-      font.pointSize: 9
       elide: Text.ElideRight
     }
   }

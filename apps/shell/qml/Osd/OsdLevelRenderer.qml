@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Holonight.Core
+import Holonight.Controls
 
 import HolonightShell
 
@@ -73,24 +74,22 @@ Item {
 
         Layout.fillWidth: true
 
-        Text {
+        HnLabel {
           objectName: "channelLabel"
-          text: root.channelLabel
-          textFormat: Text.PlainText
+          rawText: root.channelLabel
+          role: HnTypographyRole.Caption
           color: HoloniightPalette.textMuted
-          font.pointSize: 9.75
         }
 
         Item {
           Layout.fillWidth: true
         }
 
-        Text {
+        HnLabel {
           objectName: "valueLabel"
-          text: root.valueText
-          textFormat: Text.PlainText
+          rawText: root.valueText
+          role: HnTypographyRole.Caption
           color: root.muted ? HoloniightPalette.textDisabled : HoloniightPalette.textPrimary
-          font.pointSize: 9.75
           font.bold: true
         }
       }

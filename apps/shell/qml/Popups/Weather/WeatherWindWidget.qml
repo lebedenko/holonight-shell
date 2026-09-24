@@ -15,6 +15,7 @@ Item {
     readonly property int normalizedDirection: ((root.directionDeg % 360) + 360) % 360
     readonly property string directionCode: directionName(root.normalizedDirection, true)
     readonly property string directionLabel: directionName(root.normalizedDirection, false)
+    implicitHeight: Math.max(126, textColumn.implicitHeight + 8)
 
     function directionName(degrees, compact) {
         const codes = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
@@ -100,6 +101,7 @@ Item {
         }
 
         Column {
+            id: textColumn
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             spacing: 2
@@ -111,41 +113,37 @@ Item {
                     text: root.hasData ? root.speedKmh : "—"
                     color: HoloniightPalette.textPrimary
                     font.family: AppearanceService.displayFont
-                    font.pointSize: 31.5
+                    font.pointSize: AppearanceService.displayFontSize * 1.3125
                     font.weight: Font.Thin
                 }
-                Text {
+                HnLabel {
                     anchors.baseline: speedText.baseline
-                    text: root.hasData ? "km/h" : ""
+                    rawText: root.hasData ? "km/h" : ""
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.textMuted
-                    font.family: AppearanceService.uiFont
-                    font.pointSize: 9.75
                 }
             }
 
-            Text {
-                text: root.hasData ? root.directionCode : "—"
+            HnLabel {
+                rawText: root.hasData ? root.directionCode : "—"
+                role: HnTypographyRole.Subheading
                 color: HoloniightPalette.accentViolet
-                font.family: AppearanceService.uiFont
-                font.pointSize: 12.75
                 font.weight: Font.Medium
             }
 
-            Text {
+            HnLabel {
                 width: parent.width
-                text: root.hasData ? "From " + root.directionLabel : ""
+                rawText: root.hasData ? "From " + root.directionLabel : ""
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.textMuted
-                font.family: AppearanceService.uiFont
-                font.pointSize: 8.25
                 elide: Text.ElideRight
             }
 
-            Text {
+            HnLabel {
                 width: parent.width
-                text: root.hasData && root.gustKmh > 0 ? "gusts " + root.gustKmh + " km/h" : ""
+                rawText: root.hasData && root.gustKmh > 0 ? "gusts " + root.gustKmh + " km/h" : ""
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.textSecondary
-                font.family: AppearanceService.uiFont
-                font.pointSize: 7.5
                 elide: Text.ElideRight
             }
         }

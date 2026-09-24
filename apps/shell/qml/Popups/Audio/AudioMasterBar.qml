@@ -41,10 +41,10 @@ Item {
       Layout.preferredHeight: 22
     }
 
-    Text {
-      text: qsTr("Master Volume")
+    HnLabel {
+      rawText: qsTr("Master Volume")
+      role: HnTypographyRole.Body
       color: HoloniightPalette.textPrimary
-      font.pointSize: 10.5
       font.bold: true
     }
 
@@ -57,12 +57,12 @@ Item {
       onValueCommitted: (value) => AudioService.setVolume(value)
     }
 
-    Text {
-      Layout.preferredWidth: 44
+    HnLabel {
+      Layout.preferredWidth: Math.max(44, implicitWidth)
       horizontalAlignment: Text.AlignRight
-      text: root.masterVolume + "%"
+      rawText: root.masterVolume + "%"
+      role: HnTypographyRole.Body
       color: HoloniightPalette.textMuted
-      font.pointSize: 10.5
     }
   }
 }

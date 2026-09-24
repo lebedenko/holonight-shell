@@ -1,6 +1,8 @@
 import QtQuick
 
 import HolonightShell
+import Holonight.Core
+import Holonight.Controls
 
 // Outlined HUD-style action button: transparent fill, accent-colored border (HoloNight design
 // calls for outlined, not filled, buttons). A tap invokes the notification action over D-Bus.
@@ -13,7 +15,7 @@ Item {
   required property string label
 
   implicitWidth: Math.max(92, labelText.implicitWidth + 28)
-  implicitHeight: 28
+  implicitHeight: Math.max(28, labelText.implicitHeight + 10)
 
   Rectangle {
     anchors.fill: parent
@@ -29,7 +31,7 @@ Item {
       NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
     }
 
-    Text {
+    HnLabel {
       id: labelText
       anchors {
         left: parent.left
@@ -38,11 +40,11 @@ Item {
         leftMargin: 11
         rightMargin: 11
       }
-      text: root.label
+      rawText: root.label
+      role: HnTypographyRole.Caption
       color: root.accentColor
       elide: Text.ElideRight
       horizontalAlignment: Text.AlignHCenter
-      font.pointSize: 9
       font.weight: Font.Medium
     }
   }

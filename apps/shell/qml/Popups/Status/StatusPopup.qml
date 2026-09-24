@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import HolonightShell
 import Holonight.Core
+import Holonight.Controls
 
 import "../../Utility" as Utility
 
@@ -205,15 +206,15 @@ Item {
         }
     }
 
-    Text {
+    HnLabel {
         id: titleText
         x: root.panelLeft + 16
         y: root.panelTop + 14
         width: root.panelRight - root.panelLeft - 32
         visible: root.showTitle
-        text: root.displayTitle
+        rawText: root.displayTitle
+        role: HnTypographyRole.Body
         color: HoloniightPalette.textPrimary
-        font.pointSize: 10.5
         font.weight: Font.Medium
         elide: Text.ElideRight
     }

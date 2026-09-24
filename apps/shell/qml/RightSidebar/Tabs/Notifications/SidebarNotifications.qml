@@ -23,11 +23,10 @@ Item {
         spacing: 8
 
         // ── DND toggle row ────────────────────────────────────────────────
-        Text {
-            text: "Do Not Disturb"
+        HnLabel {
+            rawText: qsTr("Do Not Disturb")
+            role: HnTypographyRole.Subheading
             color: HoloniightPalette.textPrimary
-            font.pointSize: 10.5
-            font.weight: Font.Medium
             Layout.fillWidth: true
             Layout.bottomMargin: 4
         }
@@ -85,7 +84,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "🔕"
-                        font.pointSize: 13.5
+                        font.pointSize: HolonightTheme.subheadingSize
                     }
                 }
 
@@ -100,12 +99,15 @@ Item {
             }
 
             ColumnLayout {
+                Layout.fillWidth: true
                 spacing: 2
 
-                Text {
-                    text: NotificationService.dndEnabled ? "On — non-critical muted" : "Off"
+                HnLabel {
+                    Layout.fillWidth: true
+                    rawText: NotificationService.dndEnabled ? qsTr("On — non-critical muted") : qsTr("Off")
+                    role: HnTypographyRole.Body
+                    wrapMode: Text.WordWrap
                     color: NotificationService.dndEnabled ? HoloniightPalette.error : HoloniightPalette.textPrimary
-                    font.pointSize: 9.75
                     font.weight: Font.Medium
 
                     Behavior on color {
@@ -113,10 +115,12 @@ Item {
                     }
                 }
 
-                Text {
-                    text: "Critical alerts always break through"
+                HnLabel {
+                    Layout.fillWidth: true
+                    rawText: qsTr("Critical alerts always break through")
+                    role: HnTypographyRole.Caption
+                    wrapMode: Text.WordWrap
                     color: HoloniightPalette.textSecondary
-                    font.pointSize: 8.25
                 }
             }
         }
@@ -138,15 +142,15 @@ Item {
             Text {
                 text: "⚠"
                 color: HoloniightPalette.error
-                font.pointSize: 10.5
+                font.pointSize: HolonightTheme.microSize
             }
 
-            Text {
-                text: "Notification daemon conflict: "
+            HnLabel {
+                rawText: qsTr("Notification daemon conflict: ")
                     + (NotificationService.daemonConflictOwner !== "" ? NotificationService.daemonConflictOwner : "unknown")
-                    + "\nStop this service to enable HoloNight notifications."
+                    + qsTr("\nStop this service to enable HoloNight notifications.")
+                role: HnTypographyRole.Body
                 color: HoloniightPalette.textPrimary
-                font.pointSize: 9
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -161,11 +165,10 @@ Item {
             Layout.bottomMargin: 4
         }
 
-        Text {
-            text: "App Notifications"
+        HnLabel {
+            rawText: qsTr("App Notifications")
+            role: HnTypographyRole.Subheading
             color: HoloniightPalette.textPrimary
-            font.pointSize: 10.5
-            font.weight: Font.Medium
             Layout.fillWidth: true
         }
 

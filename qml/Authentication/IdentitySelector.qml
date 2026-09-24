@@ -15,8 +15,8 @@ HnIconComboBox {
     Keys.onBacktabPressed: function(event) { root.popup.close(); root.navigate(false); event.accepted = true }
     readonly property var account: promptModel.selectedAccount
     readonly property string accountName: account.fullName || account.username || account.displayLabel || ""
-    implicitHeight: 82
-    delegateHeight: 82
+    implicitHeight: Math.max(82, HolonightTheme.subheadingSize * 1.5 + HolonightTheme.microSize * 1.5 + 30)
+    delegateHeight: implicitHeight
     model: promptModel.identities
     textRole: "displayLabel"
     valueRole: "stableId"
@@ -71,22 +71,20 @@ HnIconComboBox {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 4
-            Controls.Label {
+            HnLabel {
                 objectName: "accountName"
                 Layout.fillWidth: true
-                text: root.accountName
-                textFormat: Text.PlainText
-                font.pointSize: 15
+                rawText: root.accountName
+                role: HnTypographyRole.Subheading
                 elide: Text.ElideRight
                 color: HoloniightPalette.textPrimary
             }
-            Controls.Label {
+            HnLabel {
                 objectName: "accountUsername"
                 Layout.fillWidth: true
-                text: root.account.username || ""
+                rawText: root.account.username || ""
                 visible: text.length > 0 && text !== root.accountName
-                textFormat: Text.PlainText
-                font.pointSize: 12.75
+                role: HnTypographyRole.Caption
                 elide: Text.ElideRight
                 color: HoloniightPalette.textMuted
             }
@@ -124,20 +122,18 @@ HnIconComboBox {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 4
-                Controls.Label {
+                HnLabel {
                     Layout.fillWidth: true
-                    text: option.text
-                    font.pointSize: 15
-                    textFormat: Text.PlainText
+                    rawText: option.text
+                    role: HnTypographyRole.Subheading
                     elide: Text.ElideRight
                     color: HoloniightPalette.textPrimary
                 }
-                Controls.Label {
+                HnLabel {
                     Layout.fillWidth: true
                     visible: text.length > 0 && text !== option.text
-                    text: option.username
-                    font.pointSize: 12.75
-                    textFormat: Text.PlainText
+                    rawText: option.username
+                    role: HnTypographyRole.Caption
                     elide: Text.ElideRight
                     color: HoloniightPalette.textMuted
                 }

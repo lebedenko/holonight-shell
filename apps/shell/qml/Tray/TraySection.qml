@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import HolonightShell
 import Holonight.Core
+import Holonight.Controls
 import "../Controls"
 
 import "../Topbar"
@@ -172,11 +173,14 @@ BarSection {
                 }
             }
 
-            Text {
+            HnLabel {
                 anchors.centerIn: parent
-                text: root.expanded ? "x" : "+" + root.overflowCount
+                width: parent.width - 4
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                rawText: root.expanded ? "x" : "+" + root.overflowCount
+                role: HnTypographyRole.Caption
                 color: overflowHover.hovered ? HoloniightPalette.accentCyan : HoloniightPalette.textSecondary
-                font.pointSize: 9
                 font.weight: Font.DemiBold
             }
 

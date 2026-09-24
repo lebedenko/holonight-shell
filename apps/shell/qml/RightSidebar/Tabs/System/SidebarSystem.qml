@@ -60,10 +60,10 @@ Item {
         anchors.margins: 16
         spacing: 8
 
-        Text {
-            text: "Default Applications"
+        HnLabel {
+            rawText: qsTr("Default Applications")
+            role: HnTypographyRole.Subheading
             color: HoloniightPalette.textPrimary
-            font.pointSize: 10.5
             font.weight: Font.Medium
             Layout.fillWidth: true
             Layout.bottomMargin: 4
@@ -140,10 +140,10 @@ Item {
                 Layout.fillWidth: true
                 spacing: 8
 
-                Text {
-                    text: qsTr("Session Integration")
+                HnLabel {
+                    rawText: qsTr("Session Integration")
+                    role: HnTypographyRole.Subheading
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 10.5
                     font.weight: Font.Medium
                     Layout.fillWidth: true
                 }
@@ -165,11 +165,11 @@ Item {
                 Layout.fillWidth: true
             }
 
-            Text {
+            HnLabel {
                 visible: root.failingDiagnostics.length === 0
-                text: qsTr("No failing desktop-session checks.")
+                rawText: qsTr("No failing desktop-session checks.")
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.textMuted
-                font.pointSize: 9
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
@@ -193,19 +193,19 @@ Item {
                         }
                     }
 
-                    Text {
-                        text: root.cacheGuidance(modelData)
+                    HnLabel {
+                        rawText: root.cacheGuidance(modelData)
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.textMuted
-                        font.pointSize: 8.25
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
 
-                    Text {
+                    HnLabel {
                         visible: modelData["command"] !== undefined && modelData["command"] !== ""
-                        text: modelData["command"] ?? ""
+                        rawText: modelData["command"] ?? ""
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.textSecondary
-                        font.pointSize: 7.5
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
@@ -221,9 +221,9 @@ Item {
                     text: SessionIntegrationService.refreshInProgress ? qsTr("Refreshing") : qsTr("Refresh")
                     enabled: !SessionIntegrationService.refreshInProgress
                              && !SessionIntegrationService.rebuildInProgress
-                    font.pointSize: 9
-                    Layout.preferredWidth: 92
-                    Layout.preferredHeight: 28
+                    font.pointSize: HolonightTheme.captionSize
+                    Layout.preferredWidth: Math.min(144, Math.max(92, refreshBtn.contentItem.implicitWidth + 20))
+                    Layout.preferredHeight: Math.max(28, refreshBtn.contentItem.implicitHeight + 10)
                     onClicked: SessionIntegrationService.refresh()
 
                     contentItem: Text {
@@ -248,9 +248,9 @@ Item {
                     id: rebuildBtn
                     text: SessionIntegrationService.rebuildInProgress ? qsTr("Rebuilding") : qsTr("Rebuild")
                     enabled: !SessionIntegrationService.rebuildInProgress
-                    font.pointSize: 9
-                    Layout.preferredWidth: 92
-                    Layout.preferredHeight: 28
+                    font.pointSize: HolonightTheme.captionSize
+                    Layout.preferredWidth: Math.min(144, Math.max(92, rebuildBtn.contentItem.implicitWidth + 20))
+                    Layout.preferredHeight: Math.max(28, rebuildBtn.contentItem.implicitHeight + 10)
                     onClicked: SessionIntegrationService.rebuildApplicationCaches()
 
                     contentItem: Text {

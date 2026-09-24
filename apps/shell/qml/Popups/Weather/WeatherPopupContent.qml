@@ -27,11 +27,10 @@ Item {
         return Qt.formatTime(parsed, "HH:mm")
     }
 
-    component SectionLabel: Text {
+    component SectionLabel: HnLabel {
+        role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.accentBlue
-        font.family: AppearanceService.titleFont
-        font.pointSize: AppearanceService.titleFontSize * 0.75
-        font.capitalization: Font.AllUppercase
+        elide: Text.ElideRight
     }
 
     Flickable {
@@ -57,27 +56,27 @@ Item {
                 spacing: 6
 
                 SectionLabel {
-                    text: "Current Weather"
+                    rawText: qsTr("Current Weather")
                     width: parent.width
                 }
 
-                Text {
+                HnLabel {
                     objectName: "weatherLocationLabel"
                     width: parent.width
                     visible: text.length > 0
-                    text: WeatherService.locationLabel
+                    rawText: WeatherService.locationLabel
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.textSecondary
-                    font.family: AppearanceService.uiFont
-                    font.pointSize: AppearanceService.titleFontSize * 0.75
                     elide: Text.ElideRight
                 }
 
                 RowLayout {
                     width: parent.width
-                    height: 256
+                    height: Math.max(256, currentSection.implicitHeight, detailsGrid.implicitHeight)
                     spacing: 24
 
                     WeatherCurrentSection {
+                        id: currentSection
                         Layout.fillWidth: true
                         Layout.preferredWidth: 490
                         Layout.fillHeight: true
@@ -91,6 +90,7 @@ Item {
                     }
 
                     WeatherDetailsGrid {
+                        id: detailsGrid
                         Layout.preferredWidth: 220
                         Layout.alignment: Qt.AlignTop
                     }
@@ -105,13 +105,13 @@ Item {
             }
 
             SectionLabel {
-                text: "Hourly Forecast"
+                rawText: qsTr("Hourly Forecast")
                 width: parent.width
             }
 
             WeatherHourlyStrip {
                 width: parent.width
-                height: 148
+                height: implicitHeight
             }
 
             HnSeparator {
@@ -123,17 +123,18 @@ Item {
 
             RowLayout {
                 width: parent.width
-                height: 210
+                height: Math.max(210, forecastSummary.implicitHeight + 16, forecastDetails.implicitHeight + 16)
                 spacing: 18
 
                 Column {
+                    id: forecastSummary
                     Layout.fillWidth: true
                     Layout.preferredWidth: 455
                     Layout.alignment: Qt.AlignTop
                     spacing: 8
 
                     SectionLabel {
-                        text: "Forecast Summary"
+                        rawText: qsTr("Forecast Summary")
                         width: parent.width
                     }
 
@@ -150,12 +151,13 @@ Item {
                 }
 
                 Column {
+                    id: forecastDetails
                     Layout.preferredWidth: 230
                     Layout.alignment: Qt.AlignTop
                     spacing: 10
 
                     SectionLabel {
-                        text: "Details"
+                        rawText: qsTr("Details")
                         width: parent.width
                     }
 
@@ -179,19 +181,22 @@ Item {
                             Column {
                                 Layout.fillWidth: true
                                 spacing: 1
-                                Text {
-                                    text: "SUNRISE"
+                                HnLabel {
+                                    width: parent.width
+                                    rawText: qsTr("Sunrise")
+                                    role: HnTypographyRole.MicroHeader
                                     color: HoloniightPalette.textSecondary
-                                    font.pointSize: 6.75
                                     font.family: AppearanceService.uiFont
+                                    elide: Text.ElideRight
                                 }
-                                Text {
-                                    text: WeatherService.hasData
+                                HnLabel {
+                                    width: parent.width
+                                    rawText: WeatherService.hasData
                                         ? Qt.formatTime(new Date(WeatherService.current.sunrise * 1000), "HH:mm")
                                         : "—"
+                                    role: HnTypographyRole.Caption
                                     color: HoloniightPalette.textPrimary
-                                    font.pointSize: 9.75
-                                    font.family: AppearanceService.uiFont
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -211,19 +216,22 @@ Item {
                             Column {
                                 Layout.fillWidth: true
                                 spacing: 1
-                                Text {
-                                    text: "SUNSET"
+                                HnLabel {
+                                    width: parent.width
+                                    rawText: qsTr("Sunset")
+                                    role: HnTypographyRole.MicroHeader
                                     color: HoloniightPalette.textSecondary
-                                    font.pointSize: 6.75
                                     font.family: AppearanceService.uiFont
+                                    elide: Text.ElideRight
                                 }
-                                Text {
-                                    text: WeatherService.hasData
+                                HnLabel {
+                                    width: parent.width
+                                    rawText: WeatherService.hasData
                                         ? Qt.formatTime(new Date(WeatherService.current.sunset * 1000), "HH:mm")
                                         : "—"
+                                    role: HnTypographyRole.Caption
                                     color: HoloniightPalette.textPrimary
-                                    font.pointSize: 9.75
-                                    font.family: AppearanceService.uiFont
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -259,22 +267,25 @@ Item {
                         Column {
                             Layout.fillWidth: true
                             spacing: 1
-                            Text {
-                                text: "MOON"
+                            HnLabel {
+                                width: parent.width
+                                rawText: qsTr("Moon")
+                                role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.textSecondary
-                                font.pointSize: 6.75
                                 font.family: AppearanceService.uiFont
+                                elide: Text.ElideRight
                             }
-                            Text {
-                                text: {
+                            HnLabel {
+                                width: parent.width
+                                rawText: {
                                     var mp = (WeatherService.hasData && WeatherService.daily.length > 0)
                                         ? WeatherService.daily[0].moonPhase
                                         : undefined;
                                     return WeatherIconBridge.moonPhaseDescription(mp);
                                 }
+                                role: HnTypographyRole.Caption
                                 color: HoloniightPalette.textPrimary
-                                font.pointSize: 9.75
-                                font.family: AppearanceService.uiFont
+                                elide: Text.ElideRight
                             }
                         }
                     }
@@ -301,14 +312,17 @@ Item {
                         Column {
                             Layout.fillWidth: true
                             spacing: 1
-                            Text {
-                                text: "AIR QUALITY"
+                            HnLabel {
+                                width: parent.width
+                                rawText: qsTr("Air Quality")
+                                role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.textSecondary
-                                font.pointSize: 6.75
                                 font.family: AppearanceService.uiFont
+                                elide: Text.ElideRight
                             }
-                            Text {
-                                text: {
+                            HnLabel {
+                                width: parent.width
+                                rawText: {
                                     if (!WeatherService.hasData) return "Not available"
                                     const aqi = WeatherService.current.aqi
                                     if (aqi >= 1 && aqi <= 5) {
@@ -316,9 +330,9 @@ Item {
                                     }
                                     return "Not available"
                                 }
+                                role: HnTypographyRole.Caption
                                 color: HoloniightPalette.textPrimary
-                                font.pointSize: 9.75
-                                font.family: AppearanceService.uiFont
+                                elide: Text.ElideRight
                             }
                         }
                     }
@@ -335,17 +349,19 @@ Item {
 
             RowLayout {
                 width: parent.width
-                height: 152
+                height: Math.max(152, temperatureGraphColumn.implicitHeight, precipitationGraphColumn.implicitHeight)
                 spacing: 16
 
                 Column {
+                    id: temperatureGraphColumn
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
                     spacing: 4
 
                     SectionLabel {
-                        text: "Temperature (°C)"
+                        rawText: qsTr("Temperature (°C)")
+                        width: parent.width
                     }
                     TemperatureGraph {
                         width: parent.width
@@ -361,13 +377,15 @@ Item {
                 }
 
                 Column {
+                    id: precipitationGraphColumn
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
                     spacing: 4
 
                     SectionLabel {
-                        text: "Precipitation (mm)"
+                        rawText: qsTr("Precipitation (mm)")
+                        width: parent.width
                     }
                     PrecipitationGraph {
                         width: parent.width
@@ -378,22 +396,25 @@ Item {
 
             RowLayout {
                 width: parent.width
-                height: 20
+                height: Math.max(20, updatedLabel.implicitHeight, sourceLabel.implicitHeight)
 
-                Text {
+                HnLabel {
+                    id: updatedLabel
                     Layout.fillWidth: true
-                    text: "Updated: " + root.updateTime()
+                    rawText: qsTr("Updated: %1").arg(root.updateTime())
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.accentBlue
-                    font.pointSize: 8.25
-                    font.family: AppearanceService.uiFont
+                    elide: Text.ElideRight
                 }
 
-                Text {
-                    text: "Source: OpenWeather"
+                HnLabel {
+                    id: sourceLabel
+                    Layout.maximumWidth: parent.width * 0.5
+                    rawText: qsTr("Source: OpenWeather")
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.accentBlue
-                    font.pointSize: 8.25
-                    font.family: AppearanceService.uiFont
                     horizontalAlignment: Text.AlignRight
+                    elide: Text.ElideRight
                 }
             }
         }

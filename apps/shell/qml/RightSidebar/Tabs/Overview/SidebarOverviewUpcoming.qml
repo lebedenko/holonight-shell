@@ -225,11 +225,10 @@ ColumnLayout {
                     }
                 }
 
-                Text {
-                    text: "UPCOMING"
+                HnLabel {
+                    rawText: qsTr("UPCOMING")
+                    role: HnTypographyRole.MicroHeader
                     color: HoloniightPalette.accentBlue
-                    font.family: AppearanceService.titleFont
-                    font.pointSize: AppearanceService.titleFontSize * 0.75
                     font.bold: true
                     font.letterSpacing: 0.8
                 }
@@ -238,9 +237,9 @@ ColumnLayout {
                     Layout.fillWidth: true
                 }
 
-                Text {
-                    text: "View all ›"
-                    font.pointSize: 8.25
+                HnLabel {
+                    rawText: qsTr("View all ›")
+                    role: HnTypographyRole.Caption
                     color: viewAllArea.containsMouse ? HoloniightPalette.accentCyan : HoloniightPalette.accentBlue
 
                     MouseArea {
@@ -266,25 +265,26 @@ ColumnLayout {
             // Connection Error state
             Item {
                 Layout.fillWidth: true
-                implicitHeight: 44
+                implicitHeight: Math.max(44, connectionErrorColumn.implicitHeight)
                 visible: CalendarService.upcomingState === CalendarService.ConnectError
 
                 ColumnLayout {
+                    id: connectionErrorColumn
                     anchors.fill: parent
                     spacing: 2
 
-                    Text {
+                    HnLabel {
                         Layout.fillWidth: true
-                        text: "Calendar connection error"
-                        font.pointSize: 8.25
+                        rawText: qsTr("Calendar connection error")
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.warning
                         elide: Text.ElideRight
                     }
 
-                    Text {
+                    HnLabel {
                         Layout.fillWidth: true
-                        text: CalendarService.lastError
-                        font.pointSize: 6.75
+                        rawText: CalendarService.lastError
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.textSecondary
                         elide: Text.ElideRight
                         visible: CalendarService.lastError !== ""
@@ -295,22 +295,25 @@ ColumnLayout {
             // Offline state
             Item {
                 Layout.fillWidth: true
-                implicitHeight: 16
+                implicitHeight: Math.max(16, offlineLabel.implicitHeight + 4)
                 visible: CalendarService.upcomingState === CalendarService.Offline
 
-                Text {
+                HnLabel {
+                    id: offlineLabel
                     anchors.left: parent.left
+                    anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "No connection — showing cached events"
-                    font.pointSize: 6.75
+                    rawText: qsTr("No connection — showing cached events")
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.textSecondary
+                    elide: Text.ElideRight
                 }
             }
 
             // Empty state
             Item {
                 Layout.fillWidth: true
-                implicitHeight: 32
+                implicitHeight: Math.max(32, emptyLabel.implicitHeight + 8)
                 visible: {
                     var mdl = CalendarService.upcomingEvents
                     var isEmpty = (mdl === null || mdl.rowCount() === 0)
@@ -319,10 +322,11 @@ ColumnLayout {
                            CalendarService.upcomingState !== CalendarService.ConnectError
                 }
 
-                Text {
+                HnLabel {
+                    id: emptyLabel
                     anchors.centerIn: parent
-                    text: "No upcoming events"
-                    font.pointSize: 8.25
+                    rawText: qsTr("No upcoming events")
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.textSecondary
                 }
             }
@@ -389,23 +393,23 @@ ColumnLayout {
 
                                     ColumnLayout {
                                         Layout.alignment: Qt.AlignTop
-                                        Layout.preferredWidth: 75
+                                        Layout.preferredWidth: Math.max(75, Math.min(cardColumn.width * 0.35, eventTime.implicitWidth))
                                         spacing: 2
 
-                                        Text {
-                                            text: eventRow.isAllDay ? "All day" : Qt.formatTime(eventRow.startTime, "hh:mm")
-                                            font.pointSize: 13.5
+                                        HnLabel {
+                                            id: eventTime
+                                            rawText: eventRow.isAllDay ? qsTr("All day") : Qt.formatTime(eventRow.startTime, "hh:mm")
+                                            role: HnTypographyRole.Subheading
                                             font.bold: true
-                                            font.family: AppearanceService.uiFont
                                             color: HoloniightPalette.textPrimary
                                             Layout.fillWidth: true
+                                            elide: Text.ElideRight
                                         }
 
-                                        Text {
-                                            text: eventRow.eventState.text
-                                            font.pointSize: 8.25
+                                        HnLabel {
+                                            rawText: eventRow.eventState.text
+                                            role: HnTypographyRole.Caption
                                             font.bold: eventRow.eventState.isHighlighted
-                                            font.family: AppearanceService.uiFont
                                             color: eventRow.eventState.color
                                             Layout.fillWidth: true
                                             elide: Text.ElideRight
@@ -417,11 +421,10 @@ ColumnLayout {
                                         Layout.alignment: Qt.AlignTop
                                         spacing: 6
 
-                                        Text {
-                                            text: eventRow.title
-                                            font.pointSize: 10.5
+                                        HnLabel {
+                                            rawText: eventRow.title
+                                            role: HnTypographyRole.Body
                                             font.bold: true
-                                            font.family: AppearanceService.uiFont
                                             color: HoloniightPalette.textPrimary
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
@@ -455,10 +458,9 @@ ColumnLayout {
                                                     }
                                                 }
 
-                                                Text {
-                                                    text: eventRow._duration
-                                                    font.pointSize: 8.25
-                                                    font.family: AppearanceService.uiFont
+                                                HnLabel {
+                                                    rawText: eventRow._duration
+                                                    role: HnTypographyRole.Caption
                                                     color: HoloniightPalette.textMuted
                                                 }
                                             }
@@ -488,10 +490,9 @@ ColumnLayout {
                                                     }
                                                 }
 
-                                                Text {
-                                                    text: eventRow.location
-                                                    font.pointSize: 8.25
-                                                    font.family: AppearanceService.uiFont
+                                                HnLabel {
+                                                    rawText: eventRow.location
+                                                    role: HnTypographyRole.Caption
                                                     color: HoloniightPalette.textMuted
                                                     elide: Text.ElideRight
                                                     Layout.fillWidth: true

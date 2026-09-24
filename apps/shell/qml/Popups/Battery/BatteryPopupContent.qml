@@ -27,12 +27,12 @@ Item {
                                                   HoloniightPalette.borderPassive.g,
                                                   HoloniightPalette.borderPassive.b, 0.55)
 
-    // Caption shown beneath the profile buttons only while hovering.
-    readonly property string hoveredCaption: saverButton.hovered
+    // Keep the caption visible for keyboard focus as well as hover.
+    readonly property string hoveredCaption: saverButton.hovered || saverButton.activeFocus
         ? saverButton.caption
-        : balancedButton.hovered
+        : balancedButton.hovered || balancedButton.activeFocus
             ? balancedButton.caption
-            : performanceButton.hovered
+            : performanceButton.hovered || performanceButton.activeFocus
                 ? performanceButton.caption
                 : ""
 
@@ -59,20 +59,18 @@ Item {
         Layout.fillWidth: true
         spacing: 8
 
-        Text {
+        HnLabel {
             Layout.fillWidth: true
-            text: metricRow.label
+            rawText: metricRow.label
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.textSecondary
-            font.family: AppearanceService.uiFont
-            font.pointSize: 9.75
             elide: Text.ElideRight
         }
 
-        Text {
-            text: metricRow.value
+        HnLabel {
+            rawText: metricRow.value
+            role: HnTypographyRole.Code
             color: HoloniightPalette.textPrimary
-            font.family: AppearanceService.monospaceFont
-            font.pointSize: 9.75
         }
     }
 
@@ -82,14 +80,12 @@ Item {
         anchors.bottomMargin: 4
         spacing: 10
 
-        Text {
+        HnLabel {
             Layout.alignment: Qt.AlignHCenter
-            text: qsTr("BATTERY")
+            rawText: qsTr("BATTERY")
+            role: HnTypographyRole.MicroHeader
             color: HoloniightPalette.accentBlue
             font.family: AppearanceService.uiFont
-            font.pointSize: 8.25
-            font.weight: Font.DemiBold
-            font.letterSpacing: 2
         }
 
         // Charge hero: large percentage with a smaller percent sign.
@@ -104,7 +100,7 @@ Item {
                 text: BatteryService.percent
                 color: HoloniightPalette.textPrimary
                 font.family: AppearanceService.monospaceFont
-                font.pointSize: 34.5
+                font.pointSize: AppearanceService.displayFontSize * 1.4375
                 font.weight: Font.Medium
             }
 
@@ -114,7 +110,7 @@ Item {
                 text: "%"
                 color: HoloniightPalette.textMuted
                 font.family: AppearanceService.monospaceFont
-                font.pointSize: 16.5
+                font.pointSize: AppearanceService.displayFontSize * 0.6875
             }
         }
 
@@ -141,12 +137,11 @@ Item {
             }
         }
 
-        Text {
+        HnLabel {
             Layout.alignment: Qt.AlignHCenter
-            text: root.timeText.length > 0 ? (root.stateLabel + " · " + root.timeText) : root.stateLabel
+            rawText: root.timeText.length > 0 ? (root.stateLabel + " · " + root.timeText) : root.stateLabel
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.textMuted
-            font.family: AppearanceService.uiFont
-            font.pointSize: 9.75
         }
 
         Rectangle {
@@ -175,13 +170,12 @@ Item {
         // button row are direct children of the outer ColumnLayout so Qt.AlignHCenter centers them
         // against the full panel width (a nested ColumnLayout collapses to its content width and
         // left-aligns).
-        Text {
+        HnLabel {
             Layout.alignment: Qt.AlignHCenter
             visible: PowerProfilesService.available && root.hoveredCaption.length > 0
-            text: root.hoveredCaption
+            rawText: root.hoveredCaption
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.accentCyan
-            font.family: AppearanceService.uiFont
-            font.pointSize: 9.75
             font.weight: Font.Medium
         }
 

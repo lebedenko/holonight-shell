@@ -41,13 +41,14 @@ Item {
         spacing: 0
 
         // FILTERS section
-        Text {
+        HnLabel {
+            objectName: "launcherFiltersHeading"
             Layout.fillWidth: true
             Layout.bottomMargin: 8
-            text: "FILTERS"
+            rawText: qsTr("FILTERS")
+            role: HnTypographyRole.MicroHeader
             color: HoloniightPalette.accentViolet
             font.family: AppearanceService.uiFont
-            font.pointSize: 8.25
             font.weight: Font.Medium
             font.letterSpacing: 1.2
         }
@@ -84,13 +85,13 @@ Item {
         Item { Layout.preferredHeight: 20; Layout.fillWidth: true }
 
         // SELECTED ITEM section
-        Text {
+        HnLabel {
             Layout.fillWidth: true
             Layout.bottomMargin: 10
-            text: "SELECTED"
+            rawText: qsTr("SELECTED")
+            role: HnTypographyRole.MicroHeader
             color: HoloniightPalette.accentViolet
             font.family: AppearanceService.uiFont
-            font.pointSize: 8.25
             font.weight: Font.Medium
             font.letterSpacing: 1.2
             visible: LauncherService.selectedEntryName.length > 0
@@ -112,27 +113,25 @@ Item {
                 preferSemanticTint: false
             }
 
-            Text {
+            HnLabel {
                 width: parent.width - 42
                 anchors.verticalCenter: parent.verticalCenter
-                text: LauncherService.selectedEntryName
+                rawText: LauncherService.selectedEntryName
+                role: HnTypographyRole.Body
                 color: HoloniightPalette.textPrimary
-                font.family: AppearanceService.uiFont
-                font.pointSize: 10.5
                 font.weight: Font.Medium
                 elide: Text.ElideRight
                 wrapMode: Text.NoWrap
             }
         }
 
-        Text {
+        HnLabel {
             Layout.fillWidth: true
             Layout.bottomMargin: 12
             visible: LauncherService.selectedEntryName.length > 0 && lastUsedText.length > 0
-            text: lastUsedText
+            rawText: lastUsedText
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.textSecondary
-            font.family: AppearanceService.uiFont
-            font.pointSize: 8.25
 
             readonly property string lastUsedText: {
                 const df = LauncherService.selectedEntryDesktopFile
@@ -151,7 +150,7 @@ Item {
                 required property int index
 
                 Layout.fillWidth: true
-                height: 30
+                Layout.preferredHeight: Math.max(30, actionLabel.implicitHeight + 10)
 
                 Rectangle {
                     anchors.fill: parent
@@ -160,16 +159,16 @@ Item {
                     opacity: 0.7
                 }
 
-                Text {
+                HnLabel {
+                    id: actionLabel
                     anchors {
                         left: parent.left; leftMargin: 8
                         right: parent.right; rightMargin: 8
                         verticalCenter: parent.verticalCenter
                     }
-                    text: actionDelegate.modelData.name || ""
+                    rawText: actionDelegate.modelData.name || ""
+                    role: HnTypographyRole.Caption
                     color: actionItemArea.containsMouse ? HoloniightPalette.accentCyan : HoloniightPalette.textPrimary
-                    font.family: AppearanceService.uiFont
-                    font.pointSize: 9
                     elide: Text.ElideRight
                 }
 

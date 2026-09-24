@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import Holonight.Core
+import Holonight.Controls
 
 import HolonightShell
 
@@ -24,9 +25,16 @@ ColumnLayout {
     readonly property var dayHeadersSun: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     property var dayHeaders: CalendarService.weekStartDay === "Sun" ? root.dayHeadersSun : root.dayHeadersMon
     property var dayModel: root.buildDayModel(root.viewYear, root.viewMonth, CalendarService.weekStartDay)
+    readonly property real dayCellHeight: Math.max(32, dayFontMetrics.height + 8)
 
     Layout.fillWidth: true
     spacing: 4
+
+    FontMetrics {
+        id: dayFontMetrics
+        font.family: AppearanceService.uiFont
+        font.pointSize: HolonightTheme.captionSize
+    }
 
     function monthLabel(year, month) {
         return root.monthNames[month] + " " + year
@@ -61,28 +69,32 @@ ColumnLayout {
         return result
     }
 
-    Text {
-        text: "// CALENDAR"
+    HnLabel {
+        rawText: qsTr("// CALENDAR")
+        role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.borderActive
-        font.family: AppearanceService.titleFont
-        font.pointSize: AppearanceService.titleFontSize * 0.75
         font.letterSpacing: 0.8
     }
 
     Item {
         Layout.fillWidth: true
-        implicitHeight: 32
+        implicitHeight: Math.max(32, monthText.implicitHeight + 8, navigationRow.implicitHeight)
 
-        Text {
+        HnLabel {
+            id: monthText
             anchors.left: parent.left
+            anchors.right: navigationRow.left
+            anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
-            text: root.monthLabel(root.viewYear, root.viewMonth)
-            font.pointSize: 9.75
+            rawText: root.monthLabel(root.viewYear, root.viewMonth)
+            role: HnTypographyRole.Body
             font.bold: true
             color: HoloniightPalette.textPrimary
+            elide: Text.ElideRight
         }
 
         Row {
+            id: navigationRow
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 4
@@ -90,15 +102,16 @@ ColumnLayout {
             Rectangle {
                 id: prevButton
 
-                width: 28
-                height: 28
+                width: Math.max(28, previousLabel.implicitWidth + 12)
+                height: Math.max(28, previousLabel.implicitHeight + 8)
                 radius: 6
                 color: prevMouseArea.containsMouse ? HoloniightPalette.surface : "transparent"
 
-                Text {
+                HnLabel {
+                    id: previousLabel
                     anchors.centerIn: parent
-                    text: "‹"
-                    font.pointSize: 10.5
+                    rawText: "‹"
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
                 }
 
@@ -122,15 +135,16 @@ ColumnLayout {
             Rectangle {
                 id: nextButton
 
-                width: 28
-                height: 28
+                width: Math.max(28, nextLabel.implicitWidth + 12)
+                height: Math.max(28, nextLabel.implicitHeight + 8)
                 radius: 6
                 color: nextMouseArea.containsMouse ? HoloniightPalette.surface : "transparent"
 
-                Text {
+                HnLabel {
+                    id: nextLabel
                     anchors.centerIn: parent
-                    text: "›"
-                    font.pointSize: 10.5
+                    rawText: "›"
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
                 }
 
@@ -157,20 +171,20 @@ ColumnLayout {
         id: dayHeaderRow
 
         Layout.fillWidth: true
-        implicitHeight: 20
+        implicitHeight: Math.max(20, dayFontMetrics.height + 4)
 
         Repeater {
             model: root.dayHeaders
 
-            Text {
+            HnLabel {
                 required property var modelData
                 required property int index
 
-                x: index * (dayHeaderRow.width / 7) + (dayHeaderRow.width / 7 - implicitWidth) / 2
+                x: index * (dayHeaderRow.width / 7)
                 width: dayHeaderRow.width / 7
                 horizontalAlignment: Text.AlignHCenter
-                text: modelData.toUpperCase()
-                font.pointSize: 7.5
+                rawText: modelData.toUpperCase()
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.accentBlue
             }
         }
@@ -180,7 +194,7 @@ ColumnLayout {
         id: dayGrid
 
         Layout.fillWidth: true
-        implicitHeight: 5 * 32
+        implicitHeight: 5 * root.dayCellHeight
 
         Repeater {
             model: root.dayModel
@@ -190,9 +204,9 @@ ColumnLayout {
                 required property int index
 
                 x: (index % 7) * (dayGrid.width / 7)
-                y: Math.floor(index / 7) * 32
+                y: Math.floor(index / 7) * root.dayCellHeight
                 width: dayGrid.width / 7
-                height: 32
+                height: root.dayCellHeight
 
                 Item {
                     id: daySlot
@@ -200,8 +214,8 @@ ColumnLayout {
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 26
-                    height: 26
+                    width: Math.min(Math.max(0, parent.width - 8), Math.max(26, dayText.implicitWidth + 4))
+                    height: Math.max(26, dayText.implicitHeight + 4)
 
                     MultiEffect {
                         anchors.fill: glowFrame
@@ -225,13 +239,14 @@ ColumnLayout {
                         visible: modelData.isToday && root.viewIsCurrentMonth
                     }
 
-                    Text {
+                    HnLabel {
+                        id: dayText
                         anchors.fill: parent
                         anchors.rightMargin: 2
                         horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
-                        text: modelData.day
-                        font.pointSize: 9
+                        rawText: String(modelData.day)
+                        role: HnTypographyRole.Caption
                         font.bold: modelData.isToday && root.viewIsCurrentMonth
                         opacity: modelData.isCurrentMonth ? 1.0 : 0.45
                         color: !modelData.isCurrentMonth

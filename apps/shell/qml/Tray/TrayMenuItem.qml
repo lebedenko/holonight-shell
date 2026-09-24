@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Holonight.Core
+import Holonight.Controls
 
 import Holonight.Components
 
@@ -20,7 +21,9 @@ Item {
     readonly property bool isSeparator: root.type === "separator"
     readonly property bool isChecked: root.toggleState === 1
 
-    implicitHeight: root.itemVisible ? (root.isSeparator ? 10 : 30) : 0
+    implicitHeight: root.itemVisible ? (root.isSeparator ? 10
+                                               : Math.max(30, itemLabel.implicitHeight + 8,
+                                                          submenuArrow.implicitHeight + 8)) : 0
     implicitWidth: parent ? parent.width : 228
     visible: root.itemVisible
     Accessible.role: Accessible.MenuItem
@@ -94,12 +97,12 @@ Item {
     // qmllint enable import unresolved-type
 
     // Label
-    Text {
+    HnLabel {
         id: itemLabel
-        text: root.label
+        rawText: root.label
+        role: HnTypographyRole.Body
         color: root.itemEnabled ? HoloniightPalette.textPrimary : HoloniightPalette.textSecondary
         opacity: root.itemEnabled ? 1.0 : 0.58
-        font.pointSize: 9.75
         visible: !root.isSeparator
         elide: Text.ElideRight
         anchors {
@@ -112,11 +115,11 @@ Item {
     }
 
     // Submenu arrow
-    Text {
+    HnLabel {
         id: submenuArrow
-        text: "›"
+        rawText: "›"
+        role: HnTypographyRole.Subheading
         color: HoloniightPalette.textSecondary
-        font.pointSize: 12
         opacity: 0.8
         visible: !root.isSeparator && root.hasSubmenu
         anchors {

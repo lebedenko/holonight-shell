@@ -22,14 +22,13 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 8
 
-    Text {
+    HnLabel {
       Layout.fillWidth: true
       Layout.leftMargin: 16
-      text: qsTr("APPLICATION VOLUME")
+      rawText: qsTr("APPLICATION VOLUME")
+      role: HnTypographyRole.MicroHeader
       color: HoloniightPalette.accentBlue
-      font.pointSize: 8.25
-      font.bold: true
-      font.capitalization: Font.AllUppercase
+      font.family: AppearanceService.uiFont
     }
 
     Item {
@@ -44,10 +43,10 @@ ColumnLayout {
         id: showAllRow
         spacing: 4
 
-        Text {
-          text: qsTr("Show All")
+        HnLabel {
+          rawText: qsTr("Show All")
+          role: HnTypographyRole.Caption
           color: HoloniightPalette.accentBlue
-          font.pointSize: 9
         }
 
         NetworkPopupIcon {
@@ -98,13 +97,13 @@ ColumnLayout {
       visible: count > 0
     }
 
-    Text {
+    HnLabel {
       objectName: "audioApplicationsEmptyText"
       anchors.centerIn: parent
       visible: streamList.count === 0
-      text: qsTr("No applications are playing audio")
+      rawText: qsTr("No applications are playing audio")
+      role: HnTypographyRole.Caption
       color: HoloniightPalette.textMuted
-      font.pointSize: 9
     }
   }
 }

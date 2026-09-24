@@ -69,25 +69,24 @@ Item {
       Layout.alignment: Qt.AlignVCenter
       spacing: 4
 
-      Text {
-        text: qsTr("MASTER VOLUME")
+      HnLabel {
+        rawText: qsTr("MASTER VOLUME")
+        role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.accentBlue
-        font.pointSize: 9
-        font.bold: true
-        font.capitalization: Font.AllUppercase
+        font.family: AppearanceService.uiFont
       }
 
       RowLayout {
         Layout.fillWidth: true
         spacing: 16
 
-        Text {
+        HnLabel {
           objectName: "masterVolumePercentageText"
 
-          Layout.preferredWidth: 48
-          text: root.masterVolume + "%"
+          Layout.preferredWidth: Math.max(48, implicitWidth)
+          rawText: root.masterVolume + "%"
+          role: HnTypographyRole.Subheading
           color: HoloniightPalette.textPrimary
-          font.pointSize: 14
         }
 
         AudioVolumeSlider {

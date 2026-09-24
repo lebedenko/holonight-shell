@@ -12,7 +12,7 @@ FocusScope {
     readonly property alias revealControl: revealButton
     signal navigate(bool forward)
     signal submit(string value)
-    implicitHeight: 50
+    implicitHeight: Math.max(50, HolonightTheme.subheadingSize * 3.5)
     implicitWidth: 300
 
     function submitResponse() {
@@ -37,7 +37,7 @@ FocusScope {
         inputMethodHints: root.secret
                           ? Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                           : Qt.ImhNone
-        font.pointSize: 14.25
+        font.pointSize: HolonightTheme.subheadingSize
         color: HoloniightPalette.textPrimary
         leftPadding: 18
         rightPadding: revealButton.visible ? 58 : 18

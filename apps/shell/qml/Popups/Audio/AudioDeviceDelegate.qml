@@ -155,14 +155,14 @@ HnListDelegate {
         onMuteRequested: root.muteDevice()
       }
 
-      Text {
+      HnLabel {
         objectName: "deviceVolumeText"
 
-        Layout.preferredWidth: 40
+        Layout.preferredWidth: Math.max(40, implicitWidth)
         horizontalAlignment: Text.AlignRight
-        text: root.volumePct + "%"
+        rawText: root.volumePct + "%"
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textMuted
-        font.pointSize: 9.75
       }
     }
   }

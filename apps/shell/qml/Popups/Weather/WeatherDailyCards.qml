@@ -45,7 +45,7 @@ Column {
 
     Row {
         width: parent.width
-        height: 144
+        height: Math.max(160, AppearanceService.uiFontSize * 11)
         spacing: 0
 
         Repeater {
@@ -70,16 +70,18 @@ Column {
                     anchors.centerIn: parent
                     spacing: 6
 
-                    Text {
+                    HnLabel {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: dayCard.index === 0
+                        width: dayCard.width
+                        rawText: dayCard.index === 0
                             ? (root.isCurrentDay ? "Today" : "Tonight")
                             : (dayCard.index === 1
                                 ? "Tomorrow"
                                 : Qt.formatDate(new Date(dayCard.entry.date * 1000), "ddd"))
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.textPrimary
-                        font.pointSize: 9.75
-                        font.family: AppearanceService.uiFont
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
                     }
 
                     WeatherIconCompositor {
@@ -100,41 +102,48 @@ Column {
                     }
 
                     Item {
-                        width: 108
-                        height: 36
+                        width: dayCard.width
+                        height: Math.max(36, currentTemperature.implicitHeight, dailyTemperatures.implicitHeight)
                         anchors.horizontalCenter: parent.horizontalCenter
 
-                        Text {
+                        HnLabel {
+                            id: currentTemperature
                             anchors.centerIn: parent
+                            width: parent.width
                             visible: dayCard.index === 0
-                            text: (dayCard.index === 0 && WeatherService.hasData)
+                            rawText: (dayCard.index === 0 && WeatherService.hasData)
                                 ? Math.round(WeatherService.current.temperature) + "°C"
                                 : ""
+                            role: HnTypographyRole.Subheading
                             color: HoloniightPalette.textPrimary
-                            font.pointSize: 13.5
-                            font.family: AppearanceService.uiFont
-                            font.weight: Font.DemiBold
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
 
                         Column {
+                            id: dailyTemperatures
                             anchors.fill: parent
                             visible: dayCard.index > 0
                             spacing: 2
 
-                            Text {
+                            HnLabel {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: dayCard.index > 0 ? Math.round(dayCard.entry.tempMax) + "°C" : ""
+                                width: dayCard.width
+                                rawText: dayCard.index > 0 ? Math.round(dayCard.entry.tempMax) + "°C" : ""
+                                role: HnTypographyRole.Body
                                 color: HoloniightPalette.textPrimary
-                                font.pointSize: 10.5
-                                font.family: AppearanceService.uiFont
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
                             }
 
-                            Text {
+                            HnLabel {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: dayCard.index > 0 ? Math.round(dayCard.entry.tempMin) + "°C" : ""
+                                width: dayCard.width
+                                rawText: dayCard.index > 0 ? Math.round(dayCard.entry.tempMin) + "°C" : ""
+                                role: HnTypographyRole.Caption
                                 color: HoloniightPalette.textMuted
-                                font.pointSize: 9
-                                font.family: AppearanceService.uiFont
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
                                 opacity: 0.8
                             }
                         }
@@ -153,13 +162,12 @@ Column {
                         }
                         // qmllint enable import unresolved-type
 
-                        Text {
-                            text: dayCard.index === 0
+                        HnLabel {
+                            rawText: dayCard.index === 0
                                 ? Math.round(root.remainingDayPop * 100) + "%"
                                 : Math.round(dayCard.entry.pop * 100) + "%"
+                            role: HnTypographyRole.Caption
                             color: HoloniightPalette.accentBlue
-                            font.pointSize: 7.5
-                            font.family: AppearanceService.uiFont
                         }
                     }
                 }

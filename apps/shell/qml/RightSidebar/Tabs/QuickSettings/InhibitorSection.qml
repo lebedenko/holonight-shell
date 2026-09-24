@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Holonight.Core
+import Holonight.Controls
 
 import HolonightShell
 
@@ -10,11 +11,10 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 4
 
-    Text {
-        text: qsTr("Sleep inhibitors")
+    HnLabel {
+        rawText: qsTr("Sleep inhibitors")
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textPrimary
-        font.family: AppearanceService.uiFont
-        font.pointSize: 9
         font.weight: Font.Medium
         opacity: 0.7
         Layout.fillWidth: true
@@ -29,21 +29,19 @@ ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
 
-            Text {
-                text: inhibitorRow.who
+            HnLabel {
+                rawText: inhibitorRow.who
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.textPrimary
-                font.family: AppearanceService.uiFont
-                font.pointSize: 9
                 font.weight: Font.Medium
                 elide: Text.ElideRight
                 Layout.preferredWidth: 100
             }
 
-            Text {
-                text: inhibitorRow.why
+            HnLabel {
+                rawText: inhibitorRow.why
+                role: HnTypographyRole.Caption
                 color: HoloniightPalette.textMuted
-                font.family: AppearanceService.uiFont
-                font.pointSize: 9
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }

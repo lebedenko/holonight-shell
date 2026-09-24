@@ -135,23 +135,21 @@ Controls.ApplicationWindow {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Controls.Label {
+                HnLabel {
                     Layout.fillWidth: true
-                    text: qsTr("Authentication Required")
-                    textFormat: Text.PlainText
+                    rawText: qsTr("Authentication Required")
+                    role: HnTypographyRole.Heading
                     wrapMode: Text.Wrap
-                    font.pointSize: 18.75
                     color: HoloniightPalette.textPrimary
                 }
-                Controls.Label {
+                HnLabel {
                     objectName: "frontendSubtitle"
                     Layout.fillWidth: true
-                    text: root.subtitle
-                    textFormat: Text.PlainText
+                    rawText: root.subtitle
+                    role: HnTypographyRole.MicroHeader
                     wrapMode: Text.Wrap
-                    font.pointSize: 9.75
-                    font.letterSpacing: 1.8
                     color: HoloniightPalette.accentViolet
+                    font.family: HolonightTheme.uiFont
                 }
             }
         }
@@ -182,14 +180,13 @@ Controls.ApplicationWindow {
                 id: body
                 width: bodyScroll.availableWidth
                 spacing: 20
-                Controls.Label {
+                HnLabel {
                     objectName: "requestMessage"
                     Layout.fillWidth: true
                     visible: text.length > 0
-                    text: root.promptModel.requestMessage
-                    textFormat: Text.PlainText
+                    rawText: root.promptModel.requestMessage
+                    role: HnTypographyRole.Subheading
                     wrapMode: Text.Wrap
-                    font.pointSize: 13.5
                     color: HoloniightPalette.textPrimary
                 }
                 Rectangle {
@@ -232,14 +229,13 @@ Controls.ApplicationWindow {
                     promptModel: root.promptModel
                     onNavigate: function(forward) { root.cycleFocus(forward) }
                 }
-                Controls.Label {
+                HnLabel {
                     objectName: "identityExplanation"
                     Layout.fillWidth: true
                     visible: root.selectingIdentity
-                    text: qsTr("Continue with this account, or choose another account to authenticate.")
-                    textFormat: Text.PlainText
+                    rawText: qsTr("Continue with this account, or choose another account to authenticate.")
+                    role: HnTypographyRole.Caption
                     wrapMode: Text.Wrap
-                    font.pointSize: 11.25
                     color: HoloniightPalette.textMuted
                 }
                 MessageList { Layout.fillWidth: true; promptModel: root.promptModel }
@@ -247,15 +243,14 @@ Controls.ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.minimumHeight: root.promptModel.frontendKind === 1 && !root.textInput ? 140 : 0
                     spacing: 12
-                    Controls.Label {
+                    HnLabel {
                         objectName: "promptLabel"
                         Layout.fillWidth: true
-                        text: root.promptModel.currentPrompt || (root.textInput
+                        rawText: root.promptModel.currentPrompt || (root.textInput
                               ? (root.promptModel.inputMode === 2 ? qsTr("Password") : qsTr("Response")) : "")
                         visible: root.awaitingTextInput
-                        textFormat: Text.PlainText
+                        role: HnTypographyRole.Subheading
                         wrapMode: Text.Wrap
-                        font.pointSize: 13.5
                         color: HoloniightPalette.textPrimary
                     }
                     AuthenticationPrompt {
@@ -266,17 +261,16 @@ Controls.ApplicationWindow {
                         onNavigate: function(forward) { root.cycleFocus(forward) }
                         onSubmit: function(value) { root.promptModel.respond(value) }
                     }
-                    Controls.Label {
+                    HnLabel {
                         objectName: "responseHelper"
                         Layout.fillWidth: true
                         visible: root.awaitingTextInput
-                        text: root.promptModel.inputMode === 1 ? qsTr("Enter the response requested by the authentication service.")
+                        rawText: root.promptModel.inputMode === 1 ? qsTr("Enter the response requested by the authentication service.")
                               : root.promptModel.frontendKind === 1
                                 ? qsTr("Your response is sent directly to the system authentication service.")
                                 : qsTr("Your response is returned to the requesting application.")
-                        textFormat: Text.PlainText
+                        role: HnTypographyRole.Caption
                         wrapMode: Text.Wrap
-                        font.pointSize: 11.25
                         color: HoloniightPalette.textMuted
                     }
                 }
@@ -363,22 +357,19 @@ Controls.ApplicationWindow {
         property string valueObjectName: ""
         Layout.fillWidth: true
         spacing: 16
-        Controls.Label {
+        HnLabel {
             Layout.preferredWidth: root.width < 500 ? 90 : 138
-            text: row.label
-            textFormat: Text.PlainText
-            font.pointSize: 12.75
+            rawText: row.label
+            role: HnTypographyRole.Body
             wrapMode: Text.Wrap
             color: HoloniightPalette.textMuted
         }
-        Controls.Label {
+        HnLabel {
             objectName: row.valueObjectName
             Layout.fillWidth: true
-            text: row.value
-            textFormat: Text.PlainText
+            rawText: row.value
+            role: HnTypographyRole.Code
             wrapMode: Text.WrapAnywhere
-            font.family: HolonightTheme.monospaceFont
-            font.pointSize: 12
             color: HoloniightPalette.textSecondary
         }
     }
@@ -388,7 +379,7 @@ Controls.ApplicationWindow {
         property bool primary: false
         leftPadding: 20
         rightPadding: 20
-        implicitHeight: 54
+        implicitHeight: Math.max(54, buttonContent.implicitHeight + 20)
         implicitWidth: buttonContent.implicitWidth + 40
         focusPolicy: Qt.StrongFocus
         Accessible.name: text
@@ -396,10 +387,9 @@ Controls.ApplicationWindow {
         contentItem: RowLayout {
             id: buttonContent
             spacing: 18
-            Controls.Label {
-                text: button.text
-                textFormat: Text.PlainText
-                font.pointSize: 13.5
+            HnLabel {
+                rawText: button.text
+                role: HnTypographyRole.Subheading
                 color: button.enabled ? HoloniightPalette.textPrimary : HoloniightPalette.textMuted
             }
             HnKeyHint { visible: button.hintKeys.length > 0; keyGroups: button.hintKeys; Accessible.ignored: true }

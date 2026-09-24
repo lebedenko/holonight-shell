@@ -13,7 +13,7 @@ Column {
         property string value: ""
         property string iconName: ""
         width: root.width
-        height: 22
+        height: Math.max(22, labelText.implicitHeight + 6, valueText.implicitHeight + 6)
 
         Canvas {
             id: iconCanvas
@@ -87,24 +87,25 @@ Column {
             }
         }
 
-        Text {
+        HnLabel {
+            id: labelText
             x: 30
             y: 3
             width: 90
-            text: cell.label
+            rawText: cell.label
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.textPrimary
-            font.pointSize: 9.75
-            font.family: AppearanceService.uiFont
+            elide: Text.ElideRight
         }
 
-        Text {
+        HnLabel {
+            id: valueText
             anchors.right: parent.right
             y: 3
             width: 90
-            text: cell.value
+            rawText: cell.value
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.textMuted
-            font.pointSize: 9.75
-            font.family: AppearanceService.uiFont
             horizontalAlignment: Text.AlignRight
             elide: Text.ElideRight
         }
@@ -143,7 +144,7 @@ Column {
 
     WeatherWindWidget {
         width: parent.width
-        height: 126
+        height: implicitHeight
         hasData: WeatherService.hasData
         speedKmh: WeatherService.hasData ? WeatherService.current.windSpeed : 0
         gustKmh: WeatherService.hasData ? WeatherService.current.windGust : 0

@@ -103,7 +103,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 64
+        height: Math.max(64, profileName.implicitHeight + onlineLabel.implicitHeight + 18)
 
         Rectangle {
             id: profileBg
@@ -217,14 +217,16 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
 
-                Text {
-                    text: SystemInfoService.realName !== ""
+                HnLabel {
+                    id: profileName
+                    rawText: SystemInfoService.realName
                         ? SystemInfoService.realName
-                        : (SystemInfoService.userName !== "" ? SystemInfoService.userName : "Alex")
+                        : (SystemInfoService.userName ? SystemInfoService.userName : "Alex")
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 9.75
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
+                    width: parent.width
                 }
 
                 Row {
@@ -238,10 +240,11 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    Text {
-                        text: "Online"
+                    HnLabel {
+                        id: onlineLabel
+                        rawText: qsTr("Online")
+                        role: HnTypographyRole.Caption
                         color: HoloniightPalette.textSecondary
-                        font.pointSize: 8.25
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -298,11 +301,11 @@ Item {
             Controls.MenuItem {
                 id: lockItem
 
-                text: "Lock"
-                contentItem: Text {
-                    text: lockItem.text
+                text: qsTr("Lock")
+                contentItem: HnLabel {
+                    rawText: lockItem.text
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
@@ -315,11 +318,11 @@ Item {
             Controls.MenuItem {
                 id: logoutItem
 
-                text: "Log out"
-                contentItem: Text {
-                    text: logoutItem.text
+                text: qsTr("Log out")
+                contentItem: HnLabel {
+                    rawText: logoutItem.text
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
@@ -332,11 +335,11 @@ Item {
             Controls.MenuItem {
                 id: rebootItem
 
-                text: "Reboot"
-                contentItem: Text {
-                    text: rebootItem.text
+                text: qsTr("Reboot")
+                contentItem: HnLabel {
+                    rawText: rebootItem.text
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
@@ -349,11 +352,11 @@ Item {
             Controls.MenuItem {
                 id: shutdownItem
 
-                text: "Shut down"
-                contentItem: Text {
-                    text: shutdownItem.text
+                text: qsTr("Shut down")
+                contentItem: HnLabel {
+                    rawText: shutdownItem.text
+                    role: HnTypographyRole.Body
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 9.75
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {

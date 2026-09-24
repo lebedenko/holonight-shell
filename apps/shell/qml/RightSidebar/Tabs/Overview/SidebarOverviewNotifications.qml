@@ -65,18 +65,17 @@ ColumnLayout {
         return diffDay + "d ago"
     }
 
-    Text {
-        text: "// NOTIFICATIONS"
+    HnLabel {
+        rawText: qsTr("// NOTIFICATIONS")
+        role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.borderActive
-        font.family: AppearanceService.titleFont
-        font.pointSize: AppearanceService.titleFontSize * 0.75
         Layout.bottomMargin: 6
     }
 
-    Text {
+    HnLabel {
         visible: root.groupedNotifs.length === 0
-        text: "No new notifications"
-        font.pointSize: 9
+        rawText: qsTr("No new notifications")
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textMuted
         Layout.alignment: Qt.AlignHCenter
         Layout.topMargin: 8
@@ -121,17 +120,17 @@ ColumnLayout {
                         id: unreadBadge
                         visible: notifRow.notif.unreadCount > 0
                         width: Math.max(16, unreadText.implicitWidth + 6)
-                        height: 16
-                        radius: 8
+                        height: Math.max(16, unreadText.implicitHeight + 4)
+                        radius: height / 2
                         color: HoloniightPalette.accentCyan
                         anchors.verticalCenter: parent.verticalCenter
 
-                        Text {
+                        HnLabel {
                             id: unreadText
 
                             anchors.centerIn: parent
-                            text: notifRow.notif.unreadCount
-                            font.pointSize: 6.75
+                            rawText: String(notifRow.notif.unreadCount)
+                            role: HnTypographyRole.Caption
                             font.bold: true
                             color: HoloniightPalette.surface
                         }
@@ -144,24 +143,28 @@ ColumnLayout {
     Item {
         visible: root.notificationOverflowCount > 0
         Layout.fillWidth: true
-        implicitHeight: 32
+        implicitHeight: Math.max(32, Math.max(overflowLabel.implicitHeight, viewAllLabel.implicitHeight) + 8)
         Layout.topMargin: 4
 
-        Text {
+        HnLabel {
+            id: overflowLabel
             anchors.left: parent.left
+            anchors.right: viewAllLabel.left
+            anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
-            text: "+" + root.notificationOverflowCount + " notifications"
-            font.pointSize: 8.25
+            rawText: qsTr("+%1 notifications").arg(root.notificationOverflowCount)
+            role: HnTypographyRole.Caption
             color: HoloniightPalette.textSecondary
+            elide: Text.ElideRight
         }
 
-        Text {
+        HnLabel {
             id: viewAllLabel
 
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "View all"
-            font.pointSize: 8.25
+            rawText: qsTr("View all")
+            role: HnTypographyRole.Caption
             color: viewAllMouseArea.containsMouse
                    ? HoloniightPalette.accentCyan
                    : HoloniightPalette.textMuted

@@ -251,13 +251,13 @@ Item {
                             height: LauncherService.resultCount > 0 ? sectionHeaderBestMatch.height + 8 : 0
                             visible: LauncherService.resultCount > 0
 
-                            Text {
+                            HnLabel {
                                 id: sectionHeaderBestMatch
                                 anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 4 }
-                                text: "BEST MATCH"
+                                rawText: qsTr("BEST MATCH")
+                                role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.accentViolet
                                 font.family: AppearanceService.uiFont
-                                font.pointSize: 8.25
                                 font.weight: Font.Medium
                                 font.letterSpacing: 1.2
                             }
@@ -272,13 +272,13 @@ Item {
                             height: sectionLabel.implicitHeight + 12
                             visible: sectionDelegate.section.length > 0
 
-                            Text {
+                            HnLabel {
                                 id: sectionLabel
                                 anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-                                text: sectionDelegate.section
+                                rawText: sectionDelegate.section
+                                role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.accentViolet
                                 font.family: AppearanceService.uiFont
-                                font.pointSize: 8.25
                                 font.weight: Font.Medium
                                 font.letterSpacing: 1.2
                                 visible: sectionDelegate.section.length > 0
@@ -400,11 +400,10 @@ Item {
                             keyGroups: [[Qt.Key_Return]]
                         }
 
-                        Text {
-                            text: "Launch"
+                        HnLabel {
+                            rawText: qsTr("Launch")
+                            role: HnTypographyRole.Caption
                             color: HoloniightPalette.textSecondary
-                            font.family: AppearanceService.uiFont
-                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -420,11 +419,10 @@ Item {
                             keyGroups: [[Qt.Key_Control, Qt.Key_Return]]
                         }
 
-                        Text {
-                            text: "Launch in Terminal"
+                        HnLabel {
+                            rawText: qsTr("Launch in Terminal")
+                            role: HnTypographyRole.Caption
                             color: HoloniightPalette.textSecondary
-                            font.family: AppearanceService.uiFont
-                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -440,11 +438,10 @@ Item {
                             keyGroups: [[Qt.Key_Up], [Qt.Key_Down]]
                         }
 
-                        Text {
-                            text: "Navigate"
+                        HnLabel {
+                            rawText: qsTr("Navigate")
+                            role: HnTypographyRole.Caption
                             color: HoloniightPalette.textSecondary
-                            font.family: AppearanceService.uiFont
-                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -460,11 +457,10 @@ Item {
                             keyGroups: [[Qt.Key_Escape]]
                         }
 
-                        Text {
-                            text: "Close"
+                        HnLabel {
+                            rawText: qsTr("Close")
+                            role: HnTypographyRole.Caption
                             color: HoloniightPalette.textSecondary
-                            font.family: AppearanceService.uiFont
-                            font.pointSize: 8.25
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }

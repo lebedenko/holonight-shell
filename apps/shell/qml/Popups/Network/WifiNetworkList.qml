@@ -26,19 +26,19 @@ Item {
     }
   }
 
-  Text {
+  HnLabel {
     anchors.centerIn: parent
     width: parent.width - 32
     horizontalAlignment: Text.AlignHCenter
-    text: {
+    rawText: {
       if (!NetworkService.available) return qsTr("NetworkManager unavailable")
       if (!NetworkService.wifiHardwareEnabled) return qsTr("Wi-Fi hardware disabled")
       if (!NetworkService.wifiEnabled) return qsTr("Wi-Fi is turned off")
       if (NetworkService.scanning) return qsTr("Scanning for Wi-Fi networks")
       return qsTr("No Wi-Fi networks found")
     }
+    role: HnTypographyRole.Body
     color: NetworkService.available && NetworkService.wifiEnabled ? HoloniightPalette.textSecondary : HoloniightPalette.error
-    font.pointSize: 10.5
     wrapMode: Text.Wrap
     visible: !listView.visible
   }

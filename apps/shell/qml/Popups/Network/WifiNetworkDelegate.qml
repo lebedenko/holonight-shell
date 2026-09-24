@@ -64,14 +64,14 @@ HnListDelegate {
     RowLayout {
       spacing: 8
 
-      Text {
+      HnLabel {
         objectName: "strengthText"
 
         Layout.preferredWidth: 44
-        text: qsTr("%1%").arg(root.strength)
+        rawText: qsTr("%1%").arg(root.strength)
+        role: HnTypographyRole.Body
         color: root.signalQualityColor
         horizontalAlignment: Text.AlignRight
-        font.pointSize: 10.5
         font.weight: root.connected ? Font.Medium : Font.Normal
       }
 

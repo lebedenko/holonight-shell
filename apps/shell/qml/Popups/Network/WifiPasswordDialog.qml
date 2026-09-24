@@ -30,11 +30,11 @@ Controls.Popup {
     anchors.margins: 16
     spacing: 10
 
-    Text {
+    HnLabel {
       Layout.fillWidth: true
-      text: root.ssid
+      rawText: root.ssid
+      role: HnTypographyRole.Subheading
       color: HoloniightPalette.textPrimary
-      font.pointSize: 12
       font.bold: true
       elide: Text.ElideRight
     }

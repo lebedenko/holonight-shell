@@ -12,11 +12,10 @@ HnSettingsRow {
     Layout.fillWidth: true
     titleText: qsTr("Charge limit")
     control: Component {
-        Text {
-            text: BatteryService.chargeLimit + "%"
+        HnLabel {
+            rawText: BatteryService.chargeLimit + "%"
+            role: HnTypographyRole.Code
             color: HoloniightPalette.textMuted
-            font.family: AppearanceService.monospaceFont
-            font.pointSize: 9.75
         }
     }
 }

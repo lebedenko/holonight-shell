@@ -8,6 +8,7 @@ import "../../WeatherIcon"
 
 Item {
     id: root
+    implicitHeight: Math.max(256, currentContent.implicitHeight + 44)
 
     readonly property color dividerColor: HoloniightPalette.borderPassive
     readonly property bool isDay: WeatherService.hasData
@@ -30,7 +31,8 @@ Item {
         spacing: 16
 
         Item {
-            width: 240
+            id: iconColumn
+            width: Math.min(240, Math.max(0, (root.width - layoutRow.spacing) * 0.46))
             height: parent.height
 
             WeatherIconCompositor {
@@ -39,39 +41,45 @@ Item {
                 conditionDescription: WeatherService.hasData ? WeatherService.current.condition : ""
                 windSpeedKmh: WeatherService.hasData ? WeatherService.current.windSpeed : 0
                 isDay: root.isDay
-                iconSize: 220
+                iconSize: Math.min(220, parent.width, parent.height)
                 moonPhase: (WeatherService.hasData && WeatherService.daily.length > 0) ? WeatherService.daily[0].moonPhase : undefined
                 anchors.centerIn: parent
             }
         }
 
         Item {
-            width: 280
+            width: Math.max(0, root.width - iconColumn.width - layoutRow.spacing)
             height: parent.height
 
             Column {
+                id: currentContent
+                width: parent.width
                 spacing: 6
 
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: -22
 
                 Row {
+                    id: temperatureRow
+                    width: parent.width
                     spacing: 6
 
                     Text {
                         id: tempText
+                        width: Math.max(0, temperatureRow.width - tempUnitText.implicitWidth - temperatureRow.spacing)
                         text: WeatherService.hasData ? Math.round(WeatherService.current.temperature) : ""
                         color: WeatherService.hasData ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
-                        font.pointSize: 84
+                        font.pointSize: AppearanceService.displayFontSize * 3.5
                         font.family: AppearanceService.displayFont
                         font.weight: Font.Thin
+                        elide: Text.ElideRight
                     }
 
                     Text {
                         id: tempUnitText
                         text: WeatherService.hasData ? "°C" : ""
                         color: tempText.color
-                        font.pointSize: 42
+                        font.pointSize: AppearanceService.displayFontSize * 1.75
                         font.family: AppearanceService.displayFont
                         font.weight: Font.Thin
 
@@ -80,12 +88,12 @@ Item {
                     }
                 }
 
-                Text {
-                    text: WeatherService.hasData ? WeatherService.current.condition.toUpperCase() : ""
+                HnLabel {
+                    width: parent.width
+                    rawText: WeatherService.hasData ? WeatherService.current.condition : ""
+                    role: HnTypographyRole.MicroHeader
                     color: HoloniightPalette.accentViolet
-                    font.pointSize: 12
                     font.family: AppearanceService.uiFont
-                    font.weight: Font.Medium
                     elide: Text.ElideRight
                 }
 
@@ -101,14 +109,14 @@ Item {
                     }
                 }
 
-                Text {
-                    text: WeatherService.hasData
+                HnLabel {
+                    width: parent.width
+                    rawText: WeatherService.hasData
                         ? "Feels like " + Math.round(WeatherService.current.feelsLike) + "°C"
                         : ""
+                    role: HnTypographyRole.Caption
                     color: HoloniightPalette.textPrimary
-                    font.pointSize: 9
-                    font.family: AppearanceService.uiFont
-                    font.weight: Font.Light
+                    elide: Text.ElideRight
                 }
             }
         }

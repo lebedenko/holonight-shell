@@ -1,7 +1,7 @@
 import QtQuick
-import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import Holonight.Core
+import Holonight.Controls
 
 import HolonightShell
 
@@ -28,11 +28,11 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            Controls.Label {
+            HnLabel {
                 anchors.verticalCenter: keepAwake.verticalCenter
-                text: "Keep Awake"
+                rawText: qsTr("Keep Awake")
+                role: HnTypographyRole.Body
                 color: HoloniightPalette.textPrimary
-                font.pointSize: 10.5
                 font.weight: Font.Medium
             }
         }

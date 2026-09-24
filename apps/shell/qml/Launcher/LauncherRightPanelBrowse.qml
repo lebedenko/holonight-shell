@@ -26,11 +26,12 @@ Item {
             width: scrollView.width
             spacing: 0
 
-            Text {
-                text: qsTr("RECENT")
+            HnLabel {
+                objectName: "launcherRecentHeading"
+                rawText: qsTr("RECENT")
+                role: HnTypographyRole.MicroHeader
                 color: HoloniightPalette.accentViolet
                 font.family: AppearanceService.uiFont
-                font.pointSize: 8.25
                 font.weight: Font.Medium
                 font.letterSpacing: 1.2
                 Layout.fillWidth: true
@@ -98,11 +99,11 @@ Item {
                 Layout.fillWidth: true
             }
 
-            Text {
-                text: qsTr("CATEGORIES")
+            HnLabel {
+                rawText: qsTr("CATEGORIES")
+                role: HnTypographyRole.MicroHeader
                 color: HoloniightPalette.accentViolet
                 font.family: AppearanceService.uiFont
-                font.pointSize: 8.25
                 font.weight: Font.Medium
                 font.letterSpacing: 1.2
                 Layout.fillWidth: true

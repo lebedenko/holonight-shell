@@ -97,20 +97,20 @@ Item {
       Layout.fillWidth: true
       spacing: 2
 
-      Text {
+      HnLabel {
         Layout.fillWidth: true
-        text: root.title
+        rawText: root.title
+        role: HnTypographyRole.Subheading
         color: HoloniightPalette.textPrimary
-        font.pointSize: 11
         font.bold: true
         elide: Text.ElideRight
       }
 
-      Text {
+      HnLabel {
         Layout.fillWidth: true
-        text: root.subtitle
+        rawText: root.subtitle
+        role: HnTypographyRole.Caption
         color: HoloniightPalette.textMuted
-        font.pointSize: 8.5
         elide: Text.ElideRight
         visible: text.length > 0
       }
@@ -128,20 +128,20 @@ Item {
 
       visible: root.showDefaultBadge
       Layout.preferredWidth: defaultPillText.implicitWidth + 16
-      Layout.preferredHeight: 20
+      Layout.preferredHeight: Math.max(20, defaultPillText.implicitHeight + 4)
       Layout.alignment: Qt.AlignVCenter
       radius: 10
       color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.18)
       border.color: root.accentColor
       border.width: 1
 
-      Text {
+      HnLabel {
         id: defaultPillText
         anchors.centerIn: parent
-        text: qsTr("DEFAULT")
+        rawText: qsTr("DEFAULT")
+        role: HnTypographyRole.MicroHeader
         color: root.accentColor
-        font.pointSize: 7.5
-        font.bold: true
+        font.family: AppearanceService.uiFont
       }
     }
 
