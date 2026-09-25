@@ -53,8 +53,8 @@ tasks:
   build:dependencies:
     desc: Build and install pinned sibling dependencies privately
     cmds:
-      - test "$(git -C ../holonight-config rev-parse HEAD)" = fe69a59e6b73167fd5349223a4d265d75386c139
-      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 863af4183bdf09ce05199b37e8f5dfb46a311ba1
+      - test "$(git -C ../holonight-config rev-parse HEAD)" = 03fa635cedc506e101a148fc54f7eb46d17c6de5
+      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 0d5bdf094e6e759210531c4babdd2023e5d56485
       - task: build:appearance-config-dependency
       - task: build:qt-dependency
       - task: build:system-services-dependency
@@ -62,7 +62,7 @@ tasks:
   build:system-services-dependency:
     desc: Build and install the shared system services provider
     cmds:
-      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 5f2ecda7eea653995f4c860bfb7f3a3f53beb279
+      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 8787a482796353bafec0d1a6a7ee6a56ffbb4afd
       - cmake -S ../holonight-system-services -B build-dependencies/system-services -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF
       - cmake --build build-dependencies/system-services -j{{.NPROC}}
       - cmake --install build-dependencies/system-services --prefix {{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}
@@ -228,9 +228,9 @@ tasks:
   tidy-container:
     desc: Run static checks inside the CI container (Docker/Podman) for predictable results
     cmds:
-      - test "$(git -C ../holonight-config rev-parse HEAD)" = fe69a59e6b73167fd5349223a4d265d75386c139
-      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 863af4183bdf09ce05199b37e8f5dfb46a311ba1
-      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 5f2ecda7eea653995f4c860bfb7f3a3f53beb279
+      - test "$(git -C ../holonight-config rev-parse HEAD)" = 03fa635cedc506e101a148fc54f7eb46d17c6de5
+      - test "$(git -C ../holonight-qt rev-parse HEAD)" = 0d5bdf094e6e759210531c4babdd2023e5d56485
+      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 8787a482796353bafec0d1a6a7ee6a56ffbb4afd
       - |
         if command -v docker >/dev/null 2>&1; then
           CONTAINER_RUNNER="docker"
