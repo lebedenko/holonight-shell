@@ -258,7 +258,7 @@ TestCase {
         const artwork = findChild(artworkWindow, "standaloneMprisArtwork");
         const content = findChild(artworkWindow, "mprisArtworkContent");
         const glyphAsset = "qrc:/HolonightShell/media/now-playing-glyph.svg";
-        verify(HnIconProvider.supportsSemanticColors(glyphAsset));
+        verify(glyphAsset.startsWith("qrc:/"));
         tryCompare(content, "status", Image.Ready);
 
         const widget = createWidget();

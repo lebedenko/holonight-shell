@@ -15,6 +15,7 @@ BarSection {
         width: 22
         height: 22
         source: "image://icon/drive-removable-media-symbolic"
+        rendering: HnIcon.Original
         normalColor: HoloniightPalette.textPrimary
     }
     BarTooltipArea {

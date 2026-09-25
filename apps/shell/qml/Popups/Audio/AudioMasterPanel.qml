@@ -117,6 +117,7 @@ Item {
       Layout.alignment: Qt.AlignVCenter
       sizeRole: HnControlSize.Large
       icon.source: root.masterMuted ? "image://icon/audio-volume-muted" : "image://icon/audio-volume-high"
+      iconRendering: HnIcon.Original
       activeFocusOnTab: true
       Accessible.name: root.masterMuted ? qsTr("Unmute master output") : qsTr("Mute master output")
       onClicked: AudioService.setDefaultOutputMuted(!root.masterMuted)

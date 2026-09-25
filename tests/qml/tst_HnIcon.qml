@@ -19,7 +19,7 @@ TestCase {
         verify(icon)
         compare(icon.size, 24)
         compare(icon.iconState, HnIcon.Normal)
-        compare(icon.tinted, true)
+        compare(icon.rendering, HnIcon.Semantic)
         compare(icon.implicitWidth, 24)
         compare(icon.implicitHeight, 24)
     }
@@ -110,14 +110,14 @@ TestCase {
         compare(icon.implicitHeight, 32)
     }
 
-    function test_tinted_toggle_no_crash() {
+    function test_rendering_toggle_no_crash() {
         const icon = createTemporaryObject(iconComponent, null)
         verify(icon)
-        compare(icon.tinted, true)
-        icon.tinted = false
-        compare(icon.tinted, false)
-        icon.tinted = true
-        compare(icon.tinted, true)
+        compare(icon.rendering, HnIcon.Semantic)
+        icon.rendering = HnIcon.Original
+        compare(icon.rendering, HnIcon.Original)
+        icon.rendering = HnIcon.Semantic
+        compare(icon.rendering, HnIcon.Semantic)
     }
 
     function test_empty_source_no_crash() {
@@ -156,7 +156,8 @@ TestCase {
 
     function test_image_icon_source_remains_on_icon_provider() {
         const icon = createTemporaryObject(iconComponent, null, {
-            "source": "image://icon/audio-volume-high"
+            "source": "image://icon/audio-volume-high",
+            "rendering": HnIcon.Original
         })
         verify(icon)
         compare(String(icon._renderSource), "image://icon/audio-volume-high")

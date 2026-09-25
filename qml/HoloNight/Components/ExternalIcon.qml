@@ -11,13 +11,13 @@ Item {
     property bool preferSemanticTint: true
     property string fallbackIconName: ""
 
-    readonly property string effectiveIconName: root.iconName.length > 0 ? root.iconName : root.fallbackIconName
+    readonly property string effectiveIconName: root._useFallbackAfterError || root.iconName.length === 0
+                                                ? root.fallbackIconName : root.iconName
     readonly property bool hasNamedIcon: root.effectiveIconName.length > 0
     readonly property bool hasPixmap: root.pixmapUrl.length > 0
     readonly property bool usesSemanticTint: root.preferSemanticTint
                                          && root.hasNamedIcon
                                          && !root._isExactFileSource(root.effectiveIconName)
-                                         && HnIconProvider["supportsSemanticColors"](root.effectiveIconName)
     readonly property url resolvedExactSource: {
         if (root._useFallbackAfterError && root.fallbackIconName.length > 0)
             return root._exactSource(root.fallbackIconName)
@@ -53,12 +53,17 @@ Item {
     onFallbackIconNameChanged: root._useFallbackAfterError = false
 
     HnIcon {
+        id: semanticIcon
         anchors.fill: parent
         visible: root.usesSemanticTint
-        source: root.usesSemanticTint ? root.effectiveIconName : ""
+        name: root.usesSemanticTint ? root.effectiveIconName : ""
         size: root.iconSize
-        tinted: true
+        rendering: HnIcon.Semantic
         normalColor: root.tintColor
+        onHasErrorChanged: {
+            if (hasError && !root._useFallbackAfterError && root.fallbackIconName.length > 0)
+                root._useFallbackAfterError = true
+        }
     }
 
     Image {

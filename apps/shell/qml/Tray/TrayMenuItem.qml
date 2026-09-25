@@ -81,8 +81,8 @@ Item {
     HnIcon {
         id: itemIcon
         size: 16
-        source: root.iconName
-        tinted: true
+        name: root.iconName
+        rendering: HnIcon.Semantic
         iconState: root.itemEnabled ? HnIcon.Normal : HnIcon.Disabled
         normalColor: HoloniightPalette.textPrimary
         disabledColor: HoloniightPalette.textSecondary

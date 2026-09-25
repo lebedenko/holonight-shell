@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import HolonightShell
+import Holonight.Core
 
 TestCase {
     name: "LogoSection"
@@ -47,6 +48,6 @@ TestCase {
         const icon = findChild(section, "logoIcon")
         verify(icon)
         compare(icon.source, data.source)
-        compare(icon.tinted, data.tinted)
+        compare(icon.rendering, data.tinted ? HnIcon.Semantic : HnIcon.Original)
     }
 }

@@ -32,20 +32,6 @@ TestCase {
         }
     }
 
-    function semanticIconCandidate() {
-        const candidates = [
-            "folder-symbolic",
-            "power-profile-balanced-symbolic",
-            "kate-symbolic",
-            "printer-warning"
-        ]
-        for (let index = 0; index < candidates.length; index++) {
-            if (HnIconProvider.supportsSemanticColors(candidates[index]))
-                return candidates[index]
-        }
-        return ""
-    }
-
     function externalIcon(item) {
         const icon = findChild(item, "externalIcon")
         verify(icon)
@@ -53,25 +39,21 @@ TestCase {
     }
 
     function test_semantic_named_icon_uses_tinted_renderer_when_available() {
-        const candidate = root.semanticIconCandidate()
-        if (candidate.length === 0)
-            skip("No semantic theme icon available in this environment")
-
         const item = createTemporaryObject(trayItemComponent, null, {
-            "iconName": candidate
+            "iconName": "folder-symbolic"
         })
         verify(item)
         compare(root.externalIcon(item).usesSemanticTint, true)
     }
 
-    function test_normal_named_app_icon_stays_on_plain_provider() {
+    function test_normal_named_app_icon_uses_semantic_renderer_without_forced_tint() {
         const item = createTemporaryObject(trayItemComponent, null, {
             "iconName": "rog-control-center"
         })
         verify(item)
         const icon = root.externalIcon(item)
-        compare(icon.usesSemanticTint, false)
-        compare(String(icon.resolvedExactSource), "image://icon/rog-control-center")
+        compare(icon.usesSemanticTint, true)
+        compare(String(icon.resolvedExactSource), "")
     }
 
     function test_pixmap_url_stays_on_plain_provider() {

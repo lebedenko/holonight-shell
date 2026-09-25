@@ -8,11 +8,13 @@ Item {
         Active = 3
     }
 
-    required property url source
+    enum Rendering { Original = 0, Semantic = 1 }
+    property string name: ""
+    property url source: ""
 
     property int size: 24
     property int iconState: HnIcon.Normal
-    property bool tinted: true
+    property int rendering: HnIcon.Semantic
     property color normalColor: "white"
     property color mutedColor: "white"
     property color disabledColor: "white"

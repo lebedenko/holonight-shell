@@ -14,20 +14,6 @@ TestCase {
         ExternalIcon {}
     }
 
-    function semanticIconCandidate() {
-        const candidates = [
-            "folder-symbolic",
-            "power-profile-balanced-symbolic",
-            "kate-symbolic",
-            "printer-warning"
-        ]
-        for (let index = 0; index < candidates.length; index++) {
-            if (HnIconProvider.supportsSemanticColors(candidates[index]))
-                return candidates[index]
-        }
-        return ""
-    }
-
     function test_defaults() {
         const icon = createTemporaryObject(iconComponent, null)
         verify(icon)
@@ -39,30 +25,26 @@ TestCase {
     }
 
     function test_semantic_named_icon_uses_tinted_path_when_available() {
-        const candidate = root.semanticIconCandidate()
-        if (candidate.length === 0)
-            skip("No semantic theme icon available in this environment")
-
         const icon = createTemporaryObject(iconComponent, null, {
-            iconName: candidate
+            iconName: "folder-symbolic"
         })
         verify(icon)
         compare(icon.usesSemanticTint, true)
         compare(String(icon.resolvedExactSource), "")
     }
 
-    function test_non_semantic_named_icon_uses_icon_provider() {
+    function test_named_icon_uses_explicit_semantic_path() {
         const icon = createTemporaryObject(iconComponent, null, {
             iconName: "nonexistent-holonight-test-icon"
         })
         verify(icon)
-        compare(icon.usesSemanticTint, false)
-        compare(String(icon.resolvedExactSource), "image://icon/nonexistent-holonight-test-icon")
+        compare(icon.usesSemanticTint, true)
+        compare(String(icon.resolvedExactSource), "")
     }
 
     function test_prefer_semantic_tint_false_keeps_named_icon_exact() {
         const icon = createTemporaryObject(iconComponent, null, {
-            iconName: root.semanticIconCandidate(),
+            iconName: "folder-symbolic",
             fallbackIconName: "application-x-executable",
             preferSemanticTint: false
         })

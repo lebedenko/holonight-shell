@@ -47,7 +47,7 @@ BarSection {
             id: logoIcon
             objectName: "logoIcon"
             size: root.iconSize
-            tinted: SystemInfoService.logoTinted
+            rendering: SystemInfoService.logoTinted ? HnIcon.Semantic : HnIcon.Original
             source: SystemInfoService.logoSource
             normalColor: HoloniightPalette.accentBlue
         }

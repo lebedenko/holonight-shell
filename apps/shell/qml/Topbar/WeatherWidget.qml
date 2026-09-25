@@ -63,7 +63,7 @@ BarSection {
         HnIcon {
             anchors.verticalCenter: parent.verticalCenter
             size: root.iconSize
-            tinted: true
+            rendering: HnIcon.Semantic
             normalColor: root.ready ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
             source: root.ready ? WeatherService.iconPath(WeatherService.current.conditionId, root.isDay) : ""
             opacity: hoverHandler.hovered ? 1.0 : 0.92

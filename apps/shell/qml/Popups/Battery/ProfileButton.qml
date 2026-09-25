@@ -91,8 +91,8 @@ Controls.RadioButton {
             id: glyph
             anchors.centerIn: parent
             size: 24
-            source: root.iconName
-            tinted: true
+            name: root.iconName
+            rendering: HnIcon.Semantic
             iconState: HnIcon.Normal
             normalColor: root.isActive
                 ? HoloniightPalette.accentCyan

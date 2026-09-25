@@ -83,6 +83,7 @@ HnSettingsRow {
             model: root.candidates
             textRole: "name"
             iconRole: "iconSource"
+            iconRendering: HnIcon.Original
             implicitWidth: 160
             enabled: root.candidates.length > 0
 

@@ -133,7 +133,7 @@ TEST(QmlSmoke, CanonicalModulesResolveOwnedTypes) {
           readonly property var themeFamilies: HolonightTheme.themeFamilies
           readonly property int surfaceRole: HnSurfaceRole.Card
           readonly property int shapeKind: HnShapeKind.Rounded
-          readonly property bool semanticIconSupported: HnIconProvider.supportsSemanticColors("audio-volume-high")
+          readonly property bool semanticIconSupported: HnIcon.Semantic === 1
 
           HnIcon { source: "audio-volume-high" }
           HnSurfaceFrame {
