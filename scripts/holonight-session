@@ -40,6 +40,24 @@ load_cursor_theme() {
   export XCURSOR_THEME="${output}"
 }
 
+reconcile_appearance() {
+  local appearance_file
+  if ! have_command holonight-appearance-adapter; then
+    return
+  fi
+  if ! have_command timeout; then
+    warn "timeout is unavailable; appearance reconciliation was skipped"
+    return
+  fi
+  if ! appearance_file="$(resolve_appearance_file)"; then
+    warn "canonical appearance path is unavailable; appearance reconciliation was skipped"
+    return
+  fi
+  if ! timeout 15s holonight-appearance-adapter apply --appearance "${appearance_file}" --json >/dev/null; then
+    warn "appearance reconciliation failed; session startup will continue"
+  fi
+}
+
 start_shell_service() {
   if have_command systemctl; then
     systemctl --user daemon-reload || warn "failed to reload systemd user units"
@@ -127,6 +145,8 @@ if have_command systemctl; then
   systemctl --user unset-environment "${stale_vars[@]}" || warn "failed to clear stale systemd environment"
   systemctl --user import-environment "${vars[@]}" || warn "failed to import systemd environment"
 fi
+
+reconcile_appearance
 
 mode="${HOLONIGHT_SESSION_MODE:-auto}"
 case "${mode}" in

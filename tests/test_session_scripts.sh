@@ -75,6 +75,11 @@ for compositor in hyprland sway; do
     XDG_SESSION_DESKTOP=UserDesktop XDG_MENU_PREFIX=user- XDG_CONFIG_DIRS=/user/xdg \
     HYPRLAND_INSTANCE_SIGNATURE=stale-hypr HYPRLAND_CMD=stale-command SWAYSOCK=stale-sway I3SOCK=stale-i3
   assert_line "adapter query --appearance ${test_root}/override.toml --field cursor-theme"
+  assert_line "adapter apply --appearance ${test_root}/override.toml --json"
+  apply_line="$(grep -nF 'adapter apply --appearance' "${log_file}" | head -1 | cut -d: -f1)"
+  import_line="$(grep -nF 'systemctl --user import-environment' "${log_file}" | head -1 | cut -d: -f1)"
+  compositor_line="$(grep -nF 'compositor=' "${log_file}" | head -1 | cut -d: -f1)"
+  [[ "${import_line}" -lt "${apply_line}" && "${apply_line}" -lt "${compositor_line}" ]]
   if [[ "${compositor}" == hyprland ]]; then
     assert_match "compositor=Hyprland desktop=HoloNight:Hyprland session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr=stale-hypr sway= i3="
     assert_match "dbus --systemd SWAYSOCK= I3SOCK="
@@ -97,12 +102,18 @@ done
 : >"${log_file}"
 run_session sway direct XDG_CONFIG_HOME="${test_root}/xdg"
 assert_line "adapter query --appearance ${test_root}/xdg/holonight/appearance.toml --field cursor-theme"
+assert_line "adapter apply --appearance ${test_root}/xdg/holonight/appearance.toml --json"
 
 for mode in fail empty multiline control oversized; do
   : >"${log_file}"
   run_session hyprland direct ADAPTER_MODE="${mode}" XCURSOR_THEME=Inherited
   assert_match "compositor=Hyprland desktop=HoloNight:Hyprland session=Hyprland type=wayland menu=hyprland- cursor=Inherited"
 done
+
+: >"${log_file}"
+run_session sway direct ADAPTER_MODE=fail >"${test_root}/stdout" 2>"${test_root}/stderr"
+assert_match "compositor=sway"
+grep -Fq 'appearance reconciliation failed; session startup will continue' "${test_root}/stderr"
 
 mv "${fake_bin}/holonight-appearance-adapter" "${fake_bin}/adapter-away"
 : >"${log_file}"
