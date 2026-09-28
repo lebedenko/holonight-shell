@@ -229,6 +229,43 @@ TEST(QmlSmoke, ApplicationQmlImportsTypesFromCanonicalOwners) {
   }
 }
 
+TEST(QmlSmoke, StorageDriveHeaderRecoversFromFailedPowerOffWithoutCountChange) {
+  QTemporaryDir modules;
+  ASSERT_TRUE(modules.isValid());
+  ASSERT_TRUE(QDir(modules.path()).mkpath(QStringLiteral("HolonightShell")));
+  ASSERT_TRUE(QDir(modules.path()).mkpath(QStringLiteral("Holonight/Components")));
+  const QString source_root = QStringLiteral(TEST_SOURCE_DIR);
+  ASSERT_TRUE(writeFile(modules.filePath(QStringLiteral("HolonightShell/qmldir")), shellQmldir(source_root)));
+  ASSERT_TRUE(
+      writeFile(modules.filePath(QStringLiteral("Holonight/Components/qmldir")), componentsQmldir(source_root)));
+  FakeQmlServices services;
+  ASSERT_TRUE(services.registerSingletons());
+  services.seedStorage();
+  QQmlEngine engine;
+  engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
+  engine.addImportPath(modules.path());
+  services.storage().powerOff(QStringLiteral("test-drive"));
+  QCoreApplication::processEvents();
+  const auto header = createQmlObject(
+      &engine,
+      QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Popups/Storage/StorageDriveSection.qml")),
+      {{QStringLiteral("section"), QStringLiteral("test-drive")}, {QStringLiteral("width"), 480}});
+  ASSERT_NE(header, nullptr);
+  EXPECT_EQ(header->property("driveOperationText").toString(), QStringLiteral("Powering off…"));
+  EXPECT_FALSE(header->property("driveCanPowerOff").toBool());
+  services.failStorageOperation();
+  QCoreApplication::processEvents();
+  EXPECT_EQ(services.storage().count(), 1);
+  EXPECT_TRUE(header->property("driveOperationText").toString().isEmpty());
+  EXPECT_FALSE(header->property("driveErrorText").toString().isEmpty());
+  EXPECT_TRUE(header->property("driveCanPowerOff").toBool());
+  services.storage().retry(QStringLiteral("test-drive"));
+  QCoreApplication::processEvents();
+  EXPECT_EQ(header->property("driveOperationText").toString(), QStringLiteral("Powering off…"));
+  EXPECT_TRUE(header->property("driveErrorText").toString().isEmpty());
+  EXPECT_FALSE(header->property("driveCanPowerOff").toBool());
+}
+
 TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
   QTemporaryDir modules;
   ASSERT_TRUE(modules.isValid());

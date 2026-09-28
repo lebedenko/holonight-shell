@@ -1,10 +1,19 @@
 #include "StorageService.h"
 
+#include "NotificationTypes.h"
 #include "StorageFilter.h"
+
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCall>
+#include <QProcess>
+#include <QStorageInfo>
+#include <QTimer>
 
 #include <algorithm>
 using namespace HoloNight::System;
 namespace {
+constexpr int kErrorExpiryMs = 30000;
 QString operationError(const StorageResult& result) {
   if (result.succeeded()) {
     return {};
@@ -47,6 +56,52 @@ QString volumeState(const StorageVolume& volume, bool busy) {
   }
   return volume.mountPoints.isEmpty() ? StorageService::tr("Not mounted") : volume.mountPoints.join(", ");
 }
+QString formatBytes(qint64 bytes) {
+  static const QStringList units = {"B", "KB", "MB", "GB", "TB", "PB"};
+  double value = static_cast<double>(bytes);
+  int unit_index = 0;
+  while (value >= 1000.0 && unit_index < units.size() - 1) {
+    value /= 1000.0;
+    ++unit_index;
+  }
+  QString number_text = QString::number(value, 'f', value < 10.0 ? 1 : 0);
+  if (number_text.endsWith(".0")) {
+    number_text.chop(2);
+  }
+  return QStringLiteral("%1 %2").arg(number_text, units[unit_index]);
+}
+bool mediaListSuggestsFlash(const QStringList& mediaCompatibility) {
+  return std::ranges::any_of(mediaCompatibility, [](const QString& entry) {
+    const auto lower = entry.toLower();
+    return lower.contains("flash_sd") || lower.contains("flash_cf") || lower.contains("flash_ms") ||
+           lower.contains("flash_sm") || lower.contains("flash_mmc");
+  });
+}
+bool mediaSuggestsSolidState(const StorageDrive& drive) {
+  const auto media = drive.media.toLower();
+  if (media.contains("ssd") || media.contains("nvme") || media.contains("solid_state")) {
+    return true;
+  }
+  return std::ranges::any_of(drive.mediaCompatibility, [](const QString& entry) {
+    const auto lower = entry.toLower();
+    return lower.contains("ssd") || lower.contains("nvme") || lower.contains("solid_state");
+  });
+}
+// Optical and flash/card media take precedence over the generic USB SSD/HDD classification.
+QString driveIconNameFor(const StorageDrive& drive) {
+  if (drive.optical) {
+    return QStringLiteral("media-optical-symbolic");
+  }
+  if (mediaListSuggestsFlash(drive.mediaCompatibility)) {
+    return QStringLiteral("media-flash-symbolic");
+  }
+  const bool usb = drive.connectionBus.compare("usb", Qt::CaseInsensitive) == 0;
+  if (usb) {
+    return mediaSuggestsSolidState(drive) ? QStringLiteral("drive-harddisk-solidstate-symbolic")
+                                          : QStringLiteral("drive-harddisk-usb-symbolic");
+  }
+  return QStringLiteral("drive-removable-media-symbolic");
+}
 }  // namespace
 StorageService::StorageService(QObject* parent) : StorageService(new StorageController, parent) {
   controller_->setParent(this);
@@ -62,7 +117,30 @@ StorageService::StorageService(StorageController* controller, QObject* parent)
   connect(controller_, &StorageController::operationStateChanged, this, &StorageService::refresh);
   connect(controller_, &StorageController::availableChanged, this, &StorageService::refresh);
   connect(controller_, &StorageController::operationFinished, this, [this](const StorageResult& result) {
+    in_flight_ops_.remove(result.targetId);
+    const auto removal_label = removal_labels_.take(result.targetId);
     error_message_ = operationError(result);
+    if (result.succeeded()) {
+      last_errors_.remove(result.targetId);
+      if (result.operation == StorageOperation::Eject || result.operation == StorageOperation::PowerOff) {
+        sendSafeToRemoveNotification(removal_label.isEmpty() ? driveLabel(result.targetId) : removal_label);
+      }
+      if (result.operation == StorageOperation::Mount && pending_open_after_mount_.remove(result.targetId)) {
+        QProcess::startDetached(QStringLiteral("holonight-files"), {result.mountPath});
+      }
+    } else {
+      pending_open_after_mount_.remove(result.targetId);
+      const auto generation = ++next_error_generation_;
+      last_errors_.insert(result.targetId, {result.operation, operationError(result), generation});
+      const auto targetId = result.targetId;
+      QTimer::singleShot(kErrorExpiryMs, this, [this, targetId, generation] {
+        const auto it = last_errors_.constFind(targetId);
+        if (it != last_errors_.constEnd() && it->generation == generation) {
+          last_errors_.remove(targetId);
+          refresh();
+        }
+      });
+    }
     refresh();
   });
   refresh();
@@ -85,7 +163,22 @@ QHash<int, QByteArray> StorageService::roleNames() const {
           {static_cast<int>(Role::CanMount), "canMount"},
           {static_cast<int>(Role::CanUnmount), "canUnmount"},
           {static_cast<int>(Role::CanEject), "canEject"},
-          {static_cast<int>(Role::CanPowerOff), "canPowerOff"}};
+          {static_cast<int>(Role::CanPowerOff), "canPowerOff"},
+          {static_cast<int>(Role::UsedBytes), "usedBytes"},
+          {static_cast<int>(Role::TotalBytes), "totalBytes"},
+          {static_cast<int>(Role::FreeBytes), "freeBytes"},
+          {static_cast<int>(Role::OperationText), "operationText"},
+          {static_cast<int>(Role::ErrorText), "errorText"}};
+}
+int StorageService::deviceCount() const {
+  QSet<QString> ids;
+  for (const auto& row : rows_) {
+    ids.insert(row.value("driveId").toString());
+  }
+  return static_cast<int>(ids.size());
+}
+bool StorageService::hasMounted() const {
+  return std::ranges::any_of(rows_, [](const auto& row) { return row.value("mounted").toBool(); });
 }
 void StorageService::refresh() {
   QList<QVariantMap> rows;
@@ -95,6 +188,15 @@ void StorageService::refresh() {
       continue;
     }
     const bool busy = controller_->busy(volume.id) || controller_->busy(drive->id);
+    qint64 used_bytes = 0;
+    qint64 total_bytes = 0;
+    qint64 free_bytes = 0;
+    if (!volume.mountPoints.isEmpty()) {
+      const QStorageInfo info(volume.mountPoints.first());
+      total_bytes = info.bytesTotal();
+      free_bytes = info.bytesAvailable();
+      used_bytes = total_bytes - free_bytes;
+    }
     rows.append({{"targetId", volume.id},
                  {"driveId", drive->id},
                  {"name", volumeName(volume)},
@@ -105,13 +207,23 @@ void StorageService::refresh() {
                  {"canMount", volume.canMount && !volume.locked && !busy},
                  {"canUnmount", volume.canUnmount && !busy},
                  {"canEject", drive->canEject && !busy},
-                 {"canPowerOff", drive->canPowerOff && !busy}});
+                 {"canPowerOff", drive->canPowerOff && !busy},
+                 {"usedBytes", used_bytes},
+                 {"totalBytes", total_bytes},
+                 {"freeBytes", free_bytes},
+                 {"operationText", operationTextFor(volume.id)},
+                 {"errorText", errorTextFor(volume.id)}});
   }
   appendOpticalDrives(rows);
   std::ranges::sort(rows, [](const auto& first, const auto& second) {
     return first.value("driveId").toString() + first.value("targetId").toString() <
            second.value("driveId").toString() + second.value("targetId").toString();
   });
+  QSet<QString> current_drive_ids;
+  for (const auto& row : rows) {
+    current_drive_ids.insert(row.value("driveId").toString());
+  }
+  notifyNewlyConnectedDrives(current_drive_ids);
   if (rows != rows_) {
     beginResetModel();
     rows_ = rows;
@@ -125,58 +237,201 @@ bool StorageService::visibleTarget(const QString& targetId, const char* capabili
            row.value(QLatin1String(capability)).toBool();
   });
 }
-
-void StorageService::mount(const QString& targetId) {
-  if (visibleTarget(targetId, "canMount")) {
-    controller_->mount(targetId);
+QString StorageService::operationTextFor(const QString& targetId) const {
+  const auto it = in_flight_ops_.constFind(targetId);
+  if (it == in_flight_ops_.constEnd()) {
+    return {};
   }
-}
-void StorageService::unmount(const QString& targetId) {
-  if (visibleTarget(targetId, "canUnmount")) {
-    controller_->unmount(targetId);
+  switch (it.value()) {
+    case StorageOperation::Mount:
+      return tr("Mounting…");
+    case StorageOperation::Unmount:
+      return tr("Unmounting…");
+    case StorageOperation::Eject:
+      return tr("Ejecting…");
+    case StorageOperation::PowerOff:
+      return tr("Powering off…");
   }
+  return {};
 }
-void StorageService::eject(const QString& targetId) {
-  if (visibleTarget(targetId, "canEject")) {
-    controller_->eject(targetId);
+QString StorageService::errorTextFor(const QString& targetId) const {
+  const auto it = last_errors_.constFind(targetId);
+  return it == last_errors_.constEnd() ? QString() : it->message;
+}
+void StorageService::beginOperation(const QString& targetId, StorageOperation operation) {
+  last_errors_.remove(targetId);
+  in_flight_ops_.insert(targetId, operation);
+  if (operation == StorageOperation::Eject || operation == StorageOperation::PowerOff) {
+    removal_labels_.insert(targetId, driveLabel(targetId));
   }
+  refresh();
 }
-void StorageService::requestPowerOff(const QString& targetId) {
-  if (!visibleTarget(targetId, "canPowerOff")) {
+void StorageService::notifyNewlyConnectedDrives(const QSet<QString>& current_drive_ids) {
+  // The initial snapshot populates both models before availableChanged fires. Constructor
+  // refreshes and intermediate model signals must not seed an incomplete startup snapshot.
+  if (!controller_->available()) {
     return;
   }
-  confirmation_drive_ = targetId;
-  confirmation_scope_ = controller_->removalScope(targetId, true);
-  QStringList names;
-  for (const auto& target : confirmation_scope_) {
-    if (const auto drive = controller_->drives()->find(target)) {
-      names.append(driveName(*drive));
-    } else if (const auto volume = controller_->volumes()->find(target)) {
-      names.append(volumeName(*volume));
+  if (known_drive_ids_seeded_) {
+    for (const auto& driveId : current_drive_ids) {
+      if (!known_drive_ids_.contains(driveId)) {
+        sendDriveConnectedNotification(driveId);
+      }
     }
   }
-  confirmation_text_ = tr("Power off these devices and volumes?\n%1").arg(names.join("\n"));
-  emit changed();
+  known_drive_ids_ = current_drive_ids;
+  known_drive_ids_seeded_ = true;
 }
-void StorageService::confirmPowerOff() {
-  if (confirmation_drive_.isEmpty()) {
+void StorageService::sendStorageNotification(const QString& summary) const {
+  auto message = QDBusMessage::createMethodCall(
+      QStringLiteral("org.freedesktop.Notifications"), QStringLiteral("/org/freedesktop/Notifications"),
+      QStringLiteral("org.freedesktop.Notifications"), QStringLiteral("Notify"));
+  message << QStringLiteral("holonight-shell") << 0U << QString() << summary << QString() << QStringList{}
+          << QVariantMap{{QStringLiteral("transient"), true},
+                         {QStringLiteral("category"), QString::fromLatin1(kStorageNotificationCategory)}}
+          << 5000;
+  QDBusConnection::sessionBus().asyncCall(message);
+}
+void StorageService::sendSafeToRemoveNotification(const QString& label) const {
+  sendStorageNotification(tr("%1 can be safely removed").arg(label));
+}
+void StorageService::sendDriveConnectedNotification(const QString& driveId) const {
+  sendStorageNotification(tr("%1 connected").arg(driveLabel(driveId)));
+}
+
+void StorageService::mount(const QString& targetId) {
+  if (!visibleTarget(targetId, "canMount") || in_flight_ops_.contains(targetId)) {
     return;
   }
-  const auto targetId = confirmation_drive_;
-  const auto scope = confirmation_scope_;
-  cancelPowerOff();
-  controller_->powerOff(targetId, scope);
+  beginOperation(targetId, StorageOperation::Mount);
+  controller_->mount(targetId);
 }
-void StorageService::cancelPowerOff() {
-  confirmation_drive_.clear();
-  confirmation_scope_.clear();
-  confirmation_text_.clear();
-  emit changed();
+void StorageService::unmount(const QString& targetId) {
+  if (!visibleTarget(targetId, "canUnmount") || in_flight_ops_.contains(targetId)) {
+    return;
+  }
+  beginOperation(targetId, StorageOperation::Unmount);
+  controller_->unmount(targetId);
+}
+void StorageService::eject(const QString& targetId) {
+  if (!visibleTarget(targetId, "canEject") || in_flight_ops_.contains(targetId)) {
+    return;
+  }
+  beginOperation(targetId, StorageOperation::Eject);
+  controller_->eject(targetId);
+}
+void StorageService::powerOff(const QString& targetId) {
+  if (!visibleTarget(targetId, "canPowerOff") || in_flight_ops_.contains(targetId)) {
+    return;
+  }
+  beginOperation(targetId, StorageOperation::PowerOff);
+  controller_->powerOff(targetId, controller_->removalScope(targetId, true));
+}
+void StorageService::retry(const QString& targetId) {
+  const auto it = last_errors_.constFind(targetId);
+  if (it == last_errors_.constEnd()) {
+    return;
+  }
+  switch (it->operation) {
+    case StorageOperation::Mount:
+      mount(targetId);
+      return;
+    case StorageOperation::Unmount:
+      unmount(targetId);
+      return;
+    case StorageOperation::Eject:
+      eject(targetId);
+      return;
+    case StorageOperation::PowerOff:
+      powerOff(targetId);
+      return;
+  }
+}
+void StorageService::openVolume(const QString& targetId) {
+  if (const auto volumeRecord = controller_->volumes()->find(targetId);
+      volumeRecord && !volumeRecord->mountPoints.isEmpty()) {
+    QProcess::startDetached(QStringLiteral("holonight-files"), {volumeRecord->mountPoints.first()});
+    return;
+  }
+  if (!visibleTarget(targetId, "canMount") || in_flight_ops_.contains(targetId)) {
+    return;
+  }
+  pending_open_after_mount_.insert(targetId);
+  mount(targetId);
+}
+void StorageService::openInFiles() const { QProcess::startDetached(QStringLiteral("holonight-files")); }
+void StorageService::showAllDevices() const {
+  for (const auto& row : rows_) {
+    if (!row.value("mounted").toBool()) {
+      continue;
+    }
+    const auto targetId = row.value("targetId").toString();
+    if (const auto volumeRecord = controller_->volumes()->find(targetId);
+        volumeRecord && !volumeRecord->mountPoints.isEmpty()) {
+      QProcess::startDetached(QStringLiteral("holonight-files"), {volumeRecord->mountPoints.first()});
+      return;
+    }
+  }
+  QProcess::startDetached(QStringLiteral("holonight-files"));
 }
 
 QString StorageService::driveLabel(const QString& targetId) const {
   const auto drive = controller_->drives()->find(targetId);
   return drive ? driveName(*drive) : tr("Storage device");
+}
+QString StorageService::driveIconName(const QString& driveId) const {
+  const auto drive = controller_->drives()->find(driveId);
+  return drive ? driveIconNameFor(*drive) : QStringLiteral("drive-removable-media-symbolic");
+}
+QString StorageService::driveSubtitle(const QString& driveId) const {
+  const auto drive = controller_->drives()->find(driveId);
+  if (!drive) {
+    return {};
+  }
+  QStringList parts;
+  if (!drive->connectionBus.isEmpty()) {
+    parts.append(drive->connectionBus.toUpper());
+  }
+  const auto icon = driveIconNameFor(*drive);
+  if (icon == QLatin1String("media-optical-symbolic")) {
+    parts.append(tr("Optical"));
+  } else if (icon == QLatin1String("drive-harddisk-solidstate-symbolic")) {
+    parts.append(tr("Solid state"));
+  } else if (icon == QLatin1String("media-flash-symbolic")) {
+    parts.append(tr("Flash media"));
+  } else {
+    parts.append(tr("Removable"));
+  }
+  return parts.join(QStringLiteral(" · "));
+}
+QString StorageService::driveCapacityText(const QString& driveId) const {
+  // A disk and its partitions describe overlapping bytes. Prefer the whole-disk record.
+  for (const auto& volumeRecord : controller_->volumes()->items()) {
+    if (volumeRecord.driveId == driveId && volumeRecord.partitionContainer && volumeRecord.partitionNumber == 0 &&
+        volumeRecord.cryptoBackingId.isEmpty() && volumeRecord.capacity > 0) {
+      return tr("%1 total").arg(formatBytes(static_cast<qint64>(volumeRecord.capacity)));
+    }
+  }
+  qint64 total = 0;
+  bool any = false;
+  for (const auto& volumeRecord : controller_->volumes()->items()) {
+    if (volumeRecord.driveId == driveId && !volumeRecord.partitionContainer && volumeRecord.cryptoBackingId.isEmpty() &&
+        volumeRecord.capacity > 0) {
+      total += static_cast<qint64>(volumeRecord.capacity);
+      any = true;
+    }
+  }
+  return any ? tr("%1 total").arg(formatBytes(total)) : QString();
+}
+QString StorageService::driveOperationText(const QString& driveId) const { return operationTextFor(driveId); }
+QString StorageService::driveErrorText(const QString& driveId) const { return errorTextFor(driveId); }
+bool StorageService::driveCanEject(const QString& driveId) const {
+  const auto drive = controller_->drives()->find(driveId);
+  return drive && drive->canEject && !controller_->busy(driveId) && !in_flight_ops_.contains(driveId);
+}
+bool StorageService::driveCanPowerOff(const QString& driveId) const {
+  const auto drive = controller_->drives()->find(driveId);
+  return drive && drive->canPowerOff && !controller_->busy(driveId) && !in_flight_ops_.contains(driveId);
 }
 
 void StorageService::appendOpticalDrives(QList<QVariantMap>& rows) const {
@@ -207,6 +462,11 @@ void StorageService::appendOpticalDrives(QList<QVariantMap>& rows) const {
                  {"canMount", false},
                  {"canUnmount", false},
                  {"canEject", drive.canEject && !busy},
-                 {"canPowerOff", drive.canPowerOff && !busy}});
+                 {"canPowerOff", drive.canPowerOff && !busy},
+                 {"usedBytes", static_cast<qint64>(0)},
+                 {"totalBytes", static_cast<qint64>(0)},
+                 {"freeBytes", static_cast<qint64>(0)},
+                 {"operationText", operationTextFor(drive.id)},
+                 {"errorText", errorTextFor(drive.id)}});
   }
 }

@@ -62,7 +62,7 @@ tasks:
   build:system-services-dependency:
     desc: Build and install the shared system services provider
     cmds:
-      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 8787a482796353bafec0d1a6a7ee6a56ffbb4afd
+      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = f93ae00fcb850426c433e4e9f97b569979f330d6
       - cmake -S ../holonight-system-services -B build-dependencies/system-services -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF
       - cmake --build build-dependencies/system-services -j{{.NPROC}}
       - cmake --install build-dependencies/system-services --prefix {{.HOLONIGHT_SYSTEM_SERVICES_PREFIX}}
@@ -230,7 +230,7 @@ tasks:
     cmds:
       - test "$(git -C ../holonight-config rev-parse HEAD)" = 03fa635cedc506e101a148fc54f7eb46d17c6de5
       - test "$(git -C ../holonight-qt rev-parse HEAD)" = 0d5bdf094e6e759210531c4babdd2023e5d56485
-      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 8787a482796353bafec0d1a6a7ee6a56ffbb4afd
+      - test "$(git -C ../holonight-system-services rev-parse HEAD)" = f93ae00fcb850426c433e4e9f97b569979f330d6
       - |
         if command -v docker >/dev/null 2>&1; then
           CONTAINER_RUNNER="docker"

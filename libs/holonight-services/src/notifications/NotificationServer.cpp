@@ -5,6 +5,7 @@
 
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
+#include <QDBusMessage>
 #include <QDBusReply>
 #include <QLoggingCategory>
 #include <QStringList>
@@ -142,6 +143,10 @@ uint NotificationServer::Notify(const QString& app_name, uint replaces_id, const
   }
   NotificationData data =
       buildNotificationData(app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout);
+  data.bypass_filter = calledFromDBus() && message().service() == QDBusConnection::sessionBus().baseService() &&
+                       data.app_name == QLatin1String("holonight-shell") &&
+                       data.category == QLatin1String(kStorageNotificationCategory) &&
+                       data.hints.value(QStringLiteral("transient")).toBool();
 
   qCInfo(lcNotificationServer).nospace() << "Notify received - app_name: \"" << app_name
                                          << "\", replaces_id: " << replaces_id << ", app_icon: \"" << app_icon

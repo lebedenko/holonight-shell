@@ -194,12 +194,13 @@ QHash<int, QByteArray> NotificationService::roleNames() const {
 
 uint32_t NotificationService::addOrReplace(NotificationData data) {
   // Auto-populate rule model before filtering (REQ-F-NH06: even suppressed notifications register the app).
-  if (rule_model_ != nullptr) {
+  if (rule_model_ != nullptr && !data.bypass_filter) {
     rule_model_->ensureApp(data);
   }
 
   // Apply DND + per-app filter. Critical urgency always passes (REQ-F-NH16 > REQ-F-NH10).
-  if (rule_model_ != nullptr && evaluateFilter(data, dnd_enabled_, rule_model_->rules()) == FilterDecision::Suppress) {
+  if (!data.bypass_filter && rule_model_ != nullptr &&
+      evaluateFilter(data, dnd_enabled_, rule_model_->rules()) == FilterDecision::Suppress) {
     return 0;
   }
 
@@ -307,6 +308,7 @@ void NotificationService::closeNotification(uint32_t notif_id, NotifCloseReason 
 
   // Build history item before erasing from the map (reference would dangle after remove).
   const bool write_history = history_config_.enabled && store_ != nullptr &&
+                             !found->hints.value(QStringLiteral("transient")).toBool() &&
                              (reason == NotifCloseReason::Expired || reason == NotifCloseReason::Closed);
   NotificationHistoryItem hist_item;
   if (write_history) {

@@ -1074,7 +1074,18 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
  public:
   void start() override {}
   void stop() override {}
-  void execute(const QString&, HoloNight::System::StorageOperation, const QString&) override {}
+  void execute(const QString& requestId, HoloNight::System::StorageOperation operation,
+               const QString& targetId) override {
+    last_request_ = {.requestId = requestId, .targetId = targetId, .operation = operation};
+  }
+  void failLastOperation() {
+    auto result = last_request_;
+    result.errorName = QStringLiteral("org.holonight.Storage.Busy");
+    emit operationFinished(result);
+  }
+
+ private:
+  HoloNight::System::StorageResult last_request_;
 };
 class FakeQmlServices {
  public:
@@ -1129,6 +1140,9 @@ class FakeQmlServices {
     volume.canMount = true;
     emit storage_backend_.snapshotChanged({drive}, {volume}, true);
   }
+
+  StorageService& storage() { return storage_; }
+  void failStorageOperation() { storage_backend_.failLastOperation(); }
 
   [[nodiscard]] bool registerSingletons() {  // NOLINT(readability-function-cognitive-complexity)
     return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SessionIntegrationService", &integration_) >= 0 &&

@@ -19,6 +19,8 @@ enum class NotifAccentKind : uint8_t { Cyan, Violet, Critical };
 
 enum class NotifLifecycle : uint8_t { Visible, Queued, Closed };
 
+constexpr auto kStorageNotificationCategory = "x-holonight.storage";
+
 struct NotifAction {
   QString key;
   QString label;
@@ -38,7 +40,8 @@ struct NotificationData {
   int expire_timeout_ms{-1};       // raw from Notify; policy applied by the service
   NotifUrgency urgency{NotifUrgency::Normal};
   bool is_resident{false};
-  QString category;  // from hints["category"]
+  bool bypass_filter{false};  // Set only by the server for storage toasts from this shell's bus connection.
+  QString category;           // from hints["category"]
   NotifAccentKind accent{NotifAccentKind::Cyan};
   NotifLifecycle lifecycle{NotifLifecycle::Queued};
   QString monitor_name;  // assigned at arrival, immutable thereafter
