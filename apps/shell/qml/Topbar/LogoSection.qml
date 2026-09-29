@@ -21,6 +21,8 @@ BarSection {
                             + root.contentRightMargin
 
     BarFrame {
+        id: logoFrame
+        objectName: "logoFrame"
 
         anchors {
             fill: parent
@@ -55,6 +57,7 @@ BarSection {
 
         Controls.Label {
             id: logoLabel
+            objectName: "logoLabel"
 
             anchors.verticalCenter: logoIcon.verticalCenter
             text: SystemInfoService.displayName.toUpperCase()
@@ -64,9 +67,27 @@ BarSection {
     }
 
     BarTooltipArea {
+        id: tooltipArea
         barMonitorName: root.barMonitorName
         title: SystemInfoService.displayName
-        description: "Running Holonight shell on " + SystemInfoService.name + "."
+        description: qsTr("Running Holonight shell on %1.\nClick to toggle launcher").arg(SystemInfoService.name)
         iconName: "system"
+    }
+
+    MouseArea {
+        readonly property real borderInset: logoFrame.frameInset + logoFrame.strokeWidth / 2
+
+        anchors {
+            fill: logoFrame
+            leftMargin: borderInset + logoFrame.leftCornerCut
+            rightMargin: borderInset + logoFrame.rightBottomOffset + logoFrame.cornerRadius
+            topMargin: borderInset
+            bottomMargin: borderInset
+        }
+        acceptedButtons: Qt.LeftButton
+        onClicked: {
+            tooltipArea.dismissForClick()
+            LauncherSurface.toggle(root.barMonitorName)
+        }
     }
 }

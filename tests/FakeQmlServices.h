@@ -942,12 +942,13 @@ class FakeLauncherSurface : public QObject {
 
  public:
   [[nodiscard]] bool visible() const { return false; }
-  Q_INVOKABLE void toggle(const QString& /*monitor_name*/ = {}) {}
+  Q_INVOKABLE void toggle(const QString& monitor_name = {}) { Q_EMIT toggled(monitor_name); }
   Q_INVOKABLE void show(const QString& /*monitor_name*/ = {}) {}
   Q_INVOKABLE void hide() {}
   Q_INVOKABLE void notifyHideReady() {}
 
  Q_SIGNALS:
+  void toggled(const QString& monitor_name);
   void visibleChanged();
 };
 
