@@ -11,7 +11,6 @@ TestCase {
             workspaceId: "dev:web"
             numericSlot: undefined
             label: "dev:web"
-            workspaceKind: "normal"
             visualState: "urgent"
             barMonitorName: "TEST-1"
         }

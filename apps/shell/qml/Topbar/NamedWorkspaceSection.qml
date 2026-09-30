@@ -12,7 +12,7 @@ BarSection {
     readonly property int contentLeftMargin: 16 + root.slantCut
     readonly property int contentRightMargin: 16 + root.slantCut
     readonly property int inheritedSectionPadding: 8
-    readonly property int firstRow: CompositorService.firstVisibleWorkspaceRow()
+    readonly property int firstRow: WorkspacePresentation.revision >= 0 ? WorkspacePresentation.firstVisibleWorkspaceRow() : 0
 
     visible: CompositorService.connected && CompositorService.canListWorkspaces
     implicitWidth: visible ? root.contentLeftMargin + pills.implicitWidth + root.contentRightMargin : 0
@@ -34,19 +34,19 @@ BarSection {
                 id: workspaceLoader
                 required property int index
                 required property string workspaceId
-                required property var numericSlot
                 required property string displayName
-                required property string workspaceKind
+                required property bool canActivate
                 required property string visualState
                 readonly property bool inWindow: index >= root.firstRow
-                                                     && index < root.firstRow + CompositorService.workspaceDisplayCount
+                                                     && index < root.firstRow + WorkspacePresentation.workspaceDisplayCount
                 active: inWindow
                 visible: inWindow
                 sourceComponent: WorkspacePill {
                     workspaceId: workspaceLoader.workspaceId
-                    numericSlot: workspaceLoader.numericSlot
+                    numericSlot: null
                     label: workspaceLoader.displayName
-                    workspaceKind: workspaceLoader.workspaceKind
+                    canActivate: workspaceLoader.canActivate
+                    onActivated: CompositorService.activateWorkspace(workspaceLoader.workspaceId)
                     visualState: workspaceLoader.visualState
                     barMonitorName: root.barMonitorName
                 }

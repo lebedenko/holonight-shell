@@ -14,6 +14,7 @@
 #include "ConfigService.h"
 #include "ControlServer.h"
 #include "IdleService.h"
+#include "IntegrationLoader.h"
 #include "KeyboardLayoutChannelSource.h"
 #include "KeyboardLayoutService.h"
 #include "LauncherService.h"
@@ -35,6 +36,7 @@
 #include "OsdSurface.h"
 #include "PortalService.h"
 #include "StorageService.h"
+#include "WorkspacePresentation.h"
 
 using namespace HoloNight::ShellConfig;
 #include "PowerProfilesService.h"
@@ -105,9 +107,13 @@ ShellApplication::ShellApplication(QObject* parent)
       activity_gate_manager_(new ActivityGateManager(this)),
       config_service_(new ConfigService(this)),
       calendar_service_(new CalendarService(this)),
-      compositor_(new CompositorService(this)),
+      integration_(new IntegrationLoader(this)),
+      compositor_(new CompositorService(integration_->createCompositor(), this)),
+      workspace_presentation_(new WorkspacePresentation(
+          compositor_, dynamic_cast<NumberedWorkspaceProvider*>(compositor_->backend()), this)),
       window_activation_server_(new WindowActivationServer(compositor_, this)),
-      keyboard_layout_(new KeyboardLayoutService(this)),
+      keyboard_layout_(new KeyboardLayoutService(
+          integration_->integration() ? integration_->integration()->createKeyboard() : nullptr, this)),
       ai_chat_service_(new AiChatService(this)),
       settings_navigation_service_(new SettingsNavigationService(this)),
       battery_(new BatteryService(this)),
@@ -115,7 +121,7 @@ ShellApplication::ShellApplication(QObject* parent)
       storage_(new StorageService(this)),
       network_(new NetworkService(this)),
       power_profiles_(new PowerProfilesService(this)),
-      session_(new SessionService(compositor_->backendKind(), this)),
+      session_(new SessionService(integration_->integration(), this)),
       system_info_(new SystemInfoService(config_service_, this)),
       appearance_(new AppearanceService(this)),
       theme_(new ThemeService(appearance_, this)),
@@ -180,6 +186,8 @@ void ShellApplication::registerQmlTypes() {
   reg(portal_service_, "PortalService");
   reg(calendar_service_, "CalendarService");
   reg(compositor_, "CompositorService");
+  reg(workspace_presentation_, "WorkspacePresentation");
+  reg(integration_, "IntegrationLoader");
   reg(keyboard_layout_, "KeyboardLayoutService");
   reg(battery_, "BatteryService");
   reg(audio_, "AudioService");
@@ -221,9 +229,9 @@ void ShellApplication::startServices() {
   }
 
   tray_model_->setMenuSurface(tray_menu_surface_);
-  compositor_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count);
+  workspace_presentation_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count);
   connect(config_service_, &ConfigService::barWorkspacesChanged, this,
-          [this] { compositor_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count); });
+          [this] { workspace_presentation_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count); });
   connect(compositor_, &CompositorService::revisionChanged, this, [this] {
     const QString key =
         compositor_->focusedOutput() + QLatin1Char(':') + QString::number(compositor_->focusedWorkspaceRow());

@@ -1,11 +1,12 @@
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
-import HolonightShell
+import QtQuick.Controls as Controls
 import Holonight.Core
 
 Item {
     id: root
+    signal activated()
     required property string workspaceId
     required property string wsName
     required property bool active
@@ -86,7 +87,7 @@ Item {
     HnIcon {
         objectName: "specialIcon"
         anchors.centerIn: pill
-        source: "qrc:/HolonightShell/bar-icons/special-ws.svg"
+        source: "qrc:/HolonightShell/Integrations/Hyprland/special-ws.svg"
         size: 16
         normalColor: _style.iconColor
         iconState: HnIcon.Normal
@@ -110,17 +111,12 @@ Item {
         objectName: "pointerArea"
         anchors.fill: parent
         hoverEnabled: true
-        onClicked: CompositorService.activateWorkspace(root.workspaceId)
+        onClicked: root.activated()
     }
 
-    BarTooltipArea {
-        barMonitorName: root.barMonitorName
-        title: root.wsName
-        description: root.urgent ? "Needs attention."
-            : (root.activeOnCurrentMonitor ? "Currently visible on this monitor."
-            : (root.activeOnAnotherMonitor ? "Currently visible on another monitor." : "Hidden special workspace."))
-        iconName: "workspace"
-    }
+    Controls.ToolTip.visible: pointer.containsMouse
+    Controls.ToolTip.text: root.wsName
+    Controls.ToolTip.delay: 500
 
     QtObject {
         id: _style

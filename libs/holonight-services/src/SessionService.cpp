@@ -1,35 +1,17 @@
 #include "SessionService.h"
 
-#include "CompositorSelection.h"
 #include "session/CommandRunner.h"
-#include "session/HyprlandSessionBackend.h"
 #include "session/LogindSessionBackend.h"
 #include "session/ProcessEnvironment.h"
 #include "session/SessionBackend.h"
-#include "session/SwaySessionBackend.h"
 
-namespace {
-std::unique_ptr<SessionBackend> makeBackend(CompositorKind kind, const ProcessEnvironment* env, CommandRunner* runner) {
-  switch (kind) {
-    case CompositorKind::Hyprland:
-      return std::make_unique<HyprlandSessionBackend>(env, runner);
-    case CompositorKind::Sway:
-      return std::make_unique<SwaySessionBackend>(env, runner);
-    case CompositorKind::Generic:
-      return std::make_unique<LogindSessionBackend>(env, runner);
-  }
-  return std::make_unique<LogindSessionBackend>(env, runner);
-}
-}  // namespace
-
-SessionService::SessionService(QObject* parent)
-    : SessionService(selectCompositor(systemCompositorEnvironment()), parent) {}
-
-SessionService::SessionService(CompositorKind kind, QObject* parent)
+SessionService::SessionService(QObject* parent) : SessionService(static_cast<IntegrationPlugin*>(nullptr), parent) {}
+SessionService::SessionService(IntegrationPlugin* integration, QObject* parent)
     : QObject(parent),
       env_(std::make_unique<SystemProcessEnvironment>()),
       runner_(std::make_unique<DetachedCommandRunner>()),
-      backend_(makeBackend(kind, env_.get(), runner_.get())) {}
+      backend_(integration ? integration->createSession(env_.get(), runner_.get())
+                           : std::make_unique<LogindSessionBackend>(env_.get(), runner_.get())) {}
 
 SessionService::SessionService(std::unique_ptr<SessionBackend> backend, QObject* parent)
     : QObject(parent), backend_(std::move(backend)) {}

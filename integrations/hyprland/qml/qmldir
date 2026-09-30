@@ -1,0 +1,3 @@
+module Holonight.Integrations.Hyprland
+SpecialWorkspaces 1.0 SpecialWorkspaces.qml
+SpecialWorkspaceDot 1.0 SpecialWorkspaceDot.qml

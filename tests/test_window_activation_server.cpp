@@ -30,7 +30,7 @@ struct ServerFixture {
   ServerFixture() {
     auto backend = std::make_unique<FakeActivationBackend>();
     fake = backend.get();
-    compositor = std::make_unique<CompositorService>(CompositorKind::Sway, std::move(backend));
+    compositor = std::make_unique<CompositorService>(std::move(backend));
     compositor->publishSnapshotForTest({.connected = true, .capabilities = {.window_activation = true}});
   }
 

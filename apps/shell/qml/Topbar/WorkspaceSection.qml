@@ -5,7 +5,7 @@ import HolonightShell
 Loader {
     id: root
     required property string barMonitorName
-    readonly property bool numericMode: CompositorService.canCreateNumericWorkspaces
+    readonly property bool numericMode: WorkspacePresentation.useNumericWorkspacePresentation
     sourceComponent: root.numericMode ? numericSection : namedSection
 
     Component {

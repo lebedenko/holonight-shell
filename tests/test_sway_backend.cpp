@@ -1,9 +1,13 @@
 #include "SwayBackend.h"
 
 #include <QCoreApplication>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QSignalSpy>
+#include <QTest>
 #include <QUuid>
 
 #include <functional>
@@ -31,6 +35,13 @@ class SwayBackendTest : public testing::Test {
     ASSERT_TRUE(server_.listen(socket_path_)) << server_.errorString().toStdString();
     backend_ = std::make_unique<SwayBackend>(socket_path_);
     backend_->start();
+    acceptConnections();
+  }
+
+  void acceptConnections() {
+    first_decoder_ = {};
+    second_decoder_ = {};
+    queued_request_frames_.clear();
     ASSERT_TRUE(waitUntil([this] { return server_.hasPendingConnections(); }));
     first_ = server_.nextPendingConnection();
     ASSERT_TRUE(waitUntil([this] { return server_.hasPendingConnections(); }));
@@ -81,9 +92,10 @@ class SwayBackendTest : public testing::Test {
     socket->flush();
   }
 
-  void finishRefresh(const QByteArray& tree) {
+  void finishRefresh(const QByteArray& tree,
+                     const QByteArray& workspaces = R"([{"num":1,"name":"1","output":"DP-1"}])") {
     EXPECT_EQ(nextRequest().type, 1U);
-    writeFrame(request_, 1, R"([{"num":1,"name":"1","output":"DP-1"}])");
+    writeFrame(request_, 1, workspaces);
     EXPECT_EQ(nextRequest().type, 3U);
     writeFrame(request_, 3, R"([{"name":"DP-1","focused":true}])");
     EXPECT_EQ(nextRequest().type, 4U);
@@ -120,6 +132,7 @@ TEST_F(SwayBackendTest, PublishesCapabilityAndActivatesResolvedContainer) {
   ],"floating_nodes":[]})");
   ASSERT_EQ(spy.count(), 1);
   EXPECT_TRUE(qvariant_cast<CompositorSnapshot>(spy.first().first()).capabilities.window_activation);
+  EXPECT_TRUE(backend_->numberedWorkspaces().eligible);
 
   EXPECT_EQ(backend_->requestWindowActivation({.process_lineage = {0}}), WindowActivationResult::InvalidRequest);
   EXPECT_EQ(backend_->requestWindowActivation({.process_lineage = {99}}), WindowActivationResult::Missing);
@@ -137,11 +150,11 @@ TEST_F(SwayBackendTest, QueuesOneCapturedWindowAndDrainsBeforeWorkspaceAndRefres
     {"type":"con","id":101,"pid":1,"name":"A"},{"type":"con","id":202,"pid":2,"name":"B"},
     {"type":"con","id":303,"pid":3,"name":"C"}],"floating_nodes":[]})");
 
-  backend_->activateWorkspace(QStringLiteral("4"));
+  backend_->activateNumberedSlot(4);
   EXPECT_EQ(backend_->requestWindowActivation({.process_lineage = {2}}), WindowActivationResult::Accepted);
   EXPECT_EQ(backend_->requestWindowActivation({.process_lineage = {3}}), WindowActivationResult::Busy);
   writeFrame(subscription_, (1U << 31U), R"({})");
-  EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace \"4\""));
+  EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace --no-auto-back-and-forth number 4"));
   writeFrame(request_, 0, R"([{"success":true}])");
   EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("[con_id=202] focus"));
   writeFrame(request_, 0, R"([{"success":true}])");
@@ -159,13 +172,13 @@ TEST_F(SwayBackendTest, RetainsCapturedContainerAcrossRefreshAndDrainsWindowBefo
   writeFrame(request_, 3, R"([{"name":"DP-1","focused":true}])");
   EXPECT_EQ(nextRequest().type, 4U);
   EXPECT_EQ(backend_->requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
-  backend_->activateWorkspace(QStringLiteral("4"));
+  backend_->activateNumberedSlot(4);
   writeFrame(request_, 4,
              R"({"type":"root","nodes":[{"type":"con","id":999,"pid":42,"name":"A"}],"floating_nodes":[]})");
 
   EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("[con_id=101] focus"));
   writeFrame(request_, 0, R"([{"success":true}])");
-  EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace \"4\""));
+  EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace --no-auto-back-and-forth number 4"));
   writeFrame(request_, 0, R"([{"success":true}])");
   EXPECT_EQ(nextRequest().type, 1U);
 }
@@ -182,4 +195,50 @@ TEST_F(SwayBackendTest, RejectionPublishesBoundedDiagnosticAndSchedulesRefresh) 
   EXPECT_TRUE(diagnostic.contains(QStringLiteral("rejected")));
   EXPECT_FALSE(diagnostic.contains(QStringLiteral("Private")));
   EXPECT_EQ(nextRequest().type, 1U);
+}
+
+TEST_F(SwayBackendTest, PreservesExactNamesAndQueuesNumericActivationDuringRefresh) {
+  const QStringList names{"dev:\"web\\tools", "0", "02", "2:web", "+2", "2147483648"};
+  QJsonArray workspaces;
+  for (const auto& name : names) workspaces.append(QJsonObject{{"name", name}, {"num", -1}});
+  backend_->activateNumberedSlot(5);
+  finishRefresh(R"({"type":"root","nodes":[],"floating_nodes":[]})", QJsonDocument(workspaces).toJson());
+  EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace --no-auto-back-and-forth number 5"));
+  for (const auto& name : names) {
+    backend_->activateWorkspace("name:" + name);
+    writeFrame(request_, 0, R"([{"success":true}])");
+    EXPECT_EQ(nextRequest().payload, (QStringLiteral("workspace --no-auto-back-and-forth \"") +
+                                      escapeSwayWorkspaceName(name) + QStringLiteral("\""))
+                                         .toUtf8());
+  }
+  writeFrame(request_, 0, R"([{"success":true}])");
+  EXPECT_EQ(nextRequest().type, 1U);
+}
+
+TEST_F(SwayBackendTest, ResolvesQueuedExistingIdAfterRenameInRefresh) {
+  finishRefresh("{}", R"([{"id":7,"name":"before","num":-1}])");
+  writeFrame(subscription_, (1U << 31U), "{}");
+  EXPECT_EQ(nextRequest().type, 1U);
+  backend_->activateWorkspace("7");
+  writeFrame(request_, 1, R"([{"id":7,"name":"after","num":-1}])");
+  EXPECT_EQ(nextRequest().type, 3U);
+  writeFrame(request_, 3, "[]");
+  EXPECT_EQ(nextRequest().type, 4U);
+  writeFrame(request_, 4, "{}");
+  EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace --no-auto-back-and-forth \"after\""));
+}
+
+TEST_F(SwayBackendTest, ReconnectsSelectedIntegrationAndClearsPublishedState) {
+  QSignalSpy snapshots(backend_.get(), &CompositorBackend::snapshotReady);
+  finishRefresh("{}");
+  ASSERT_TRUE(backend_->numberedWorkspaces().eligible);
+  subscription_->disconnectFromServer();
+  ASSERT_TRUE(waitUntil([&] { return snapshots.count() > 1; }));
+  EXPECT_FALSE(qvariant_cast<CompositorSnapshot>(snapshots.last().first()).connected);
+  EXPECT_FALSE(backend_->numberedWorkspaces().eligible);
+  QTest::qWait(1100);
+  acceptConnections();
+  finishRefresh("{}");
+  EXPECT_TRUE(qvariant_cast<CompositorSnapshot>(snapshots.last().first()).connected);
+  EXPECT_TRUE(backend_->numberedWorkspaces().eligible);
 }

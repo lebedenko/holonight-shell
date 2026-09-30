@@ -1,0 +1,13 @@
+{
+  "id": "hyprland",
+  "desktops": [
+    "Hyprland"
+  ],
+  "markers": [
+    "HYPRLAND_INSTANCE_SIGNATURE"
+  ],
+  "fallback": false,
+  "shellVersion": "@PROJECT_VERSION@",
+  "iid": "org.holonight.Integration/1.0",
+  "library": "@CMAKE_SHARED_MODULE_PREFIX@holonight_backend_hyprland@CMAKE_SHARED_MODULE_SUFFIX@"
+}

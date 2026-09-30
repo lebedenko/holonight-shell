@@ -58,7 +58,7 @@ TEST(ShellApplicationTest, OwnsWindowActivationServerForItsCompositor) {
 }
 
 TEST(ShellApplicationTest, WindowActivationRegistrationConflictDoesNotAbortServiceStartup) {
-  CompositorService blocker_compositor(CompositorKind::Generic);
+  CompositorService blocker_compositor{};
   WindowActivationServer blocker(&blocker_compositor);
   ASSERT_TRUE(blocker.start());
   ShellApplication app;

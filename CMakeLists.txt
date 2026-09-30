@@ -168,7 +168,10 @@ endif()
 qt_policy(SET QTP0004 NEW)
 
 add_subdirectory(libs/holonight-platform)
+add_subdirectory(libs/holonight-integration)
 add_subdirectory(libs/holonight-compositor)
+add_subdirectory(qml/Presentation)
+add_subdirectory(integrations)
 add_subdirectory(libs/holonight-shell-config)
 add_subdirectory(libs/holonight-core)
 add_subdirectory(libs/holonight-services)
@@ -254,13 +257,13 @@ find_program(QMLLINT qmllint
 file(GLOB_RECURSE ALL_SOURCE_FILES
     LIST_DIRECTORIES false
     CONFIGURE_DEPENDS
-    apps/*.cpp apps/*.h libs/*.cpp libs/*.h tests/*.cpp tests/*.h
+    apps/*.cpp apps/*.h libs/*.cpp libs/*.h integrations/*.cpp integrations/*.h tests/*.cpp tests/*.h
 )
 
 file(GLOB_RECURSE ALL_CXX_SRC_IMPL_FILES
     LIST_DIRECTORIES false
     CONFIGURE_DEPENDS
-    apps/*.cpp libs/*.cpp
+    apps/*.cpp libs/*.cpp integrations/*.cpp
 )
 
 file(GLOB_RECURSE ALL_CXX_TEST_IMPL_FILES
@@ -278,6 +281,8 @@ file(GLOB_RECURSE ALL_QML_FILES
     apps/shell/qml/*.qml
     qml/HoloNight/*.qml
     qml/Authentication/*.qml
+    qml/Presentation/*.qml
+    integrations/*/qml/*.qml
 )
 
 if(CLANG_FORMAT)
@@ -398,6 +403,7 @@ if(QMLLINT)
         DEPENDS
             holonight-shell_qmltyperegistration
             holonight_authentication_qml_qmltyperegistration
+            holonight_presentation_qmltyperegistration
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Running qmllint"
         VERBATIM

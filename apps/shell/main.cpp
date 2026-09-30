@@ -69,8 +69,8 @@ int main(int argc, char* argv[]) {
   }
 
   QGuiApplication app(argc, argv);
-  holonight::configureQuickControls();
   ShellApplication shell(&app);
+  holonight::configureQuickControls();
   shell.registerQmlTypes();
   shell.startServices();
   shell.startShell();

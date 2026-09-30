@@ -11,8 +11,6 @@ struct CompositorCapabilities {
   bool workspace_listing{false};
   bool workspace_activation{false};
   bool window_activation{false};
-  bool numeric_workspace_creation{false};
-  bool special_workspaces{false};
   bool active_window{false};
   bool focused_output{false};
   bool urgency{false};
@@ -23,15 +21,15 @@ struct CompositorCapabilities {
 
 struct CompositorWorkspace {
   QString id;
-  std::optional<int> numeric_slot;
   QString display_name;
   int stable_order{0};
-  QString kind{QStringLiteral("normal")};
+  QStringList groups;
   QStringList outputs;
   bool active{false};
   bool focused{false};
   bool urgent{false};
   std::optional<bool> occupied;
+  bool can_activate{true};
 
   bool operator==(const CompositorWorkspace&) const = default;
 };
@@ -51,4 +49,5 @@ struct CompositorSnapshot {
   CompositorCapabilities capabilities;
   QList<CompositorWorkspace> workspaces;
   QHash<QString, CompositorActiveWindow> active_windows;
+  QHash<QString, bool> occupied_outputs;
 };

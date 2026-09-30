@@ -215,7 +215,7 @@ TEST(HyprlandBackend, DrainsWindowThenWorkspaceThenRefresh) {
   fake->connectStream();
   processDeferred();
   finishRefresh(fake, client(QStringLiteral("0xa"), 42, QStringLiteral("A")));
-  backend.activateWorkspace(QStringLiteral("4"));
+  backend.activateNumberedSlot(4);
   EXPECT_EQ(backend.requestWindowActivation({.process_lineage = {42}}), WindowActivationResult::Accepted);
   fake->sendEvent(QByteArrayLiteral("workspace>>2"));
 
@@ -248,7 +248,7 @@ TEST(HyprlandBackend, CoalescesDirtyRefreshAndQueuesActivation) {
   processDeferred();
   fake->sendEvent(QByteArrayLiteral("workspace>>2"));
   fake->sendEvent(QByteArrayLiteral("openwindow>>a,2,kitty,title"));
-  backend.activateWorkspace(QStringLiteral("4"));
+  backend.activateNumberedSlot(4);
   finishRefresh(fake);
 
   EXPECT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch workspace 4"));
@@ -258,7 +258,7 @@ TEST(HyprlandBackend, FallsBackToLuaActivationAndRefreshes) {
   auto transport = std::make_unique<FakeHyprlandTransport>();
   auto* fake = transport.get();
   HyprlandBackend backend(std::move(transport));
-  backend.activateWorkspace(QStringLiteral("4"));
+  backend.activateNumberedSlot(4);
   ASSERT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch workspace 4"));
   fake->finish(QByteArrayLiteral("error: unsupported dispatcher"));
   ASSERT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch hl.dsp.focus({ workspace = 4 })"));
@@ -272,7 +272,12 @@ TEST(HyprlandBackend, ActivatesSpecialWorkspaceByName) {
   auto* fake = transport.get();
   HyprlandBackend backend(std::move(transport));
 
-  backend.activateWorkspace(QStringLiteral("special:magic"));
+  fake->connectStream();
+  processDeferred();
+  fake->finish(R"([{"name":"DP-1","focused":true,"activeWorkspace":{"id":1}}])");
+  fake->finish(R"([{"id":-98,"name":"special:magic"}])");
+  fake->finish("[]");
+  backend.activateSpecialWorkspace(QStringLiteral("special:magic"));
 
   ASSERT_EQ(fake->commands.last(), QByteArrayLiteral("dispatch togglespecialworkspace magic"));
   fake->finish(QByteArrayLiteral("error: unsupported dispatcher"));
@@ -295,13 +300,13 @@ TEST(HyprlandBackend, ProjectsVisibleSpecialWorkspaceFromMonitorState) {
 
   ASSERT_EQ(snapshots.count(), 1);
   const auto snapshot = qvariant_cast<CompositorSnapshot>(snapshots.first().first());
-  const auto special =
-      std::ranges::find(snapshot.workspaces, QStringLiteral("special:magic"), &CompositorWorkspace::id);
-  ASSERT_NE(special, snapshot.workspaces.end());
-  EXPECT_TRUE(special->active);
-  EXPECT_TRUE(special->focused);
-  EXPECT_FALSE(special->urgent);
-  EXPECT_EQ(special->outputs, QStringList{QStringLiteral("DP-5")});
+  EXPECT_EQ(snapshot.workspaces.size(), 1);
+  EXPECT_TRUE(snapshot.occupied_outputs.value("DP-5"));
+  ASSERT_EQ(backend.specialWorkspaces().size(), 1);
+  const auto special = backend.specialWorkspaces().first().toMap();
+  EXPECT_TRUE(special.value("active").toBool());
+  EXPECT_FALSE(special.value("urgent").toBool());
+  EXPECT_EQ(special.value("monitorNames").toStringList(), QStringList{"DP-5"});
 }
 
 TEST(HyprlandBackend, ClearsUrgencyWhenEventAddressOmitsClientPrefix) {
@@ -328,4 +333,24 @@ TEST(HyprlandBackend, ClearsUrgencyWhenEventAddressOmitsClientPrefix) {
   const auto workspace = std::ranges::find(snapshot.workspaces, QStringLiteral("1"), &CompositorWorkspace::id);
   ASSERT_NE(workspace, snapshot.workspaces.end());
   EXPECT_FALSE(workspace->urgent);
+}
+
+TEST(HyprlandBackend, DisconnectClearsPrivateSpecialAndNumberedState) {
+  auto transport = std::make_unique<FakeHyprlandTransport>();
+  auto* fake = transport.get();
+  HyprlandBackend backend(std::move(transport));
+  fake->connectStream();
+  processDeferred();
+  fake->finish(R"([{"name":"DP-1","focused":true,"activeWorkspace":{"id":1}}])");
+  fake->finish(R"([{"id":1,"name":"1"},{"id":-98,"name":"special:magic"}])");
+  fake->finish("[]");
+  ASSERT_TRUE(backend.numberedWorkspaces().eligible);
+  ASSERT_EQ(backend.specialWorkspaces().size(), 1);
+  emit fake->eventStreamDisconnected();
+  EXPECT_FALSE(backend.numberedWorkspaces().eligible);
+  EXPECT_TRUE(backend.specialWorkspaces().isEmpty());
+  fake->connectStream();
+  processDeferred();
+  finishRefresh(fake);
+  EXPECT_TRUE(backend.numberedWorkspaces().eligible);
 }

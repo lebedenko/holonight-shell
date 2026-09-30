@@ -91,6 +91,7 @@ class Setup : public QObject {
     }
   }
   void qmlEngineAvailable(QQmlEngine* engine) {
+    engine->addImportPath(QStringLiteral("qrc:/"));
 #ifdef HOLONIGHT_COMPILED_ACCEPTANCE
     engine->addImageProvider(QStringLiteral("icon"), new TestIconProvider());
 #endif
@@ -98,8 +99,6 @@ class Setup : public QObject {
     // 3. Make sure each test QML engine can find the HolonightShell module.
 #ifndef HOLONIGHT_COMPILED_ACCEPTANCE
     engine->addImportPath(modules_dir_.path());
-#else
-    engine->addImportPath(QStringLiteral("qrc:/"));
 #endif
   }
 

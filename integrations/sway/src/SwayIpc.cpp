@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSet>
 
 #include <cmath>
 #include <limits>
@@ -167,6 +168,9 @@ std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_j
   }
 
   int order = 0;
+  NumberedWorkspaceState numbered{.eligible = true};
+  QSet<int> seen;
+  QHash<QString, QString> names;
   for (const auto value : workspaces.array()) {
     const QJsonObject workspace = value.toObject();
     const QString name = workspace.value(QStringLiteral("name")).toString();
@@ -176,8 +180,14 @@ std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_j
     const int number = workspace.value(QStringLiteral("num")).toInt(-1);
     const QString output = workspace.value(QStringLiteral("output")).toString();
     const bool focused = workspace.value(QStringLiteral("focused")).toBool(false);
-    snapshot.workspaces.append({.id = name,
-                                .numeric_slot = number >= 0 ? std::optional<int>{number} : std::nullopt,
+    const QString id = workspace.contains(QStringLiteral("id"))
+                           ? QString::number(workspace.value(QStringLiteral("id")).toInteger())
+                           : QStringLiteral("name:") + name;
+    names.insert(id, name);
+    if (number > 0) numbered.assignments.insert(id, number);
+    if (number <= 0 || name != QString::number(number) || seen.contains(number)) numbered.eligible = false;
+    seen.insert(number);
+    snapshot.workspaces.append({.id = id,
                                 .display_name = name,
                                 .stable_order = order++,
                                 .outputs = output.isEmpty() ? QStringList{} : QStringList{output},
@@ -186,7 +196,10 @@ std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_j
                                 .urgent = workspace.value(QStringLiteral("urgent")).toBool(false),
                                 .occupied = occupied.value(name, false)});
   }
-  return SwayRefreshResult{.snapshot = std::move(snapshot), .windows = std::move(activation_windows)};
+  return SwayRefreshResult{.snapshot = std::move(snapshot),
+                           .windows = std::move(activation_windows),
+                           .numbered = std::move(numbered),
+                           .names = std::move(names)};
 }
 
 std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces_json, const QByteArray& outputs_json,

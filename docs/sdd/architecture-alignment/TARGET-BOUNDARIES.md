@@ -10,8 +10,10 @@ every transitive CMake usage requirement.
 |---|---|---|
 | `holonight_platform` | `holonight_qt_wayland_client` adapter | Qt Core/Gui/Network/DBus and Wayland client; public headers expose Qt and generated Wayland types. |
 | `holonight_shell_config` | None | Qt Core and tomlplusplus; this is the installed package contract. |
-| `holonight_core` | Shell config, platform | Config and Qt types occur in public headers. |
-| `holonight_compositor` | Platform | Qt Core/Qml/Network types occur in public headers. |
+| `holonight_integration` | None | Neutral contracts and common session support; shell-versioned shared ABI. |
+| `holonight_core` | Shell config, platform, integration | Config and Qt types occur in public headers. |
+| `holonight_compositor` | Integration | Shared state, presentation, and metadata-only plugin discovery. |
+| Runtime integration plugins | Integration, neutral Qt/Wayland dependencies | Private IPC, protocol clients, session adapters and optional UI resources. No shared service or shell QML dependency. |
 | `holonight_services` | Core, compositor, platform | Config, appearance, theme, audio, storage, Qt, and SQL/Concurrent types occur in public headers. Libsecret is implementation-only and now private. |
 | `holonight_surfaces` | Core, compositor, platform, services | Wayland and Qt Quick/Qml/DBus types occur in public headers. The services edge is for notification and MPRIS presentation orchestration. |
 | `holonight_app` / shell executable | All shell libraries | Composes and registers lower-layer services and surfaces. |
@@ -26,6 +28,6 @@ not a shell application dependency.
 `libs/holonight-services/src` currently exports several feature directories because public
 headers include peers from those directories by basename. The same applies to the surfaces
 source directory. Narrowing those paths without first giving public headers stable include
-paths would break consumers and generated metadata. No library split is justified by the
-current evidence; splitting should follow a measured ownership, testability, or build-cost
-problem.
+paths would break consumers and generated metadata. Concrete integration implementation directories are not public includes of any
+shared shell target. Tests may explicitly link private implementation object targets.
+`check-integration-boundaries.py` enforces source, QML, and concrete target isolation.

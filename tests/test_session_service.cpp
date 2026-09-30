@@ -1,10 +1,10 @@
+#include "HyprlandSessionBackend.h"
 #include "SessionService.h"
+#include "SwaySessionBackend.h"
 #include "session/CommandRunner.h"
-#include "session/HyprlandSessionBackend.h"
 #include "session/Locker.h"
 #include "session/LogindSessionBackend.h"
 #include "session/ProcessEnvironment.h"
-#include "session/SwaySessionBackend.h"
 
 #include <QHash>
 #include <QSignalSpy>
@@ -277,7 +277,7 @@ TEST(SessionServiceTest, HyprlandCapabilities) {
   EXPECT_EQ(service.lockerName(), QStringLiteral("hyprlock"));
 }
 
-TEST(SessionServiceTest, DeclaredHyprlandDesktopSelectsHyprlandBeforeInstanceExists) {
+TEST(SessionServiceTest, DefaultServiceDoesNotSelectFromEnvironment) {
   const QByteArray previous_desktop = qgetenv("XDG_CURRENT_DESKTOP");
   const QByteArray previous_instance = qgetenv("HYPRLAND_INSTANCE_SIGNATURE");
   qputenv("XDG_CURRENT_DESKTOP", "HoloNight:Hyprland");
@@ -285,7 +285,7 @@ TEST(SessionServiceTest, DeclaredHyprlandDesktopSelectsHyprlandBeforeInstanceExi
 
   SessionService service;
 
-  EXPECT_EQ(service.backendName(), QStringLiteral("hyprland"));
+  EXPECT_EQ(service.backendName(), QStringLiteral("logind"));
   qputenv("XDG_CURRENT_DESKTOP", previous_desktop);
   qputenv("HYPRLAND_INSTANCE_SIGNATURE", previous_instance);
 }

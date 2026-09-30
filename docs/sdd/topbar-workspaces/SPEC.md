@@ -1,5 +1,12 @@
 # Topbar Workspaces – Requirements Specification
 
+> Architecture update: [Sway compositor support](../sway-compositor-support/SPEC.md)
+> supersedes integer workspace identities, shared special-workspace state, and
+> compositor-specific service/presentation ownership described below. Actual IDs
+> are opaque; numbered slots are an optional provider contract with a five-slot
+> default. Hyprland specials live solely in its runtime plugin and private QML.
+
+
 **Feature:** Workspace pills in topbar showing workspace state (empty, occupied, active, urgent) with animated visual feedback.
 
 **Status:** SDD Session 2

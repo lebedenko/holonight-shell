@@ -42,6 +42,28 @@ class ArchitectureBoundaryFixturesTest(unittest.TestCase):
         result = self.check("libs/holonight-surfaces/src/Widget.cpp", '#include "NotificationService.h"\n')
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_rejects_concrete_backend_include(self):
+        result = self.check("libs/holonight-compositor/src/Service.cpp", '#include "HyprlandBackend.h"\n')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Integration boundary", result.stderr)
+
+    def test_rejects_private_widget_from_shell(self):
+        result = self.check("apps/shell/qml/Workspace.qml", 'SpecialWorkspaceDot {}\n')
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_rejects_shell_singletons_from_plugin(self):
+        result = self.check("integrations/example/qml/Widget.qml", 'import HolonightShell\n')
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_rejects_shared_service_from_plugin(self):
+        result = self.check("integrations/example/src/Backend.cpp", '#include "ForbiddenService.h"\n')
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_rejects_plugin_link_to_shared_service(self):
+        result = self.check("integrations/example/CMakeLists.txt",
+                            'target_link_libraries(example PRIVATE holonight_services)\n')
+        self.assertNotEqual(result.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,15 +1,10 @@
 add_library(holonight_platform STATIC
-    src/HyprlandIpc.h
-    src/HyprlandIpc.cpp
-    src/HyprlandIpcClient.h
-    src/HyprlandIpcClient.cpp
     src/DbusPropertyClient.h
     src/DbusPropertyClient.cpp
 )
 
 qt6_generate_wayland_protocol_client_sources(holonight_platform
     FILES
-        ${PROJECT_SOURCE_DIR}/protocols/ext-workspace-v1.xml
         ${PROJECT_SOURCE_DIR}/protocols/ext-idle-notify-v1.xml
         ${XDG_SHELL_PROTOCOL}
 )

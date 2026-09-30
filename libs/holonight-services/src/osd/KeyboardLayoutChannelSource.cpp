@@ -14,11 +14,19 @@ KeyboardLayoutChannelSource::KeyboardLayoutChannelSource(KeyboardLayoutService* 
   // it. The second carries the coherent pair and is the one that displays. Committing the code
   // first would swap which of the two survives the diff and put the wrong name on screen -- see
   // KeyboardLayoutChannelSourceTest.EmissionOrderKeepsTheMismatchedPairDiffable.
-  connect(service_, &KeyboardLayoutService::layoutCodeChanged, this, &KeyboardLayoutChannelSource::emitCurrentState);
+  available_ = service_->available();
+  connect(service_, &KeyboardLayoutService::layoutCodeChanged, this, [this] {
+    if (available_ != service_->available()) {
+      available_ = service_->available();
+      emit availableChanged(available_);
+    }
+    emitCurrentState();
+  });
   connect(service_, &KeyboardLayoutService::layoutNameChanged, this, &KeyboardLayoutChannelSource::emitCurrentState);
 }
 
 void KeyboardLayoutChannelSource::emitCurrentState() {
+  if (!service_->available() || service_->layoutName().isEmpty()) return;
   const QString code = service_->layoutCode();
   const QString name = service_->layoutName();
 

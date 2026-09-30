@@ -1,0 +1,9 @@
+{
+  "id": "wayland",
+  "desktops": [],
+  "markers": [],
+  "fallback": true,
+  "shellVersion": "@PROJECT_VERSION@",
+  "iid": "org.holonight.Integration/1.0",
+  "library": "@CMAKE_SHARED_MODULE_PREFIX@holonight_backend_wayland@CMAKE_SHARED_MODULE_SUFFIX@"
+}

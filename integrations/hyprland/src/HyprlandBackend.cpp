@@ -64,7 +64,8 @@ void collectClients(const QList<HyprlandClientInfo>& clients, QHash<int, int>* w
 void appendWorkspaces(const QJsonArray& workspaces, const QList<HyprlandClientInfo>& clients,
                       const QHash<int, QString>& workspace_outputs, const QSet<int>& active_workspaces,
                       const QHash<int, int>& window_counts, const QHash<int, HyprlandClientInfo>& focused_clients,
-                      QSet<QString>* urgent_addresses, CompositorSnapshot* snapshot) {
+                      QSet<QString>* urgent_addresses, CompositorSnapshot* snapshot, NumberedWorkspaceState* numbered,
+                      QVariantList* specials) {
   int order = 0;
   for (const auto value : workspaces) {
     const QJsonObject workspace = value.toObject();
@@ -86,18 +87,30 @@ void appendWorkspaces(const QJsonArray& workspaces, const QList<HyprlandClientIn
         });
       });
     }
-    snapshot->workspaces.append({.id = special ? name : QString::number(workspace_id),
-                                 .numeric_slot = special ? std::nullopt : std::optional<int>{workspace_id},
-                                 .display_name = name,
-                                 .stable_order = order++,
-                                 .kind = special ? QStringLiteral("special") : QStringLiteral("normal"),
-                                 .outputs = workspace_outputs.contains(workspace_id)
-                                                ? QStringList{workspace_outputs.value(workspace_id)}
-                                                : QStringList{},
-                                 .active = active,
-                                 .focused = active && workspace_outputs.value(workspace_id) == snapshot->focused_output,
-                                 .urgent = urgent,
-                                 .occupied = window_counts.value(workspace_id) > 0});
+    CompositorWorkspace entry{.id = special ? name : QString::number(workspace_id),
+                              .display_name = name,
+                              .stable_order = order++,
+                              .outputs = workspace_outputs.contains(workspace_id)
+                                             ? QStringList{workspace_outputs.value(workspace_id)}
+                                             : QStringList{},
+                              .active = active,
+                              .focused = active && workspace_outputs.value(workspace_id) == snapshot->focused_output,
+                              .urgent = urgent,
+                              .occupied = window_counts.value(workspace_id) > 0};
+    if (active) {
+      for (const auto& output : entry.outputs) snapshot->occupied_outputs[output] |= entry.occupied.value_or(false);
+    }
+    if (special) {
+      specials->append(QVariantMap{{QStringLiteral("id"), entry.id},
+                                   {QStringLiteral("name"), entry.display_name},
+                                   {QStringLiteral("active"), entry.active},
+                                   {QStringLiteral("urgent"), entry.urgent},
+                                   {QStringLiteral("occupied"), entry.occupied.value_or(false)},
+                                   {QStringLiteral("monitorNames"), entry.outputs}});
+    } else {
+      numbered->assignments.insert(entry.id, workspace_id);
+      snapshot->workspaces.append(std::move(entry));
+    }
     if (active && focused_clients.contains(workspace_id)) {
       const HyprlandClientInfo& client = focused_clients[workspace_id];
       snapshot->active_windows.insert(workspace_outputs.value(workspace_id),
@@ -111,9 +124,22 @@ HyprlandBackend::HyprlandBackend(HyprlandIpcTransportPtr transport, QObject* par
     : CompositorBackend(parent),
       transport_(transport ? std::move(transport)
                            : std::make_unique<HyprlandIpcClient>(QStringLiteral("CompositorService:"))) {
+  connect(this, &CompositorBackend::snapshotReady, this, [this](const CompositorSnapshot& snapshot) {
+    if (!snapshot.connected) {
+      numbered_ = {};
+      special_workspaces_.clear();
+      emit specialWorkspacesChanged();
+    }
+  });
   connect(transport_.get(), &HyprlandIpcTransport::eventStreamConnected, this, &HyprlandBackend::scheduleRefresh);
-  connect(transport_.get(), &HyprlandIpcTransport::eventStreamDisconnected, this,
-          [this] { fail(QStringLiteral("Hyprland IPC disconnected")); });
+  connect(transport_.get(), &HyprlandIpcTransport::eventStreamDisconnected, this, [this] {
+    pending_activation_.clear();
+    pending_window_address_.reset();
+    activation_candidates_.clear();
+    activation_addresses_.clear();
+    urgent_addresses_.clear();
+    fail(QStringLiteral("Hyprland IPC disconnected"));
+  });
   connect(transport_.get(), &HyprlandIpcTransport::eventLineReceived, this, &HyprlandBackend::handleEvent);
   connect(transport_.get(), &HyprlandIpcTransport::commandFinished, this, &HyprlandBackend::handleCommand);
 }
@@ -231,7 +257,7 @@ void HyprlandBackend::drainWork() {
   }
   if (!pending_activation_.isEmpty()) {
     const QString activation = std::exchange(pending_activation_, {});
-    activateWorkspace(activation);
+    dispatchWorkspace(activation);
     return;
   }
   if (refresh_dirty_) {
@@ -290,8 +316,6 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
       .connected = true,
       .capabilities = {.workspace_listing = true,
                        .workspace_activation = true,
-                       .numeric_workspace_creation = true,
-                       .special_workspaces = true,
                        .active_window = true,
                        .focused_output = true,
                        .urgency = true,
@@ -303,8 +327,11 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
   QHash<int, int> window_counts;
   QHash<int, HyprlandClientInfo> focused_clients;
   collectClients(*clients, &window_counts, &focused_clients);
+  numbered_ = {.eligible = true};
+  special_workspaces_.clear();
   appendWorkspaces(workspaces.array(), *clients, workspace_outputs, active_workspaces, window_counts, focused_clients,
-                   &urgent_addresses_, &snapshot);
+                   &urgent_addresses_, &snapshot, &numbered_, &special_workspaces_);
+  emit specialWorkspacesChanged();
   QList<WindowActivationCandidate> activation_candidates;
   QList<QString> activation_addresses;
   for (const HyprlandClientInfo& client : *clients) {
@@ -342,6 +369,19 @@ WindowActivationResult HyprlandBackend::requestWindowActivation(const WindowActi
 }
 
 void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
+  if (numbered_.assignments.contains(workspace_id)) dispatchWorkspace(workspace_id);
+}
+void HyprlandBackend::activateNumberedSlot(int slot) {
+  if (slot > 0) dispatchWorkspace(QString::number(slot));
+}
+void HyprlandBackend::activateSpecialWorkspace(const QString& id) {
+  for (const auto& value : special_workspaces_)
+    if (value.toMap().value(QStringLiteral("id")).toString() == id) {
+      dispatchWorkspace(id);
+      return;
+    }
+}
+void HyprlandBackend::dispatchWorkspace(const QString& workspace_id) {
   const bool special = workspace_id.startsWith(QStringLiteral("special:"));
   bool valid = false;
   workspace_id.toInt(&valid);

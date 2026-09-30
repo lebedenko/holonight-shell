@@ -8,6 +8,8 @@
 
 class QGuiApplication;
 class CompositorService;
+class IntegrationLoader;
+class WorkspacePresentation;
 class AiChatService;
 class AppearanceService;
 class CalendarService;
@@ -121,7 +123,9 @@ class ShellApplication : public QObject {
   ActivityGateManager* activity_gate_manager_ = nullptr;
   ConfigService* config_service_ = nullptr;
   CalendarService* calendar_service_ = nullptr;
+  IntegrationLoader* integration_ = nullptr;
   CompositorService* compositor_ = nullptr;
+  WorkspacePresentation* workspace_presentation_ = nullptr;
   WindowActivationServer* window_activation_server_ = nullptr;
   KeyboardLayoutService* keyboard_layout_ = nullptr;
   AiChatService* ai_chat_service_ = nullptr;

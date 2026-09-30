@@ -4,6 +4,7 @@
 #include "BrightnessChannelSource.h"
 #include "BrightnessService.h"
 #include "HyprlandIpcClient.h"
+#include "HyprlandLayoutProvider.h"
 #include "KeyboardLayoutChannelSource.h"
 #include "KeyboardLayoutService.h"
 #include "NullBrightnessBackend.h"
@@ -385,7 +386,7 @@ TEST(BrightnessChannelSourceTest, ConsecutiveBrightnessChangesEmitSeparateEvents
   EXPECT_EQ(levelAt(spy, 1).value, 80);
 }
 
-TEST(BrightnessChannelSourceTest, NeverEmitsAvailableChanged) {
+TEST(BrightnessChannelSourceTest, EmitsAvailabilityWhenProviderBecomesReady) {
   // Intentional, not an omission: hasBacklight is a CONSTANT property with no notify signal, so
   // there is nothing to observe. OsdController seeds availability with a post-connect
   // isAvailable() call instead (DESIGN.md §4). If this ever starts firing, that seed call in the
@@ -429,12 +430,12 @@ OsdSelectionEvent selectionAt(const QSignalSpy& spy, int index) {
 
 }  // namespace
 
-TEST(KeyboardLayoutChannelSourceTest, ReportsItsChannelAndIsAlwaysAvailable) {
-  KeyboardLayoutService service(std::make_unique<FakeLayoutTransport>());
+TEST(KeyboardLayoutChannelSourceTest, ReportsItsChannelAndWaitsForProviderState) {
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::make_unique<FakeLayoutTransport>()));
   KeyboardLayoutChannelSource source(&service);
 
   EXPECT_EQ(source.channel(), QStringLiteral("keyboard-layout"));
-  EXPECT_TRUE(source.isAvailable());
+  EXPECT_FALSE(source.isAvailable());
 }
 
 // A layout switch moves both properties, so KeyboardLayoutService fires both signals and this
@@ -444,7 +445,7 @@ TEST(KeyboardLayoutChannelSourceTest, ReportsItsChannelAndIsAlwaysAvailable) {
 TEST(KeyboardLayoutChannelSourceTest, LayoutChangeEmitsSelectionEventWithBothLabels) {
   auto transport = std::make_unique<FakeLayoutTransport>();
   FakeLayoutTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   KeyboardLayoutChannelSource source(&service);
   service.start();
 
@@ -452,8 +453,8 @@ TEST(KeyboardLayoutChannelSourceTest, LayoutChangeEmitsSelectionEventWithBothLab
 
   fake->fireLayout("English (US)");
 
-  ASSERT_EQ(spy.count(), 2);
-  const OsdSelectionEvent event = selectionAt(spy, 1);
+  ASSERT_EQ(spy.count(), 1);
+  const OsdSelectionEvent event = selectionAt(spy, 0);
   EXPECT_EQ(event.channel, QStringLiteral("keyboard-layout"));
   EXPECT_EQ(event.short_label, QStringLiteral("EN"));
   EXPECT_EQ(event.full_label, QStringLiteral("English (US)"));
@@ -462,7 +463,7 @@ TEST(KeyboardLayoutChannelSourceTest, LayoutChangeEmitsSelectionEventWithBothLab
 TEST(KeyboardLayoutChannelSourceTest, SwitchingLayoutEmitsTheUpdatedPair) {
   auto transport = std::make_unique<FakeLayoutTransport>();
   FakeLayoutTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   KeyboardLayoutChannelSource source(&service);
   service.start();
 
@@ -489,7 +490,7 @@ TEST(KeyboardLayoutChannelSourceTest, SwitchingLayoutEmitsTheUpdatedPair) {
 TEST(KeyboardLayoutChannelSourceTest, EmissionOrderKeepsTheMismatchedPairDiffable) {
   auto transport = std::make_unique<FakeLayoutTransport>();
   FakeLayoutTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   KeyboardLayoutChannelSource source(&service);
   service.start();
 
@@ -519,7 +520,7 @@ TEST(KeyboardLayoutChannelSourceTest, EmissionOrderKeepsTheMismatchedPairDiffabl
 TEST(KeyboardLayoutChannelSourceTest, NameOnlyChangeStillEmitsAndLeavesTheDiffToTheController) {
   auto transport = std::make_unique<FakeLayoutTransport>();
   FakeLayoutTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   KeyboardLayoutChannelSource source(&service);
   service.start();
 
@@ -535,27 +536,19 @@ TEST(KeyboardLayoutChannelSourceTest, NameOnlyChangeStillEmitsAndLeavesTheDiffTo
   EXPECT_EQ(event.full_label, QStringLiteral("English (UK)"));
 }
 
-// REQ-F-011: fullLabel falls back to the code so the renderer never receives an empty second line.
-TEST(KeyboardLayoutChannelSourceTest, EmptyNameFallsBackToTheCodeForFullLabel) {
-  KeyboardLayoutService service(std::make_unique<FakeLayoutTransport>());
+TEST(KeyboardLayoutChannelSourceTest, UnavailableProviderSuppressesEvents) {
+  KeyboardLayoutService service;
   KeyboardLayoutChannelSource source(&service);
-
   QSignalSpy spy(&source, &OsdChannelSource::eventObserved);
-
-  // No layout has been observed yet, so both properties are empty -- the degenerate case the
-  // fallback exists for.
   emit service.layoutCodeChanged();
-
-  ASSERT_EQ(spy.count(), 1);
-  const OsdSelectionEvent event = selectionAt(spy, 0);
-  EXPECT_TRUE(event.short_label.isEmpty());
-  EXPECT_EQ(event.full_label, event.short_label);
+  EXPECT_FALSE(source.isAvailable());
+  EXPECT_EQ(spy.count(), 0);
 }
 
-TEST(KeyboardLayoutChannelSourceTest, NeverEmitsAvailableChanged) {
+TEST(KeyboardLayoutChannelSourceTest, EmitsAvailabilityWhenProviderBecomesReady) {
   auto transport = std::make_unique<FakeLayoutTransport>();
   FakeLayoutTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   KeyboardLayoutChannelSource source(&service);
   service.start();
 
@@ -564,14 +557,14 @@ TEST(KeyboardLayoutChannelSourceTest, NeverEmitsAvailableChanged) {
   fake->fireLayout("English (US)");
   fake->fireLayout("German");
 
-  EXPECT_EQ(spy.count(), 0);
+  EXPECT_EQ(spy.count(), 1);
 }
 
 TEST(KeyboardLayoutChannelSourceTest, NullServiceIsInertRatherThanACrash) {
   KeyboardLayoutChannelSource source(nullptr);
 
   EXPECT_EQ(source.channel(), QStringLiteral("keyboard-layout"));
-  EXPECT_TRUE(source.isAvailable());
+  EXPECT_FALSE(source.isAvailable());
 }
 
 // ---------------------------------------------------------------------------

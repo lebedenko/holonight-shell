@@ -7,15 +7,16 @@ Status: Accepted
 The Shell supports Hyprland 0.56.2, Sway 1.12, and compositors exposing
 `ext-workspace-v1`. Compositor identity is selected once during application
 construction. The selected backend owns compositor IPC and publishes complete
-snapshots through `CompositorService`; QML never consumes backend objects.
+snapshots through `CompositorService`. Only a plugin’s private contribution receives
+its instance-owned backend model. Common QML consumes neutral contracts.
 
 ## Public contract
 
-`CompositorService` exposes `backendKind`, `backendName`, `connected`,
+`CompositorService` exposes `connected`,
 `diagnostic`, `revision`, `focusedOutput`, `workspaces`, capability flags,
 output-scoped active-window fields, `isOutputEmpty(output)`, and
 `activateWorkspace(id)`. Workspace IDs are opaque strings. Model roles are:
-`workspaceId`, `numericSlot`, `displayName`, `stableOrder`, `workspaceKind`,
+`workspaceId`, `displayName`, `stableOrder`, `groups`, `canActivate`,
 `outputs`, `active`, `focused`, `urgent`, `occupied`, and `visualState`.
 
 Each refresh replaces workspace, output, focus, urgency, occupancy, and active
@@ -30,22 +31,41 @@ desktop declaration contains both known tokens it is ambiguous and selects
 generic. Only when no known desktop token exists are runtime markers examined:
 exactly one of non-empty `HYPRLAND_INSTANCE_SIGNATURE` and `SWAYSOCK` selects
 its backend; both or neither select generic. Socket availability never changes
-the selected identity.
+the selected identity. Desktop tokens and markers are declared in plugin metadata,
+not shared service branches. A missing or incompatible plugin logs a diagnostic
+and uses the metadata-designated fallback when available. If none can load,
+independent shell services continue with compositor features unavailable.
 
 ## Capability truth table
 
 | Capability | Hyprland | Sway | Generic ext-workspace |
 |---|---:|---:|---:|
-| list/activate workspaces | yes | yes | protocol present |
-| create numeric slots | yes | no | no |
-| special workspaces | yes | no | no |
+| list workspaces | yes | yes | protocol present |
+| activate existing workspace | yes | yes | per-workspace capability |
+| optional numbered provider | yes | yes | absent |
+| private topbar contribution | special-workspace dots | absent | absent |
 | active-window data | yes | yes | no |
 | focused output | yes | yes | no |
 | urgency | yes | yes | protocol present |
 | occupancy | yes | yes | no |
 
-Configured empty numeric slots are synthesized only when numeric creation is
-supported. The generic protocol reports workspace output membership, but does
+`WorkspacePresentation.useNumericWorkspacePresentation` comes from the optional
+`NumberedWorkspaceProvider`, independently of common snapshot capabilities.
+Hyprland retains its numeric strip. Sway automatically uses the same moving numeric
+window and arrows when every reported workspace has a canonical positive integer
+name matching its numeric slot, with no duplicate slots. An empty connected
+snapshot also qualifies. Named workspaces, number-prefixed names such as `2:web`,
+zero, and ambiguous numbering use the existing-workspace list, where the configured
+count remains a maximum visible list size. Generic compositors always use the list.
+
+Numeric presentation shows the configured number of display slots, including empty
+slots; displaying a slot does not create a compositor workspace. Clicking an empty
+slot creates it. Sway activates canonical positive numeric targets with
+`workspace --no-auto-back-and-forth number N`, reusing an existing numbered workspace
+rather than creating a duplicate if it has since been renamed. Other targets retain
+escaped exact-name activation. Changing the count updates display slots immediately;
+actual snapshots never receive synthetic entries. Special workspaces are private
+Hyprland state and are excluded from all common workspace snapshots. The generic protocol reports workspace output membership, but does
 not identify the keyboard-focused output; placement therefore falls back to the
 primary screen. Unknown occupancy keeps desktop widgets unmapped.
 

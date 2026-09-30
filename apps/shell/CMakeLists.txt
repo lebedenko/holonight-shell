@@ -53,6 +53,7 @@ holonight_shell_qml(holonight-shell)
 target_link_libraries(holonight-shell PRIVATE
     holonight_app
     holonight_componentsplugin
+    holonight_presentationplugin
 )
 
 set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES

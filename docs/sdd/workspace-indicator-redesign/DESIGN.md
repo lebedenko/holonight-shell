@@ -1,5 +1,12 @@
 # Workspace Indicator Redesign — Architecture Design
 
+> Architecture update: [Sway compositor support](../sway-compositor-support/SPEC.md)
+> supersedes integer workspace identities, shared special-workspace state, and
+> compositor-specific service/presentation ownership described below. Actual IDs
+> are opaque; numbered slots are an optional provider contract with a five-slot
+> default. Hyprland specials live solely in its runtime plugin and private QML.
+
+
 **Status:** Design Draft
 **Date:** 2026-07-01
 **Spec:** `docs/sdd/workspace-indicator-redesign/SPEC.md` (v1.0)

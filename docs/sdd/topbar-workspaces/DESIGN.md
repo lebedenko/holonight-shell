@@ -1,5 +1,12 @@
 # DESIGN: Topbar Workspaces
 
+> Architecture update: [Sway compositor support](../sway-compositor-support/SPEC.md)
+> supersedes integer workspace identities, shared special-workspace state, and
+> compositor-specific service/presentation ownership described below. Actual IDs
+> are opaque; numbered slots are an optional provider contract with a five-slot
+> default. Hyprland specials live solely in its runtime plugin and private QML.
+
+
 **SDD Session:** topbar-workspaces
 **Feature:** ext-workspace-v1 Wayland protocol binding, WorkspaceModel, and WorkspacePill/WorkspaceSection QML components
 **Status:** Design

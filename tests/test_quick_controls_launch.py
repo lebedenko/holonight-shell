@@ -135,6 +135,13 @@ def main():
                                 while time.monotonic() < deadline:
                                     assert child.poll() is None, f'{name}: premature exit {child.returncode}; see {logfile}'
                                     time.sleep(0.05)
+                                if frontend == 'shell':
+                                    mappings = Path(f'/proc/{child.pid}/maps').read_text()
+                                    assert 'libholonight_backend_sway.so' in mappings, 'selected plugin was not loaded'
+                                    assert 'libholonight_backend_hyprland.so' not in mappings, 'inactive Hyprland plugin loaded'
+                                    assert 'libholonight_backend_wayland.so' not in mappings, 'inactive generic plugin loaded'
+                                    if installed:
+                                        assert str(relocated / 'lib/holonight/backends') in mappings
                             finally:
                                 stop(child)
                             if frontend != 'shell':

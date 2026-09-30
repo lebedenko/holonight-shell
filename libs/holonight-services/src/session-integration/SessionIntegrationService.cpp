@@ -571,7 +571,7 @@ QVariantList SessionIntegrationService::addPortalAndDesktopServiceDiagnostics() 
       addDiagnostic(QStringLiteral("portal-backends"), QStringLiteral("Portal implementations"),
                     portal_backends.isEmpty() ? QStringLiteral("warning") : QStringLiteral("ok"),
                     portal_backends.isEmpty() ? QStringLiteral("none") : portal_backends.join(QStringLiteral(", ")),
-                    QStringLiteral("Hyprland plus toolkit portal backend"),
+                    QStringLiteral("Session portal implementations"),
                     portal_backends.isEmpty() ? QStringLiteral("No active portal implementation names were found.")
                                               : QStringLiteral("Active portal implementation names were found.")));
 

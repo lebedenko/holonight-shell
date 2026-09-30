@@ -3,10 +3,12 @@
 #include "AudioService.h"
 #include "BatteryService.h"
 #include "BatteryState.h"
+#include "CompositorBackend.h"
 #include "CompositorService.h"
 #include "ConfigService.h"
 #include "DbusPropertyClient.h"
 #include "GeneratedQmlFiles.h"
+#include "IntegrationLoader.h"
 #include "MprisDbus.h"
 #include "MprisService.h"
 #include "PowerProfilesService.h"
@@ -15,6 +17,7 @@
 #include "TrayModel.h"
 #include "WeatherIconBridge.h"
 #include "WifiNetworkModel.h"
+#include "WorkspacePresentation.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -1088,6 +1091,15 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
  private:
   HoloNight::System::StorageResult last_request_;
 };
+class FakeNumberedProvider : public QObject, public NumberedWorkspaceProvider {
+  Q_OBJECT
+ public:
+  NumberedWorkspaceState numberedWorkspaces() const override { return {.eligible = true, .assignments = {{"1", 1}}}; }
+  void activateNumberedSlot(int slot) override { emit slotActivated(slot); }
+ Q_SIGNALS:
+  void slotActivated(int slot);
+};
+
 class FakeQmlServices {
  public:
   FakeQmlServices()
@@ -1099,14 +1111,11 @@ class FakeQmlServices {
                                         .focused_output = QStringLiteral("DP-1"),
                                         .capabilities = {.workspace_listing = true,
                                                          .workspace_activation = true,
-                                                         .numeric_workspace_creation = true,
-                                                         .special_workspaces = true,
                                                          .active_window = true,
                                                          .focused_output = true,
                                                          .urgency = true,
                                                          .occupancy = true},
                                         .workspaces = {{.id = QStringLiteral("1"),
-                                                        .numeric_slot = 1,
                                                         .display_name = QStringLiteral("1"),
                                                         .outputs = {QStringLiteral("DP-1")},
                                                         .active = true,
@@ -1150,6 +1159,9 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "MimeService", &mime_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IdleService", &idle_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspacePresentation", &presentation_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IntegrationLoader", &integration_loader_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "NumberedTestProvider", &numbered_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StorageService", &storage_) >= 0 &&
@@ -1202,7 +1214,11 @@ class FakeQmlServices {
   FakeMimeService mime_;
   FakeIdleService idle_;
   ConfigService config_service_;
-  CompositorService compositor_{CompositorKind::Hyprland};
+  // Record activation requests without sending commands to a real compositor.
+  CompositorService compositor_;
+  FakeNumberedProvider numbered_;
+  WorkspacePresentation presentation_{&compositor_, &numbered_};
+  IntegrationLoader integration_loader_{QStringList{}, QProcessEnvironment{}};
   BatteryService battery_;
   SuspendInhibitorService suspend_inhibitor_service_{SuspendInhibitorService::SkipInit};
   AudioService audio_;

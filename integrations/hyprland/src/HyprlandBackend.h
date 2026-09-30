@@ -2,17 +2,28 @@
 
 #include "CompositorBackend.h"
 #include "HyprlandIpcClient.h"
+#include "NumberedWorkspaceProvider.h"
 
 #include <QSet>
+#include <QVariantList>
 
 #include <cstdint>
 
-class HyprlandBackend final : public CompositorBackend {
+class HyprlandBackend final : public CompositorBackend, public NumberedWorkspaceProvider {
   Q_OBJECT
+  Q_PROPERTY(QVariantList specialWorkspaces READ specialWorkspaces NOTIFY specialWorkspacesChanged)
 
  public:
   explicit HyprlandBackend(HyprlandIpcTransportPtr transport = {}, QObject* parent = nullptr);
   void start() override;
+  NumberedWorkspaceState numberedWorkspaces() const override { return numbered_; }
+  void activateNumberedSlot(int slot) override;
+  QVariantList specialWorkspaces() const { return special_workspaces_; }
+  Q_INVOKABLE void activateSpecialWorkspace(const QString& id);
+ Q_SIGNALS:
+  void specialWorkspacesChanged();
+
+ public:
   void activateWorkspace(const QString& workspace_id) override;
   [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) override;
 
@@ -39,6 +50,9 @@ class HyprlandBackend final : public CompositorBackend {
   void publishClients(const QByteArray& clients_json);
   void fail(const QString& diagnostic);
 
+  void dispatchWorkspace(const QString& id);
+  NumberedWorkspaceState numbered_;
+  QVariantList special_workspaces_;
   HyprlandIpcTransportPtr transport_;
   Phase phase_{Phase::Idle};
   QByteArray monitors_;

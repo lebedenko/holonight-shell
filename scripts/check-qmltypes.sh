@@ -21,6 +21,8 @@ required_types=(
   "StorageService"
   "NotificationService"
   "CompositorService"
+  "WorkspacePresentation"
+  "IntegrationLoader"
 )
 
 if [[ ! -s "${qmltypes_file}" ]]; then
@@ -119,3 +121,8 @@ for component in AuthenticationDialog AuthenticationPrompt IdentitySelector Mess
   grep -Fqx "${component} 1.0 ${component}.qml" "${authentication_module_dir}/qmldir"
 done
 echo "Authentication QML metadata check passed."
+
+if grep -Eq 'HyprlandBackend|SwayBackend|SpecialWorkspace' "${qmltypes_file}" "${qmldir_file}" "${raw_qml_qrc}"; then
+  echo "Concrete integration leaked into shared QML registration" >&2
+  exit 1
+fi

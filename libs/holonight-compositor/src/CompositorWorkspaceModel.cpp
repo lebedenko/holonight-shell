@@ -18,14 +18,14 @@ QVariant CompositorWorkspaceModel::data(const QModelIndex& index, int role) cons
   switch (role) {
     case WorkspaceIdRole:
       return workspace.id;
-    case NumericSlotRole:
-      return workspace.numeric_slot ? QVariant(*workspace.numeric_slot) : QVariant{};
     case DisplayNameRole:
       return workspace.display_name;
     case StableOrderRole:
       return workspace.stable_order;
-    case WorkspaceKindRole:
-      return workspace.kind;
+    case CanActivateRole:
+      return workspace.can_activate;
+    case GroupsRole:
+      return workspace.groups;
     case OutputsRole:
       return workspace.outputs;
     case ActiveRole:
@@ -56,17 +56,10 @@ QVariant CompositorWorkspaceModel::data(const QModelIndex& index, int role) cons
 }
 
 QHash<int, QByteArray> CompositorWorkspaceModel::roleNames() const {
-  return {{WorkspaceIdRole, "workspaceId"},
-          {NumericSlotRole, "numericSlot"},
-          {DisplayNameRole, "displayName"},
-          {StableOrderRole, "stableOrder"},
-          {WorkspaceKindRole, "workspaceKind"},
-          {OutputsRole, "outputs"},
-          {ActiveRole, "active"},
-          {FocusedRole, "focused"},
-          {UrgentRole, "urgent"},
-          {OccupiedRole, "occupied"},
-          {VisualStateRole, "visualState"}};
+  return {{WorkspaceIdRole, "workspaceId"}, {DisplayNameRole, "displayName"}, {StableOrderRole, "stableOrder"},
+          {CanActivateRole, "canActivate"}, {GroupsRole, "groups"},           {OutputsRole, "outputs"},
+          {ActiveRole, "active"},           {FocusedRole, "focused"},         {UrgentRole, "urgent"},
+          {OccupiedRole, "occupied"},       {VisualStateRole, "visualState"}};
 }
 
 void CompositorWorkspaceModel::replace(QList<CompositorWorkspace> workspaces) {

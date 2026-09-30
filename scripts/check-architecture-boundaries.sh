@@ -105,4 +105,6 @@ if (( ${#authentication_install_violations[@]} > 0 )); then
   exit 1
 fi
 
+python3 "$(dirname -- "${BASH_SOURCE[0]}")/check-integration-boundaries.py" "${repo_root}"
+
 echo "Architecture boundary check passed."

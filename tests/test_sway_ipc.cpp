@@ -58,11 +58,8 @@ TEST(SwayIpc, ParsesNamedWorkspacesFloatingWindowsAndFocusedOutput) {
   ASSERT_TRUE(snapshot.has_value());
   ASSERT_EQ(snapshot->workspaces.size(), 2);
   EXPECT_EQ(snapshot->focused_output, QStringLiteral("DP-1"));
-  EXPECT_EQ(snapshot->workspaces.at(0).id, QStringLiteral("dev:web"));
-  EXPECT_FALSE(snapshot->workspaces.at(0).numeric_slot.has_value());
+  EXPECT_EQ(snapshot->workspaces.at(0).id, QStringLiteral("name:dev:web"));
   EXPECT_TRUE(snapshot->workspaces.at(0).occupied.value());
-  ASSERT_TRUE(snapshot->workspaces.at(1).numeric_slot.has_value());
-  EXPECT_EQ(*snapshot->workspaces.at(1).numeric_slot, 2);
   EXPECT_EQ(snapshot->active_windows.value(QStringLiteral("DP-1")).app_id, QStringLiteral("code"));
 }
 

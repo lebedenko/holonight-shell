@@ -67,7 +67,7 @@ TEST(WindowActivationResolver, RejectsMissingAndStillAmbiguousTitleMatches) {
 
 TEST(CompositorServiceWindowActivation, GatesRequestsAndBackendsRejectByDefault) {
   auto backend = std::make_unique<RejectingActivationBackend>();
-  CompositorService service(CompositorKind::Generic, std::move(backend));
+  CompositorService service(std::move(backend));
 
   EXPECT_EQ(service.requestWindowActivation(request({42})), WindowActivationResult::Disconnected);
   service.publishSnapshotForTest({.connected = true});

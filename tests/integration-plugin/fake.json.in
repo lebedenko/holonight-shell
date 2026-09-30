@@ -1,0 +1,1 @@
+{"id":"test-compositor","desktops":["TestDesktop"],"markers":["TEST_COMPOSITOR_SOCKET"],"shellVersion":"@PROJECT_VERSION@"}

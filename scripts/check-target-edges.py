@@ -9,8 +9,9 @@ from pathlib import Path
 ALLOWED = {
     "holonight_platform": {"holonight_qt_wayland_client"},
     "holonight_shell_config": set(),
-    "holonight_core": {"holonight_platform", "holonight_shell_config"},
-    "holonight_compositor": {"holonight_platform"},
+    "holonight_core": {"holonight_platform", "holonight_shell_config", "holonight_integration"},
+    "holonight_compositor": {"holonight_integration"},
+    "holonight_integration": set(),
     "holonight_services": {"holonight_core", "holonight_compositor", "holonight_platform"},
     "holonight_surfaces": {"holonight_core", "holonight_compositor", "holonight_platform",
                            "holonight_services"},

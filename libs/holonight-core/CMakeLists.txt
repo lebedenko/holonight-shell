@@ -14,6 +14,7 @@ add_library(holonight_core STATIC
 target_link_libraries(holonight_core PUBLIC
     HoloNightShellConfig::Config
     holonight_platform
+    holonight_integration
     Qt6::Core
     Qt6::Qml
     Qt6::DBus

@@ -1,4 +1,5 @@
 #include "HyprlandIpcClient.h"
+#include "HyprlandLayoutProvider.h"
 #include "KeyboardLayoutService.h"
 
 #include <QSignalSpy>
@@ -36,7 +37,7 @@ class FakeHyprlandIpcTransport final : public HyprlandIpcTransport {
 TEST(KeyboardLayoutService, ProcessEventLineUpdatesLayoutCode) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   fake->fireEventLine("activelayout>>at-translated-set-2-keyboard,English (US)");
@@ -47,7 +48,7 @@ TEST(KeyboardLayoutService, ProcessEventLineUpdatesLayoutCode) {
 TEST(KeyboardLayoutService, ProcessEventLineIgnoresUnrelatedEvent) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   fake->fireEventLine("activewindow>>kitty,build output");
@@ -58,7 +59,7 @@ TEST(KeyboardLayoutService, ProcessEventLineIgnoresUnrelatedEvent) {
 TEST(KeyboardLayoutService, OnCommandFinishedUpdatesLayoutCode) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   const QByteArray json = R"json({"keyboards":[{"main":true,"active_keymap":"Ukrainian"}]})json";
@@ -70,7 +71,7 @@ TEST(KeyboardLayoutService, OnCommandFinishedUpdatesLayoutCode) {
 TEST(KeyboardLayoutService, OnCommandFinishedIgnoresFailedResponse) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   const QByteArray json = R"json({"keyboards":[{"main":true,"active_keymap":"Ukrainian"}]})json";
@@ -82,7 +83,7 @@ TEST(KeyboardLayoutService, OnCommandFinishedIgnoresFailedResponse) {
 TEST(KeyboardLayoutService, SetLayoutCodeDeduplicatesIdenticalValues) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   QSignalSpy spy(&service, &KeyboardLayoutService::layoutCodeChanged);
@@ -98,7 +99,7 @@ TEST(KeyboardLayoutService, SetLayoutCodeDeduplicatesIdenticalValues) {
 TEST(KeyboardLayoutService, EventLineRetainsBothTheNameAndTheCode) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   fake->fireEventLine("activelayout>>at-translated-set-2-keyboard,English (US)");
@@ -110,7 +111,7 @@ TEST(KeyboardLayoutService, EventLineRetainsBothTheNameAndTheCode) {
 TEST(KeyboardLayoutService, DevicesQueryResponseRetainsBothTheNameAndTheCode) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   const QByteArray json = R"json({"keyboards":[{"main":true,"active_keymap":"Ukrainian"}]})json";
@@ -123,7 +124,7 @@ TEST(KeyboardLayoutService, DevicesQueryResponseRetainsBothTheNameAndTheCode) {
 TEST(KeyboardLayoutService, SetLayoutNameDeduplicatesIdenticalValues) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   QSignalSpy spy(&service, &KeyboardLayoutService::layoutNameChanged);
@@ -139,7 +140,7 @@ TEST(KeyboardLayoutService, SetLayoutNameDeduplicatesIdenticalValues) {
 TEST(KeyboardLayoutService, NameChangeWithAnUnchangedCodeUpdatesOnlyTheName) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   fake->fireEventLine("activelayout>>kbd,English (US)");
@@ -160,7 +161,7 @@ TEST(KeyboardLayoutService, NameChangeWithAnUnchangedCodeUpdatesOnlyTheName) {
 TEST(KeyboardLayoutService, NameIsAlreadyCommittedWhenTheCodeSignalFires) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   fake->fireEventLine("activelayout>>kbd,English (US)");
@@ -177,7 +178,7 @@ TEST(KeyboardLayoutService, NameIsAlreadyCommittedWhenTheCodeSignalFires) {
 TEST(KeyboardLayoutService, StartIsIdempotent) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
 
   service.start();
   service.start();
@@ -188,7 +189,7 @@ TEST(KeyboardLayoutService, StartIsIdempotent) {
 TEST(KeyboardLayoutService, EventSocketConnectedTriggersDevicesQuery) {
   auto transport = std::make_unique<FakeHyprlandIpcTransport>();
   FakeHyprlandIpcTransport* fake = transport.get();
-  KeyboardLayoutService service(std::move(transport));
+  KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
   fake->fireConnected();

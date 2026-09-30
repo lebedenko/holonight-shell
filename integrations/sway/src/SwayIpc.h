@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompositorSnapshot.h"
+#include "NumberedWorkspaceProvider.h"
 #include "WindowActivation.h"
 
 #include <QByteArray>
@@ -24,6 +25,8 @@ struct SwayWindowInfo {
 struct SwayRefreshResult {
   CompositorSnapshot snapshot;
   QList<SwayWindowInfo> windows;
+  NumberedWorkspaceState numbered;
+  QHash<QString, QString> names;
 };
 
 class SwayIpcDecoder {

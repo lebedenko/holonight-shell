@@ -107,6 +107,7 @@ target_link_libraries(test_holonight_core PRIVATE
 holonight_add_test_exe(test_holonight_compositor
   main.cpp
   test_compositor.cpp
+  test_generic_workspace.cpp
   test_window_activation.cpp
   test_hyprland_backend.cpp
   test_sway_backend.cpp
@@ -411,3 +412,30 @@ add_test(NAME uqc_launch COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scr
   --build ${PROJECT_BINARY_DIR} --prefix ${HOLONIGHT_PROVIDER_PREFIX}
   --logs ${PROJECT_BINARY_DIR}/uqc-launch-logs)
 set_tests_properties(uqc_launch PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
+
+foreach(target IN ITEMS test_holonight_platform test_holonight_core test_holonight_compositor test_holonight_services)
+  target_link_libraries(${target} PRIVATE holonight_hyprland_implementation holonight_sway_implementation)
+endforeach()
+foreach(target IN ITEMS test_holonight_qml_harness test_holonight_compiled_controls test_holonight_qml)
+  target_link_libraries(${target} PRIVATE holonight_presentationplugin)
+endforeach()
+
+target_include_directories(test_holonight_compositor PRIVATE ${PROJECT_SOURCE_DIR}/integrations/wayland/src)
+
+configure_file(integration-plugin/fake.json.in fake.json @ONLY)
+add_library(test_integration_plugin MODULE integration-plugin/FakePlugin.cpp)
+target_include_directories(test_integration_plugin PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(test_integration_plugin PRIVATE holonight_integration)
+holonight_add_test_exe(test_holonight_integration main.cpp test_integration_loader.cpp)
+target_link_libraries(test_holonight_integration PRIVATE holonight_compositor GTest::gtest GTest::gmock Qt6::Gui)
+target_compile_definitions(test_holonight_integration PRIVATE
+  PLUGIN_DIRECTORY="${PROJECT_BINARY_DIR}/holonight/backends"
+  FAKE_PLUGIN="$<TARGET_FILE:test_integration_plugin>"
+  SWAY_PLUGIN="$<TARGET_FILE:holonight_backend_sway>"
+  WAYLAND_PLUGIN="$<TARGET_FILE:holonight_backend_wayland>")
+add_dependencies(test_holonight_integration test_integration_plugin holonight_backend_sway holonight_backend_wayland holonight_backend_hyprland)
+
+holonight_add_test_exe(test_holonight_hyprland_qml main.cpp test_hyprland_qml.cpp)
+target_link_libraries(test_holonight_hyprland_qml PRIVATE holonight_compositor holonight_presentationplugin Qt6::Quick Qt6::Test GTest::gtest GTest::gmock)
+target_compile_definitions(test_holonight_hyprland_qml PRIVATE PLUGIN_DIRECTORY="${PROJECT_BINARY_DIR}/holonight/backends")
+add_dependencies(test_holonight_hyprland_qml holonight_backend_hyprland)

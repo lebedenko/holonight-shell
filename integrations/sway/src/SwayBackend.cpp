@@ -45,15 +45,26 @@ void SwayBackend::connectSockets() {
 }
 
 void SwayBackend::activateWorkspace(const QString& workspace_id) {
-  if (workspace_id.isEmpty() || request_socket_.state() != QLocalSocket::ConnectedState) {
-    return;
-  }
+  if (workspace_names_.contains(workspace_id)) dispatchActivation({.id = workspace_id});
+}
+void SwayBackend::activateNumberedSlot(int slot) {
+  if (slot > 0) dispatchActivation({.slot = slot});
+}
+void SwayBackend::dispatchActivation(const WorkspaceActivation& activation) {
+  if (request_socket_.state() != QLocalSocket::ConnectedState) return;
   if (phase_ != RequestPhase::Idle) {
-    pending_activation_ = workspace_id;
+    pending_activation_ = activation;
     return;
   }
+  if (activation.slot == 0 && !workspace_names_.contains(activation.id)) {
+    drainWork();
+    return;
+  }
+  const QString command =
+      activation.slot > 0 ? QStringLiteral("workspace --no-auto-back-and-forth number %1").arg(activation.slot)
+                          : QStringLiteral("workspace --no-auto-back-and-forth \"") +
+                                escapeSwayWorkspaceName(workspace_names_.value(activation.id)) + QStringLiteral("\"");
   phase_ = RequestPhase::WorkspaceActivation;
-  const QString command = QStringLiteral("workspace \"") + escapeSwayWorkspaceName(workspace_id) + QStringLiteral("\"");
   if (!sendRequest(kCommand, command.toUtf8())) {
     phase_ = RequestPhase::Idle;
     fail(QStringLiteral("Sway workspace activation transport failed"));
@@ -158,6 +169,8 @@ void SwayBackend::finishRefresh(const QByteArray& tree) {
   phase_ = RequestPhase::Idle;
   if (auto refresh = parseSwayRefresh(workspaces_, outputs_, tree)) {
     reconnect_delay_ms_ = 1000;
+    numbered_ = refresh->numbered;
+    workspace_names_ = refresh->names;
     activation_candidates_.clear();
     activation_container_ids_.clear();
     for (const SwayWindowInfo& window : refresh->windows) {
@@ -235,9 +248,9 @@ void SwayBackend::drainWork() {
     }
     return;
   }
-  if (!pending_activation_.isEmpty()) {
-    const QString activation = std::exchange(pending_activation_, {});
-    activateWorkspace(activation);
+  if (pending_activation_) {
+    const auto activation = std::exchange(pending_activation_, std::nullopt).value();
+    dispatchActivation(activation);
     return;
   }
   if (refresh_dirty_) {
@@ -273,6 +286,8 @@ void SwayBackend::handleSubscriptionData() {
 }
 
 void SwayBackend::fail(const QString& diagnostic) {
+  numbered_ = {};
+  workspace_names_.clear();
   emit snapshotReady({.connected = false, .diagnostic = diagnostic});
 }
 
@@ -287,7 +302,7 @@ void SwayBackend::disconnectSession(const QString& diagnostic) {
   activation_candidates_.clear();
   activation_container_ids_.clear();
   pending_window_container_id_.reset();
-  pending_activation_.clear();
+  pending_activation_.reset();
   refresh_dirty_ = false;
   fail(diagnostic);
   request_socket_.abort();

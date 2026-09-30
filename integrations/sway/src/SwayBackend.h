@@ -9,12 +9,14 @@
 #include <cstdint>
 #include <optional>
 
-class SwayBackend final : public CompositorBackend {
+class SwayBackend final : public CompositorBackend, public NumberedWorkspaceProvider {
   Q_OBJECT
 
  public:
   explicit SwayBackend(QString socket_path = {}, QObject* parent = nullptr);
   void start() override;
+  NumberedWorkspaceState numberedWorkspaces() const override { return numbered_; }
+  void activateNumberedSlot(int slot) override;
   void activateWorkspace(const QString& workspace_id) override;
   [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) override;
 
@@ -43,6 +45,13 @@ class SwayBackend final : public CompositorBackend {
   void drainWork();
   bool beginWindowActivation(quint64 container_id);
 
+  struct WorkspaceActivation {
+    QString id;
+    int slot{0};
+  };
+  void dispatchActivation(const WorkspaceActivation& activation);
+  NumberedWorkspaceState numbered_;
+  QHash<QString, QString> workspace_names_;
   QString socket_path_;
   QLocalSocket request_socket_;
   QLocalSocket subscription_socket_;
@@ -53,7 +62,7 @@ class SwayBackend final : public CompositorBackend {
   RequestPhase phase_{RequestPhase::Idle};
   QByteArray workspaces_;
   QByteArray outputs_;
-  QString pending_activation_;
+  std::optional<WorkspaceActivation> pending_activation_;
   QList<WindowActivationCandidate> activation_candidates_;
   QList<quint64> activation_container_ids_;
   std::optional<quint64> pending_window_container_id_;

@@ -10,15 +10,16 @@ Item {
     required property string workspaceId
     required property var numericSlot
     required property string label
-    property string workspaceKind: "normal"
+    property bool canActivate: true
+    signal activated()
     required property string visualState
     required property string barMonitorName
-    readonly property bool active: workspaceId.length > 0
+    readonly property bool active: workspaceId.length > 0 || (numericSlot !== undefined && numericSlot !== null)
     property bool glowAllowed: true
 
     width: numericSlot !== undefined && numericSlot !== null ? 32 : Math.min(120, Math.max(32, labelText.implicitWidth + 20))
     height: 32
-    enabled: active
+    enabled: active && canActivate
     opacity: active ? 1 : 0
 
     property real glowOpacity: _style.targetGlowOpacity
@@ -105,7 +106,7 @@ Item {
         acceptedButtons: Qt.LeftButton
         hoverEnabled: true
         enabled: root.active
-        onClicked: CompositorService.activateWorkspace(root.workspaceId)
+        onClicked: root.activated()
     }
 
     BarTooltipArea {

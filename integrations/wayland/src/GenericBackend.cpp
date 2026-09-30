@@ -5,9 +5,7 @@
 
 GenericWorkspaceHandle::GenericWorkspaceHandle(struct ::ext_workspace_handle_v1* handle, GenericBackend* backend,
                                                int order)
-    : QtWayland::ext_workspace_handle_v1(handle), raw_(handle), backend_(backend) {
-  workspace_.stable_order = order;
-}
+    : QtWayland::ext_workspace_handle_v1(handle), raw_(handle), backend_(backend), state_(order) {}
 
 GenericWorkspaceHandle::~GenericWorkspaceHandle() {
   if (isInitialized()) {
@@ -15,15 +13,12 @@ GenericWorkspaceHandle::~GenericWorkspaceHandle() {
   }
 }
 
-void GenericWorkspaceHandle::ext_workspace_handle_v1_name(const QString& name) {
-  workspace_.id = name;
-  workspace_.display_name = name;
+void GenericWorkspaceHandle::ext_workspace_handle_v1_id(const QString& id) { state_.setId(id); }
+void GenericWorkspaceHandle::ext_workspace_handle_v1_capabilities(uint32_t capabilities) {
+  state_.setCapabilities(capabilities);
 }
-
-void GenericWorkspaceHandle::ext_workspace_handle_v1_state(uint32_t state) {
-  workspace_.active = (state & 0x1U) != 0U;
-  workspace_.urgent = (state & 0x2U) != 0U;
-}
+void GenericWorkspaceHandle::ext_workspace_handle_v1_name(const QString& name) { state_.setName(name); }
+void GenericWorkspaceHandle::ext_workspace_handle_v1_state(uint32_t state) { state_.setState(state); }
 
 void GenericWorkspaceHandle::ext_workspace_handle_v1_removed() {
   backend_->remove(this);
@@ -31,7 +26,9 @@ void GenericWorkspaceHandle::ext_workspace_handle_v1_removed() {
 }
 
 GenericWorkspaceGroup::GenericWorkspaceGroup(struct ::ext_workspace_group_handle_v1* group, GenericBackend* backend)
-    : QtWayland::ext_workspace_group_handle_v1(group), backend_(backend) {}
+    : QtWayland::ext_workspace_group_handle_v1(group),
+      backend_(backend),
+      id_(QStringLiteral("group:%1").arg(backend->next_group_++)) {}
 
 GenericWorkspaceGroup::~GenericWorkspaceGroup() {
   if (isInitialized()) {
@@ -73,6 +70,10 @@ void GenericWorkspaceGroup::ext_workspace_group_handle_v1_removed() {
 }
 
 GenericProtocol::GenericProtocol(GenericBackend* backend) : QWaylandClientExtensionTemplate(1), backend_(backend) {}
+GenericProtocol::~GenericProtocol() {
+  if (isInitialized()) ::ext_workspace_manager_v1_destroy(object());
+}
+void GenericProtocol::ext_workspace_manager_v1_finished() { backend_->protocolFinished(); }
 
 void GenericProtocol::ext_workspace_manager_v1_workspace_group(struct ::ext_workspace_group_handle_v1* group) {
   backend_->groups_.append(new GenericWorkspaceGroup(group, backend_));
@@ -82,39 +83,56 @@ void GenericProtocol::ext_workspace_manager_v1_workspace(struct ::ext_workspace_
 }
 void GenericProtocol::ext_workspace_manager_v1_done() { backend_->publishSnapshotOnDone(); }
 
-GenericBackend::GenericBackend(QObject* parent) : CompositorBackend(parent), protocol_(this) {
-  connect(&protocol_, &QWaylandClientExtension::activeChanged, this, [this] {
-    if (!protocol_.isActive()) {
-      emit snapshotReady({.diagnostic = QStringLiteral("ext-workspace-v1 is unavailable")});
-    }
+GenericBackend::GenericBackend(QObject* parent) : CompositorBackend(parent) {
+  reconnect_timer_.setSingleShot(true);
+  reconnect_timer_.setInterval(1000);
+  connect(&reconnect_timer_, &QTimer::timeout, this, &GenericBackend::connectProtocol);
+}
+GenericBackend::~GenericBackend() { clearState(); }
+void GenericBackend::clearState() {
+  qDeleteAll(groups_);
+  groups_.clear();
+  qDeleteAll(handles_);
+  handles_.clear();
+}
+void GenericBackend::connectProtocol() {
+  clearState();
+  protocol_.reset();
+  finished_ = false;
+  protocol_ = std::make_unique<GenericProtocol>(this);
+  connect(protocol_.get(), &QWaylandClientExtension::activeChanged, this, [this] {
+    if (!protocol_->isActive()) protocolFinished();
   });
 }
-
-GenericBackend::~GenericBackend() {
-  qDeleteAll(groups_);
-  qDeleteAll(handles_);
+void GenericBackend::protocolFinished() {
+  finished_ = true;
+  clearState();
+  emit snapshotReady({.diagnostic = QStringLiteral("ext-workspace-v1 is unavailable")});
+  reconnect_timer_.start();
 }
-
 void GenericBackend::start() {
-  if (!protocol_.isActive()) {
-    emit snapshotReady({.diagnostic = QStringLiteral("waiting for ext-workspace-v1")});
-  }
+  if (!protocol_) connectProtocol();
+  if (!protocol_->isActive()) emit snapshotReady({.diagnostic = QStringLiteral("waiting for ext-workspace-v1")});
 }
 
 void GenericBackend::publishSnapshotOnDone() {
+  if (finished_) return;
   CompositorSnapshot snapshot{
       .connected = true,
-      .capabilities = {.workspace_listing = true, .workspace_activation = true, .urgency = true},
+      .capabilities = {.workspace_listing = true, .workspace_activation = false, .urgency = true},
   };
   for (GenericWorkspaceHandle* handle : std::as_const(handles_)) {
-    CompositorWorkspace workspace = handle->workspace_;
+    if (handle->state_.hidden) continue;
+    CompositorWorkspace workspace = handle->state_.workspace;
     for (const GenericWorkspaceGroup* group : std::as_const(groups_)) {
       if (group->workspaces_.contains(handle->raw_)) {
         workspace.outputs += group->outputNames();
+        workspace.groups.append(group->id_);
       }
     }
     workspace.outputs.removeDuplicates();
     if (!workspace.id.isEmpty()) {
+      snapshot.capabilities.workspace_activation |= workspace.can_activate;
       snapshot.workspaces.append(std::move(workspace));
     }
   }
@@ -123,9 +141,10 @@ void GenericBackend::publishSnapshotOnDone() {
 
 void GenericBackend::activateWorkspace(const QString& workspace_id) {
   for (GenericWorkspaceHandle* handle : std::as_const(handles_)) {
-    if (handle->workspace_.id == workspace_id) {
+    if (protocol_ && !finished_ && protocol_->isActive() && !handle->state_.hidden &&
+        handle->state_.workspace.can_activate && handle->state_.workspace.id == workspace_id) {
       handle->activate();
-      protocol_.commit();
+      protocol_->commit();
       return;
     }
   }

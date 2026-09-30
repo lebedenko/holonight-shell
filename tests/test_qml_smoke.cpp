@@ -121,6 +121,7 @@ void expectBatteryIndicatorState(QQmlEngine* engine, const QString& source_root,
 
 TEST(QmlSmoke, CanonicalModulesResolveOwnedTypes) {
   QQmlEngine engine;
+  engine.addImportPath(QStringLiteral("qrc:/"));
   engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
 
   expectLoads(&engine, R"(
@@ -242,6 +243,7 @@ TEST(QmlSmoke, StorageDriveHeaderRecoversFromFailedPowerOffWithoutCountChange) {
   ASSERT_TRUE(services.registerSingletons());
   services.seedStorage();
   QQmlEngine engine;
+  engine.addImportPath(QStringLiteral("qrc:/"));
   engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
   engine.addImportPath(modules.path());
   services.storage().powerOff(QStringLiteral("test-drive"));
@@ -282,6 +284,7 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
   ASSERT_TRUE(services.registerSingletons());
 
   QQmlEngine engine;
+  engine.addImportPath(QStringLiteral("qrc:/"));
   engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
   engine.addImportPath(modules.path());
 

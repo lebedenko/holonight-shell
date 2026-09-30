@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CompositorSelection.h"
+#include "IntegrationPlugin.h"
 
 #include <QObject>
 #include <QQmlEngine>
@@ -12,12 +12,7 @@ class ProcessEnvironment;
 class CommandRunner;
 class SessionBackend;
 
-// Thin QML-facing facade over an auto-detected SessionBackend. Detects the compositor once at
-// construction (Hyprland when HYPRLAND_INSTANCE_SIGNATURE is set, otherwise a generic logind
-// backend) and delegates every action to it. Capability properties are CONSTANT — they reflect
-// the environment at construction and are used by QML to grey out unsupported actions (logout)
-// and warn when no locker is installed. Live "is locked" / idle state is intentionally out of
-// scope here (handled by the future idle-management work).
+// QML adapter over the selected integration. Common logind operations remain available without a plugin.
 class SessionService : public QObject {
   Q_OBJECT
   QML_ELEMENT
@@ -30,7 +25,7 @@ class SessionService : public QObject {
 
  public:
   explicit SessionService(QObject* parent = nullptr);
-  explicit SessionService(CompositorKind kind, QObject* parent = nullptr);
+  explicit SessionService(IntegrationPlugin* integration, QObject* parent = nullptr);
   // Test seam: takes ownership of a pre-built backend (seams owned by the caller).
   explicit SessionService(std::unique_ptr<SessionBackend> backend, QObject* parent = nullptr);
   ~SessionService() override;

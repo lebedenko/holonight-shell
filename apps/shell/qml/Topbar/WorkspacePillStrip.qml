@@ -16,16 +16,16 @@ Item {
     property int renderedWindowStart: root.windowStart
     property bool rebasingRange: false
 
-    implicitWidth: CompositorService.workspaceDisplayCount * root.pillStep - root.pillSpacing + root.glowMargin * 2
+    implicitWidth: WorkspacePresentation.workspaceDisplayCount * root.pillStep - root.pillSpacing + root.glowMargin * 2
     implicitHeight: root.pillSize + root.glowMargin * 2
     clip: true
 
     readonly property int firstStripId: Math.max(1, root.renderedWindowStart - root.stripPad)
-    readonly property int lastStripId: root.renderedWindowStart + CompositorService.workspaceDisplayCount - 1 + root.stripPad
+    readonly property int lastStripId: root.renderedWindowStart + WorkspacePresentation.workspaceDisplayCount - 1 + root.stripPad
     readonly property int stripCount: Math.max(0, root.lastStripId - root.firstStripId + 1)
 
     onWindowStartChanged: {
-        const windowEnd = root.windowStart + CompositorService.workspaceDisplayCount - 1
+        const windowEnd = root.windowStart + WorkspacePresentation.workspaceDisplayCount - 1
         if (root.windowStart < root.firstStripId || windowEnd > root.lastStripId) {
             root.rebasingRange = true
             root.renderedWindowStart = root.windowStart
@@ -50,20 +50,22 @@ Item {
         Repeater {
             id: pillRepeater
             objectName: "pillRepeater"
-            model: root.stripCount
+            model: WorkspacePresentation.revision >= 0
+                ? WorkspacePresentation.numberedSlots(root.firstStripId, root.stripCount) : []
             delegate: WorkspacePill {
                 required property int index
-                readonly property int absoluteId: root.firstStripId + index
+                required property var modelData
+                readonly property int absoluteId: modelData.slot
                 readonly property real viewportLeft: -strip.x
                 readonly property real viewportRight: viewportLeft + root.width
                 x: index * root.pillStep
                 y: root.glowMargin
-                workspaceId: String(absoluteId)
+                workspaceId: modelData.workspaceId
+                onActivated: WorkspacePresentation.activateNumberedSlot(absoluteId)
                 numericSlot: absoluteId
                 label: String(absoluteId)
                 barMonitorName: root.barMonitorName
-                visualState: CompositorService.revision >= 0
-                    ? CompositorService.numericWorkspaceVisualState(absoluteId) : "empty"
+                visualState: modelData.visualState
                 glowAllowed: x >= viewportLeft && x + width <= viewportRight
             }
         }
