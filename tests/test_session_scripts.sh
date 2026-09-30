@@ -22,6 +22,7 @@ make_compositor() {
 
 make_compositor Hyprland
 make_compositor sway
+make_compositor labwc
 make_fake uwsm 'printf "uwsm %s desktop=%s cursor=%s\n" "$*" "${XDG_CURRENT_DESKTOP-}" "${XCURSOR_THEME-}" >>"${TEST_LOG}"'
 make_fake dbus-update-activation-environment 'printf "dbus %s\n" "$*" >>"${TEST_LOG}"'
 make_fake systemctl '
@@ -122,7 +123,7 @@ env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" XCURSO
 assert_match "compositor=sway desktop=HoloNight:sway session=sway type=wayland menu=sway- cursor=Inherited"
 mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 
-for compositor in hyprland sway; do
+for compositor in hyprland sway labwc; do
   for mode in auto uwsm; do
     : >"${log_file}"
     run_session "${compositor}" "${mode}"
@@ -131,7 +132,7 @@ for compositor in hyprland sway; do
     if [[ "${compositor}" == hyprland ]]; then
       assert_match "uwsm start -e -D Hyprland hyprland.desktop"
     else
-      assert_match "uwsm start -e -D sway sway.desktop"
+      assert_match "uwsm start -e -D ${compositor} ${compositor}.desktop"
     fi
   done
 done
@@ -151,6 +152,12 @@ if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOL
   exit 1
 fi
 grep -Fq 'HOLONIGHT_SESSION_MODE=uwsm was requested' "${test_root}/stderr"
+if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=auto \
+  /usr/bin/bash "${source_dir}/scripts/holonight-session" labwc >"${test_root}/stdout" 2>"${test_root}/stderr"; then
+  echo 'labwc auto unexpectedly succeeded without UWSM' >&2
+  exit 1
+fi
+grep -Fq 'labwc auto mode requires uwsm' "${test_root}/stderr"
 mv "${fake_bin}/uwsm-away" "${fake_bin}/uwsm"
 
 for args in '' 'river' 'hyprland extra'; do
@@ -203,5 +210,53 @@ if grep -Fq 'shell ' "${log_file}"; then
   printf 'wrapper accepted the wrong compositor marker\n' >&2
   exit 1
 fi
+
+# labwc direct startup preserves user configuration and clears foreign markers.
+: >"${log_file}"
+run_session labwc direct HYPRLAND_INSTANCE_SIGNATURE=stale SWAYSOCK=stale I3SOCK=stale
+assert_match 'compositor=labwc desktop=HoloNight:labwc session=labwc type=wayland menu=labwc-'
+assert_match 'hypr= sway= i3='
+assert_match 'systemctl --user unset-environment HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK'
+assert_match 'dbus --systemd HYPRLAND_INSTANCE_SIGNATURE= HYPRLAND_CMD= SWAYSOCK= I3SOCK='
+for compositor in hyprland sway; do
+  : >"${log_file}"
+  run_session "${compositor}" direct LABWC_PID=1234
+  grep -E 'systemctl --user unset-environment .*LABWC_PID' "${log_file}"
+  grep -E 'dbus --systemd .*LABWC_PID=' "${log_file}"
+done
+make_fake holonight-shell 'printf "labwc=%s hypr=%s sway=%s i3=%s\n" "${LABWC_PID-}" "${HYPRLAND_INSTANCE_SIGNATURE-}" "${SWAYSOCK-}" "${I3SOCK-}" >>"${TEST_LOG}"'
+for marker in '' 'abc' '-42' '1234'; do
+  : >"${log_file}"
+  if FAKE_SYSTEMD_ENV="WAYLAND_DISPLAY=wayland-9
+XDG_CURRENT_DESKTOP=HoloNight:labwc
+LABWC_PID=${marker}
+HYPRLAND_INSTANCE_SIGNATURE=stale
+SWAYSOCK=stale
+I3SOCK=stale" env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
+    HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
+    "${source_dir}/scripts/holonight-shell-systemd" >"${test_root}/stdout" 2>"${test_root}/stderr"; then
+    [[ "${marker}" == 1234 ]]
+    assert_line 'labwc=1234 hypr= sway= i3='
+  else
+    [[ "${marker}" != 1234 ]]
+    ! grep -q 'labwc=' "${log_file}"
+  fi
+done
+# A PID without a Wayland display is not ready either.
+: >"${log_file}"
+if FAKE_SYSTEMD_ENV=$'XDG_CURRENT_DESKTOP=labwc\nLABWC_PID=1234' \
+  env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
+  HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
+  "${source_dir}/scripts/holonight-shell-systemd" >/dev/null 2>&1; then
+  echo 'wrapper accepted labwc without WAYLAND_DISPLAY' >&2
+  exit 1
+fi
+[[ ! -s "${log_file}" ]]
+mv "${fake_bin}/labwc" "${fake_bin}/labwc-away"
+if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOLONIGHT_SESSION_MODE=direct \
+  /usr/bin/bash "${source_dir}/scripts/holonight-session" labwc >"${test_root}/stdout" 2>"${test_root}/stderr"; then
+  exit 1
+fi
+grep -Fq 'labwc was not found in PATH' "${test_root}/stderr"
 
 printf 'session script tests passed\n'

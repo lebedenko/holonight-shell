@@ -1,0 +1,13 @@
+{
+  "id": "labwc",
+  "desktops": [
+    "labwc"
+  ],
+  "markers": [
+    "LABWC_PID"
+  ],
+  "fallback": false,
+  "shellVersion": "@PROJECT_VERSION@",
+  "iid": "org.holonight.Integration/1.0",
+  "library": "@CMAKE_SHARED_MODULE_PREFIX@holonight_backend_labwc@CMAKE_SHARED_MODULE_SUFFIX@"
+}

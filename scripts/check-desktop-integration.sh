@@ -235,14 +235,14 @@ selected_compositor=""
 IFS=':' read -r -a current_desktops <<<"${XDG_CURRENT_DESKTOP:-}"
 for desktop in "${current_desktops[@]}"; do
   case "${desktop,,}" in
-    hyprland|sway) selected_compositor="${desktop,,}"; break ;;
+    hyprland|sway|labwc) selected_compositor="${desktop,,}"; break ;;
   esac
 done
 
 if [[ -n "${selected_compositor}" ]]; then
   status OK "XDG_CURRENT_DESKTOP identifies ${selected_compositor}"
 else
-  status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland or Sway"
+  status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland, Sway, or labwc"
 fi
 
 routing_layer_found=false
@@ -295,7 +295,7 @@ if have_command holonight-hyprland-session; then
 else
   status OK "retired holonight-hyprland-session launcher is absent"
 fi
-for descriptor in holonight-hyprland.desktop holonight-sway.desktop; do
+for descriptor in holonight-hyprland.desktop holonight-sway.desktop holonight-labwc.desktop; do
   descriptor_path=""
   while IFS= read -r dir; do
     [[ -n "${descriptor_path}" ]] || [[ ! -f "${dir}/wayland-sessions/${descriptor}" ]] || \
@@ -417,8 +417,8 @@ section "Suggested next actions"
 status INFO "portal color/accent changes are live for consumers that observe Settings signals"
 status INFO "GTK settings and application-native preferences may require an application relaunch"
 status INFO "cursor environment changes require a full session restart"
-status INFO "login entries: select HoloNight (Hyprland) or HoloNight (Sway)"
-status INFO "bootstrap script: holonight-session {hyprland|sway}"
+status INFO "login entries: select HoloNight (Hyprland), HoloNight (Sway), or HoloNight (labwc)"
+status INFO "bootstrap script: holonight-session {hyprland|sway|labwc}"
 status INFO "force direct mode: HOLONIGHT_SESSION_MODE=direct holonight-session sway"
 status INFO "force UWSM mode: HOLONIGHT_SESSION_MODE=uwsm holonight-session hyprland"
 status INFO "manual Hyprland config fallback: exec-once = uwsm app -- holonight-shell"

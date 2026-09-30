@@ -32,7 +32,7 @@ holonight_install_integration(data/systemd/user/holonight-shell.service
   "${CMAKE_INSTALL_FULL_DATADIR}/systemd/user" FILE)
 holonight_install_integration(data/systemd/user/holonight-polkit-agent@.service.in
   "${CMAKE_INSTALL_FULL_DATADIR}/systemd/user" FILE)
-foreach(compositor IN ITEMS hyprland sway)
+foreach(compositor IN ITEMS hyprland sway labwc)
   holonight_install_integration("data/wayland-sessions/holonight-${compositor}.desktop"
     "${CMAKE_INSTALL_FULL_DATADIR}/wayland-sessions" FILE)
 endforeach()

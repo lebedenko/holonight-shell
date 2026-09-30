@@ -1,4 +1,5 @@
 #include "HyprlandSessionBackend.h"
+#include "LabwcSessionBackend.h"
 #include "SessionService.h"
 #include "SwaySessionBackend.h"
 #include "session/CommandRunner.h"
@@ -405,4 +406,37 @@ TEST(SessionServiceTest, SuccessfulCommandsDoNotEmitCommandFailed) {
   service.shutdown();
 
   EXPECT_EQ(spy.count(), 0);
+}
+
+TEST(SessionServiceTest, LabwcLogoutUsesUwsmOrValidatedInheritedPid) {
+  const bool had_pid = qEnvironmentVariableIsSet("LABWC_PID");
+  const auto previous_pid = qgetenv("LABWC_PID");
+  FakeProcessEnvironment env;
+  SpyCommandRunner runner;
+  LabwcSessionBackend backend(&env, &runner);
+  for (const auto* value : {"", "0", "1", "-123", "abc", "12x", "2147483648", " 123", "+123"}) {
+    qputenv("LABWC_PID", value);
+    const auto result = backend.logout();
+    EXPECT_FALSE(result.ok);
+    EXPECT_TRUE(result.reason.contains("LABWC_PID"));
+  }
+  EXPECT_EQ(runner.callCount(), 0);
+  qputenv("LABWC_PID", "1234");
+  EXPECT_TRUE(backend.logout().ok);
+  EXPECT_EQ(runner.lastProgram(), "labwc");
+  EXPECT_EQ(runner.lastArgs(), QStringList{"--exit"});
+  env.setUserServiceActive("wayland-wm@labwc.desktop.service", true);
+  EXPECT_FALSE(backend.logout().ok);
+  EXPECT_EQ(runner.callCount(), 1);
+  env.setExecutable("uwsm", "/usr/bin/uwsm");
+  qunsetenv("LABWC_PID");
+  EXPECT_TRUE(backend.logout().ok);
+  EXPECT_EQ(runner.lastProgram(), "uwsm");
+  EXPECT_EQ(runner.lastArgs(), QStringList{"stop"});
+  runner.setShouldFail(true);
+  EXPECT_FALSE(backend.logout().ok);
+  if (had_pid)
+    qputenv("LABWC_PID", previous_pid);
+  else
+    qunsetenv("LABWC_PID");
 }

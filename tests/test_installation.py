@@ -66,7 +66,7 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
         self.assertIn(f'ExecStart="{bindir}/holonight-shell-systemd"', shell_unit)
         self.assertNotIn("/bin/sh -lc", shell_unit)
         self.assertIn(f'Environment="QML_IMPORT_PATH={prefix}/lib/qt6/qml"', shell_unit)
-        for compositor in ("hyprland", "sway"):
+        for compositor in ("hyprland", "sway", "labwc"):
             desktop = self.staged(datadir / f"wayland-sessions/holonight-{compositor}.desktop").read_text()
             self.assertIn(f'Exec="{bindir}/holonight-session" {compositor}', desktop)
         launcher = self.staged(bindir / "holonight-session").read_text()

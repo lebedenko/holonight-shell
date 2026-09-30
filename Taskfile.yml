@@ -301,6 +301,13 @@ tasks:
     cmds:
       - bash scripts/hyprland-smoke-check.sh
 
+  labwc-runtime-smoke:
+    desc: Verify shell startup and ext-workspace activation in isolated headless labwc
+    deps: [configure-tests]
+    cmds:
+      - cmake --build {{.TEST_BUILD_DIR}} --target holonight-shell labwc_workspace_smoke -j{{.NPROC}}
+      - python3 scripts/run-isolated-test.py --hide-host bash scripts/labwc-runtime-smoke.sh {{.TEST_BUILD_DIR}}/holonight-shell {{.TEST_BUILD_DIR}}/tests/labwc_workspace_smoke
+
   sway-runtime-smoke:
     desc: Run the Shell in a temporary headless Sway session
     deps: [build]

@@ -66,6 +66,32 @@ TEST(IntegrationLoader, AdditionalPluginWorksThroughUnchangedContractsAfterReloc
   EXPECT_TRUE(loader.componentUrl().isEmpty());
   EXPECT_EQ(loader.integration()->createKeyboard(), nullptr);
 }
+TEST(IntegrationLoader, LabwcSelectsByDesktopOrMarkerAndDelegatesNamedWorkspaces) {
+  const auto found = IntegrationLoader::discover({PLUGIN_DIRECTORY});
+  QProcessEnvironment env;
+  env.insert("XDG_CURRENT_DESKTOP", "HoloNight:labwc");
+  env.insert("SWAYSOCK", "stale");
+  EXPECT_EQ(IntegrationLoader::select(found, env), "labwc");
+  env.remove("XDG_CURRENT_DESKTOP");
+  env.remove("SWAYSOCK");
+  env.insert("LABWC_PID", "1234");
+  EXPECT_EQ(IntegrationLoader::select(found, env), "labwc");
+  EXPECT_EQ(IntegrationLoader::select(found, {}), "wayland");
+  QTemporaryDir isolated;
+  copy(LABWC_PLUGIN, isolated.path());
+  IntegrationLoader loader({isolated.path()}, env);
+  ASSERT_NE(loader.integration(), nullptr);
+  EXPECT_EQ(loader.backendName(), "labwc");
+  auto backend = loader.createCompositor();
+  ASSERT_NE(backend, nullptr);
+  EXPECT_STREQ(backend->metaObject()->className(), "GenericBackend");
+  EXPECT_EQ(dynamic_cast<NumberedWorkspaceProvider*>(backend.get()), nullptr);
+  EXPECT_EQ(loader.integration()->createKeyboard(), nullptr);
+  EXPECT_TRUE(loader.componentUrl().isEmpty());
+  EXPECT_FALSE(mappings().contains("libholonight_backend_sway"));
+  EXPECT_FALSE(mappings().contains("libholonight_backend_hyprland"));
+  EXPECT_FALSE(mappings().contains("libholonight_backend_wayland"));
+}
 TEST(IntegrationLoader, SwayLoadsWithAllInactivePluginFilesAbsent) {
   QTemporaryDir isolated;
   copy(SWAY_PLUGIN, isolated.path());

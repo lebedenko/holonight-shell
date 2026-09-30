@@ -73,22 +73,28 @@ start_shell_service() {
   fi
 }
 
-[[ $# -eq 1 ]] || die "expected compositor hyprland or sway"
+[[ $# -eq 1 ]] || die "expected compositor hyprland, sway, or labwc"
 compositor="$1"
-case "${compositor}" in hyprland|sway) ;; *) die "expected compositor hyprland or sway" ;; esac
+case "${compositor}" in hyprland|sway|labwc) ;; *) die "expected compositor hyprland, sway, or labwc" ;; esac
 
 if [[ "${compositor}" == hyprland ]]; then
   executable=Hyprland
   desktop=Hyprland
   uwsm_desktop=hyprland.desktop
   menu_prefix=hyprland-
-  stale_vars=(SWAYSOCK I3SOCK)
-else
+  stale_vars=(SWAYSOCK I3SOCK LABWC_PID)
+elif [[ "${compositor}" == sway ]]; then
   executable=sway
   desktop=sway
   uwsm_desktop=sway.desktop
   menu_prefix=sway-
-  stale_vars=(HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD)
+  stale_vars=(HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD LABWC_PID)
+else
+  executable=labwc
+  desktop=labwc
+  uwsm_desktop=labwc.desktop
+  menu_prefix=labwc-
+  stale_vars=(HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK)
 fi
 
 have_command "${executable}" || die "${executable} was not found in PATH"
@@ -155,6 +161,7 @@ case "${mode}" in
       start_shell_service
       exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"
     fi
+    [[ "${compositor}" != labwc ]] || die "labwc auto mode requires uwsm; install UWSM or use HOLONIGHT_SESSION_MODE=direct for manual startup"
     exec "${executable}"
     ;;
   uwsm)

@@ -117,5 +117,6 @@ install(
 )
 install(
     FILES ${PROJECT_SOURCE_DIR}/data/xdg/xdg-desktop-portal/sway-portals.conf
+          ${PROJECT_SOURCE_DIR}/data/xdg/xdg-desktop-portal/labwc-portals.conf
     DESTINATION ${CMAKE_INSTALL_DATADIR}/holonight/xdg/xdg-desktop-portal
 )

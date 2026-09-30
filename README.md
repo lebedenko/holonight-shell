@@ -223,12 +223,12 @@ holonight-shell --version    # -> holonight-shell 0.1.0
 
 ### Desktop session entry
 
-Installing also provides `HoloNight (Hyprland)` and `HoloNight (Sway)` Wayland
+Installing also provides `HoloNight (Hyprland)`, `HoloNight (Sway)`, and `HoloNight (labwc)` Wayland
 login entries. Use `task install:system` to make them available to the display
 manager; display managers generally do not discover entries under `~/.local`.
 
-Select the matching entry in the display manager. Both run the canonical
-`holonight-session` launcher with either `hyprland` or `sway`. The launcher
+Select the matching entry in the display manager. All run the canonical
+`holonight-session` launcher with `hyprland`, `sway`, or `labwc`. The launcher
 exports the HoloNight/compositor desktop environment, resolves the canonical
 cursor theme, removes stale markers from the other compositor, and imports the
 environment into D-Bus activation and the systemd user manager. With UWSM
@@ -238,6 +238,7 @@ distribution desktop entry:
 ```bash
 uwsm start -e -D Hyprland hyprland.desktop
 uwsm start -e -D sway sway.desktop
+uwsm start -e -D labwc labwc.desktop
 ```
 
 The script defaults missing values to:
@@ -252,14 +253,15 @@ XDG_MENU_PREFIX=hyprland-              # or sway-
 Startup mode is controlled with `HOLONIGHT_SESSION_MODE`:
 
 - `auto` (default) uses UWSM when `uwsm` is installed, otherwise runs the
-  selected compositor directly.
+  selected compositor directly for Hyprland/Sway. labwc requires UWSM in `auto`
+  mode and reports an error if it is unavailable.
 - `uwsm` requires UWSM and starts the selected compositor desktop entry.
 - `direct` runs the compositor directly after importing the environment. Direct mode
   does not automatically start `holonight-shell`; use the manual compositor
   fallback below when running without UWSM.
 
 The installed systemd user unit is intentionally not enabled globally during
-installation. Either HoloNight login entry starts it for that UWSM session.
+installation. Each HoloNight login entry starts it for that UWSM session.
 Users who keep their own Hyprland session can opt in with either:
 
 ```ini
@@ -290,7 +292,56 @@ For a one-off direct launch without UWSM:
 ```bash
 HOLONIGHT_SESSION_MODE=direct holonight-session hyprland
 HOLONIGHT_SESSION_MODE=direct holonight-session sway
+HOLONIGHT_SESSION_MODE=direct holonight-session labwc
 ```
+
+#### Developing in labwc
+
+Install with `task install:system`, then log out yourself and select **HoloNight
+(labwc)** in the display manager. The managed session requires `labwc` and `uwsm`
+(including the distribution's `labwc.desktop` and UWSM labwc plugin). labwc 0.20.2
+exports `WAYLAND_DISPLAY` and `LABWC_PID` on DRM startup; the UWSM plugin waits
+for that marker before declaring the graphical session ready. The shell wrapper
+also waits for both variables. No user labwc configuration or autostart file is
+replaced; output scaling, theme, key bindings and terminal commands remain yours.
+
+The bar uses labwc's actual named `ext-workspace-v1` workspaces. This initial
+integration does not provide numbered workspace slots, keyboard layout controls,
+private widgets, or compositor-specific window activation.
+
+Open a terminal with your existing labwc binding or the shell launcher. Inspect
+startup and restart the installed shell with:
+
+```bash
+journalctl --user -u holonight-shell.service -b
+journalctl --user -u wayland-wm@labwc.desktop.service -b
+systemctl --user restart holonight-shell.service
+```
+
+For a development build, stop the installed shell and run the checkout:
+
+```bash
+systemctl --user stop holonight-shell.service
+task run
+# After stopping the development shell, restore the installed one:
+systemctl --user start holonight-shell.service
+```
+
+Rebuilding or exiting the shell leaves labwc running. In explicit `direct` mode,
+start `holonight-shell` or `task run` yourself from a terminal inside labwc.
+Logout uses `uwsm stop` for a managed session and `labwc --exit` with a validated
+inherited `LABWC_PID` for a direct session, as described in the
+[labwc manual](https://labwc.github.io/labwc.1.html).
+
+`task labwc-runtime-smoke` checks startup, real workspace listing and activation,
+plugin isolation, and shell restart using temporary headless labwc configuration
+and a private D-Bus. It disables labwc activation-environment updates and hides
+the active desktop's runtime directory from the test.
+
+After relogin, check automatic shell startup, terminal and launcher access,
+popups, named workspace switching, locking, logout, and shell restart. To return
+to Sway, log out and select **HoloNight (Sway)** at the display manager. Installation
+and automated checks do not log out your current session.
 
 After login, verify desktop integration:
 
@@ -299,8 +350,8 @@ scripts/check-desktop-integration.sh
 task compositor-smoke-check
 ```
 
-The integration check reports both installed login entries and the canonical
-launcher, identifies Hyprland or Sway from colon-separated desktop tokens,
+The integration check reports all installed login entries and the canonical
+launcher, identifies Hyprland, Sway, or labwc from colon-separated desktop tokens,
 checks the matching compositor portal routing, and reports whether
 `org.freedesktop.impl.portal.desktop.holonight` is owned on the session bus.
 

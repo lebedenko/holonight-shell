@@ -38,6 +38,7 @@ import_runtime_environment() {
     HYPRLAND_INSTANCE_SIGNATURE
     HYPRLAND_CMD
     SWAYSOCK
+    LABWC_PID
     I3SOCK
     QT_QPA_PLATFORM
     QT_QPA_PLATFORMTHEME
@@ -54,9 +55,11 @@ import_runtime_environment() {
     fi
   done
   if [[ "${compositor}" == sway ]]; then
-    unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD
+    unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD LABWC_PID
+  elif [[ "${compositor}" == labwc ]]; then
+    unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK
   else
-    unset SWAYSOCK I3SOCK
+    unset SWAYSOCK I3SOCK LABWC_PID
   fi
 }
 
@@ -69,6 +72,7 @@ selected_compositor() {
     case "${desktop,,}" in
       hyprland) printf 'hyprland\n'; return ;;
       sway) printf 'sway\n'; return ;;
+      labwc) printf 'labwc\n'; return ;;
     esac
   done
   return 1
@@ -80,6 +84,7 @@ wait_for_compositor_environment() {
   local output
   local wayland_display
   local hyprland_signature
+  local labwc_pid
   local sway_socket
   local compositor
 
@@ -92,11 +97,13 @@ wait_for_compositor_environment() {
     output="$(systemd_environment)"
     wayland_display="$(environment_value WAYLAND_DISPLAY "${output}")"
     hyprland_signature="$(environment_value HYPRLAND_INSTANCE_SIGNATURE "${output}")"
+    labwc_pid="$(environment_value LABWC_PID "${output}")"
     sway_socket="$(environment_value SWAYSOCK "${output}")"
     compositor="$(selected_compositor "$(environment_value XDG_CURRENT_DESKTOP "${output}")" || true)"
 
     if [[ -n "${wayland_display}" ]] && { [[ "${compositor}" == sway && -n "${sway_socket}" ]] ||
-         [[ "${compositor}" == hyprland && -n "${hyprland_signature}" ]]; }; then
+         [[ "${compositor}" == hyprland && -n "${hyprland_signature}" ]] ||
+         [[ "${compositor}" == labwc && "${labwc_pid}" =~ ^([2-9]|[1-9][0-9]+)$ ]]; }; then
       import_runtime_environment "${output}" "${compositor}"
       return 0
     fi

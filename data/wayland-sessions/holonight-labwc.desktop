@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=HoloNight (labwc)
+Comment=labwc session with HoloNight desktop integration
+Exec="@HOLONIGHT_EXEC_BINDIR@/holonight-session" labwc
+TryExec=labwc
+DesktopNames=labwc
+Type=Application
