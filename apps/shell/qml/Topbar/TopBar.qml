@@ -30,11 +30,6 @@ Item {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        TopbarContributionHost {
-            barMonitorName: root.barMonitorName
-            Layout.alignment: Qt.AlignVCenter
-        }
-
         WorkspaceSection {
             barMonitorName: root.barMonitorName
             Layout.alignment: Qt.AlignVCenter

@@ -3,6 +3,7 @@
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QQuickItem>
+#include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTest>
 #include <QVariantList>
@@ -35,10 +36,16 @@ TEST(HyprlandQml, PrivateContributionUsesInjectedInstanceAndMonitor) {
   QQmlComponent component(&engine, loader.componentUrl());
   QTRY_VERIFY_WITH_TIMEOUT(!component.isLoading(), 2000);
   ASSERT_FALSE(component.isError()) << component.errorString().toStdString();
+  QQuickWindow window;
   SpecialModel model;
   std::unique_ptr<QObject> item(component.createWithInitialProperties(
       {{"barMonitorName", "DP-1"}, {"contributionModel", QVariant::fromValue(&model)}}));
   ASSERT_NE(item, nullptr) << component.errorString().toStdString();
+  qobject_cast<QQuickItem*>(item.get())->setParentItem(window.contentItem());
+  window.show();
+  EXPECT_EQ(item->property("implicitWidth").toDouble(), 32);
+  EXPECT_EQ(item->property("implicitHeight").toDouble(), 32);
+  EXPECT_TRUE(item->property("visible").toBool());
   const auto findDot = [](auto&& self, QQuickItem* parent) -> QQuickItem* {
     if (parent->objectName() == "specialWorkspaceDot") return parent;
     for (auto* child : parent->childItems())
@@ -52,8 +59,19 @@ TEST(HyprlandQml, PrivateContributionUsesInjectedInstanceAndMonitor) {
   EXPECT_EQ(model.activated, "special:magic");
   item->setProperty("barMonitorName", "DP-2");
   EXPECT_TRUE(dot->property("activeOnAnotherMonitor").toBool());
+  const auto populatedRows = model.rows;
+  model.rows.append(model.rows.first());
+  emit model.changed();
+  QTRY_COMPARE(item->property("implicitWidth").toDouble(), 72);
+  EXPECT_EQ(item->property("implicitHeight").toDouble(), 32);
   model.rows.clear();
   emit model.changed();
   EXPECT_EQ(item->property("implicitWidth").toDouble(), 0);
+  EXPECT_EQ(item->property("implicitHeight").toDouble(), 0);
+  EXPECT_FALSE(item->property("visible").toBool());
+  model.rows = populatedRows;
+  emit model.changed();
+  QTRY_COMPARE(item->property("implicitWidth").toDouble(), 32);
+  EXPECT_TRUE(item->property("visible").toBool());
 }
 #include "test_hyprland_qml.moc"

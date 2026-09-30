@@ -1,16 +1,13 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import HolonightShell.Presentation
-import Holonight.Controls
 
 Item {
     id: root
     required property string barMonitorName
     required property var contributionModel
-    implicitWidth: dots.count > 0 ? row.implicitWidth + 32 : 0
-    implicitHeight: 64
+    implicitWidth: dots.count > 0 ? row.implicitWidth : 0
+    implicitHeight: dots.count > 0 ? row.implicitHeight : 0
     visible: dots.count > 0
-    BarFrame { anchors.fill: parent; leftTopOffset: 12; rightBottomOffset: 12 }
     Row {
         id: row
         anchors.centerIn: parent

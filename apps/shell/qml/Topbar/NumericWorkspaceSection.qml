@@ -45,6 +45,25 @@ BarSection {
         spacing: 8
         move: Transition { NumberAnimation { properties: "x"; duration: 150; easing.type: Easing.OutCubic } }
 
+        TopbarContributionHost {
+            id: contributionHost
+            objectName: "contributionHost"
+            anchors.verticalCenter: parent.verticalCenter
+            barMonitorName: root.barMonitorName
+        }
+
+        Loader {
+            objectName: "separatorLoader"
+            anchors.verticalCenter: parent.verticalCenter
+            active: contributionHost.hasContent
+            width: active && status === Loader.Ready ? (item as Item).implicitWidth : 0
+            sourceComponent: HnSeparator {
+                orientation: Qt.Vertical
+                height: 48
+                fadeMode: HnSeparator.FadeBoth
+            }
+        }
+
         WorkspaceEdgeArrow {
             objectName: "leftArrow"
             anchors.verticalCenter: parent.verticalCenter
