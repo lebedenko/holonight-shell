@@ -18,22 +18,25 @@ BarSection {
     property string localTitle: ""
     property string localCategory: ""
     property string localAppClass: ""
-    readonly property string displayTitle: root.localTitle.length > 0 ? root.localTitle : "Desktop"
+    readonly property string displayTitle: root.localTitle.length > 0 ? root.localTitle : (root.localAppClass.length > 0 ? root.localAppClass : "Desktop")
 
-    Connections {
-        target: CompositorService
-        function onRevisionChanged() {
-            root.localTitle = CompositorService.activeWindowTitle(root.barMonitorName)
-            root.localCategory = CompositorService.activeWindowCategory(root.barMonitorName)
-            root.localAppClass = CompositorService.activeWindowAppId(root.barMonitorName)
-        }
-    }
-
-    Component.onCompleted: {
+    property string localIcon: ""
+    function refresh() {
         root.localTitle = CompositorService.activeWindowTitle(root.barMonitorName)
         root.localCategory = CompositorService.activeWindowCategory(root.barMonitorName)
         root.localAppClass = CompositorService.activeWindowAppId(root.barMonitorName)
+        root.localIcon = LauncherService.iconForAppId(root.localAppClass)
     }
+    Connections {
+        target: CompositorService
+        function onRevisionChanged() { root.refresh() }
+    }
+    Connections {
+        target: LauncherService
+        function onEntriesUpdated() { root.refresh() }
+    }
+    onBarMonitorNameChanged: refresh()
+    Component.onCompleted: refresh()
 
     BarFrame {
 
@@ -69,8 +72,11 @@ BarSection {
 
             AppWindowIcon {
                 id: appIcon
+                objectName: "activeWindowIcon"
 
                 category: root.localCategory
+                appId: root.localAppClass
+                iconName: root.localIcon
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: 1
             }

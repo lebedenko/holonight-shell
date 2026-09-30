@@ -95,6 +95,7 @@ class LauncherService : public QObject {
   Q_INVOKABLE static QStringList availableCategories();
   Q_INVOKABLE int countForCategory(const QString& category) const;
   Q_INVOKABLE QVariantMap entryInfoForDesktopFile(const QString& desktop_file) const;
+  Q_INVOKABLE QString iconForAppId(const QString& app_id) const;
   Q_INVOKABLE void reload();
   Q_INVOKABLE QVariantList entriesForMimeTypes(const QStringList& mime_types) const;
   Q_INVOKABLE QVariantList entriesForMimeTypesAndCategories(const QStringList& mime_types,

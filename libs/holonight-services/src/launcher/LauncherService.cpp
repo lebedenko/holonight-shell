@@ -638,3 +638,20 @@ void LauncherService::setSelectedIndexInternal(int index) {
   selected_index_ = clamped;
   emit selectedIndexChanged();
 }
+
+QString LauncherService::iconForAppId(const QString& app_id) const {
+  if (app_id.isEmpty()) return {};
+  QString id = app_id;
+  if (id.endsWith(".desktop", Qt::CaseInsensitive)) id.chop(8);
+  for (auto sensitivity : {Qt::CaseSensitive, Qt::CaseInsensitive}) {
+    for (bool wm_class : {false, true}) {
+      for (int i = 0; i < model_.allEntriesCount(); ++i) {
+        const auto* entry = model_.allEntryAt(i);
+        const QString candidate =
+            wm_class ? entry->startup_wm_class : QFileInfo(entry->desktop_file).completeBaseName();
+        if (!candidate.isEmpty() && candidate.compare(wm_class ? app_id : id, sensitivity) == 0) return entry->icon;
+      }
+    }
+  }
+  return {};
+}

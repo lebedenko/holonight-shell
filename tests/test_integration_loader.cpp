@@ -84,7 +84,7 @@ TEST(IntegrationLoader, LabwcSelectsByDesktopOrMarkerAndDelegatesNamedWorkspaces
   EXPECT_EQ(loader.backendName(), "labwc");
   auto backend = loader.createCompositor();
   ASSERT_NE(backend, nullptr);
-  EXPECT_STREQ(backend->metaObject()->className(), "GenericBackend");
+  EXPECT_STREQ(backend->metaObject()->className(), "LabwcBackend");
   EXPECT_EQ(dynamic_cast<NumberedWorkspaceProvider*>(backend.get()), nullptr);
   EXPECT_EQ(loader.integration()->createKeyboard(), nullptr);
   EXPECT_TRUE(loader.componentUrl().isEmpty());

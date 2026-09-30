@@ -782,6 +782,13 @@ class FakeLauncherService : public QObject {
   Q_PROPERTY(QVariantList selectedEntryActions READ selectedEntryActions CONSTANT)
 
  public:
+  Q_INVOKABLE QString iconForAppId(const QString& app) const { return icons_.value(app); }
+  Q_INVOKABLE void setAppIcon(const QString& app, const QString& icon) {
+    icons_.insert(app, icon);
+    emit entriesUpdated();
+  }
+  QHash<QString, QString> icons_;
+  Q_SIGNAL void entriesUpdated();
   FakeLauncherService() {
     results_.setItemRoleNames({{Qt::UserRole, "name"},
                                {Qt::UserRole + 1, "subtitle"},
@@ -1091,6 +1098,37 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
  private:
   HoloNight::System::StorageResult last_request_;
 };
+class CompositorTestSeed : public QObject {
+  Q_OBJECT
+ public:
+  explicit CompositorTestSeed(CompositorService& service) : service_(service) {}
+  Q_INVOKABLE void setWindow(bool available, const QString& output, const QString& title, const QString& app) {
+    CompositorSnapshot snapshot{.connected = true, .capabilities = {.active_window = available}};
+    if (!output.isEmpty()) snapshot.active_windows.insert(output, {.app_id = app, .title = title});
+    service_.publishSnapshotForTest(snapshot);
+  }
+
+  Q_INVOKABLE void reset() {
+    service_.publishSnapshotForTest({.connected = true,
+                                     .focused_output = "DP-1",
+                                     .capabilities = {.workspace_listing = true,
+                                                      .workspace_activation = true,
+                                                      .active_window = true,
+                                                      .focused_output = true,
+                                                      .urgency = true,
+                                                      .occupancy = true},
+                                     .workspaces = {{.id = "1",
+                                                     .display_name = "1",
+                                                     .outputs = {"DP-1"},
+                                                     .active = true,
+                                                     .focused = true,
+                                                     .occupied = true}}});
+  }
+
+ private:
+  CompositorService& service_;
+};
+
 class FakeNumberedProvider : public QObject, public NumberedWorkspaceProvider {
   Q_OBJECT
  public:
@@ -1162,6 +1200,7 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "MimeService", &mime_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IdleService", &idle_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorTestSeed", &compositor_test_seed_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspacePresentation", &presentation_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IntegrationLoader", &integration_loader_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "NumberedTestProvider", &numbered_) >= 0 &&
@@ -1219,6 +1258,7 @@ class FakeQmlServices {
   ConfigService config_service_;
   // Record activation requests without sending commands to a real compositor.
   CompositorService compositor_;
+  CompositorTestSeed compositor_test_seed_{compositor_};
   FakeNumberedProvider numbered_;
   WorkspacePresentation presentation_{&compositor_, &numbered_};
   IntegrationLoader integration_loader_{QStringList{}, QProcessEnvironment{}};

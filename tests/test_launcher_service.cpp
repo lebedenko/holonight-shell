@@ -1039,3 +1039,30 @@ TEST(LauncherModel, IndexConsistencyAfterSetEntries) {
 
   EXPECT_EQ(model.findEntryByDesktopFile(QStringLiteral("/tmp/removed.desktop")), nullptr);
 }
+
+TEST(LauncherService, AppIconsUseInventoryAndExactMatchesBeforeCaseInsensitive) {
+  QTemporaryDir dir, cache;
+  ASSERT_TRUE(dir.isValid());
+  ASSERT_TRUE(writeFile(
+      dir.path() + "/Example.desktop",
+      "[Desktop "
+      "Entry]\nType=Application\nName=Example\nExec=example\nIcon=example-icon\nStartupWMClass=LegacyClass\n"));
+  LauncherService service(DesktopEntryScanner({dir.path()}), std::make_unique<FakeLauncherBackend>(),
+                          launcherDbPath(cache));
+  service.start();
+  QTRY_COMPARE_WITH_TIMEOUT(service.resultCount(), 1, 2000);
+  service.setQuery("no matching launcher results");
+  EXPECT_EQ(service.resultCount(), 0);
+  EXPECT_EQ(service.iconForAppId("Example"), "example-icon");
+  EXPECT_EQ(service.iconForAppId("Example.desktop"), "example-icon");
+  EXPECT_EQ(service.iconForAppId("example"), "example-icon");
+  EXPECT_EQ(service.iconForAppId("LegacyClass"), "example-icon");
+  EXPECT_EQ(service.iconForAppId("legacyclass"), "example-icon");
+  EXPECT_TRUE(service.iconForAppId("unknown").isEmpty());
+  EXPECT_TRUE(service.iconForAppId("").isEmpty());
+  ASSERT_TRUE(writeFile(dir.path() + "/legacyclass.desktop",
+                        "[Desktop Entry]\nType=Application\nName=Other\nExec=other\nIcon=other-icon\n"));
+  service.reload();
+  QTRY_COMPARE_WITH_TIMEOUT(service.iconForAppId("legacyclass"), QString("other-icon"), 2000);
+  EXPECT_EQ(service.iconForAppId("LegacyClass"), "example-icon");
+}

@@ -1,8 +1,10 @@
+#include "IconImageProvider.h"
 #include "SidebarSurfacePolicy.h"
 
 #include <QGuiApplication>
 #include <QQmlEngine>
 #include <QScreen>
+#include <QTemporaryDir>
 
 #include <gtest/gtest.h>
 
@@ -59,4 +61,24 @@ TEST(SidebarSurfacePolicy, InstallsIconImageProviderBeforeLoad) {
   QQmlEngine engine;
   spec.before_load(&engine);
   EXPECT_NE(engine.imageProvider(QStringLiteral("icon")), nullptr);
+}
+
+TEST(IconImageProvider, StrictLookupPreservesColorsAndRejectsMissingOrBrokenIcons) {
+  QTemporaryDir directory;
+  ASSERT_TRUE(directory.isValid());
+  const QString path = directory.path() + "/colored.png";
+  QImage image(15, 15, QImage::Format_ARGB32);
+  image.fill(QColor("#c14287"));
+  ASSERT_TRUE(image.save(path));
+  IconImageProvider provider;
+  QSize size;
+  const auto pixmap = provider.requestPixmap("strict/" + path, &size, {15, 15});
+  ASSERT_FALSE(pixmap.isNull());
+  EXPECT_EQ(pixmap.toImage().pixelColor(7, 7), QColor("#c14287"));
+  EXPECT_TRUE(provider.requestPixmap("strict/holonight-no-such-icon-123", &size, {15, 15}).isNull());
+  QFile broken(directory.path() + "/broken.png");
+  ASSERT_TRUE(broken.open(QIODevice::WriteOnly));
+  broken.write("invalid image data");
+  broken.close();
+  EXPECT_TRUE(provider.requestPixmap("strict/" + broken.fileName(), &size, {15, 15}).isNull());
 }

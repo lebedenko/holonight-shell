@@ -13,7 +13,10 @@ class IconImageProvider : public QQuickImageProvider {
  public:
   IconImageProvider() : QQuickImageProvider(QQuickImageProvider::Pixmap) {}
 
-  QPixmap requestPixmap(const QString& iconName, QSize* size, const QSize& requestedSize) override {
+  QPixmap requestPixmap(const QString& requestedName, QSize* size, const QSize& requestedSize) override {
+    // Strict callers supply their own visual fallback instead of a theme substitute.
+    const bool strict = requestedName.startsWith(QLatin1String("strict/"));
+    const QString iconName = strict ? requestedName.mid(7) : requestedName;
     const QSize resolved = requestedSize.isValid() ? requestedSize : QSize(16, 16);
     if (size != nullptr) {
       *size = resolved;
@@ -28,7 +31,7 @@ class IconImageProvider : public QQuickImageProvider {
       if (icon.isNull()) {
         icon = iconFromPixmapDirs(iconName);
       }
-      if (icon.isNull()) {
+      if (icon.isNull() && !strict) {
         static const QLoggingCategory kCat("holonight.icon_provider");
         qCDebug(kCat, "icon '%s' not found in theme or pixmaps dirs, using application-x-executable",
                 qPrintable(iconName));

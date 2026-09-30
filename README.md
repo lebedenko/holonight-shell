@@ -305,7 +305,11 @@ for that marker before declaring the graphical session ready. The shell wrapper
 also waits for both variables. No user labwc configuration or autostart file is
 replaced; output scaling, theme, key bindings and terminal commands remain yours.
 
-The bar uses labwc's actual named `ext-workspace-v1` workspaces. This initial
+The bar uses labwc's actual named `ext-workspace-v1` workspaces and shows the focused
+window title and application icon on each output where that window is visible. Other
+outputs show Desktop. Window updates use `wlr-foreign-toplevel-management-unstable-v1`
+without polling. Windows excluded by labwc's `skipTaskbar` rule are absent from this
+protocol (see the [configuration manual](https://labwc.github.io/labwc-config.5.html)). This
 integration does not provide numbered workspace slots, keyboard layout controls,
 private widgets, or compositor-specific window activation.
 

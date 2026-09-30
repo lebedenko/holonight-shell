@@ -108,6 +108,7 @@ holonight_add_test_exe(test_holonight_compositor
   main.cpp
   test_compositor.cpp
   test_generic_workspace.cpp
+  test_labwc_windows.cpp
   test_window_activation.cpp
   test_hyprland_backend.cpp
   test_sway_backend.cpp
@@ -420,7 +421,7 @@ add_test(NAME uqc_launch COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scr
 set_tests_properties(uqc_launch PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
 
 foreach(target IN ITEMS test_holonight_platform test_holonight_core test_holonight_compositor test_holonight_services)
-  target_link_libraries(${target} PRIVATE holonight_hyprland_implementation holonight_sway_implementation holonight_labwc_implementation)
+  target_link_libraries(${target} PRIVATE holonight_hyprland_implementation holonight_sway_implementation holonight_labwc_implementation holonight_ext_workspace)
 endforeach()
 foreach(target IN ITEMS test_holonight_qml_harness test_holonight_compiled_controls test_holonight_qml)
   target_link_libraries(${target} PRIVATE holonight_presentationplugin)

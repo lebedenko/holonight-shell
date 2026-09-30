@@ -37,10 +37,17 @@ Item {
         }
 
         ActiveWindowSection {
+            id: activeWindowSection
             barMonitorName: root.barMonitorName
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             Layout.leftMargin: root.primarySectionMargin
+        }
+
+        Item {
+            objectName: "activeWindowSpacer"
+            visible: !activeWindowSection.visible
+            Layout.fillWidth: true
         }
 
         MprisSection {

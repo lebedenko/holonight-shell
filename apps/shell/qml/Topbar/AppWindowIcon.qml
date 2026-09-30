@@ -5,6 +5,20 @@ Item {
     id: root
 
     property string category: ""
+    property string appId: ""
+    property string iconName: ""
+    property bool loadFailed: false
+    onAppIdChanged: loadFailed = false
+    onIconNameChanged: loadFailed = false
+    Image {
+        id: iconImage
+        anchors.fill: parent
+        source: root.iconName.length > 0 ? "image://icon/strict/" + root.iconName : ""
+        sourceSize: Qt.size(root.width, root.height)
+        fillMode: Image.PreserveAspectFit
+        visible: root.iconName.length > 0 && !root.loadFailed && status === Image.Ready
+        onStatusChanged: if (status === Image.Error) root.loadFailed = true
+    }
 
     readonly property color _stroke: HoloniightPalette.borderActive
 
@@ -16,6 +30,7 @@ Item {
 
         anchors.fill: parent
         opacity: 0.72
+        visible: root.iconName.length === 0 || root.loadFailed || iconImage.status === Image.Error
 
         onPaint: {
             const ctx = getContext("2d")

@@ -1,0 +1,147 @@
+#include "LabwcBackend.h"
+
+#include "ForeignToplevelState.h"
+
+#include <QGuiApplication>
+#include <QScreen>
+
+#include <cstring>
+
+class LabwcWindow final : public QtWayland::zwlr_foreign_toplevel_handle_v1 {
+ public:
+  ForeignToplevelState state;
+  LabwcWindow(struct ::zwlr_foreign_toplevel_handle_v1* handle, LabwcBackend* backend)
+      : QtWayland::zwlr_foreign_toplevel_handle_v1(handle), backend_(backend) {}
+  ~LabwcWindow() override {
+    if (isInitialized()) destroy();
+  }
+
+ protected:
+  void zwlr_foreign_toplevel_handle_v1_title(const QString& title) override { state.pending.window.title = title; }
+  void zwlr_foreign_toplevel_handle_v1_app_id(const QString& id) override { state.pending.window.app_id = id; }
+  void zwlr_foreign_toplevel_handle_v1_output_enter(wl_output* output) override {
+    state.pending.outputs.insert(output);
+  }
+  void zwlr_foreign_toplevel_handle_v1_output_leave(wl_output* output) override {
+    state.pending.outputs.remove(output);
+  }
+  void zwlr_foreign_toplevel_handle_v1_state(wl_array* states) override {
+    bool activated = false;
+    const auto* bytes = static_cast<const char*>(states->data);
+    for (size_t i = 0; i + sizeof(uint32_t) <= states->size; i += sizeof(uint32_t)) {
+      uint32_t state;
+      std::memcpy(&state, bytes + i, sizeof(state));
+      activated |= state == state_activated;
+    }
+    state.setActivated(activated, backend_->activation_order_);
+  }
+  void zwlr_foreign_toplevel_handle_v1_done() override {
+    state.commit();
+    backend_->schedulePublish();
+  }
+  void zwlr_foreign_toplevel_handle_v1_closed() override {
+    backend_->windows_.removeOne(this);
+    backend_->schedulePublish();
+    delete this;
+  }
+
+ private:
+  LabwcBackend* backend_;
+};
+
+class LabwcProtocol final : public QWaylandClientExtensionTemplate<LabwcProtocol>,
+                            public QtWayland::zwlr_foreign_toplevel_manager_v1 {
+ public:
+  explicit LabwcProtocol(LabwcBackend* backend) : QWaylandClientExtensionTemplate(1), backend_(backend) {}
+  void bind() { initialize(); }
+  ~LabwcProtocol() override {
+    if (isInitialized()) {
+      if (isActive() && !finished_) stop();
+      ::zwlr_foreign_toplevel_manager_v1_destroy(object());
+    }
+  }
+
+ protected:
+  void zwlr_foreign_toplevel_manager_v1_toplevel(struct ::zwlr_foreign_toplevel_handle_v1* handle) override {
+    backend_->windows_.append(new LabwcWindow(handle, backend_));
+  }
+  void zwlr_foreign_toplevel_manager_v1_finished() override {
+    finished_ = true;
+    backend_->protocolFinished();
+  }
+
+ private:
+  LabwcBackend* backend_;
+  bool finished_{false};
+};
+
+LabwcBackend::LabwcBackend(QObject* parent) : CompositorBackend(parent) {
+  connect(&workspace_, &CompositorBackend::snapshotReady, this, [this](CompositorSnapshot snapshot) {
+    workspace_snapshot_ = std::move(snapshot);
+    schedulePublish();
+  });
+  reconnect_timer_.setSingleShot(true);
+  reconnect_timer_.setInterval(1000);
+  connect(&reconnect_timer_, &QTimer::timeout, this, &LabwcBackend::connectProtocol);
+  connect(qGuiApp, &QGuiApplication::screenAdded, this, [this](QScreen*) { schedulePublish(); });
+  connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this](QScreen*) { schedulePublish(); });
+}
+LabwcBackend::~LabwcBackend() { qDeleteAll(windows_); }
+void LabwcBackend::start() {
+  workspace_.start();
+  if (!protocol_) connectProtocol();
+}
+void LabwcBackend::activateWorkspace(const QString& id) { workspace_.activateWorkspace(id); }
+void LabwcBackend::connectProtocol() {
+  qDeleteAll(windows_);
+  windows_.clear();
+  protocol_.reset();
+  available_ = false;
+  protocol_ = std::make_unique<LabwcProtocol>(this);
+  connect(protocol_.get(), &QWaylandClientExtension::activeChanged, this, [this] {
+    if (!protocol_->isActive()) {
+      protocolFinished();
+      return;
+    }
+    available_ = true;
+    reconnect_timer_.stop();
+    schedulePublish();
+  });
+  protocol_->bind();
+  if (protocol_->isActive()) {
+    available_ = true;
+    schedulePublish();
+  } else
+    protocolFinished();
+}
+void LabwcBackend::protocolFinished() {
+  available_ = false;
+  qDeleteAll(windows_);
+  windows_.clear();
+  schedulePublish();
+  reconnect_timer_.start();
+}
+void LabwcBackend::schedulePublish() {
+  if (publish_pending_) return;
+  publish_pending_ = true;
+  QTimer::singleShot(0, this, [this] {
+    publish_pending_ = false;
+    publish();
+  });
+}
+void LabwcBackend::publish() {
+  QHash<QString, CompositorActiveWindow> windows;
+  if (available_) {
+    QList<const ForeignToplevelState*> states;
+    for (const auto* window : std::as_const(windows_)) states.append(&window->state);
+    if (const auto* active = ForeignToplevelState::active(states)) {
+      QHash<wl_output*, QString> names;
+      for (auto* screen : QGuiApplication::screens()) {
+        auto* native = screen->nativeInterface<QNativeInterface::QWaylandScreen>();
+        if (native) names.insert(native->output(), screen->name());
+      }
+      windows = active->onOutputs(names);
+    }
+  }
+  emit snapshotReady(mergeLabwcSnapshot(workspace_snapshot_, available_, windows));
+}
