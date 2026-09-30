@@ -268,6 +268,54 @@ TEST(QmlSmoke, StorageDriveHeaderRecoversFromFailedPowerOffWithoutCountChange) {
   EXPECT_FALSE(header->property("driveCanPowerOff").toBool());
 }
 
+TEST(QmlSmoke, StorageDriveHeaderUpdatesMetadataWithoutCountChange) {
+  QTemporaryDir modules;
+  ASSERT_TRUE(modules.isValid());
+  ASSERT_TRUE(QDir(modules.path()).mkpath(QStringLiteral("HolonightShell")));
+  ASSERT_TRUE(QDir(modules.path()).mkpath(QStringLiteral("Holonight/Components")));
+  const QString source_root = QStringLiteral(TEST_SOURCE_DIR);
+  ASSERT_TRUE(writeFile(modules.filePath(QStringLiteral("HolonightShell/qmldir")), shellQmldir(source_root)));
+  ASSERT_TRUE(
+      writeFile(modules.filePath(QStringLiteral("Holonight/Components/qmldir")), componentsQmldir(source_root)));
+  FakeQmlServices services;
+  ASSERT_TRUE(services.registerSingletons());
+  services.seedStorage();
+  QQmlEngine engine;
+  engine.addImportPath(QStringLiteral(HOLONIGHT_RUNTIME_QML_PATH));
+  engine.addImportPath(modules.path());
+  const auto header = createQmlObject(
+      &engine,
+      QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Popups/Storage/StorageDriveSection.qml")),
+      {{QStringLiteral("section"), QStringLiteral("test-drive")}, {QStringLiteral("width"), 480}});
+  ASSERT_NE(header, nullptr);
+  EXPECT_EQ(header->property("driveIcon").toString(), "drive-removable-media-symbolic");
+  EXPECT_EQ(header->property("driveSubtitle").toString(), "USB · Removable");
+  services.seedStorage("thumb", 0);
+  QCoreApplication::processEvents();
+  EXPECT_EQ(services.storage().count(), 1);
+  EXPECT_EQ(header->property("driveSubtitle").toString(), "USB · USB flash drive");
+  auto* icon = header->findChild<QObject*>("storageDriveIcon");
+  ASSERT_NE(icon, nullptr);
+  EXPECT_EQ(icon->property("source").toUrl(), QUrl("qrc:/HolonightShell/common/usb-stick.svg"));
+  EXPECT_TRUE(icon->property("name").toString().isEmpty());
+  EXPECT_EQ(icon->property("rendering").toInt(), 1);
+  EXPECT_EQ(icon->property("resolvedColor"), icon->property("normalColor"));
+  ASSERT_TRUE(QTest::qWaitFor([&] {
+    const auto images = icon->findChildren<QObject*>();
+    for (auto* image : images) {
+      if (image->inherits("QQuickImage") && image->property("status").toInt() == 1) return true;
+    }
+    return false;
+  }));
+  EXPECT_FALSE(icon->property("hasError").toBool());
+  services.seedStorage({}, 7200);
+  QCoreApplication::processEvents();
+  EXPECT_EQ(services.storage().count(), 1);
+  EXPECT_EQ(icon->property("name").toString(), "drive-harddisk-symbolic");
+  EXPECT_TRUE(icon->property("source").toUrl().isEmpty());
+  EXPECT_EQ(header->property("driveSubtitle").toString(), "USB · Hard disk");
+}
+
 TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
   QTemporaryDir modules;
   ASSERT_TRUE(modules.isValid());

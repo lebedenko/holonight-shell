@@ -60,7 +60,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lebedenko/holonight-system-services
-          ref: 5f2ecda7eea653995f4c860bfb7f3a3f53beb279
+          ref: 3e2928eb55bbc3de2b1e877e29aa57d47077c05d
           path: holonight-system-services-dep
 
       - name: Build and install HoloNightSystemServices dependency

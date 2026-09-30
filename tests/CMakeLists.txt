@@ -244,6 +244,12 @@ target_link_libraries(test_holonight_qml PRIVATE
   Qt6::Test
 )
 
+qt6_add_resources(test_holonight_qml "test_storage_assets"
+  PREFIX "/HolonightShell"
+  BASE "${PROJECT_SOURCE_DIR}/assets"
+  FILES "${PROJECT_SOURCE_DIR}/assets/common/usb-stick.svg"
+)
+
 # --- qml unit tests harness (uses QtQuickTest/TestCase) ---
 add_executable(test_holonight_qml_harness
   AuthenticationUiFixture.h

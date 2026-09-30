@@ -70,39 +70,49 @@ QString formatBytes(qint64 bytes) {
   }
   return QStringLiteral("%1 %2").arg(number_text, units[unit_index]);
 }
-bool mediaListSuggestsFlash(const QStringList& mediaCompatibility) {
-  return std::ranges::any_of(mediaCompatibility, [](const QString& entry) {
-    const auto lower = entry.toLower();
-    return lower.contains("flash_sd") || lower.contains("flash_cf") || lower.contains("flash_ms") ||
-           lower.contains("flash_sm") || lower.contains("flash_mmc");
-  });
-}
-bool mediaSuggestsSolidState(const StorageDrive& drive) {
-  const auto media = drive.media.toLower();
-  if (media.contains("ssd") || media.contains("nvme") || media.contains("solid_state")) {
-    return true;
-  }
-  return std::ranges::any_of(drive.mediaCompatibility, [](const QString& entry) {
-    const auto lower = entry.toLower();
-    return lower.contains("ssd") || lower.contains("nvme") || lower.contains("solid_state");
-  });
-}
-// Optical and flash/card media take precedence over the generic USB SSD/HDD classification.
-QString driveIconNameFor(const StorageDrive& drive) {
-  if (drive.optical) {
-    return QStringLiteral("media-optical-symbolic");
-  }
-  if (mediaListSuggestsFlash(drive.mediaCompatibility)) {
-    return QStringLiteral("media-flash-symbolic");
-  }
-  const bool usb = drive.connectionBus.compare("usb", Qt::CaseInsensitive) == 0;
-  if (usb) {
-    return mediaSuggestsSolidState(drive) ? QStringLiteral("drive-harddisk-solidstate-symbolic")
-                                          : QStringLiteral("drive-harddisk-usb-symbolic");
-  }
-  return QStringLiteral("drive-removable-media-symbolic");
-}
 }  // namespace
+StorageService::DeviceKind StorageService::classifyDevice(const StorageDrive& drive) {
+  auto media = drive.mediaCompatibility;
+  media.append(drive.media);
+  const auto has = [&media](auto predicate) { return std::ranges::any_of(media, predicate); };
+  static const QStringList opticalMedia = {"optical",
+                                           "optical_cd",
+                                           "optical_cd_r",
+                                           "optical_cd_rw",
+                                           "optical_dvd",
+                                           "optical_dvd_r",
+                                           "optical_dvd_rw",
+                                           "optical_dvd_ram",
+                                           "optical_dvd_plus_r",
+                                           "optical_dvd_plus_rw",
+                                           "optical_dvd_plus_r_dl",
+                                           "optical_dvd_plus_rw_dl",
+                                           "optical_bd",
+                                           "optical_bd_r",
+                                           "optical_bd_re",
+                                           "optical_hddvd",
+                                           "optical_hddvd_r",
+                                           "optical_hddvd_rw",
+                                           "optical_mo",
+                                           "optical_mrw",
+                                           "optical_mrw_w"};
+  if (drive.optical || has([](const QString& token) { return opticalMedia.contains(token); })) {
+    return DeviceKind::Optical;
+  }
+  if (media.contains(QStringLiteral("thumb"))) {
+    return DeviceKind::Thumb;
+  }
+  if (has([](const QString& token) { return token == "flash" || token.startsWith("flash_"); })) {
+    return DeviceKind::Flash;
+  }
+  if (drive.rotationRate && *drive.rotationRate > 0) {
+    return DeviceKind::HardDisk;
+  }
+  if (drive.rotationRate && *drive.rotationRate == 0) {
+    return DeviceKind::SolidState;
+  }
+  return DeviceKind::Unknown;
+}
 StorageService::StorageService(QObject* parent) : StorageService(new StorageController, parent) {
   controller_->setParent(this);
 }
@@ -381,7 +391,21 @@ QString StorageService::driveLabel(const QString& targetId) const {
 }
 QString StorageService::driveIconName(const QString& driveId) const {
   const auto drive = controller_->drives()->find(driveId);
-  return drive ? driveIconNameFor(*drive) : QStringLiteral("drive-removable-media-symbolic");
+  switch (drive ? classifyDevice(*drive) : DeviceKind::Unknown) {
+    case DeviceKind::Optical:
+      return QStringLiteral("media-optical-symbolic");
+    case DeviceKind::Thumb:
+      return QStringLiteral("qrc:/HolonightShell/common/usb-stick.svg");
+    case DeviceKind::Flash:
+      return QStringLiteral("media-flash-symbolic");
+    case DeviceKind::HardDisk:
+      return QStringLiteral("drive-harddisk-symbolic");
+    case DeviceKind::SolidState:
+      return QStringLiteral("drive-harddisk-solidstate-symbolic");
+    case DeviceKind::Unknown:
+      return QStringLiteral("drive-removable-media-symbolic");
+  }
+  return {};
 }
 QString StorageService::driveSubtitle(const QString& driveId) const {
   const auto drive = controller_->drives()->find(driveId);
@@ -392,15 +416,25 @@ QString StorageService::driveSubtitle(const QString& driveId) const {
   if (!drive->connectionBus.isEmpty()) {
     parts.append(drive->connectionBus.toUpper());
   }
-  const auto icon = driveIconNameFor(*drive);
-  if (icon == QLatin1String("media-optical-symbolic")) {
-    parts.append(tr("Optical"));
-  } else if (icon == QLatin1String("drive-harddisk-solidstate-symbolic")) {
-    parts.append(tr("Solid state"));
-  } else if (icon == QLatin1String("media-flash-symbolic")) {
-    parts.append(tr("Flash media"));
-  } else {
-    parts.append(tr("Removable"));
+  switch (classifyDevice(*drive)) {
+    case DeviceKind::Optical:
+      parts.append(tr("Optical"));
+      break;
+    case DeviceKind::Thumb:
+      parts.append(tr("USB flash drive"));
+      break;
+    case DeviceKind::Flash:
+      parts.append(tr("Flash media"));
+      break;
+    case DeviceKind::HardDisk:
+      parts.append(tr("Hard disk"));
+      break;
+    case DeviceKind::SolidState:
+      parts.append(tr("Solid state"));
+      break;
+    case DeviceKind::Unknown:
+      if (drive->removable || drive->mediaRemovable) parts.append(tr("Removable"));
+      break;
   }
   return parts.join(QStringLiteral(" · "));
 }

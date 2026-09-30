@@ -37,6 +37,15 @@ ColumnLayout {
         return StorageService.driveCanPowerOff(root.section);
     }
 
+    readonly property string driveIcon: {
+        StorageService.count;
+        return StorageService.driveIconName(root.section);
+    }
+    readonly property string driveSubtitle: {
+        StorageService.count;
+        return StorageService.driveSubtitle(root.section);
+    }
+
     Layout.fillWidth: true
     Layout.topMargin: 12
     spacing: 6
@@ -45,11 +54,22 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
 
-        ExternalIcon {
-            iconName: StorageService.driveIconName(root.section)
-            fallbackIconName: "drive-removable-media-symbolic"
-            iconSize: 22
-            tintColor: HoloniightPalette.textSecondary
+        HnIcon {
+            id: driveIcon
+            objectName: "storageDriveIcon"
+            source: root.driveIcon.startsWith("qrc:") ? root.driveIcon : ""
+            name: root.driveIcon.startsWith("qrc:") ? "" : root.driveIcon
+            size: 22
+            normalColor: HoloniightPalette.textSecondary
+            visible: !driveIcon.hasError
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
+        }
+        HnIcon {
+            name: "drive-removable-media-symbolic"
+            size: 22
+            normalColor: HoloniightPalette.textSecondary
+            visible: driveIcon.hasError
             Layout.preferredWidth: 22
             Layout.preferredHeight: 22
         }
@@ -68,7 +88,7 @@ ColumnLayout {
 
             HnLabel {
                 Layout.fillWidth: true
-                rawText: [StorageService.driveSubtitle(root.section), StorageService.driveCapacityText(root.section)]
+                rawText: [root.driveSubtitle, StorageService.driveCapacityText(root.section)]
                           .filter(part => part.length > 0).join(" • ")
                 role: HnTypographyRole.Caption
                 color: HoloniightPalette.textMuted

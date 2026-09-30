@@ -48,15 +48,18 @@ WHILE `deviceCount > 0` AND `hasMounted == true`, the StorageWidget shall render
 
 **REQ-F-006** — Device-Type Icon Mapping (Popup Card Icons)
 
-For each removable drive in the Storage popup, the system shall select a symbolic icon name based on the drive's properties as follows:
+For each removable drive, one classifier shall derive both the icon and translated subtitle label, in this order:
 
-- IF `drive.optical == true` THEN icon name is `media-optical-symbolic`
-- ELSE IF `drive.mediaCompatibility` indicates SD card, CompactFlash, or similar flash media (including USB readers) THEN icon name is `media-flash-symbolic`
-- ELSE IF `drive.connectionBus` indicates USB AND `drive.media`/`mediaCompatibility` indicate SSD/NVMe-like storage THEN icon name is `drive-harddisk-solidstate-symbolic`
-- ELSE IF `drive.connectionBus` indicates USB AND NOT SSD THEN icon name is `drive-harddisk-usb-symbolic`
-- ELSE (fallback for any other removable drive) icon name is `drive-removable-media-symbolic`
+- Optical flag or documented optical token in `media` or `mediaCompatibility`: `media-optical-symbolic`, “Optical”.
+- Exact `thumb` in either media field: bundled `qrc:/HolonightShell/common/usb-stick.svg`, “USB flash drive”.
+- Exact `flash` or `flash_*` in either media field: `media-flash-symbolic`, “Flash media”.
+- Positive optional `rotationRate`: `drive-harddisk-symbolic`, “Hard disk”.
+- Zero optional `rotationRate`: `drive-harddisk-solidstate-symbolic`, “Solid state”.
+- Otherwise: `drive-removable-media-symbolic`, “Removable” when removable.
 
-- **Acceptance Criterion**: A USB optical disc drive displays `media-optical-symbolic`. A USB Samsung T7 (SSD) displays `drive-harddisk-solidstate-symbolic`. A USB WD Blue HDD displays `drive-harddisk-usb-symbolic`. A USB SD-card reader displays `media-flash-symbolic`. An unknown vendor removable drive (e.g. proprietary music player) displays `drive-removable-media-symbolic`. No device's icon is blank or undefined.
+Missing and negative rotation rates provide insufficient evidence. Classification is independent of bus, names, filesystem, and removability; subtitles retain the bus prefix. Header icons use `HnIcon` semantic tinting and an explicit generic fallback. Icon and subtitle bindings update on metadata-only changes at unchanged row count.
+
+- **Acceptance Criterion**: JetFlash 64 GB displays “USB flash drive”; SiliconMotion 128 GB displays “Solid state”; WD 1 TB displays “Hard disk”; the generic reader displays “Removable”. No icon is blank or undefined.
 
 **REQ-NF-001** — Icon Resolution Consistency
 

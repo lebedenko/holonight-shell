@@ -259,10 +259,11 @@ TEST(ShellStorage, DriveIconNameClassifiesByDeviceType) {
   optical.optical = true;
   auto usbSsd = device("usb-ssd");
   usbSsd.connectionBus = "usb";
-  usbSsd.media = "thumb_ssd";
+  usbSsd.rotationRate = 0;
   usbSsd.model = "Samsung T7 SSD";
   auto usbHdd = device("usb-hdd");
   usbHdd.connectionBus = "usb";
+  usbHdd.rotationRate = 5400;
   auto flashReader = device("flash-reader");
   flashReader.connectionBus = "usb";
   flashReader.mediaCompatibility = {"flash_sd", "flash_sdhc"};
@@ -271,7 +272,7 @@ TEST(ShellStorage, DriveIconNameClassifiesByDeviceType) {
   backend.publish();
   EXPECT_EQ(model.driveIconName("optical"), "media-optical-symbolic");
   EXPECT_EQ(model.driveIconName("usb-ssd"), "drive-harddisk-solidstate-symbolic");
-  EXPECT_EQ(model.driveIconName("usb-hdd"), "drive-harddisk-usb-symbolic");
+  EXPECT_EQ(model.driveIconName("usb-hdd"), "drive-harddisk-symbolic");
   EXPECT_EQ(model.driveIconName("flash-reader"), "media-flash-symbolic");
   EXPECT_EQ(model.driveIconName("unknown"), "drive-removable-media-symbolic");
 }
@@ -442,4 +443,68 @@ TEST_F(StorageNotifications, OtherBusClientsCannotBypassDndByImpersonatingStorag
   EXPECT_EQ(reply.value(), 0U);
   EXPECT_EQ(notifications_->rowCount(), 0);
   QDBusConnection::disconnectFromBus(QStringLiteral("storage-test-peer"));
+}
+
+TEST(ShellStorage, MetadataClassifierKeepsIconsAndSubtitlesConsistent) {
+  FakeStorage backend;
+  StorageController controller(&backend);
+  StorageService service(&controller);
+  struct Case {
+    QString media;
+    QStringList compatibility;
+    std::optional<int> rotation;
+    bool optical;
+    QString icon;
+    QString label;
+  };
+  const QList<Case> cases = {
+      {"thumb", {}, {}, false, "qrc:/HolonightShell/common/usb-stick.svg", "USB flash drive"},
+      {"", {}, 0, false, "drive-harddisk-solidstate-symbolic", "Solid state"},
+      {"", {}, 5400, false, "drive-harddisk-symbolic", "Hard disk"},
+      {"", {}, {}, false, "drive-removable-media-symbolic", "Removable"},
+      {"", {"thumb", "flash_sd"}, 7200, false, "qrc:/HolonightShell/common/usb-stick.svg", "USB flash drive"},
+      {"flash", {}, 0, false, "media-flash-symbolic", "Flash media"},
+      {"", {"flash"}, 7200, false, "media-flash-symbolic", "Flash media"},
+      {"flash_sd", {}, 7200, false, "media-flash-symbolic", "Flash media"},
+      {"", {"flash_mmc"}, {}, false, "media-flash-symbolic", "Flash media"},
+      {"thumb", {"optical_cd"}, 0, false, "media-optical-symbolic", "Optical"},
+      {"optical", {"thumb"}, 7200, false, "media-optical-symbolic", "Optical"},
+      {"optical_dvd", {"flash_sd"}, {}, false, "media-optical-symbolic", "Optical"},
+      {"thumb", {}, {}, true, "media-optical-symbolic", "Optical"},
+      {"", {}, -1, false, "drive-removable-media-symbolic", "Removable"},
+      {"optical_unknown", {}, {}, false, "drive-removable-media-symbolic", "Removable"},
+      {"thumb_ssd", {"nvme", "not_flash_sd"}, {}, false, "drive-removable-media-symbolic", "Removable"},
+  };
+  auto drive = device();
+  drive.connectionBus = "usb";
+  backend.volumes = {volume()};
+  QSignalSpy changes(&service, &StorageService::changed);
+  for (const auto& item : cases) {
+    SCOPED_TRACE(item.label.toStdString());
+    drive.media = item.media;
+    drive.mediaCompatibility = item.compatibility;
+    drive.rotationRate = item.rotation;
+    drive.optical = item.optical;
+    backend.drives = {drive};
+    changes.clear();
+    backend.publish();
+    EXPECT_EQ(service.driveIconName(drive.id), item.icon);
+    EXPECT_EQ(service.driveSubtitle(drive.id), "USB · " + item.label);
+    EXPECT_EQ(service.count(), 1);
+    EXPECT_FALSE(changes.isEmpty());
+  }
+  drive.media.clear();
+  drive.mediaCompatibility.clear();
+  drive.rotationRate = 7200;
+  drive.connectionBus = "sata";
+  drive.removable = false;
+  drive.optical = false;
+  backend.drives = {drive};
+  backend.publish();
+  EXPECT_EQ(service.driveIconName(drive.id), "drive-harddisk-symbolic");
+  EXPECT_EQ(service.driveSubtitle(drive.id), "SATA · Hard disk");
+  drive.rotationRate.reset();
+  backend.drives = {drive};
+  backend.publish();
+  EXPECT_EQ(service.driveSubtitle(drive.id), "SATA");
 }

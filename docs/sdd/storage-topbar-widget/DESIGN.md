@@ -293,10 +293,15 @@ Drive capacity uses the whole-disk partition-container size when available; othe
 non-container records while excluding cleartext overlays (`cryptoBackingId`), preserving physical
 capacity without counting disk/partition or encrypted/cleartext bytes twice.
 
-Icon classification prioritizes optical, flash/card media (including USB readers), USB SSD/HDD,
-and generic removable media. `ExternalIcon` has an explicit generic removable-media fallback.
-All five primary names render through Qt with both installed Breeze and Adwaita selected; four
-are absent as standalone Breeze files, so filename inventory alone is not a resolution check.
+The private pure device classifier prioritizes documented optical tokens/flag, exact `thumb`,
+`flash`/`flash_*`, positive rotation rate, zero rotation rate, and unknown. Both media fields
+participate; neither bus nor device names affect classification. Missing/negative rotation rates
+remain unknown. The shared package appends optional `rotationRate` and its model role, preserving
+absence as an invalid QVariant. UDisks snapshot refreshes propagate metadata changes.
+
+Drive headers use `HnIcon` with semantic palette tinting: `source` for the bundled USB-stick SVG,
+`name` for theme icons, and a generic removable-media icon on load failure. Icon/subtitle bindings
+read the service's notified property directly, just like operation-state bindings.
 
 ### 4.4 Body-click vs. button-click isolation: geometric exclusion, not event-propagation reliance
 
@@ -386,25 +391,13 @@ which primitive is chosen.
 
 ## 6. Known Risks (require live compositor testing, not just build/lint/tests)
 
-1. **Symbolic icon tinting for device-type icons.** `StorageWidget.qml`'s current placeholder
-   already sets `normalColor` on an `HnIcon` with `rendering: HnIcon.Original` loading an
-   `image://icon/...` source — if `HnIcon` does *not* internally apply the documented
-   MultiEffect-colorization workaround for this combination, both the topbar's subdued/active icon
-   recoloring (REQ-F-004/005) and every drive-header device-type icon in the popup
-   (`StorageDriveSection.qml`, REQ-F-006) will render near-black on the dark theme instead of the
-   intended color. Must be confirmed by reading `HnIcon`'s implementation (outside this repo, in
-   the shared component library) or by live-launching the shell — this cannot be verified from
-   `holonight-shell` source alone.
+1. **Device icon appearance.** Drive headers use semantic `HnIcon` rendering and palette tinting;
+   the topbar retains its `ExternalIcon`. Confirm readability and fallback appearance in the
+   live popup, including the bundled USB-stick SVG.
 
-2. **SSD/NVMe classification heuristic accuracy.** `StorageDrive` (from `StorageTypes.h`) exposes
-   `media`/`mediaCompatibility` string lists but no rotation-rate or explicit is-SSD field. REQ-F-006's
-   SSD detection is implemented as a substring heuristic (`"ssd"`, `"nvme"`, `"solid_state"`) against
-   those fields; whether real UDisks2 `Drive.Media`/`Drive.MediaCompatibility` values for an actual
-   USB SSD (e.g. a Samsung T7) contain any such substring cannot be confirmed by reading code —
-   REQ-NF-001 explicitly requires confirming against live hardware/`busctl introspect`. The
-   classifier degrades to the `UsbHdd` bucket (never blank/undefined) if the heuristic misses, so
-   worst case is a wrong-but-present icon, not a missing one — but "wrong" still needs a live check
-   against the acceptance criterion's named devices.
+2. **Metadata precision.** UDisks media tokens and optional rotation rate determine classification.
+   A non-rotating USB device without `thumb` metadata is shown as solid-state storage; a reader
+   without flash metadata remains generic. No model-name or VID:PID heuristics fill these gaps.
 
 3. **Body-click vs. button-click isolation (REQ-NF-002).** Even with the geometric-exclusion design
    in §4.4, this project has three prior instances (documented in project memory) of a

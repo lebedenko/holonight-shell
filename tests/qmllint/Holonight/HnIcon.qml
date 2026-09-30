@@ -20,6 +20,7 @@ Item {
     property color disabledColor: "white"
     property color activeColor: "white"
 
+    readonly property bool hasError: false
     readonly property color resolvedColor: normalColor
     readonly property url _renderSource: source
 }

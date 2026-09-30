@@ -64,6 +64,8 @@ class StorageService : public QAbstractListModel {
   void changed();
 
  private:
+  enum class DeviceKind { Optical, Thumb, Flash, HardDisk, SolidState, Unknown };
+  static DeviceKind classifyDevice(const HoloNight::System::StorageDrive& drive);
   struct ErrorEntry {
     HoloNight::System::StorageOperation operation = HoloNight::System::StorageOperation::Mount;
     QString message;

@@ -1135,10 +1135,13 @@ class FakeQmlServices {
         {QStringLiteral("power-saver"), QStringLiteral("balanced"), QStringLiteral("performance")});
   }
 
-  void seedStorage() {
+  void seedStorage(const QString& media = {}, std::optional<int> rotationRate = {}) {
     HoloNight::System::StorageDrive drive;
     drive.id = "test-drive";
     drive.model = "USB SSD";
+    drive.connectionBus = "usb";
+    drive.media = media;
+    drive.rotationRate = rotationRate;
     drive.removable = true;
     drive.mediaPresent = true;
     drive.canPowerOff = true;
