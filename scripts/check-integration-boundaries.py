@@ -16,10 +16,18 @@ for base in (root / "libs", root / "apps/shell"):
         imports_private_header = any(Path(header).name in private_headers for header in includes)
         # Keep these explicit names for negative fixtures with no integration tree.
         concrete_dependency = re.search(
-            r'#include\s*[<"][^">]*(Hyprland|Sway|GenericBackend)'
+            r'#include\s*[<"][^">]*(Hyprland|Sway|Labwc|GenericBackend)'
             r'|import\s+[^\n]*(Hyprland|Sway)|SpecialWorkspaceDot'
             r'|holonight_(?:backend_\w+|\w+_implementation)', source)
-        if imports_private_header or concrete_dependency:
+        protocol_in_presentation = (
+            "holonight-compositor" in path.parts
+            and re.search(r'#include\s*[<"][^">]*(?:qwayland|wayland-client|QtWayland)', source)
+        )
+        new_window_qml_backend_access = (
+            path.suffix == ".qml" and ("Windows" in path.parts or path.name == "WindowTaskbar.qml")
+            and re.search(r'IntegrationLoader|\bbackend\b|Labwc|Hyprland|Sway|QtWayland', source)
+        )
+        if imports_private_header or concrete_dependency or protocol_in_presentation or new_window_qml_backend_access:
             errors.append(str(path))
 shared_headers = {
     path.name

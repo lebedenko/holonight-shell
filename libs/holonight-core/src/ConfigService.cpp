@@ -96,6 +96,10 @@ void ConfigService::parseFile() {
 }
 
 void ConfigService::applyParsedConfig(const HoloNight::ShellConfig::ProductConfig& parsed) {
+  if (parsed.taskbar != taskbar_) {
+    taskbar_ = parsed.taskbar;
+    emit taskbarChanged();
+  }
   if (parsed.bar_workspaces != bar_workspaces_) {
     bar_workspaces_ = parsed.bar_workspaces;
     emit barWorkspacesChanged();

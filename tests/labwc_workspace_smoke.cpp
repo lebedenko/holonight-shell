@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include <QPainter>
 #include <QRasterWindow>
+#include <QScreen>
 #include <QTimer>
 
 #include <cstdio>
@@ -20,6 +21,42 @@ class SmokeWindow final : public QRasterWindow {
 int main(int argc, char* argv[]) {
   QGuiApplication app(argc, argv);
   app.setQuitOnLastWindowClosed(false);
+  if (app.arguments().contains(QStringLiteral("--hold"))) {
+    SmokeWindow first, second;
+    first.setTitle("labwc-taskbar-first");
+    second.setTitle("labwc-taskbar-second");
+    first.resize(320, 200);
+    second.resize(320, 200);
+    IntegrationLoader observer_loader;
+    auto observer = observer_loader.createCompositor();
+    QObject::connect(observer.get(), &CompositorBackend::snapshotReady, &app, [](const CompositorSnapshot& snapshot) {
+      for (const auto& window : snapshot.windows) {
+        if (!window.activated) continue;
+        QFile marker(qEnvironmentVariable("XDG_RUNTIME_DIR") + QStringLiteral("/labwc-smoke-activated"));
+        if (marker.open(QIODevice::WriteOnly | QIODevice::Truncate)) marker.write(window.title.toUtf8());
+      }
+    });
+    const auto record_screens = [] {
+      const auto runtime = qEnvironmentVariable("XDG_RUNTIME_DIR");
+      QFile count(runtime + QStringLiteral("/labwc-smoke-screen-count"));
+      if (count.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        count.write(QByteArray::number(QGuiApplication::screens().size()));
+      QFile primary(runtime + QStringLiteral("/labwc-smoke-primary-output"));
+      if (primary.open(QIODevice::WriteOnly | QIODevice::Truncate) && QGuiApplication::primaryScreen())
+        primary.write(QGuiApplication::primaryScreen()->name().toUtf8());
+    };
+    record_screens();
+    QObject::connect(&app, &QGuiApplication::screenRemoved, &app,
+                     [&](QScreen*) { QTimer::singleShot(0, &app, record_screens); });
+    observer->start();
+    first.show();
+    if (QGuiApplication::screens().size() > 1) {
+      second.setScreen(QGuiApplication::screens().last());
+      second.showFullScreen();
+    } else
+      second.show();
+    return app.exec();
+  }
   IntegrationLoader loader;
   if (loader.backendName() != "labwc") return 1;
   auto backend = loader.createCompositor();
@@ -39,6 +76,10 @@ int main(int argc, char* argv[]) {
   second.resize(320, 200);
   int window_stage = 0;
   bool workspace_passed = false;
+  QString command_id;
+  const auto request = [&](WindowCommand operation) {
+    if (backend->requestWindowCommand(command_id, operation) != WindowCommandResult::Accepted) app.exit(9);
+  };
   QObject::connect(backend.get(), &CompositorBackend::snapshotReady, &app, [&](const CompositorSnapshot& snapshot) {
     if (workspace_passed) {
       if (!snapshot.capabilities.active_window) return;
@@ -66,15 +107,49 @@ int main(int argc, char* argv[]) {
       } else if (window_stage == 1 && title == "labwc-smoke-second") {
         window_stage = 2;
         second.setTitle("labwc-smoke-renamed");
-      } else if (window_stage == 2 && title == "labwc-smoke-renamed") {
-        window_stage = 3;
-        second.close();
-      } else if (window_stage == 3 && title == "labwc-smoke-first") {
-        window_stage = 4;
-        first.close();
-      } else if (window_stage == 4 && snapshot.active_windows.isEmpty()) {
-        std::puts("labwc active windows: focus, title updates and closure passed");
-        app.exit(0);
+      } else if (window_stage >= 2) {
+        const CompositorWindow* target = nullptr;
+        for (const auto& window : snapshot.windows) {
+          if (window.title == "labwc-smoke-renamed") target = &window;
+        }
+        if (window_stage == 2 && target) {
+          if (snapshot.windows.size() != 2 || !snapshot.capabilities.window_listing) {
+            app.exit(10);
+            return;
+          }
+          command_id = target->id;
+          window_stage = 3;
+          request(WindowCommand::Minimize);
+        } else if (window_stage == 3 && target && target->minimized) {
+          window_stage = 4;
+          request(WindowCommand::Restore);
+          request(WindowCommand::Activate);
+        } else if (window_stage == 4 && target && !target->minimized && target->activated) {
+          window_stage = 5;
+          request(WindowCommand::Maximize);
+        } else if (window_stage == 5 && target && target->maximized) {
+          window_stage = 6;
+          request(WindowCommand::Unmaximize);
+        } else if (window_stage == 6 && target && !target->maximized) {
+          window_stage = 7;
+          request(WindowCommand::Fullscreen);
+        } else if (window_stage == 7 && target && target->fullscreen) {
+          window_stage = 8;
+          request(WindowCommand::Unfullscreen);
+        } else if (window_stage == 8 && target && !target->fullscreen) {
+          window_stage = 9;
+          request(WindowCommand::Close);
+        } else if (window_stage == 9 && !target && snapshot.windows.size() == 1) {
+          if (backend->requestWindowCommand(command_id, WindowCommand::Close) != WindowCommandResult::InvalidWindow) {
+            app.exit(11);
+            return;
+          }
+          window_stage = 10;
+          first.close();
+        } else if (window_stage == 10 && snapshot.windows.isEmpty()) {
+          std::puts("labwc windows: inventory, minimize, maximize, fullscreen, activation, close and stale IDs passed");
+          app.exit(0);
+        }
       }
       return;
     }
@@ -105,7 +180,7 @@ int main(int argc, char* argv[]) {
       }
     }
   });
-  QTimer::singleShot(8000, &app, [&] { app.exit(7); });
+  QTimer::singleShot(15000, &app, [&] { app.exit(7); });
   backend->start();
   return app.exec();
 }

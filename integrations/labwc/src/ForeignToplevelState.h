@@ -6,12 +6,22 @@
 
 struct wl_output;
 
+inline QList<WindowCommand> foreignToplevelOperations(int version) {
+  QList<WindowCommand> result{WindowCommand::Activate, WindowCommand::Minimize,   WindowCommand::Restore,
+                              WindowCommand::Maximize, WindowCommand::Unmaximize, WindowCommand::Close};
+  if (version >= 2) result.append({WindowCommand::Fullscreen, WindowCommand::Unfullscreen});
+  return result;
+}
+
 // Properties are pending until the protocol's per-handle done event.
 struct ForeignToplevelState {
   struct Properties {
     CompositorActiveWindow window;
     QSet<wl_output*> outputs;
     bool activated{false};
+    bool minimized{false};
+    bool maximized{false};
+    bool fullscreen{false};
     quint64 order{0};
   } pending, committed;
 
@@ -19,7 +29,11 @@ struct ForeignToplevelState {
     if (activated && !pending.activated) pending.order = ++order;
     pending.activated = activated;
   }
-  void commit() { committed = pending; }
+  bool ready{false};
+  void commit() {
+    committed = pending;
+    ready = true;
+  }
 
   static const ForeignToplevelState* active(const QList<const ForeignToplevelState*>& windows) {
     const ForeignToplevelState* selected = nullptr;

@@ -1,4 +1,6 @@
 add_library(holonight_compositor STATIC
+    src/WindowPresentation.h src/WindowPresentation.cpp
+    src/WindowCatalog.h src/ToplevelModel.h
     src/CompositorWorkspaceModel.h src/CompositorWorkspaceModel.cpp
     src/CompositorService.h src/CompositorService.cpp
     src/WorkspacePresentation.h src/WorkspacePresentation.cpp

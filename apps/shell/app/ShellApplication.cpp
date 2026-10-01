@@ -36,6 +36,8 @@
 #include "OsdSurface.h"
 #include "PortalService.h"
 #include "StorageService.h"
+#include "WindowPresentation.h"
+#include "WindowSurface.h"
 #include "WorkspacePresentation.h"
 
 using namespace HoloNight::ShellConfig;
@@ -186,6 +188,26 @@ void ShellApplication::registerQmlTypes() {
   reg(portal_service_, "PortalService");
   reg(calendar_service_, "CalendarService");
   reg(compositor_, "CompositorService");
+  auto* windows =
+      new WindowPresentation(compositor_,
+                             integration_->integration() && integration_->integration()->windowPresentationPolicy() ==
+                                                                WindowPresentationPolicy::TaskManagement,
+                             this);
+  reg(windows, "WindowPresentation");
+  const auto configure_windows = [this, windows] {
+    const auto& cfg = config_service_->taskbar();
+    windows->configure(cfg.enabled, cfg.grouped, cfg.overview_access, cfg.desktop_menu);
+  };
+  configure_windows();
+  connect(config_service_, &ConfigService::taskbarChanged, this, configure_windows);
+  window_surface_ = new WindowSurface(this);
+  auto* window_surface = window_surface_;
+  reg(window_surface, "WindowSurface");
+  connect(window_surface, &WindowSurface::opened, windows, &WindowPresentation::beginOverview);
+  connect(window_surface, &WindowSurface::dismissed, windows, &WindowPresentation::endOverview);
+  connect(control_server_, &ControlServer::toggleWindowOverviewRequested, this, [this, windows, window_surface] {
+    if (windows->overviewAccess()) window_surface->toggle(resolveOsdMonitor());
+  });
   reg(workspace_presentation_, "WorkspacePresentation");
   reg(integration_, "IntegrationLoader");
   reg(keyboard_layout_, "KeyboardLayoutService");
@@ -332,6 +354,13 @@ void ShellApplication::startShell() {
 
   layer_shell_manager_ = std::make_unique<LayerShellManager>(tray_model_, this);
   background_manager_ = std::make_unique<BackgroundManager>(config_service_, this);
+  const auto update_desktop_input = [this] {
+    const bool supported = integration_->integration() && integration_->integration()->windowPresentationPolicy() ==
+                                                              WindowPresentationPolicy::TaskManagement;
+    background_manager_->setDesktopMenuEnabled(supported && config_service_->taskbar().desktop_menu);
+  };
+  update_desktop_input();
+  connect(config_service_, &ConfigService::taskbarChanged, this, update_desktop_input);
   startLayerSurfacesWhenReady();
 
   shell_started_ = true;
@@ -422,6 +451,7 @@ void ShellApplication::closeTransientOverlays() {
   tooltip_surface_->hide();
   status_popup_surface_->hide();
   launcher_surface_->hide();
+  if (window_surface_) window_surface_->hide();
   tray_menu_surface_->hide();
   if (sidebar_manager_ != nullptr) {
     sidebar_manager_->closeAll();

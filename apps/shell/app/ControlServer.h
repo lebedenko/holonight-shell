@@ -16,6 +16,7 @@ class ControlServer : public QObject {
   enum class CommandType : uint8_t {
     Unknown,
     ToggleLauncher,
+    ToggleWindowOverview,
     ToggleSidebar,
     ToggleChat,
   };
@@ -40,6 +41,7 @@ class ControlServer : public QObject {
 
  Q_SIGNALS:
   void toggleLauncherRequested();
+  void toggleWindowOverviewRequested();
   void toggleSidebarRequested(const QString& monitor_name);
   void toggleChatRequested(const QString& monitor_name);
 

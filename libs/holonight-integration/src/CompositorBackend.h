@@ -16,6 +16,11 @@ class CompositorBackend : public QObject {
   CompositorBackend(CompositorBackend&&) = delete;
   CompositorBackend& operator=(CompositorBackend&&) = delete;
 
+  virtual WindowCommandResult requestWindowCommand(const QString& id, WindowCommand command) {
+    Q_UNUSED(id)
+    Q_UNUSED(command)
+    return WindowCommandResult::Unsupported;
+  }
   virtual void start() = 0;
   virtual void activateWorkspace(const QString& workspace_id) = 0;
   virtual WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) {

@@ -1,6 +1,6 @@
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     cmake_minimum_required(VERSION 3.25)
-    project(HoloNightShellConfig VERSION 0.1.0 LANGUAGES CXX)
+    project(HoloNightShellConfig VERSION 0.2.0 LANGUAGES CXX)
 
     include(GNUInstallDirs)
     find_package(Qt6 REQUIRED COMPONENTS Core)

@@ -10,6 +10,14 @@
 
 namespace HoloNight::ShellConfig {
 
+struct TaskbarConfig {
+  bool enabled{true};
+  bool grouped{true};
+  bool overview_access{true};
+  bool desktop_menu{false};
+  bool operator==(const TaskbarConfig&) const = default;
+};
+
 struct BarWorkspacesConfig {
   int count{5};
   static constexpr int kMinCount{3};

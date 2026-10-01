@@ -98,6 +98,12 @@ TEST(PersistentSurfacePolicy, DescribesBarAndBackgroundHostsCompletely) {
   EXPECT_TRUE(background_spec.window_flags.testFlag(Qt::WindowTransparentForInput));
   EXPECT_EQ(background_spec.qml_url, QUrl(QStringLiteral("qrc:/HolonightShell/Background/Background.qml")));
   EXPECT_TRUE(background_spec.initial_properties.contains(QStringLiteral("imagePath")));
+  background.setDesktopMenuEnabled(true);
+  const auto interactive = background.surfaceSpec(screen);
+  EXPECT_EQ(interactive.input_region_policy, InputRegionPolicy::Default);
+  EXPECT_FALSE(interactive.window_flags.testFlag(Qt::WindowTransparentForInput));
+  background.setDesktopMenuEnabled(false);
+  EXPECT_EQ(background.surfaceSpec(screen).input_region_policy, InputRegionPolicy::Empty);
 }
 
 TEST(PersistentSurfacePolicy, DescribesClockCountdownAndMprisHostsCompletely) {

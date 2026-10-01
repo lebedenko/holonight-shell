@@ -9,9 +9,10 @@ class LabwcWindow;
 class LabwcBackend final : public CompositorBackend {
   Q_OBJECT
  public:
-  explicit LabwcBackend(QObject* parent = nullptr);
+  explicit LabwcBackend(QObject* parent = nullptr, int maximum_protocol_version = 3);
   ~LabwcBackend() override;
   void start() override;
+  WindowCommandResult requestWindowCommand(const QString& id, WindowCommand command) override;
   void activateWorkspace(const QString& id) override;
 
  private:
@@ -21,6 +22,7 @@ class LabwcBackend final : public CompositorBackend {
   void protocolFinished();
   void schedulePublish();
   void publish();
+  int maximum_protocol_version_;
   GenericBackend workspace_;
   CompositorSnapshot workspace_snapshot_;
   std::unique_ptr<LabwcProtocol> protocol_;

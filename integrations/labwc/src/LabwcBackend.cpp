@@ -4,12 +4,17 @@
 
 #include <QGuiApplication>
 #include <QScreen>
+#include <QUuid>
+#include <QtGui/qguiapplication_platform.h>
 
+#include <algorithm>
 #include <cstring>
 
 class LabwcWindow final : public QtWayland::zwlr_foreign_toplevel_handle_v1 {
  public:
   ForeignToplevelState state;
+  const QString id{QUuid::createUuid().toString(QUuid::WithoutBraces)};
+  QList<WindowCommand> operations() const { return foreignToplevelOperations(version()); }
   LabwcWindow(struct ::zwlr_foreign_toplevel_handle_v1* handle, LabwcBackend* backend)
       : QtWayland::zwlr_foreign_toplevel_handle_v1(handle), backend_(backend) {}
   ~LabwcWindow() override {
@@ -27,14 +32,22 @@ class LabwcWindow final : public QtWayland::zwlr_foreign_toplevel_handle_v1 {
   }
   void zwlr_foreign_toplevel_handle_v1_state(wl_array* states) override {
     bool activated = false;
+    state.pending.minimized = false;
+    state.pending.maximized = false;
+    state.pending.fullscreen = false;
     const auto* bytes = static_cast<const char*>(states->data);
     for (size_t i = 0; i + sizeof(uint32_t) <= states->size; i += sizeof(uint32_t)) {
       uint32_t state;
       std::memcpy(&state, bytes + i, sizeof(state));
       activated |= state == state_activated;
+      this->state.pending.minimized |= state == state_minimized;
+      this->state.pending.maximized |= state == state_maximized;
+      this->state.pending.fullscreen |= state == state_fullscreen;
     }
     state.setActivated(activated, backend_->activation_order_);
   }
+  // Parent relationships do not establish authoritative workspace membership or geometry.
+  void zwlr_foreign_toplevel_handle_v1_parent(struct ::zwlr_foreign_toplevel_handle_v1*) override {}
   void zwlr_foreign_toplevel_handle_v1_done() override {
     state.commit();
     backend_->schedulePublish();
@@ -52,7 +65,8 @@ class LabwcWindow final : public QtWayland::zwlr_foreign_toplevel_handle_v1 {
 class LabwcProtocol final : public QWaylandClientExtensionTemplate<LabwcProtocol>,
                             public QtWayland::zwlr_foreign_toplevel_manager_v1 {
  public:
-  explicit LabwcProtocol(LabwcBackend* backend) : QWaylandClientExtensionTemplate(1), backend_(backend) {}
+  explicit LabwcProtocol(LabwcBackend* backend)
+      : QWaylandClientExtensionTemplate(backend->maximum_protocol_version_), backend_(backend) {}
   void bind() { initialize(); }
   ~LabwcProtocol() override {
     if (isInitialized()) {
@@ -75,7 +89,8 @@ class LabwcProtocol final : public QWaylandClientExtensionTemplate<LabwcProtocol
   bool finished_{false};
 };
 
-LabwcBackend::LabwcBackend(QObject* parent) : CompositorBackend(parent) {
+LabwcBackend::LabwcBackend(QObject* parent, int maximum_protocol_version)
+    : CompositorBackend(parent), maximum_protocol_version_(std::clamp(maximum_protocol_version, 1, 3)) {
   connect(&workspace_, &CompositorBackend::snapshotReady, this, [this](CompositorSnapshot snapshot) {
     workspace_snapshot_ = std::move(snapshot);
     schedulePublish();
@@ -129,19 +144,78 @@ void LabwcBackend::schedulePublish() {
     publish();
   });
 }
+WindowCommandResult LabwcBackend::requestWindowCommand(const QString& id, WindowCommand command) {
+  if (!available_) return WindowCommandResult::Disconnected;
+  LabwcWindow* target = nullptr;
+  for (auto* window : std::as_const(windows_)) {
+    if (window->id == id && window->state.ready) target = window;
+  }
+  if (!target) return WindowCommandResult::InvalidWindow;
+  if (!target->operations().contains(command)) return WindowCommandResult::Unsupported;
+  switch (command) {
+    case WindowCommand::Activate: {
+      auto* native = qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
+      auto* seat = native ? native->seat() : nullptr;
+      if (!seat) return WindowCommandResult::MissingSeat;
+      target->activate(seat);
+      break;
+    }
+    case WindowCommand::Minimize:
+      target->set_minimized();
+      break;
+    case WindowCommand::Restore:
+      target->unset_minimized();
+      break;
+    case WindowCommand::Maximize:
+      target->set_maximized();
+      break;
+    case WindowCommand::Unmaximize:
+      target->unset_maximized();
+      break;
+    case WindowCommand::Fullscreen:
+      target->set_fullscreen(nullptr);
+      break;
+    case WindowCommand::Unfullscreen:
+      target->unset_fullscreen();
+      break;
+    case WindowCommand::Close:
+      target->close();
+      break;
+  }
+  return WindowCommandResult::Accepted;
+}
 void LabwcBackend::publish() {
   QHash<QString, CompositorActiveWindow> windows;
+  QList<CompositorWindow> inventory;
+  QHash<wl_output*, QString> names;
+  for (auto* screen : QGuiApplication::screens()) {
+    auto* native = screen->nativeInterface<QNativeInterface::QWaylandScreen>();
+    if (native) names.insert(native->output(), screen->name());
+  }
   if (available_) {
     QList<const ForeignToplevelState*> states;
-    for (const auto* window : std::as_const(windows_)) states.append(&window->state);
+    for (const auto* window : std::as_const(windows_)) {
+      if (!window->state.ready) continue;
+      states.append(&window->state);
+      const auto& value = window->state.committed;
+      auto outputs = window->state.onOutputs(names).keys();
+      outputs.sort();
+      inventory.append({.id = window->id,
+                        .title = value.window.title,
+                        .app_id = value.window.app_id,
+                        .outputs = outputs,
+                        .activated = value.activated,
+                        .minimized = value.minimized,
+                        .maximized = value.maximized,
+                        .fullscreen = value.fullscreen,
+                        .operations = window->operations()});
+    }
     if (const auto* active = ForeignToplevelState::active(states)) {
-      QHash<wl_output*, QString> names;
-      for (auto* screen : QGuiApplication::screens()) {
-        auto* native = screen->nativeInterface<QNativeInterface::QWaylandScreen>();
-        if (native) names.insert(native->output(), screen->name());
-      }
       windows = active->onOutputs(names);
     }
   }
-  emit snapshotReady(mergeLabwcSnapshot(workspace_snapshot_, available_, windows));
+  auto snapshot = mergeLabwcSnapshot(workspace_snapshot_, available_, windows);
+  snapshot.capabilities.window_listing = available_;
+  snapshot.windows = std::move(inventory);
+  emit snapshotReady(snapshot);
 }

@@ -38,6 +38,7 @@ QString ControlServer::socketPath() {
 
 ControlServer::DecodedCommand ControlServer::decodeCommand(const QByteArray& command) {
   const QByteArray trimmed = command.trimmed();
+  if (trimmed == QByteArrayLiteral("toggle-window-overview")) return {.type = CommandType::ToggleWindowOverview};
   if (trimmed == QByteArrayLiteral("toggle-launcher")) {
     return {.type = CommandType::ToggleLauncher};
   }
@@ -78,6 +79,9 @@ void ControlServer::handleConnection() {
 void ControlServer::handleCommand(const QByteArray& command) {
   const DecodedCommand decoded = decodeCommand(command);
   switch (decoded.type) {
+    case CommandType::ToggleWindowOverview:
+      emit toggleWindowOverviewRequested();
+      break;
     case CommandType::ToggleLauncher:
       emit toggleLauncherRequested();
       break;

@@ -1,4 +1,5 @@
 add_library(holonight_surfaces STATIC
+    src/WindowSurface.h src/WindowSurface.cpp
     src/ShellConstants.h
     src/PerMonitorLayerManager.h
     src/PerMonitorLayerManager.cpp

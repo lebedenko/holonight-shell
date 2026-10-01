@@ -36,17 +36,30 @@ Item {
             Layout.leftMargin: root.primarySectionMargin
         }
 
+        WindowTaskbar {
+            id: taskbar
+            objectName: "taskbarSection"
+            barMonitorName: root.barMonitorName
+            Layout.fillWidth: visible
+            Layout.minimumWidth: minimumContentWidth
+            Layout.alignment: Qt.AlignVCenter
+            Layout.leftMargin: root.primarySectionMargin
+        }
+
         ActiveWindowSection {
             id: activeWindowSection
+            objectName: "activeWindowSection"
             barMonitorName: root.barMonitorName
-            Layout.fillWidth: true
+            Layout.fillWidth: !taskbar.visible
+            Layout.minimumWidth: 0
+            Layout.maximumWidth: taskbar.visible ? 320 : Infinity
             Layout.alignment: Qt.AlignVCenter
             Layout.leftMargin: root.primarySectionMargin
         }
 
         Item {
             objectName: "activeWindowSpacer"
-            visible: !activeWindowSection.visible
+            visible: !taskbar.visible && !activeWindowSection.visible
             Layout.fillWidth: true
         }
 

@@ -33,6 +33,7 @@ class LauncherService;
 class MprisArtworkCache;
 class MprisService;
 class LauncherSurface;
+class WindowSurface;
 class RecentAppsTracker;
 class NetworkService;
 class NotificationManager;
@@ -149,6 +150,7 @@ class ShellApplication : public QObject {
   RecentAppsTracker* recent_apps_tracker_ = nullptr;
   LauncherService* launcher_ = nullptr;
   StatusPopupSurface* status_popup_surface_ = nullptr;
+  WindowSurface* window_surface_ = nullptr;
   LauncherSurface* launcher_surface_ = nullptr;
   TooltipSurface* tooltip_surface_ = nullptr;
   TrayMenuSurface* tray_menu_surface_ = nullptr;

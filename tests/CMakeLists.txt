@@ -452,3 +452,6 @@ add_dependencies(test_holonight_hyprland_qml holonight_backend_hyprland)
 add_executable(labwc_workspace_smoke labwc_workspace_smoke.cpp)
 target_link_libraries(labwc_workspace_smoke PRIVATE holonight_compositor Qt6::Gui)
 add_dependencies(labwc_workspace_smoke holonight_backend_labwc)
+
+add_executable(labwc_protocol_smoke labwc_protocol_smoke.cpp)
+target_link_libraries(labwc_protocol_smoke PRIVATE holonight_labwc_implementation holonight_ext_workspace Qt6::Gui)

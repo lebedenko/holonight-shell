@@ -822,6 +822,15 @@ QString tomlQuote(const QString& value) {
 
 ProductConfig parseConfigTable(const toml::table& table, MissingDefaults& missing) {
   ProductConfig parsed;
+  bool unused_taskbar_missing = false;
+  parsed.taskbar.enabled =
+      readBool(table["bar"]["taskbar"]["enabled"], true, "bar.taskbar.enabled", unused_taskbar_missing);
+  parsed.taskbar.grouped =
+      readBool(table["bar"]["taskbar"]["grouped"], true, "bar.taskbar.grouped", unused_taskbar_missing);
+  parsed.taskbar.overview_access =
+      readBool(table["bar"]["taskbar"]["overview_access"], true, "bar.taskbar.overview_access", unused_taskbar_missing);
+  parsed.taskbar.desktop_menu =
+      readBool(table["bar"]["taskbar"]["desktop_menu"], false, "bar.taskbar.desktop_menu", unused_taskbar_missing);
   parsed.bar_workspaces = parseBarWorkspaces(table, missing);
   parsed.bar_system_tray = parseBarSystemTray(table, missing);
   parsed.tray_icon_overrides = parseTrayIconOverrides(table);

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(holonight-shell VERSION 0.1.0 LANGUAGES C CXX)
+project(holonight-shell VERSION 0.2.0 LANGUAGES C CXX)
 set(HOLONIGHT_POLKIT_CONFLICT_EXIT_STATUS 78 CACHE STRING "Non-retriable Polkit registration conflict status")
 configure_file(cmake/AuthenticationConfig.h.in ${CMAKE_BINARY_DIR}/generated/AuthenticationConfig.h @ONLY)
 

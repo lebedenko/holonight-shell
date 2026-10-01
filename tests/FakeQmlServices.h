@@ -17,6 +17,7 @@
 #include "TrayModel.h"
 #include "WeatherIconBridge.h"
 #include "WifiNetworkModel.h"
+#include "WindowPresentation.h"
 #include "WorkspacePresentation.h"
 
 #include <QColor>
@@ -1098,10 +1099,89 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
  private:
   HoloNight::System::StorageResult last_request_;
 };
+class FakeWindowSurface : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(int mode READ mode NOTIFY changed)
+  Q_PROPERTY(bool visible READ visible NOTIFY changed)
+  Q_PROPERTY(QString target READ target NOTIFY changed)
+  Q_PROPERTY(QString screenName READ screenName NOTIFY changed)
+  Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
+ public:
+  int mode() const { return mode_; }
+  bool visible() const { return visible_; }
+  QString target() const { return target_; }
+  QString screenName() const { return screen_; }
+  QStringList choices() const { return choices_; }
+  Q_INVOKABLE void toggle(const QString& screen = {}) {
+    if (visible_) {
+      hide();
+      return;
+    }
+    mode_ = 0;
+    target_.clear();
+    choices_.clear();
+    open(screen);
+  }
+  Q_INVOKABLE void menu(const QString& id, const QString& screen) {
+    hide();
+    mode_ = 1;
+    target_ = id;
+    open(screen);
+  }
+  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen) {
+    hide();
+    mode_ = 2;
+    choices_ = ids;
+    open(screen);
+  }
+  Q_INVOKABLE void desktopMenu(const QString& screen) {
+    hide();
+    mode_ = 3;
+    open(screen);
+  }
+  Q_INVOKABLE void hide() {
+    visible_ = false;
+    emit changed();
+    emit dismissed();
+  }
+ Q_SIGNALS:
+  void changed();
+  void opened();
+  void dismissed();
+
+ private:
+  void open(const QString& screen) {
+    screen_ = screen;
+    visible_ = true;
+    emit opened();
+    emit changed();
+  }
+  int mode_{0};
+  bool visible_{false};
+  QString target_, screen_;
+  QStringList choices_;
+};
+
 class CompositorTestSeed : public QObject {
   Q_OBJECT
  public:
   explicit CompositorTestSeed(CompositorService& service) : service_(service) {}
+  Q_INVOKABLE void setToplevels(bool first, bool second, bool second_active = true) {
+    CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
+    if (first)
+      snapshot.windows.append({.id = "first",
+                               .title = "First document",
+                               .app_id = "org.sample",
+                               .activated = !second_active,
+                               .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close}});
+    if (second)
+      snapshot.windows.append({.id = "second",
+                               .title = "Second document",
+                               .app_id = "org.sample",
+                               .activated = second_active,
+                               .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close}});
+    service_.publishSnapshotForTest(snapshot);
+  }
   Q_INVOKABLE void setWindow(bool available, const QString& output, const QString& title, const QString& app) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.active_window = available}};
     if (!output.isEmpty()) snapshot.active_windows.insert(output, {.app_id = app, .title = title});
@@ -1196,11 +1276,15 @@ class FakeQmlServices {
   void failStorageOperation() { storage_backend_.failLastOperation(); }
 
   [[nodiscard]] bool registerSingletons() {  // NOLINT(readability-function-cognitive-complexity)
+    QObject::connect(&window_surface_, &FakeWindowSurface::opened, &windows_, &WindowPresentation::beginOverview);
+    QObject::connect(&window_surface_, &FakeWindowSurface::dismissed, &windows_, &WindowPresentation::endOverview);
     return qmlRegisterSingletonInstance("HolonightShell", 1, 0, "SessionIntegrationService", &integration_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "MimeService", &mime_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IdleService", &idle_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorService", &compositor_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "CompositorTestSeed", &compositor_test_seed_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WindowPresentation", &windows_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WindowSurface", &window_surface_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "WorkspacePresentation", &presentation_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "IntegrationLoader", &integration_loader_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "NumberedTestProvider", &numbered_) >= 0 &&
@@ -1258,6 +1342,8 @@ class FakeQmlServices {
   ConfigService config_service_;
   // Record activation requests without sending commands to a real compositor.
   CompositorService compositor_;
+  WindowPresentation windows_{&compositor_, true};
+  FakeWindowSurface window_surface_;
   CompositorTestSeed compositor_test_seed_{compositor_};
   FakeNumberedProvider numbered_;
   WorkspacePresentation presentation_{&compositor_, &numbered_};

@@ -29,7 +29,7 @@ PerMonitorLayerManager::LayerConfig BackgroundManager::layerConfig() const {
           .namespace_name = QStringLiteral("background"),
           // WindowTransparentForInput makes Qt maintain an empty input region and re-apply it on every
           // commit, so pointer/keyboard events fall through to the desktop below.
-          .extra_flags = Qt::WindowTransparentForInput};
+          .extra_flags = desktop_menu_enabled_ ? Qt::WindowFlags{} : Qt::WindowTransparentForInput};
 }
 
 void BackgroundManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
@@ -38,18 +38,27 @@ void BackgroundManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& s
   // -1 makes the surface span the full output and ignore other surfaces' exclusive zones, so the
   // wallpaper extends under the top bar. 0 would let the compositor displace it out of the bar's zone.
   spec.exclusive_zone = -1;
-  spec.input_region_policy = Holonight::Wayland::InputRegionPolicy::Empty;
+  spec.input_region_policy = desktop_menu_enabled_ ? Holonight::Wayland::InputRegionPolicy::Default
+                                                   : Holonight::Wayland::InputRegionPolicy::Empty;
 }
 
 PerMonitorLayerManager::QmlSource BackgroundManager::qmlSource(QScreen* screen) {
   return {.url = QUrl(QStringLiteral("qrc:/HolonightShell/Background/Background.qml")),
-          .initial_properties = {{QStringLiteral("imagePath"), imageUrlForScreen(screen)}}};
+          .initial_properties = {{QStringLiteral("imagePath"), imageUrlForScreen(screen)},
+                                 {QStringLiteral("desktopMenuEnabled"), desktop_menu_enabled_},
+                                 {QStringLiteral("monitorName"), screen->name()}}};
 }
 
 void BackgroundManager::onScreenSetChanged() {
   // A monitor was added or removed; remaining monitors may have shifted positional index, so every
   // surface re-resolves its wallpaper.
   refreshAllWallpapers();
+}
+
+void BackgroundManager::setDesktopMenuEnabled(bool enabled) {
+  if (desktop_menu_enabled_ == enabled) return;
+  desktop_menu_enabled_ = enabled;
+  rebuildSurfaces();
 }
 
 void BackgroundManager::onBackgroundChanged() { refreshAllWallpapers(); }

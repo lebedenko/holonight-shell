@@ -21,6 +21,15 @@ Item {
     // Set by BackgroundManager via setInitialProperties at creation and updated on live config reload
     // and on monitor hotplug re-indexing. "" => no wallpaper; the surface base shows through.
     required property string imagePath
+    property bool desktopMenuEnabled: false
+    property string monitorName: ""
+    MouseArea {
+        anchors.fill: parent
+        z: 2
+        enabled: root.desktopMenuEnabled
+        acceptedButtons: Qt.RightButton
+        onClicked: WindowSurface.desktopMenu(root.monitorName)
+    }
 
     // False until Component.onCompleted has shown the first wallpaper. Guards onImagePathChanged so the
     // initial setInitialProperties assignment does not also kick off a crossfade — that double-trigger

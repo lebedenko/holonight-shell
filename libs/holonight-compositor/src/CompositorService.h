@@ -2,6 +2,7 @@
 
 #include "CompositorSnapshot.h"
 #include "CompositorWorkspaceModel.h"
+#include "ToplevelModel.h"
 #include "WindowActivation.h"
 
 #include <QObject>
@@ -17,6 +18,8 @@ class CompositorService final : public QObject {
   Q_OBJECT
   QML_ELEMENT
   QML_SINGLETON
+  Q_PROPERTY(QAbstractItemModel* toplevels READ toplevels CONSTANT)
+  Q_PROPERTY(bool canListWindows READ canListWindows NOTIFY revisionChanged)
   Q_PROPERTY(bool connected READ connected NOTIFY revisionChanged)
   Q_PROPERTY(QString diagnostic READ diagnostic NOTIFY revisionChanged)
   Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
@@ -34,6 +37,7 @@ class CompositorService final : public QObject {
   explicit CompositorService(QObject* parent = nullptr);
   explicit CompositorService(std::unique_ptr<CompositorBackend> backend, QObject* parent = nullptr);
   ~CompositorService() override;
+  [[nodiscard]] const WindowCatalog& windowCatalog() const { return window_catalog_; }
   [[nodiscard]] const CompositorSnapshot& snapshot() const { return snapshot_; }
   [[nodiscard]] CompositorBackend* backend() const { return backend_.get(); }
   CompositorService(const CompositorService&) = delete;
@@ -59,6 +63,9 @@ class CompositorService final : public QObject {
   Q_INVOKABLE [[nodiscard]] bool isOutputEmpty(const QString& output) const;
   Q_INVOKABLE void activateWorkspace(const QString& workspace_id);
   [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request);
+  QAbstractItemModel* toplevels() { return &toplevel_model_; }
+  bool canListWindows() const { return snapshot_.capabilities.window_listing; }
+  Q_INVOKABLE int commandWindow(const QString& id, int command);
   void start();
 #ifdef HOLONIGHT_TESTS
   void publishSnapshotForTest(CompositorSnapshot snapshot) { publishSnapshot(std::move(snapshot)); }
@@ -73,5 +80,7 @@ class CompositorService final : public QObject {
   int revision_{0};
   CompositorSnapshot snapshot_;
   CompositorWorkspaceModel workspace_model_;
+  ToplevelModel toplevel_model_;
+  WindowCatalog window_catalog_;
   std::unique_ptr<CompositorBackend> backend_;
 };

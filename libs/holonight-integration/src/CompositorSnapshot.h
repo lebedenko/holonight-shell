@@ -1,5 +1,7 @@
 #pragma once
 
+#include "WindowManagement.h"
+
 #include <QHash>
 #include <QList>
 #include <QString>
@@ -8,6 +10,7 @@
 #include <optional>
 
 struct CompositorCapabilities {
+  bool window_listing{false};
   bool workspace_listing{false};
   bool workspace_activation{false};
   bool window_activation{false};
@@ -48,6 +51,7 @@ struct CompositorSnapshot {
   QString focused_output;
   CompositorCapabilities capabilities;
   QList<CompositorWorkspace> workspaces;
+  QList<CompositorWindow> windows;
   QHash<QString, CompositorActiveWindow> active_windows;
   QHash<QString, bool> occupied_outputs;
 };

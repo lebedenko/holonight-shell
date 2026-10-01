@@ -54,3 +54,8 @@ TEST(ControlCommandBuffer, RejectsOversizedCommand) {
   EXPECT_FALSE(buffer.append(QByteArray(ControlCommandBuffer::kMaxBytes + 1, 'x')));
   EXPECT_TRUE(buffer.take().isEmpty());
 }
+
+TEST(ControlServer, DecodesWindowOverview) {
+  EXPECT_EQ(ControlServer::decodeCommand("toggle-window-overview").type,
+            ControlServer::CommandType::ToggleWindowOverview);
+}

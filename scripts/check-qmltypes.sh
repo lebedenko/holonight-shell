@@ -21,6 +21,8 @@ required_types=(
   "StorageService"
   "NotificationService"
   "CompositorService"
+  "WindowPresentation"
+  "WindowSurface"
   "WorkspacePresentation"
   "IntegrationLoader"
 )

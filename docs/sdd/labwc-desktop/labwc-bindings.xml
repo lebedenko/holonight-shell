@@ -1,0 +1,8 @@
+<!-- Optional additions to the existing <keyboard> section. Do not replace rc.xml. -->
+<keybind key="W-Tab">
+  <action name="Execute" command="holonight-shell --toggle-window-overview" />
+</keybind>
+<!-- Native show-desktop preserves labwc restoration semantics. -->
+<keybind key="W-d">
+  <action name="ToggleShowDesktop" />
+</keybind>

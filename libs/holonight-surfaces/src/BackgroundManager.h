@@ -16,6 +16,7 @@ class BackgroundManager : public PerMonitorLayerManager {
   Q_OBJECT
  public:
   BackgroundManager(ConfigService* config_service, QObject* parent = nullptr);
+  void setDesktopMenuEnabled(bool enabled);
 
  protected:
   [[nodiscard]] LayerConfig layerConfig() const override;
@@ -33,4 +34,5 @@ class BackgroundManager : public PerMonitorLayerManager {
   void refreshAllWallpapers();
 
   ConfigService* config_service_;
+  bool desktop_menu_enabled_{false};
 };

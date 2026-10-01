@@ -165,6 +165,11 @@ bool ProductConfigWriter::write(const ProductConfig& config, const QString& path
   out.setRealNumberPrecision(
       17);  // round-trip-safe for double (weather lat/lon); wide enough no int/string field cares
 
+  out << "[bar.taskbar]\n";
+  out << "enabled = " << (config.taskbar.enabled ? "true" : "false") << "\n";
+  out << "grouped = " << (config.taskbar.grouped ? "true" : "false") << "\n";
+  out << "overview_access = " << (config.taskbar.overview_access ? "true" : "false") << "\n";
+  out << "desktop_menu = " << (config.taskbar.desktop_menu ? "true" : "false") << "\n\n";
   out << "[bar.workspaces]\n";
   out << "count = " << config.bar_workspaces.count << " # accepted: " << BarWorkspacesConfig::kMinCount << "-"
       << BarWorkspacesConfig::kMaxCount << "\n\n";

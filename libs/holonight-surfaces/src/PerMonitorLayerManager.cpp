@@ -38,6 +38,12 @@ QQuickView* PerMonitorLayerManager::viewForMonitor(const QString& monitor_name) 
   return surface == surfaces_.cend() ? nullptr : surface->second.host->view();
 }
 
+void PerMonitorLayerManager::rebuildSurfaces() {
+  if (!started_) return;
+  closeAllSurfaces();
+  for (auto* screen : QGuiApplication::screens()) createSurface(screen);
+}
+
 void PerMonitorLayerManager::start() {
   if (started_) {
     return;

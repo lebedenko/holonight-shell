@@ -40,6 +40,7 @@ int main(int argc, char* argv[]) {
       std::println(stdout, "Options:");
       std::println(stdout, "  -h, --help             Show this help message");
       std::println(stdout, "  -V, --version          Show version information");
+      std::println(stdout, "  --toggle-window-overview Toggle the window overview");
       std::println(stdout, "  --toggle-launcher      Toggle the desktop launcher popup");
       std::println(stdout, "  -v, --verbose          Show info and warning logs on terminal");
       std::println(stdout, "  -d, --debug            Show all logs (including debug) on terminal");
@@ -56,6 +57,11 @@ int main(int argc, char* argv[]) {
   for (int index = 1; index < argc; ++index) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     const QString arg = QString::fromLocal8Bit(argv[index]);
+    if (arg == QStringLiteral("--toggle-window-overview")) {
+      int result = sendControlCommand(argc, argv, QByteArrayLiteral("toggle-window-overview"));
+      holonight::logger::shutdown();
+      return result;
+    }
     if (arg == QStringLiteral("--toggle-launcher")) {
       int result = sendControlCommand(argc, argv, QByteArrayLiteral("toggle-launcher"));
       holonight::logger::shutdown();

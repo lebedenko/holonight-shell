@@ -39,6 +39,8 @@ class PerMonitorLayerManager : public QObject {
   void start();
 
  protected:
+  void rebuildSurfaces();
+
   struct MonitorSurface {
     QScreen* screen{};
     std::unique_ptr<Holonight::Wayland::LayerSurfaceHost> host;

@@ -8,7 +8,8 @@ import "../Controls"
 BarSection {
     id: root
     visible: CompositorService.connected && CompositorService.hasActiveWindowData
-    implicitWidth: visible ? 0 : 0
+    implicitWidth: Math.min(320, Math.max(sectionHeading.implicitWidth, activeTitleLabel.implicitWidth + appIcon.width + 10)
+        + contentLeftMargin + contentRightMargin)
 
     required property string barMonitorName
     readonly property int slantCut: 12
@@ -60,6 +61,7 @@ BarSection {
         spacing: 8
 
         Controls.Label {
+            id: sectionHeading
             text: "// ACTIVE WINDOW"
             color: HoloniightPalette.borderActive
             font.family: AppearanceService.titleFont

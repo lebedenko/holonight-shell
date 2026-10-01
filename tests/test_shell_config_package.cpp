@@ -65,3 +65,18 @@ TEST(ShellConfigPackageTest, CanonicalWriterOmitsLegacyAppearanceTable) {
 }
 
 }  // namespace
+
+TEST(ShellConfigPackageTest, TaskbarDefaultsAndRoundTrip) {
+  MissingDefaults missing;
+  const auto defaults = parseConfigTable(toml::table{}, missing);
+  EXPECT_TRUE(defaults.taskbar.enabled);
+  EXPECT_TRUE(defaults.taskbar.grouped);
+  EXPECT_TRUE(defaults.taskbar.overview_access);
+  EXPECT_FALSE(defaults.taskbar.desktop_menu);
+  auto config = defaults;
+  config.taskbar = {.enabled = false, .grouped = false, .overview_access = false, .desktop_menu = true};
+  QTemporaryDir directory;
+  const auto path = directory.filePath("config.toml");
+  ASSERT_TRUE(ProductConfigWriter::write(config, path));
+  EXPECT_EQ(parseConfigTable(toml::parse_file(path.toStdString()), missing).taskbar, config.taskbar);
+}

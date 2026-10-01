@@ -33,6 +33,7 @@ struct MissingDefaults {
 };
 
 struct ProductConfig {
+  TaskbarConfig taskbar;
   BarWorkspacesConfig bar_workspaces;
   BarSystemTrayConfig bar_system_tray;
   TrayIconOverridesConfig tray_icon_overrides;

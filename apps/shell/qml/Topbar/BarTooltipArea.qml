@@ -66,8 +66,13 @@ Item {
         function onMenuVisibleChanged() { root.handleOtherPopupVisibilityChanged(TrayMenuSurface.menuVisible) }
     }
 
+    Connections {
+        target: WindowSurface
+        function onChanged() { root.handleOtherPopupVisibilityChanged(WindowSurface.visible) }
+    }
+
     function anyOtherPopupVisible() {
-        return StatusPopupSurface.popupVisible || TrayMenuSurface.menuVisible
+        return StatusPopupSurface.popupVisible || TrayMenuSurface.menuVisible || WindowSurface.visible
     }
 
     function scheduleTooltip() {
