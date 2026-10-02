@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-build_dir="${1:-${BUILD_DIR:-build}}"
+build_dir="${1:-${BUILD_DIR:-build/test}}"
 if [[ "${build_dir}" = /* ]]; then
   build_root="${build_dir}"
 else
@@ -102,7 +102,8 @@ if grep -Fq '/src/qml/' "${raw_qml_qrc}"; then
   exit 1
 fi
 
-if ! grep -Fq 'QML_IMPORT_PATH: "{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml"' "${taskfile}"; then
+if ! grep -Fq 'QML_IMPORT_PATH: "{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml"' "${taskfile}" && \
+   ! grep -Fq "QML_IMPORT_PATH: '{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml'" "${taskfile}"; then
   echo "Development run task does not select the staged Holonight Qt QML module: ${taskfile}" >&2
   exit 1
 fi

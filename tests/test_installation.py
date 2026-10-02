@@ -142,8 +142,8 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
 
     @unittest.skipUnless(shutil.which("task"), "Task is not installed")
     def test_install_tasks_use_separate_production_builds_and_matching_prefixes(self):
-        for task, directory, prefix in (("install:system", "build-install-system", "/usr"),
-                                        ("install:local", "build-install-local", str(Path.home() / ".local"))):
+        for task, directory, prefix in (("install:system", "build/system-install", "/usr"),
+                                        ("install:local", "build/local-install", str(Path.home() / ".local"))):
             result = subprocess.run(["task", "--dry", task], cwd=SOURCE, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             commands = result.stdout + result.stderr

@@ -144,7 +144,7 @@ Install the HoloNight dependencies first: `holonight-config`, `holonight-qt`
 (including its Wayland component, QML modules and Qt plugins), and
 `holonight-system-services`. Install them into the destination prefix or a
 standard system location. Development tasks verify the pinned provider/config revisions and build sibling dependencies under
-`build-dependencies/`, with a private `build-dependencies/prefix` installation. Production
+`build/deps/`, with a private `build/deps/prefix` installation. Production
 installation builds use installed dependencies. `task test` needs permission to create
 Linux namespaces for bubblewrap; it uses a private headless compositor and disposable services.
 
@@ -553,3 +553,8 @@ sibling drives sharing the same physical device. Busy devices and authorization 
 forced unmounts or automatic retries.
 
 The Storage topbar icon is hidden with zero devices attached, dimmed with devices attached but none mounted, and shows the system accent color plus a device-count badge once at least one volume is mounted. The popup opens with a "Removable Storage" header (device count, plus a currently-inert settings affordance) followed by one collapsible card per physical drive — icon (optical/SSD/HDD/flash-media/generic, by connection bus and media type), name, connection/media subtitle, total capacity, and Eject/Power Off — expanding to a row per volume with a used/free capacity bar (accent above 10% free, amber 5–10%, red below 5%) and Mount/Unmount. Clicking a volume row's body opens it in `holonight-files`, mounting first if needed; footer buttons open Files directly or at the first mounted volume. In-flight operations show inline "Mounting…"/"Ejecting…"/etc. text with conflicting actions disabled; failures show an inline error with a "Try Again" retry. A drive newly connecting posts a "connected" desktop notification (suppressed for devices already attached at shell startup); a successful eject or power-off posts a "safe to remove" notification — both standalone, outside the shell's own notification history. Mount/unmount do not notify. If the last device disappears while the popup is open, it shows an empty state instead of closing. Empty readers and fixed volumes are hidden.
+
+## Standalone developer tooling
+
+See [tooling/README.md](tooling/README.md) for presets, local dependency overrides, editor refresh,
+`task tooling:doctor`, and the independent Serena project.

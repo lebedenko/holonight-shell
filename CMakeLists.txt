@@ -25,6 +25,7 @@ install(
 # targets, so avoid auto-linking QML plugins during executable finalization.
 set(QT_SKIP_AUTO_QML_PLUGIN_INCLUSION ON)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/tooling/dependencies.cmake")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent Sql QuickControls2)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(HolonightQt REQUIRED COMPONENTS Wayland)
@@ -248,11 +249,9 @@ find_program(CLANG_FORMAT clang-format)
 find_program(CLANG_TIDY clang-tidy)
 
 find_program(RUN_CLANG_TIDY run-clang-tidy)
-find_program(QMLLINT qmllint
-    HINTS
-        "${Qt6_DIR}/../../../lib/qt6/bin"
-        "/usr/lib/qt6/bin"
-)
+if(NOT QMLLINT)
+  get_target_property(QMLLINT Qt6::qmllint IMPORTED_LOCATION)
+endif()
 
 file(GLOB_RECURSE ALL_SOURCE_FILES
     LIST_DIRECTORIES false

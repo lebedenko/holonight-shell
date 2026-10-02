@@ -71,7 +71,7 @@ Testing/
 *.bak
 *.tmp
 .cache/
-.serena/
+
 .task/
 assets/dont-commit/
 .claude.local.md
@@ -82,3 +82,12 @@ CLAUDE.md
 
 # Python verification tools
 __pycache__/
+
+# Portable project configuration; machine state stays local.
+/.serena/*
+!/.serena/project.yml
+/.cache/
+/compile_commands.json
+/build/
+/__pycache__/
+/tooling/__pycache__/

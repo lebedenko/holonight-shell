@@ -11,7 +11,7 @@ Use Conventional Commits for every new commit: `type(scope): imperative summary`
 Use `task` as the primary workflow:
 
 - `task configure` configures a Debug CMake/Ninja build and writes `compile_commands.json`.
-- `task build` builds `build/holonight-shell`.
+- `task build` builds `build/debug/holonight-shell`.
 - `task run` builds and launches the shell; it requires a live Wayland/Hyprland session.
 - `task test` configures tests, builds them, and runs `ctest --output-on-failure`.
 - `task coverage` generates an HTML coverage report in `build/coverage/index.html`.
@@ -48,3 +48,6 @@ When touching QML/CMake registration, run `task qmltypes-check` in addition to `
 Qt Quick standard controls use `import QtQuick.Controls as Controls`, including enums and attached properties.
 Use `Holonight.Core` for palette/primitives and `Holonight.Controls` for composites. Graphical executables
 embed an overridable Holonight default; do not import a concrete style or select one imperatively.
+
+Developer tooling uses `build/debug`, `build/test`, `build/release` and module-owned `build/deps`.
+See tooling/README.md; run task tooling:refresh explicitly after configuring/building for editor metadata.

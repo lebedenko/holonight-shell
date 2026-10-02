@@ -1,0 +1,37 @@
+{
+  "module": "holonight-shell",
+  "cpp": true,
+  "qml": true,
+  "languages": [
+    "cpp",
+    "qml",
+    "python",
+    "bash"
+  ],
+  "dependencies": [
+    {
+      "module": "holonight-config",
+      "package": "HoloNightConfig",
+      "source_variable": "HOLONIGHT_CONFIG_SOURCE"
+    },
+    {
+      "module": "holonight-qt",
+      "package": "HolonightQt",
+      "source_variable": "HOLONIGHT_QT_SOURCE"
+    },
+    {
+      "module": "holonight-system-services",
+      "package": "HoloNightSystemServices",
+      "source_variable": "HOLONIGHT_SYSTEM_SERVICES_SOURCE"
+    }
+  ],
+  "qml_modules": [
+    "HolonightShell"
+  ],
+  "wayland": true,
+  "test_command_prefix": [
+    "python3",
+    "scripts/run-isolated-test.py",
+    "--hide-host"
+  ]
+}

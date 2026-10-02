@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-build_dir="${BUILD_DIR:-build}"
+build_dir="${BUILD_DIR:-build/test}"
 binary="${repo_root}/${build_dir}/holonight-shell"
 mode="${1:---checklist}"
 
