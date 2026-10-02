@@ -49,7 +49,7 @@ QVariant CompositorWorkspaceModel::data(const QModelIndex& index, int role) cons
       if (workspace.occupied.value_or(false)) {
         return QStringLiteral("occupied");
       }
-      return QStringLiteral("empty");
+      return workspace.occupied.has_value() ? QStringLiteral("empty") : QStringLiteral("inactive");
     default:
       return {};
   }
@@ -87,6 +87,10 @@ int CompositorWorkspaceModel::firstVisibleRow(int display_count) const {
   if (display_count <= 0 || entries_.size() <= display_count) {
     return 0;
   }
-  const int focus = std::max(0, focusedRow());
+  int focus = focusedRow();
+  if (focus < 0) {
+    const auto active = std::ranges::find(entries_, true, &CompositorWorkspace::active);
+    focus = active == entries_.end() ? 0 : static_cast<int>(active - entries_.begin());
+  }
   return std::clamp(focus - ((display_count - 1) / 2), 0, static_cast<int>(entries_.size()) - display_count);
 }

@@ -186,3 +186,34 @@ TEST(SwayNumberedProvider, RejectsNoncanonicalNamesZeroAndDuplicateNumbers) {
   ASSERT_TRUE(empty);
   EXPECT_TRUE(empty->numbered.eligible);
 }
+
+TEST(WorkspacePresentation, VisibilityUsesActualRowsAndCapabilitiesRatherThanDisplayLimit) {
+  CompositorService service;
+  NumberedFake provider;
+  provider.state.eligible = false;
+  WorkspacePresentation presentation(&service, &provider);
+  QSignalSpy revisions(&presentation, &WorkspacePresentation::revisionChanged);
+  CompositorSnapshot snapshot{.connected = true, .capabilities = {.workspace_listing = true}};
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_FALSE(presentation.sectionVisible());
+  snapshot.workspaces.append({.id = "opaque-one"});
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_FALSE(presentation.sectionVisible());
+  provider.state.eligible = true;
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_TRUE(presentation.sectionVisible());
+  presentation.activateNumberedSlot(5);
+  EXPECT_EQ(provider.activated, 5);
+  provider.state.eligible = false;
+  snapshot.workspaces.append({.id = "opaque-two"});
+  service.publishSnapshotForTest(snapshot);
+  presentation.setWorkspaceDisplayCount(1);
+  EXPECT_TRUE(presentation.sectionVisible());
+  snapshot.capabilities.workspace_listing = false;
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_FALSE(presentation.sectionVisible());
+  snapshot.connected = false;
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_FALSE(presentation.sectionVisible());
+  EXPECT_EQ(revisions.count(), 7);
+}

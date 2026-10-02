@@ -1188,6 +1188,22 @@ class CompositorTestSeed : public QObject {
     service_.publishSnapshotForTest(snapshot);
   }
 
+  Q_INVOKABLE void setNamedWorkspaces(int count, int activeRow = 0, int focusedRow = -1, bool connected = true,
+                                      bool listing = true) {
+    CompositorSnapshot snapshot{
+        .connected = connected,
+        .capabilities = {.workspace_listing = listing, .workspace_activation = true, .urgency = true}};
+    for (int row = 0; row < count; ++row) {
+      snapshot.workspaces.append({.id = QStringLiteral("opaque-%1").arg(row),
+                                  .display_name = QStringLiteral("Desktop %1").arg(row + 1),
+                                  .stable_order = row,
+                                  .active = row == activeRow,
+                                  .focused = row == focusedRow,
+                                  .urgent = row == 1});
+    }
+    service_.publishSnapshotForTest(snapshot);
+  }
+
   Q_INVOKABLE void reset() {
     service_.publishSnapshotForTest({.connected = true,
                                      .focused_output = "DP-1",
@@ -1212,7 +1228,11 @@ class CompositorTestSeed : public QObject {
 class FakeNumberedProvider : public QObject, public NumberedWorkspaceProvider {
   Q_OBJECT
  public:
-  NumberedWorkspaceState numberedWorkspaces() const override { return {.eligible = true, .assignments = {{"1", 1}}}; }
+  Q_PROPERTY(bool eligible MEMBER eligible)
+  bool eligible{true};
+  NumberedWorkspaceState numberedWorkspaces() const override {
+    return {.eligible = eligible, .assignments = {{"1", 1}}};
+  }
   void activateNumberedSlot(int slot) override { emit slotActivated(slot); }
  Q_SIGNALS:
   void slotActivated(int slot);

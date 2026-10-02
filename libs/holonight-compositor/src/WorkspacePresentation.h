@@ -7,6 +7,7 @@ class WorkspacePresentation final : public QObject {
   QML_ELEMENT
   QML_SINGLETON
   Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
+  Q_PROPERTY(bool sectionVisible READ sectionVisible NOTIFY revisionChanged)
   Q_PROPERTY(bool useNumericWorkspacePresentation READ useNumericWorkspacePresentation NOTIFY revisionChanged)
   Q_PROPERTY(int workspaceDisplayCount READ workspaceDisplayCount WRITE setWorkspaceDisplayCount NOTIFY
                  workspaceDisplayCountChanged)
@@ -14,6 +15,10 @@ class WorkspacePresentation final : public QObject {
   WorkspacePresentation(CompositorService* service, NumberedWorkspaceProvider* provider, QObject* parent = nullptr);
   [[nodiscard]] int revision() const { return service_->revision(); }
   [[nodiscard]] bool useNumericWorkspacePresentation() const { return eligible_; }
+  [[nodiscard]] bool sectionVisible() const {
+    return service_->connected() && service_->canListWorkspaces() &&
+           (eligible_ || service_->workspaces()->rowCount() >= 2);
+  }
   [[nodiscard]] int workspaceDisplayCount() const { return display_count_; }
   void setWorkspaceDisplayCount(int count);
   Q_INVOKABLE int firstVisibleWorkspaceRow() const;

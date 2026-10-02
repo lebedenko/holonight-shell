@@ -49,7 +49,8 @@ QString WorkspacePresentation::numericWorkspaceVisualState(int slot) const {
   if (found->urgent) {
     return QStringLiteral("urgent");
   }
-  return found->occupied.value_or(false) ? QStringLiteral("occupied") : QStringLiteral("empty");
+  if (!found->occupied.has_value()) return QStringLiteral("inactive");
+  return *found->occupied ? QStringLiteral("occupied") : QStringLiteral("empty");
 }
 bool WorkspacePresentation::hasNavigableNumericWorkspaceAtOrBeyond(int slot) const {
   return std::ranges::any_of(service_->snapshot().workspaces, [this, slot](const CompositorWorkspace& workspace) {
