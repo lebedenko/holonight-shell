@@ -6,7 +6,7 @@ import HolonightShell
 
 Rectangle {
     id: root
-    color: Qt.rgba(0, 0, 0, 0.45)
+    color: WindowSurface.mode === 3 ? "transparent" : Qt.rgba(0, 0, 0, 0.45)
     focus: true
     property string selectedId: ""
     readonly property var target: WindowPresentation.revision >= 0 ? WindowPresentation.window(WindowSurface.target) : ({})
@@ -37,6 +37,7 @@ Rectangle {
         }
     }
     Keys.onPressed: event => {
+        if (WindowSurface.mode === 3) return
         if (event.key === Qt.Key_Escape) {
             WindowSurface.hide()
             event.accepted = true
@@ -49,8 +50,18 @@ Rectangle {
         else return
         event.accepted = true
     }
-    MouseArea { anchors.fill: parent; onClicked: WindowSurface.hide() }
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: WindowSurface.mode === 3 ? Qt.AllButtons : Qt.LeftButton
+        onClicked: WindowSurface.hide()
+    }
+    DesktopMenu {
+        id: desktopMenu
+        anchors.fill: parent
+        visible: WindowSurface.mode === 3
+    }
     Rectangle {
+        visible: WindowSurface.mode !== 3
         width: Math.min(720, root.width - 40)
         height: Math.min(620, root.height - 80)
         anchors.centerIn: parent
@@ -63,7 +74,7 @@ Rectangle {
             anchors.margins: 20
             spacing: 12
             Controls.Label {
-                text: WindowSurface.mode === 3 ? "Desktop" : WindowSurface.mode === 1 ? (root.target.title || "Window") : "Windows"
+                text: WindowSurface.mode === 1 ? (root.target.title || "Window") : "Windows"
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
@@ -149,27 +160,13 @@ Rectangle {
                     }
                 }
             }
-            Controls.Button {
-                visible: WindowSurface.mode === 3
-                text: "Applications"
-                onClicked: { WindowSurface.hide(); LauncherSurface.show() }
-            }
-            Controls.Button {
-                visible: WindowSurface.mode === 3
-                text: "Settings"
-                onClicked: { WindowSurface.hide(); SettingsNavigationService.openPage("bar") }
-            }
-            Controls.Button {
-                visible: WindowSurface.mode === 3
-                text: "Lock screen"
-                onClicked: { WindowSurface.hide(); SessionService.lockScreen() }
-            }
             Controls.Button { text: "Dismiss"; onClicked: WindowSurface.hide() }
         }
     }
     Component.onCompleted: {
         selectedId = cards.length ? cards[0].windowId : ""
         if (WindowSurface.mode === 0) search.forceActiveFocus()
+        else if (WindowSurface.mode === 3) desktopMenu.forceActiveFocus()
         else forceActiveFocus()
     }
 }

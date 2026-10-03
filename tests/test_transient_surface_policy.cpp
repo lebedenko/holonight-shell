@@ -4,6 +4,7 @@
 #include "ShellConstants.h"
 #include "TooltipGeometry.h"
 #include "TooltipSurface.h"
+#include "WindowSurface.h"
 
 #include <QGuiApplication>
 #include <QScreen>
@@ -72,6 +73,24 @@ TEST(TransientSurfacePolicy, DescribesLauncherAndToastCompletely) {
   EXPECT_EQ(toast_spec.margin_right, 12);
   EXPECT_EQ(toast_spec.initial_properties.value(QStringLiteral("monitorName")).toString(), QStringLiteral("DP-1"));
   EXPECT_TRUE(static_cast<bool>(toast_spec.before_load));
+}
+
+TEST(TransientSurfacePolicy, DesktopMenuUsesOutputCoordinatesIgnoringReservedBarSpace) {
+  QScreen* screen = QGuiApplication::primaryScreen();
+  ASSERT_NE(screen, nullptr);
+
+  const auto desktop = WindowSurface::surfaceSpec(screen, true);
+  EXPECT_EQ(desktop.output, screen);
+  EXPECT_EQ(desktop.layer, Layer::Overlay);
+  EXPECT_EQ(desktop.anchors, Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right);
+  EXPECT_EQ(desktop.width, 0);
+  EXPECT_EQ(desktop.height, 0);
+  EXPECT_EQ(desktop.exclusive_zone, -1);
+  EXPECT_EQ(desktop.margin_top, 0);
+  EXPECT_EQ(desktop.margin_bottom, 0);
+
+  // Overview and window menus retain their existing work-area placement.
+  expectTransientDefaults(WindowSurface::surfaceSpec(screen), screen);
 }
 
 TEST(TransientSurfacePolicy, DescribesOsdPlacementAndInputPolicy) {

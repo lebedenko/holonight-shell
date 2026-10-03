@@ -28,6 +28,7 @@
 #include <QDirIterator>
 #include <QEventLoop>
 #include <QFile>
+#include <QPointF>
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QSignalSpy>
@@ -270,13 +271,19 @@ class FakeBrightnessService : public QObject {
 
 class FakeSessionService : public QObject {
   Q_OBJECT
-
+  Q_PROPERTY(bool lockerAvailable MEMBER locker_available NOTIFY capabilitiesChanged)
+  Q_PROPERTY(bool logoutSupported MEMBER logout_supported NOTIFY capabilitiesChanged)
  public:
-  Q_INVOKABLE void lockScreen() {}
-  Q_INVOKABLE void logout() {}
-  Q_INVOKABLE void sleep() {}
-  Q_INVOKABLE void reboot() {}
-  Q_INVOKABLE void shutdown() {}
+  bool locker_available{true};
+  bool logout_supported{true};
+  Q_INVOKABLE void lockScreen() { emit dispatched("lock"); }
+  Q_INVOKABLE void logout() { emit dispatched("logout"); }
+  Q_INVOKABLE void sleep() { emit dispatched("sleep"); }
+  Q_INVOKABLE void reboot() { emit dispatched("reboot"); }
+  Q_INVOKABLE void shutdown() { emit dispatched("shutdown"); }
+ Q_SIGNALS:
+  void dispatched(const QString& action);
+  void capabilitiesChanged();
 };
 
 class FakeSystemInfoService : public QObject {
@@ -954,11 +961,12 @@ class FakeLauncherSurface : public QObject {
  public:
   [[nodiscard]] bool visible() const { return false; }
   Q_INVOKABLE void toggle(const QString& monitor_name = {}) { Q_EMIT toggled(monitor_name); }
-  Q_INVOKABLE void show(const QString& /*monitor_name*/ = {}) {}
+  Q_INVOKABLE void show(const QString& monitor_name = {}) { Q_EMIT shown(monitor_name); }
   Q_INVOKABLE void hide() {}
   Q_INVOKABLE void notifyHideReady() {}
 
  Q_SIGNALS:
+  void shown(const QString& monitor_name);
   void toggled(const QString& monitor_name);
   void visibleChanged();
 };
@@ -1101,12 +1109,14 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
 };
 class FakeWindowSurface : public QObject {
   Q_OBJECT
+  Q_PROPERTY(QPointF menuPosition READ menuPosition NOTIFY changed)
   Q_PROPERTY(int mode READ mode NOTIFY changed)
   Q_PROPERTY(bool visible READ visible NOTIFY changed)
   Q_PROPERTY(QString target READ target NOTIFY changed)
   Q_PROPERTY(QString screenName READ screenName NOTIFY changed)
   Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
  public:
+  QPointF menuPosition() const { return menu_position_; }
   int mode() const { return mode_; }
   bool visible() const { return visible_; }
   QString target() const { return target_; }
@@ -1134,9 +1144,10 @@ class FakeWindowSurface : public QObject {
     choices_ = ids;
     open(screen);
   }
-  Q_INVOKABLE void desktopMenu(const QString& screen) {
+  Q_INVOKABLE void desktopMenu(const QString& screen, qreal x = -1, qreal y = -1) {
     hide();
     mode_ = 3;
+    menu_position_ = QPointF(x, y);
     open(screen);
   }
   Q_INVOKABLE void hide() {
@@ -1156,6 +1167,7 @@ class FakeWindowSurface : public QObject {
     emit opened();
     emit changed();
   }
+  QPointF menu_position_{-1, -1};
   int mode_{0};
   bool visible_{false};
   QString target_, screen_;
