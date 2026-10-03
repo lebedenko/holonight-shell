@@ -89,8 +89,7 @@ TEST(TransientSurfacePolicy, DesktopMenuUsesOutputCoordinatesIgnoringReservedBar
   EXPECT_EQ(desktop.margin_top, 0);
   EXPECT_EQ(desktop.margin_bottom, 0);
 
-  // Overview and window menus retain their existing work-area placement.
-  expectTransientDefaults(WindowSurface::surfaceSpec(screen), screen);
+  EXPECT_EQ(WindowSurface::surfaceSpec(screen).exclusive_zone, -1);
 }
 
 TEST(TransientSurfacePolicy, DescribesOsdPlacementAndInputPolicy) {
@@ -177,4 +176,12 @@ TEST(TransientSurfaceLifecycle, ReplacementIgnoresStaleTerminalCallback) {
   QCoreApplication::processEvents();
   EXPECT_TRUE(harness.active());
   EXPECT_EQ(harness.terminal_count, 0);
+}
+
+TEST(TransientSurfacePolicy, ConvertsWindowAnchorsToOutputCoordinates) {
+  EXPECT_EQ(WindowSurface::localAnchor(QRectF(2100, 150, 48, 56), QRect(1920, 100, 1920, 1080)),
+            QRectF(180, 50, 48, 56));
+  EXPECT_EQ(WindowSurface::localAnchor(QRectF(-1800, -150, 48, 56), QRect(-1920, -200, 1920, 1080)),
+            QRectF(120, 50, 48, 56));
+  EXPECT_EQ(WindowSurface::localAnchor({}, QRect(-1920, 0, 1920, 1080)), QRectF(8, kBarHeight, 0, 0));
 }

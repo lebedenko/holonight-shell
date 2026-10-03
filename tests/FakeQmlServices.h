@@ -1110,6 +1110,8 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
 class FakeWindowSurface : public QObject {
   Q_OBJECT
   Q_PROPERTY(QPointF menuPosition READ menuPosition NOTIFY changed)
+  Q_PROPERTY(QRectF anchor READ anchor NOTIFY changed)
+  Q_PROPERTY(bool besideAnchor READ besideAnchor NOTIFY changed)
   Q_PROPERTY(int mode READ mode NOTIFY changed)
   Q_PROPERTY(bool visible READ visible NOTIFY changed)
   Q_PROPERTY(QString target READ target NOTIFY changed)
@@ -1117,12 +1119,14 @@ class FakeWindowSurface : public QObject {
   Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
  public:
   QPointF menuPosition() const { return menu_position_; }
+  QRectF anchor() const { return anchor_; }
+  bool besideAnchor() const { return beside_anchor_; }
   int mode() const { return mode_; }
   bool visible() const { return visible_; }
   QString target() const { return target_; }
   QString screenName() const { return screen_; }
   QStringList choices() const { return choices_; }
-  Q_INVOKABLE void toggle(const QString& screen = {}) {
+  Q_INVOKABLE void toggle(const QString& screen = {}, const QRectF& anchor = {}) {
     if (visible_) {
       hide();
       return;
@@ -1130,18 +1134,24 @@ class FakeWindowSurface : public QObject {
     mode_ = 0;
     target_.clear();
     choices_.clear();
+    anchor_ = anchor.isValid() ? anchor : QRectF(8, 64, 0, 0);
+    beside_anchor_ = false;
     open(screen);
   }
-  Q_INVOKABLE void menu(const QString& id, const QString& screen) {
+  Q_INVOKABLE void menu(const QString& id, const QString& screen, const QRectF& anchor = {}, bool beside = false) {
     hide();
     mode_ = 1;
     target_ = id;
+    anchor_ = anchor.isValid() ? anchor : QRectF(8, 64, 0, 0);
+    beside_anchor_ = beside;
     open(screen);
   }
-  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen) {
+  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen, const QRectF& anchor = {}) {
     hide();
     mode_ = 2;
     choices_ = ids;
+    anchor_ = anchor.isValid() ? anchor : QRectF(8, 64, 0, 0);
+    beside_anchor_ = false;
     open(screen);
   }
   Q_INVOKABLE void desktopMenu(const QString& screen, qreal x = -1, qreal y = -1) {
@@ -1167,6 +1177,8 @@ class FakeWindowSurface : public QObject {
     emit opened();
     emit changed();
   }
+  QRectF anchor_;
+  bool beside_anchor_{false};
   QPointF menu_position_{-1, -1};
   int mode_{0};
   bool visible_{false};
@@ -1192,6 +1204,15 @@ class CompositorTestSeed : public QObject {
                                .app_id = "org.sample",
                                .activated = second_active,
                                .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close}});
+    service_.publishSnapshotForTest(snapshot);
+  }
+  Q_INVOKABLE void setWindowCount(int count) {
+    CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
+    for (int i = 0; i < count; ++i)
+      snapshot.windows.append({.id = QStringLiteral("window-%1").arg(i),
+                               .title = QStringLiteral("Document %1").arg(i),
+                               .app_id = "org.sample",
+                               .operations = {WindowCommand::Activate, WindowCommand::Close}});
     service_.publishSnapshotForTest(snapshot);
   }
   Q_INVOKABLE void setWindow(bool available, const QString& output, const QString& title, const QString& app) {

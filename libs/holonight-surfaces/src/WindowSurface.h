@@ -3,6 +3,7 @@
 #include "TransientSurfaceHost.h"
 
 #include <QPointF>
+#include <QRectF>
 #include <QStringList>
 #include <QtQml/qqml.h>
 
@@ -13,6 +14,8 @@ class WindowSurface final : public TransientSurfaceHost {
   Q_PROPERTY(bool visible READ visible NOTIFY changed)
   Q_PROPERTY(QString screenName READ screenName NOTIFY changed)
   Q_PROPERTY(QPointF menuPosition READ menuPosition NOTIFY changed)
+  Q_PROPERTY(QRectF anchor READ anchor NOTIFY changed)
+  Q_PROPERTY(bool besideAnchor READ besideAnchor NOTIFY changed)
   Q_PROPERTY(int mode READ mode NOTIFY changed)
   Q_PROPERTY(QString target READ target NOTIFY changed)
   Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
@@ -21,12 +24,15 @@ class WindowSurface final : public TransientSurfaceHost {
   bool visible() const { return hasSurface(); }
   QString screenName() const { return screen_name_; }
   QPointF menuPosition() const { return menu_position_; }
+  QRectF anchor() const { return anchor_; }
+  bool besideAnchor() const { return beside_anchor_; }
+  static QRectF localAnchor(const QRectF& global, const QRect& geometry);
   int mode() const { return mode_; }
   QString target() const { return target_; }
   QStringList choices() const { return choices_; }
-  Q_INVOKABLE void toggle(const QString& screen = {});
-  Q_INVOKABLE void menu(const QString& id, const QString& screen);
-  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen);
+  Q_INVOKABLE void toggle(const QString& screen = {}, const QRectF& anchor = {});
+  Q_INVOKABLE void menu(const QString& id, const QString& screen, const QRectF& anchor = {}, bool beside = false);
+  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen, const QRectF& anchor = {});
   Q_INVOKABLE void desktopMenu(const QString& screen, qreal x = -1, qreal y = -1);
   Q_INVOKABLE void hide();
   [[nodiscard]] static Holonight::Wayland::LayerSurfaceSpec surfaceSpec(QScreen* screen, bool desktop_menu = false);
@@ -36,7 +42,9 @@ class WindowSurface final : public TransientSurfaceHost {
   void dismissed();
 
  private:
-  void show(const QString& screen);
+  void show(const QString& screen, const QRectF& anchor = {});
+  QRectF anchor_;
+  bool beside_anchor_{false};
   void onSurfaceTerminated() override;
   QPointF menu_position_{-1, -1};
   int mode_{0};
