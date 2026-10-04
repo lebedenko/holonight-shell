@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
+import Holonight.Controls
+import Holonight.Components
 import Holonight.Core
 import HolonightShell
 
@@ -14,10 +16,10 @@ Rectangle {
         ? WindowPresentation.overview.filter(w => WindowSurface.choices.indexOf(w.windowId) >= 0)
         : WindowPresentation.overview
     readonly property var actions: WindowSurface.mode === 1 ? [
-        { label: target.minimized ? "Restore" : "Minimize", operation: target.minimized ? 2 : 1 },
-        { label: target.maximized ? "Restore size" : "Maximize", operation: target.maximized ? 4 : 3 },
-        { label: target.fullscreen ? "Leave fullscreen" : "Fullscreen", operation: target.fullscreen ? 6 : 5 },
-        { label: "Close", operation: 7 }
+        { label: target.minimized ? "Restore" : "Minimize", icon: target.minimized ? "restore" : "minimize", operation: target.minimized ? 2 : 1 },
+        { label: target.maximized ? "Restore size" : "Maximize", icon: target.maximized ? "restore" : "maximize", operation: target.maximized ? 4 : 3 },
+        { label: target.fullscreen ? "Leave fullscreen" : "Fullscreen", icon: target.fullscreen ? "fullscreen-exit" : "fullscreen", operation: target.fullscreen ? 6 : 5 },
+        { label: "Close", icon: "close", operation: 7 }
     ].filter(action => target.operations && target.operations.indexOf(action.operation) >= 0) : []
     property int actionIndex: 0
     onActionsChanged: actionIndex = Math.max(0, Math.min(actionIndex, actions.length - 1))
@@ -90,7 +92,7 @@ Rectangle {
         visible: WindowSurface.mode !== 3
         id: panel
         objectName: "windowMenuPanel"
-        width: Math.min(360, Math.max(0, root.width - 16))
+        width: Math.min(WindowSurface.mode === 1 ? 244 : 360, Math.max(0, root.width - 16))
         readonly property real preferredY: WindowSurface.besideAnchor ? WindowSurface.anchor.y : WindowSurface.anchor.y + WindowSurface.anchor.height + 4
         readonly property real availableHeight: Math.max(0, root.height - Math.max(8, preferredY) - 8)
         height: Math.min(column.implicitHeight + 16, root.height - 16)
@@ -99,20 +101,42 @@ Rectangle {
                 ? WindowSurface.anchor.x + WindowSurface.anchor.width + 4 : WindowSurface.anchor.x - width - 4)
             : WindowSurface.anchor.x, width, root.width)
         y: root.clamp(preferredY, height, root.height)
-        color: HoloniightPalette.surface
-        border.color: HoloniightPalette.borderSubtle
+        color: WindowSurface.mode === 1 ? "transparent" : HoloniightPalette.surface
+        border.color: WindowSurface.mode === 1 ? "transparent" : HoloniightPalette.borderSubtle
         radius: 8
+        HnSurfaceFrame {
+            objectName: "windowActionFrame"
+            anchors.fill: parent
+            visible: WindowSurface.mode === 1
+            surfaceRole: HnSurfaceRole.Menu
+            fillColor: HoloniightPalette.surfaceRaised
+            borderColor: HoloniightPalette.borderPassive
+        }
         MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons }
         ColumnLayout {
             id: column
             anchors.fill: parent
             anchors.margins: 8
             spacing: 4
-            Controls.Label {
+            RowLayout {
                 visible: WindowSurface.mode === 1
-                text: root.target.title || "Window"
                 Layout.fillWidth: true
-                elide: Text.ElideRight
+                Layout.minimumHeight: 32
+                spacing: 8
+                AppWindowIcon {
+                    appId: root.target.appId || ""
+                    iconName: LauncherService.iconForAppId(appId)
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                }
+                HnLabel {
+                    objectName: "windowActionTitle"
+                    rawText: root.target.title || "Window"
+                    role: HnTypographyRole.Subheading
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                }
             }
             Controls.TextField {
                 id: search
@@ -180,6 +204,7 @@ Rectangle {
             Repeater {
                 model: root.actions
                 Controls.ItemDelegate {
+                    id: actionRow
                     required property var modelData
                     required property int index
                     objectName: "windowAction" + modelData.operation
@@ -188,7 +213,51 @@ Rectangle {
                     highlighted: root.actionIndex === index
                     hoverEnabled: true
                     onHoveredChanged: { if (hovered) root.actionIndex = index }
-                    Layout.preferredHeight: 40
+                    readonly property bool separated: modelData.operation === 7 && index > 0
+                    readonly property color foreground: modelData.operation === 7 ? HoloniightPalette.error : HoloniightPalette.textPrimary
+                    topPadding: separated ? 14 : 4
+                    bottomPadding: 4
+                    leftPadding: 8
+                    rightPadding: 8
+                    Layout.preferredHeight: Math.max(32, actionLabel.implicitHeight + 8) + (separated ? 10 : 0)
+                    background: Item {
+                        Rectangle {
+                            width: parent.width - 16
+                            x: 8
+                            height: 1
+                            y: 4
+                            visible: actionRow.separated
+                            color: HoloniightPalette.borderPassive
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.topMargin: actionRow.separated ? 10 : 0
+                            radius: 4
+                            color: Qt.rgba(HoloniightPalette.textPrimary.r, HoloniightPalette.textPrimary.g,
+                                HoloniightPalette.textPrimary.b, actionRow.down ? 0.14 : actionRow.highlighted || actionRow.hovered ? 0.08 : 0)
+                        }
+                    }
+                    contentItem: RowLayout {
+                        spacing: 8
+                        HnIcon {
+                            objectName: "windowActionIcon" + actionRow.modelData.operation
+                            size: 16
+                            source: "qrc:/HolonightShell/bar-icons/window-" + actionRow.modelData.icon + "-symbolic.svg"
+                            rendering: HnIcon.Semantic
+                            normalColor: actionRow.foreground
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                        }
+                        HnLabel {
+                            id: actionLabel
+                            rawText: actionRow.text
+                            role: HnTypographyRole.Body
+                            color: actionRow.foreground
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                        }
+                    }
                     Layout.fillWidth: true
                     visible: !!root.target.operations && root.target.operations.indexOf(modelData.operation) >= 0
                     onClicked: {

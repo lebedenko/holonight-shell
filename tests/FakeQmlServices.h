@@ -1206,6 +1206,19 @@ class CompositorTestSeed : public QObject {
                                .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close}});
     service_.publishSnapshotForTest(snapshot);
   }
+  Q_INVOKABLE void setActionWindow(bool minimized, bool maximized, bool fullscreen, const QString& title) {
+    CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
+    snapshot.windows.append({.id = "first",
+                             .title = title,
+                             .app_id = "org.sample",
+                             .minimized = minimized,
+                             .maximized = maximized,
+                             .fullscreen = fullscreen,
+                             .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Restore,
+                                            WindowCommand::Maximize, WindowCommand::Unmaximize, WindowCommand::Fullscreen,
+                                            WindowCommand::Unfullscreen, WindowCommand::Close}});
+    service_.publishSnapshotForTest(snapshot);
+  }
   Q_INVOKABLE void setWindowCount(int count) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
     for (int i = 0; i < count; ++i)
