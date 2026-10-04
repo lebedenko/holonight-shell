@@ -36,6 +36,15 @@ Qt tools resolve from the selected cache's Qt6_DIR; QMLLS, QMLLINT and QMLFORMAT
 See [Qt configuration](https://doc.qt.io/qt-6/qtqml-tooling-qmlls.html#configuration-file).
 `task tooling:doctor` reports availability, builds, imports and database coverage without installing or building.
 
+Set `HOLONIGHT_TIDY_DATABASE` to a fresh CMake `compile_commands.json` when running
+`task tidy-src`, `task tidy-tests` or `task tidy` to select that build's compiler
+contexts explicitly. For example,
+`HOLONIGHT_TIDY_DATABASE=build/ci/native-final/compile_commands.json task tidy-src`
+avoids stale legacy builds without changing their artifacts. Without this override,
+the existing merged developer database remains in use. Coverage failures apply to
+the selected source/test scope; each file is analyzed once with all its compiler
+contexts. Full-scope checks still fail if an owned translation unit is uncovered.
+
 Every component owns `.serena/project.yml`, workspace `.`, LSP languages for its current owned sources, and no
 activation build command. `task serena:serve` starts Serena with the absolute module root and codex context;
 `task serena:index` is an explicit indexing operation. Alternatively run

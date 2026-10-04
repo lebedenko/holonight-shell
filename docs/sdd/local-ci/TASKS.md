@@ -5,3 +5,4 @@
 - [x] Fix owned host diagnostics and review changes.
 - [x] Verify required lanes, launcher failures, source/build isolation and evidence.
 - [x] Record acceptance and local handoff.
+- [x] Verify the developer tidy entry point with explicit fresh compiler contexts.

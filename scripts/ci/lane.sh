@@ -21,6 +21,7 @@ pkg-config --modversion Qt6Core Qt6Quick
 bwrap --version
 sway --version
 python3 scripts/ci/test_launcher.py
+python3 scripts/ci/test_tooling_tidy.py
 mkdir -p /work/providers
 fetch_provider() {
   name=$1

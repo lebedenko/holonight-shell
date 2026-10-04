@@ -83,3 +83,16 @@ Every individual failed lane fails the task even if the remaining lanes pass.
 Python/shell syntax and final diff checks pass. Real Podman is unavailable and
 has not been claimed as verified. Existing live compositor/Labwc manual tasks
 remain available; no live desktop interaction was automated. No push or pin update.
+
+Developer-entry-point follow-up: the default merged database selected a legacy
+build-tests tree missing generated Labwc headers. Its failure log is retained as
+build/ci/native-task-tidy-src-final.log; this is a stale compiler context, not a
+new source failure. HOLONIGHT_TIDY_DATABASE now selects a fresh database explicitly,
+scope coverage considers only the requested source/test files, and files with
+multiple compiler contexts are invoked once. Both regression tests pass on the
+host and in the pinned container (build/ci/pinned-tooling-context-tests.log).
+Fresh-snapshot pinned licensing passes in build/ci/20261004T103241Z-oww9jpq4.
+`HOLONIGHT_TIDY_DATABASE=build/ci/native-final/compile_commands.json task tidy-src`
+passes with clang-tidy 23; its complete log is
+build/ci/native-task-tidy-src-explicit.log. Application source/build checks are
+unaffected by this tooling-only follow-up and are not repeated.
