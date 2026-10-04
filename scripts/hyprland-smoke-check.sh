@@ -133,6 +133,15 @@ Launcher:
   3. Type a query, move selection with keyboard, launch an app, then reopen and verify recent-app ordering.
   4. Run the same toggle command again and verify it closes.
 
+Window menus:
+  1. Click All windows and verify a compact menu opens 4 px beneath its button without dimming the screen.
+  2. Click a grouped app icon and verify its window list opens beneath that icon.
+  3. Right-click a window row and verify actions open beside it, flipping left near the right screen edge.
+  4. Right-click a single-window app icon and verify actions open beneath the icon, showing only supported operations.
+  5. Search, move selection with Up/Down, keep typing, and press Enter to activate; check long lists scroll to selection.
+  6. Press Escape and click outside (including right-click) to dismiss; close the target window while its actions are open.
+  7. Repeat on monitors with positive and negative origins and verify each menu stays within screen edges.
+
 Tray:
   1. Start at least one StatusNotifierItem client, for example nm-applet, blueman-applet, keepassxc, or another tray app.
   2. Verify the item appears in the topbar tray, keeps its icon stable, and shows attention styling when the app requests attention.

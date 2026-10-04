@@ -1,18 +1,34 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
+import Holonight.Controls
+import Holonight.Components
 import Holonight.Core
 import HolonightShell
 
 Rectangle {
     id: root
-    color: Qt.rgba(0, 0, 0, 0.45)
+    color: "transparent"
     focus: true
     property string selectedId: ""
     readonly property var target: WindowPresentation.revision >= 0 ? WindowPresentation.window(WindowSurface.target) : ({})
     readonly property var cards: WindowSurface.mode === 2
         ? WindowPresentation.overview.filter(w => WindowSurface.choices.indexOf(w.windowId) >= 0)
         : WindowPresentation.overview
+    readonly property var actions: WindowSurface.mode === 1 ? [
+        { label: target.minimized ? "Restore" : "Minimize", icon: target.minimized ? "restore" : "minimize", operation: target.minimized ? 2 : 1 },
+        { label: target.maximized ? "Restore size" : "Maximize", icon: target.maximized ? "restore" : "maximize", operation: target.maximized ? 4 : 3 },
+        { label: target.fullscreen ? "Leave fullscreen" : "Fullscreen", icon: target.fullscreen ? "fullscreen-exit" : "fullscreen", operation: target.fullscreen ? 6 : 5 },
+        { label: "Close", icon: "close", operation: 7 }
+    ].filter(action => target.operations && target.operations.indexOf(action.operation) >= 0) : []
+    property int actionIndex: 0
+    onActionsChanged: actionIndex = Math.max(0, Math.min(actionIndex, actions.length - 1))
+    function clamp(value, size, extent) { return Math.max(8, Math.min(value, extent - size - 8)) }
+    function dispatchAction() {
+        if (!actions.length) return
+        WindowPresentation.command(WindowSurface.target, actions[actionIndex].operation)
+        WindowSurface.hide()
+    }
     function activate(id) {
         const window = WindowPresentation.window(id)
         WindowSurface.hide()
@@ -26,6 +42,10 @@ Rectangle {
         selectedId = cards[index].windowId
         list.positionViewAtIndex(index, ListView.Contain)
     }
+    onSelectedIdChanged: Qt.callLater(() => {
+        const index = cards.findIndex(w => w.windowId === selectedId)
+        if (index >= 0) list.positionViewAtIndex(index, ListView.Contain)
+    })
     onCardsChanged: {
         if (!cards.some(w => w.windowId === selectedId)) selectedId = cards.length ? cards[0].windowId : ""
     }
@@ -37,8 +57,17 @@ Rectangle {
         }
     }
     Keys.onPressed: event => {
+        if (WindowSurface.mode === 3) return
         if (event.key === Qt.Key_Escape) {
             WindowSurface.hide()
+            event.accepted = true
+            return
+        }
+        if (WindowSurface.mode === 1) {
+            if (event.key === Qt.Key_Down) actionIndex = Math.min(actions.length - 1, actionIndex + 1)
+            else if (event.key === Qt.Key_Up) actionIndex = Math.max(0, actionIndex - 1)
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) dispatchAction()
+            else return
             event.accepted = true
             return
         }
@@ -49,23 +78,65 @@ Rectangle {
         else return
         event.accepted = true
     }
-    MouseArea { anchors.fill: parent; onClicked: WindowSurface.hide() }
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.AllButtons
+        onClicked: WindowSurface.hide()
+    }
+    DesktopMenu {
+        id: desktopMenu
+        anchors.fill: parent
+        visible: WindowSurface.mode === 3
+    }
     Rectangle {
-        width: Math.min(720, root.width - 40)
-        height: Math.min(620, root.height - 80)
-        anchors.centerIn: parent
-        color: HoloniightPalette.surface
-        border.color: HoloniightPalette.borderActive
-        radius: 12
-        MouseArea { anchors.fill: parent }
-        ColumnLayout {
+        visible: WindowSurface.mode !== 3
+        id: panel
+        objectName: "windowMenuPanel"
+        width: Math.min(WindowSurface.mode === 1 ? 244 : 360, Math.max(0, root.width - 16))
+        readonly property real preferredY: WindowSurface.besideAnchor ? WindowSurface.anchor.y : WindowSurface.anchor.y + WindowSurface.anchor.height + 4
+        readonly property real availableHeight: Math.max(0, root.height - Math.max(8, preferredY) - 8)
+        height: Math.min(column.implicitHeight + 16, root.height - 16)
+        x: root.clamp(WindowSurface.besideAnchor
+            ? (WindowSurface.anchor.x + WindowSurface.anchor.width + 4 + width <= root.width - 8
+                ? WindowSurface.anchor.x + WindowSurface.anchor.width + 4 : WindowSurface.anchor.x - width - 4)
+            : WindowSurface.anchor.x, width, root.width)
+        y: root.clamp(preferredY, height, root.height)
+        color: WindowSurface.mode === 1 ? "transparent" : HoloniightPalette.surface
+        border.color: WindowSurface.mode === 1 ? "transparent" : HoloniightPalette.borderSubtle
+        radius: 8
+        HnSurfaceFrame {
+            objectName: "windowActionFrame"
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
-            Controls.Label {
-                text: WindowSurface.mode === 3 ? "Desktop" : WindowSurface.mode === 1 ? (root.target.title || "Window") : "Windows"
+            visible: WindowSurface.mode === 1
+            surfaceRole: HnSurfaceRole.Menu
+            fillColor: HoloniightPalette.surfaceRaised
+            borderColor: HoloniightPalette.borderPassive
+        }
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons }
+        ColumnLayout {
+            id: column
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 4
+            RowLayout {
+                visible: WindowSurface.mode === 1
                 Layout.fillWidth: true
-                elide: Text.ElideRight
+                Layout.minimumHeight: 32
+                spacing: 8
+                AppWindowIcon {
+                    appId: root.target.appId || ""
+                    iconName: LauncherService.iconForAppId(appId)
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                }
+                HnLabel {
+                    objectName: "windowActionTitle"
+                    rawText: root.target.title || "Window"
+                    role: HnTypographyRole.Subheading
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                }
             }
             Controls.TextField {
                 id: search
@@ -74,7 +145,8 @@ Rectangle {
                 Layout.fillWidth: true
                 placeholderText: "Search windows · ↓ selects · Escape closes"
                 onTextChanged: WindowPresentation.setSearch(text)
-                Keys.onDownPressed: { root.move(1); root.forceActiveFocus() }
+                Keys.onDownPressed: root.move(1)
+                Keys.onUpPressed: root.move(-1)
                 Keys.onEscapePressed: WindowSurface.hide()
                 onAccepted: { if (root.selectedId) root.activate(root.selectedId) }
             }
@@ -82,24 +154,32 @@ Rectangle {
                 id: list
                 visible: WindowSurface.mode === 0 || WindowSurface.mode === 2
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                objectName: "windowMenuList"
+                Layout.preferredHeight: Math.min(480, Math.max(40, root.cards.length * 40),
+                    Math.max(40, panel.availableHeight - 16 - (search.visible ? search.implicitHeight + 4 : 0)))
                 clip: true
-                spacing: 8
+                spacing: 0
                 model: root.cards
                 Controls.ScrollBar.vertical: Controls.ScrollBar {}
                 delegate: Rectangle {
                     id: card
                     required property var modelData
                     width: list.width
-                    height: 64
+                    height: 40
                     color: root.selectedId === modelData.windowId ? HoloniightPalette.borderActive : HoloniightPalette.surface
                     radius: 6
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        hoverEnabled: true
+                        onEntered: root.selectedId = card.modelData.windowId
                         onClicked: mouse => {
                             root.selectedId = card.modelData.windowId
-                            if (mouse.button === Qt.RightButton) WindowSurface.menu(card.modelData.windowId, WindowSurface.screenName)
+                            if (mouse.button === Qt.RightButton) {
+                                const point = card.mapToGlobal(0, 0)
+                                WindowSurface.menu(card.modelData.windowId, WindowSurface.screenName,
+                                    Qt.rect(point.x, point.y, card.width, card.height), true)
+                            }
                             else root.activate(card.modelData.windowId)
                         }
                     }
@@ -109,38 +189,75 @@ Rectangle {
                         AppWindowIcon {
                             appId: card.modelData.appId
                             iconName: LauncherService.iconForAppId(card.modelData.appId)
-                            Layout.preferredWidth: 32
-                            Layout.preferredHeight: 32
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
                         }
                         Controls.Label {
                             text: (card.modelData.minimized ? "○ " : "") + (card.modelData.title || card.modelData.appId || "Window")
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
-                        Controls.Button {
-                            text: card.modelData.minimized ? "Restore" : "Minimize"
-                            visible: card.modelData.operations.indexOf(card.modelData.minimized ? 2 : 1) >= 0
-                            onClicked: WindowPresentation.command(card.modelData.windowId, card.modelData.minimized ? 2 : 1)
-                        }
-                        Controls.Button {
-                            text: "Close"
-                            visible: card.modelData.operations.indexOf(7) >= 0
-                            onClicked: WindowPresentation.command(card.modelData.windowId, 7)
-                        }
                     }
                 }
                 Controls.Label { anchors.centerIn: parent; visible: root.cards.length === 0; text: "No windows found" }
             }
             Repeater {
-                model: WindowSurface.mode === 1 ? [
-                    { label: root.target.minimized ? "Restore" : "Minimize", operation: root.target.minimized ? 2 : 1 },
-                    { label: root.target.maximized ? "Restore size" : "Maximize", operation: root.target.maximized ? 4 : 3 },
-                    { label: root.target.fullscreen ? "Leave fullscreen" : "Fullscreen", operation: root.target.fullscreen ? 6 : 5 },
-                    { label: "Close", operation: 7 }
-                ] : []
-                Controls.Button {
+                model: root.actions
+                Controls.ItemDelegate {
+                    id: actionRow
                     required property var modelData
+                    required property int index
+                    objectName: "windowAction" + modelData.operation
                     text: modelData.label
+                    focusPolicy: Qt.NoFocus
+                    highlighted: root.actionIndex === index
+                    hoverEnabled: true
+                    onHoveredChanged: { if (hovered) root.actionIndex = index }
+                    readonly property bool separated: modelData.operation === 7 && index > 0
+                    readonly property color foreground: modelData.operation === 7 ? HoloniightPalette.error : HoloniightPalette.textPrimary
+                    topPadding: separated ? 14 : 4
+                    bottomPadding: 4
+                    leftPadding: 8
+                    rightPadding: 8
+                    Layout.preferredHeight: Math.max(32, actionLabel.implicitHeight + 8) + (separated ? 10 : 0)
+                    background: Item {
+                        Rectangle {
+                            width: parent.width - 16
+                            x: 8
+                            height: 1
+                            y: 4
+                            visible: actionRow.separated
+                            color: HoloniightPalette.borderPassive
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.topMargin: actionRow.separated ? 10 : 0
+                            radius: 4
+                            color: Qt.rgba(HoloniightPalette.textPrimary.r, HoloniightPalette.textPrimary.g,
+                                HoloniightPalette.textPrimary.b, actionRow.down ? 0.14 : actionRow.highlighted || actionRow.hovered ? 0.08 : 0)
+                        }
+                    }
+                    contentItem: RowLayout {
+                        spacing: 8
+                        HnIcon {
+                            objectName: "windowActionIcon" + actionRow.modelData.operation
+                            size: 16
+                            source: "qrc:/HolonightShell/bar-icons/window-" + actionRow.modelData.icon + "-symbolic.svg"
+                            rendering: HnIcon.Semantic
+                            normalColor: actionRow.foreground
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                        }
+                        HnLabel {
+                            id: actionLabel
+                            rawText: actionRow.text
+                            role: HnTypographyRole.Body
+                            color: actionRow.foreground
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                        }
+                    }
                     Layout.fillWidth: true
                     visible: !!root.target.operations && root.target.operations.indexOf(modelData.operation) >= 0
                     onClicked: {
@@ -149,27 +266,12 @@ Rectangle {
                     }
                 }
             }
-            Controls.Button {
-                visible: WindowSurface.mode === 3
-                text: "Applications"
-                onClicked: { WindowSurface.hide(); LauncherSurface.show() }
-            }
-            Controls.Button {
-                visible: WindowSurface.mode === 3
-                text: "Settings"
-                onClicked: { WindowSurface.hide(); SettingsNavigationService.openPage("bar") }
-            }
-            Controls.Button {
-                visible: WindowSurface.mode === 3
-                text: "Lock screen"
-                onClicked: { WindowSurface.hide(); SessionService.lockScreen() }
-            }
-            Controls.Button { text: "Dismiss"; onClicked: WindowSurface.hide() }
         }
     }
     Component.onCompleted: {
         selectedId = cards.length ? cards[0].windowId : ""
         if (WindowSurface.mode === 0) search.forceActiveFocus()
+        else if (WindowSurface.mode === 3) desktopMenu.forceActiveFocus()
         else forceActiveFocus()
     }
 }

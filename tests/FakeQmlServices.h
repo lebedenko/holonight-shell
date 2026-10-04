@@ -28,6 +28,7 @@
 #include <QDirIterator>
 #include <QEventLoop>
 #include <QFile>
+#include <QPointF>
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QSignalSpy>
@@ -272,13 +273,19 @@ class FakeBrightnessService : public QObject {
 
 class FakeSessionService : public QObject {
   Q_OBJECT
-
+  Q_PROPERTY(bool lockerAvailable MEMBER locker_available NOTIFY capabilitiesChanged)
+  Q_PROPERTY(bool logoutSupported MEMBER logout_supported NOTIFY capabilitiesChanged)
  public:
-  Q_INVOKABLE void lockScreen() {}
-  Q_INVOKABLE void logout() {}
-  Q_INVOKABLE void sleep() {}
-  Q_INVOKABLE void reboot() {}
-  Q_INVOKABLE void shutdown() {}
+  bool locker_available{true};
+  bool logout_supported{true};
+  Q_INVOKABLE void lockScreen() { emit dispatched("lock"); }
+  Q_INVOKABLE void logout() { emit dispatched("logout"); }
+  Q_INVOKABLE void sleep() { emit dispatched("sleep"); }
+  Q_INVOKABLE void reboot() { emit dispatched("reboot"); }
+  Q_INVOKABLE void shutdown() { emit dispatched("shutdown"); }
+ Q_SIGNALS:
+  void dispatched(const QString& action);
+  void capabilitiesChanged();
 };
 
 class FakeSystemInfoService : public QObject {
@@ -980,11 +987,12 @@ class FakeLauncherSurface : public QObject {
  public:
   [[nodiscard]] bool visible() const { return false; }
   Q_INVOKABLE void toggle(const QString& monitor_name = {}) { Q_EMIT toggled(monitor_name); }
-  Q_INVOKABLE void show(const QString& /*monitor_name*/ = {}) {}
+  Q_INVOKABLE void show(const QString& monitor_name = {}) { Q_EMIT shown(monitor_name); }
   Q_INVOKABLE void hide() {}
   Q_INVOKABLE void notifyHideReady() {}
 
  Q_SIGNALS:
+  void shown(const QString& monitor_name);
   void toggled(const QString& monitor_name);
   void visibleChanged();
 };
@@ -1127,18 +1135,24 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
 };
 class FakeWindowSurface : public QObject {
   Q_OBJECT
+  Q_PROPERTY(QPointF menuPosition READ menuPosition NOTIFY changed)
+  Q_PROPERTY(QRectF anchor READ anchor NOTIFY changed)
+  Q_PROPERTY(bool besideAnchor READ besideAnchor NOTIFY changed)
   Q_PROPERTY(int mode READ mode NOTIFY changed)
   Q_PROPERTY(bool visible READ visible NOTIFY changed)
   Q_PROPERTY(QString target READ target NOTIFY changed)
   Q_PROPERTY(QString screenName READ screenName NOTIFY changed)
   Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
  public:
+  [[nodiscard]] QPointF menuPosition() const { return menu_position_; }
+  [[nodiscard]] QRectF anchor() const { return anchor_; }
+  [[nodiscard]] bool besideAnchor() const { return beside_anchor_; }
   [[nodiscard]] int mode() const { return mode_; }
   [[nodiscard]] bool visible() const { return visible_; }
   [[nodiscard]] QString target() const { return target_; }
   [[nodiscard]] QString screenName() const { return screen_; }
   [[nodiscard]] QStringList choices() const { return choices_; }
-  Q_INVOKABLE void toggle(const QString& screen = {}) {
+  Q_INVOKABLE void toggle(const QString& screen = {}, const QRectF& anchor = {}) {
     if (visible_) {
       hide();
       return;
@@ -1146,23 +1160,31 @@ class FakeWindowSurface : public QObject {
     mode_ = 0;
     target_.clear();
     choices_.clear();
+    anchor_ = anchor.isValid() ? anchor : QRectF(8, 64, 0, 0);
+    beside_anchor_ = false;
     open(screen);
   }
-  Q_INVOKABLE void menu(const QString& identifier, const QString& screen) {
+  Q_INVOKABLE void menu(const QString& identifier, const QString& screen, const QRectF& anchor = {},
+                        bool beside = false) {
     hide();
     mode_ = 1;
     target_ = identifier;
+    anchor_ = anchor.isValid() ? anchor : QRectF(8, 64, 0, 0);
+    beside_anchor_ = beside;
     open(screen);
   }
-  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen) {
+  Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen, const QRectF& anchor = {}) {
     hide();
     mode_ = 2;
     choices_ = ids;
+    anchor_ = anchor.isValid() ? anchor : QRectF(8, 64, 0, 0);
+    beside_anchor_ = false;
     open(screen);
   }
-  Q_INVOKABLE void desktopMenu(const QString& screen) {
+  Q_INVOKABLE void desktopMenu(const QString& screen, qreal position_x = -1, qreal position_y = -1) {
     hide();
     mode_ = 3;
+    menu_position_ = QPointF(position_x, position_y);
     open(screen);
   }
   Q_INVOKABLE void hide() {
@@ -1182,6 +1204,9 @@ class FakeWindowSurface : public QObject {
     emit opened();
     emit changed();
   }
+  QRectF anchor_;
+  bool beside_anchor_{false};
+  QPointF menu_position_{-1, -1};
   int mode_{0};
   bool visible_{false};
   QString target_, screen_;
@@ -1192,6 +1217,16 @@ class CompositorTestSeed : public QObject {
   Q_OBJECT
  public:
   explicit CompositorTestSeed(CompositorService& service) : service_(service) {}
+  Q_INVOKABLE void updateWindowTitle(const QString& identifier, const QString& title) {
+    auto snapshot = service_.snapshot();
+    snapshot.active_windows[QStringLiteral("DP-1")].title = title;
+    for (auto& window : snapshot.windows) {
+      if (window.id == identifier) {
+        window.title = title;
+      }
+    }
+    service_.publishSnapshotForTest(snapshot);
+  }
   Q_INVOKABLE void setToplevels(bool first, bool second, bool second_active = true) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
     if (first) {
@@ -1214,10 +1249,64 @@ class CompositorTestSeed : public QObject {
     }
     service_.publishSnapshotForTest(snapshot);
   }
+  Q_INVOKABLE void setActionWindow(bool minimized, bool maximized, bool fullscreen, const QString& title) {
+    CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
+    snapshot.windows.append({
+        .id = "first",
+        .title = title,
+        .app_id = "org.sample",
+        .minimized = minimized,
+        .maximized = maximized,
+        .fullscreen = fullscreen,
+        .operations =
+            {
+                WindowCommand::Activate,
+                WindowCommand::Minimize,
+                WindowCommand::Restore,
+                WindowCommand::Maximize,
+                WindowCommand::Unmaximize,
+                WindowCommand::Fullscreen,
+                WindowCommand::Unfullscreen,
+                WindowCommand::Close,
+            },
+    });
+    service_.publishSnapshotForTest(snapshot);
+  }
+  Q_INVOKABLE void setWindowCount(int count) {
+    CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
+    for (int i = 0; i < count; ++i) {
+      snapshot.windows.append({
+          .id = QStringLiteral("window-%1").arg(i),
+          .title = QStringLiteral("Document %1").arg(i),
+          .app_id = "org.sample",
+          .operations = {WindowCommand::Activate, WindowCommand::Close},
+      });
+    }
+    service_.publishSnapshotForTest(snapshot);
+  }
   Q_INVOKABLE void setWindow(bool available, const QString& output, const QString& title, const QString& app) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.active_window = available}};
     if (!output.isEmpty()) {
       snapshot.active_windows.insert(output, {.app_id = app, .title = title});
+    }
+    service_.publishSnapshotForTest(snapshot);
+  }
+
+  Q_INVOKABLE void setNamedWorkspaces(int count, int activeRow = 0, int focusedRow = -1, bool connected = true,
+                                      bool listing = true) {
+    CompositorSnapshot snapshot{
+        .connected = connected,
+        .capabilities = {.workspace_listing = listing, .workspace_activation = true, .urgency = true},
+    };
+    for (int row = 0; row < count; ++row) {
+      snapshot.workspaces.append({
+          .id = QStringLiteral("opaque-%1").arg(row),
+          .display_name = QStringLiteral("Desktop %1").arg(row + 1),
+          .stable_order = row,
+          .active = row == activeRow,
+          .focused = row == focusedRow,
+          .urgent = row == 1,
+      });
     }
     service_.publishSnapshotForTest(snapshot);
   }
@@ -1256,8 +1345,10 @@ class CompositorTestSeed : public QObject {
 class FakeNumberedProvider : public QObject, public NumberedWorkspaceProvider {
   Q_OBJECT
  public:
+  Q_PROPERTY(bool eligible MEMBER eligible)
+  bool eligible{true};
   [[nodiscard]] NumberedWorkspaceState numberedWorkspaces() const override {
-    return {.eligible = true, .assignments = {{"1", 1}}};
+    return {.eligible = eligible, .assignments = {{"1", 1}}};
   }
   void activateNumberedSlot(int slot) override { emit slotActivated(slot); }
  Q_SIGNALS:

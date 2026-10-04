@@ -14,7 +14,7 @@ BarSection {
     readonly property int inheritedSectionPadding: 8
     readonly property int firstRow: WorkspacePresentation.revision >= 0 ? WorkspacePresentation.firstVisibleWorkspaceRow() : 0
 
-    visible: CompositorService.connected && CompositorService.canListWorkspaces
+    visible: WorkspacePresentation.sectionVisible
     implicitWidth: visible ? root.contentLeftMargin + pills.implicitWidth + root.contentRightMargin : 0
 
     BarFrame {
@@ -29,6 +29,7 @@ BarSection {
         spacing: 16
 
         Repeater {
+            objectName: "namedRepeater"
             model: CompositorService.workspaces
             delegate: Loader {
                 id: workspaceLoader

@@ -6,6 +6,8 @@ Loader {
     id: root
     required property string barMonitorName
     readonly property bool numericMode: WorkspacePresentation.useNumericWorkspacePresentation
+    visible: WorkspacePresentation.sectionVisible
+    active: visible
     sourceComponent: root.numericMode ? numericSection : namedSection
 
     Component {

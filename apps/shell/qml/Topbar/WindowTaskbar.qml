@@ -13,6 +13,11 @@ BarSection {
     readonly property int minimumContentWidth: 48 + slotSize + 4 + 40
     implicitWidth: minimumContentWidth
 
+    function globalAnchor(item) {
+        const point = item.mapToGlobal(0, 0)
+        return Qt.rect(point.x, point.y, item.width, item.height)
+    }
+
     BarFrame {
         anchors.fill: parent
         anchors.leftMargin: -8
@@ -50,8 +55,8 @@ BarSection {
         BarTooltipArea { id: overviewTooltip; barMonitorName: root.barMonitorName; title: "All windows" }
         onClicked: {
             overviewTooltip.dismissForClick()
-            if (WindowPresentation.overviewAccess) WindowSurface.toggle(root.barMonitorName)
-            else WindowSurface.chooser(WindowPresentation.windowIds, root.barMonitorName)
+            if (WindowPresentation.overviewAccess) WindowSurface.toggle(root.barMonitorName, root.globalAnchor(overview))
+            else WindowSurface.chooser(WindowPresentation.windowIds, root.barMonitorName, root.globalAnchor(overview))
         }
     }
 
@@ -146,14 +151,14 @@ BarSection {
             onClicked: {
                 tooltip.dismissForClick()
                 if (windows.length === 1) WindowPresentation.click(windows[0].windowId)
-                else WindowSurface.chooser(windows.map(w => w.windowId), root.barMonitorName)
+                else WindowSurface.chooser(windows.map(w => w.windowId), root.barMonitorName, root.globalAnchor(task))
             }
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {
                     tooltip.dismissForClick()
-                    if (task.windows.length === 1) WindowSurface.menu(task.windows[0].windowId, root.barMonitorName)
-                    else WindowSurface.chooser(task.windows.map(w => w.windowId), root.barMonitorName)
+                    if (task.windows.length === 1) WindowSurface.menu(task.windows[0].windowId, root.barMonitorName, root.globalAnchor(task))
+                    else WindowSurface.chooser(task.windows.map(w => w.windowId), root.barMonitorName, root.globalAnchor(task))
                 }
             }
         }

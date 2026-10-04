@@ -28,7 +28,7 @@ Item {
         z: 2
         enabled: root.desktopMenuEnabled
         acceptedButtons: Qt.RightButton
-        onClicked: WindowSurface.desktopMenu(root.monitorName)
+        onClicked: mouse => WindowSurface.desktopMenu(root.monitorName, mouse.x, mouse.y)
     }
 
     // False until Component.onCompleted has shown the first wallpaper. Guards onImagePathChanged so the

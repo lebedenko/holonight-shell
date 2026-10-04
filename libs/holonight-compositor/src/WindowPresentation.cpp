@@ -43,18 +43,41 @@ QVariant GroupedApplicationModel::data(const QModelIndex& index, int role) const
   }
 }
 void GroupedApplicationModel::replace(const QList<CompositorWindow>& windows, bool grouped) {
-  beginResetModel();
-  rows_.clear();
+  GroupedApplicationModel next;
   for (const auto& window : windows) {
     const auto key = WindowCatalog::groupKey(window, grouped);
-    auto found = std::ranges::find(rows_, key, &Group::key);
-    if (found == rows_.end()) {
-      rows_.append({.key = key, .app = window.app_id, .title = window.title, .windows = {window}});
+    auto found = std::ranges::find(next.rows_, key, &Group::key);
+    if (found == next.rows_.end()) {
+      next.rows_.append({.key = key, .app = window.app_id, .title = window.title, .windows = {window}});
     } else {
       found->windows.append(window);
     }
   }
-  endResetModel();
+  const bool same_structure =
+      rows_.size() == next.rows_.size() && std::ranges::equal(rows_, next.rows_, {}, &Group::key, &Group::key);
+  if (!same_structure) {
+    beginResetModel();
+    rows_ = std::move(next.rows_);
+    endResetModel();
+    return;
+  }
+
+  QList<QList<int>> changed_roles;
+  for (int row = 0; row < rowCount(); ++row) {
+    QList<int> roles;
+    for (int role = Key; role <= Minimized; ++role) {
+      if (data(index(row, 0), role) != next.data(next.index(row, 0), role)) {
+        roles.append(role);
+      }
+    }
+    changed_roles.append(roles);
+  }
+  rows_ = std::move(next.rows_);
+  for (int row = 0; row < changed_roles.size(); ++row) {
+    if (!changed_roles[row].isEmpty()) {
+      emit dataChanged(index(row, 0), index(row, 0), changed_roles[row]);
+    }
+  }
 }
 WindowPresentation::WindowPresentation(CompositorService* service, bool task_management, QObject* parent)
     : QObject(parent),
@@ -115,9 +138,7 @@ void WindowPresentation::click(const QString& identifier) {
     return;
   }
   if (target->activated) {
-    {
-      command(identifier, static_cast<int>(WindowCommand::Minimize));
-    }
+    command(identifier, static_cast<int>(WindowCommand::Minimize));
   } else {
     if (target->minimized) {
       command(identifier, static_cast<int>(WindowCommand::Restore));

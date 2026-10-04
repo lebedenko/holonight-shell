@@ -77,3 +77,45 @@ Validation recorded during implementation:
   bounded task area, selection closure and stale-menu dismissal.
 - Live Hyprland and manual visual/menu acceptance remain release gates.
 - The overview screenshot is generated under `build-tests/smoke-artifacts/labwc-overview.png`.
+
+## Optional direct workspace shortcuts
+
+The named workspace section hides when fewer than two actual workspaces are listed.
+`[bar.workspaces].count` limits how many labels the shell displays; it does not create desktops.
+Numbered providers retain their shortcut slots, including slots without an actual workspace.
+Workspace occupancy and shell-driven window movement remain deferred for labwc.
+
+For an optional five-desktop setup, add or update this element inside your existing
+`<labwc_config>` in `~/.config/labwc/rc.xml`:
+
+```xml
+<desktops number="5" />
+```
+
+Add the following bindings inside the existing `<keyboard>` element, preserving your
+other shortcuts (replace any conflicting bindings). `W` means Super and `S` means Shift.
+
+```xml
+<keybind key="W-1"><action name="GoToDesktop" to="1" /></keybind>
+<keybind key="W-2"><action name="GoToDesktop" to="2" /></keybind>
+<keybind key="W-3"><action name="GoToDesktop" to="3" /></keybind>
+<keybind key="W-4"><action name="GoToDesktop" to="4" /></keybind>
+<keybind key="W-5"><action name="GoToDesktop" to="5" /></keybind>
+<keybind key="W-S-1"><action name="SendToDesktop" to="1" follow="no" /></keybind>
+<keybind key="W-S-2"><action name="SendToDesktop" to="2" follow="no" /></keybind>
+<keybind key="W-S-3"><action name="SendToDesktop" to="3" follow="no" /></keybind>
+<keybind key="W-S-4"><action name="SendToDesktop" to="4" follow="no" /></keybind>
+<keybind key="W-S-5"><action name="SendToDesktop" to="5" follow="no" /></keybind>
+```
+
+Apply changes with `labwc --reconfigure`. Super+5 jumps directly from workspace 1 to
+workspace 5. Super+Shift+5 sends the focused window directly to workspace 5 while you
+stay on the current workspace. Labwc switches workspaces across all outputs.
+These are native compositor actions; no shell command, IPC extension or sequential
+navigation workaround is needed. See the [labwc action reference](https://labwc.github.io/labwc-actions.5.html).
+Five desktops are an example, not a shell default; the shell does not change personal configuration.
+
+For live verification, first use a single desktop and confirm the workspace section
+leaves no frame, gap or clickable surface. Then apply the optional five-desktop setup,
+check names and active state, jump from 1 to 5 with Super+5, return to 1 and send a
+focused window with Super+Shift+5. Confirm you remain on 1 and the window appears on 5.

@@ -24,7 +24,7 @@ BarSection {
         ? WorkspacePresentation.hasNavigableNumericWorkspaceAtOrBeyond(root.windowEndExclusive) : false
     readonly property bool leftUrgentBefore: WorkspacePresentation.revision >= 0
         ? WorkspacePresentation.hasUrgentNumericWorkspaceBefore(root.windowStart) : false
-    visible: CompositorService.connected && CompositorService.canListWorkspaces
+    visible: WorkspacePresentation.sectionVisible
     implicitWidth: visible ? root.contentLeftMargin + pillRow.implicitWidth + root.contentRightMargin : 0
 
     BarFrame {

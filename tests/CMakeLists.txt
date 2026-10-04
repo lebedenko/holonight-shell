@@ -281,6 +281,24 @@ qt6_add_resources(test_holonight_qml_harness "test_media_assets"
     "${PROJECT_SOURCE_DIR}/assets/media/artwork-frame.svg"
     "${PROJECT_SOURCE_DIR}/assets/media/now-playing-glyph.svg"
 )
+qt6_add_resources(test_holonight_qml_harness "test_desktop_menu_assets"
+  PREFIX "/HolonightShell"
+  BASE "${PROJECT_SOURCE_DIR}/assets"
+  FILES
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/window-minimize-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/window-maximize-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/window-restore-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/window-fullscreen-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/window-fullscreen-exit-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/window-close-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/applications.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/settings.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/system-lock-screen-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/system-log-out-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/system-reboot-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/system-shutdown-symbolic.svg"
+    "${PROJECT_SOURCE_DIR}/assets/bar-icons/system-suspend-symbolic.svg"
+)
 holonight_quick_controls_runtime(test_holonight_qml_harness "${CMAKE_INSTALL_BINDIR}")
 add_test(NAME test_holonight_qml_harness COMMAND test_holonight_qml_harness)
 set_tests_properties(test_holonight_qml_harness PROPERTIES
