@@ -2,158 +2,99 @@ import QtQuick
 import QtQuick.Layouts
 import Holonight.Core
 import Holonight.Controls
-
 import HolonightShell
+import "../Status/PopupMetrics.js" as PopupMetrics
 
-// Audio popup body, redesigned as a single scrollable column (REQ-F-1001/1002): header ->
-// Master Volume hero -> Output accordion -> Input accordion (with live mic meter) ->
-// Application Volume (4-row cap) -> keyboard-hint footer. Replaces the old tab-sidebar layout;
-// AudioTabSidebar.qml is deleted (no tab-selection UI remains). Falls back to an "unavailable"
-// message when the audio service is not connected.
-Item {
-  id: root
+PopupContentLayout {
+    id: root
 
-  // The output and input sections expand independently. Defaults keep the initial presentation
-  // compact while exposing output devices immediately. StatusPopupSurface::show() destroys and
-  // rebuilds this whole tree on every open, so nothing survives between opens.
-  property bool outputExpanded: true
-  property bool inputExpanded: false
+    property bool outputExpanded: true
+    property bool inputExpanded: false
+    readonly property real separatorBleed: 0
+    naturalWidth: AudioService.available && headerItem ? Math.max(headerItem.implicitWidth, outputSection.implicitWidth, inputSection.implicitWidth) : unavailable.implicitWidth
+    viewportItem.objectName: "audioPopupViewport"
 
-  readonly property real separatorBleed: 16
+    Component.onCompleted: AudioService.startInputLevelMonitoring()
+    Component.onDestruction: AudioService.stopInputLevelMonitoring()
 
-  Component.onCompleted: AudioService.startInputLevelMonitoring()
-  Component.onDestruction: AudioService.stopInputLevelMonitoring()
+    header: Component {
+        ColumnLayout {
+            objectName: "audioPopupPinnedHeader"
+            spacing: PopupMetrics.sectionGap
 
-  // Unavailable state.
-  HnLabel {
-    anchors.centerIn: parent
-    visible: !AudioService.available
-    rawText: qsTr("Audio service unavailable")
-    role: HnTypographyRole.Body
-    color: HoloniightPalette.textSecondary
-  }
-
-  ColumnLayout {
-    id: pinnedHeader
-    objectName: "audioPopupPinnedHeader"
-
-    anchors.top: parent.top
-    anchors.left: parent.left
-    anchors.right: parent.right
-    visible: AudioService.available
-    spacing: 0
-
-    AudioPopupHeader {
-      id: popupHeader
-      Layout.fillWidth: true
-      Layout.leftMargin: 16
-      Layout.rightMargin: 16
-      Layout.topMargin: 8
-      Layout.bottomMargin: 16
-      nextTabItem: masterPanel.volumeSlider
+            AudioPopupHeader {
+                id: popupHeader
+                Layout.fillWidth: true
+                nextTabItem: masterPanel.volumeSlider
+            }
+            HnSeparator {
+                objectName: "audioHeaderSeparator"
+                Layout.fillWidth: true
+                fadeMode: HnSeparator.Solid
+            }
+            AudioMasterPanel {
+                id: masterPanel
+                objectName: "audioMasterPanel"
+                Layout.fillWidth: true
+                visible: AudioService.available
+                previousTabItem: popupHeader.settingsButtonItem
+            }
+            HnSeparator {
+                objectName: "audioHeroSeparator"
+                Layout.fillWidth: true
+                visible: AudioService.available
+                fadeMode: HnSeparator.Solid
+            }
+        }
     }
 
-    HnSeparator {
-      objectName: "audioHeaderSeparator"
-      fadeMode: HnSeparator.Solid
-      Layout.fillWidth: true
-      Layout.leftMargin: -root.separatorBleed
-      Layout.rightMargin: -root.separatorBleed
-    }
-
-    AudioMasterPanel {
-      id: masterPanel
-      objectName: "audioMasterPanel"
-      Layout.fillWidth: true
-      Layout.leftMargin: 16
-      Layout.rightMargin: 16
-      Layout.topMargin: 16
-      Layout.bottomMargin: 16
-      previousTabItem: popupHeader.settingsButtonItem
-    }
-
-    HnSeparator {
-      objectName: "audioHeroSeparator"
-      fadeMode: HnSeparator.Solid
-      Layout.fillWidth: true
-      Layout.leftMargin: -root.separatorBleed
-      Layout.rightMargin: -root.separatorBleed
-    }
-  }
-
-  Flickable {
-    id: viewport
-    objectName: "audioPopupViewport"
-
-    anchors.top: pinnedHeader.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: footer.top
-    visible: AudioService.available
-    clip: true
-    contentWidth: width
-    contentHeight: column.height
-    boundsBehavior: Flickable.StopAtBounds
-    flickableDirection: Flickable.VerticalFlick
-    interactive: contentHeight > height
-
-    ColumnLayout {
-      id: column
-
-      width: viewport.width
-      spacing: 16
-
-      AudioDeviceSection {
-        objectName: "outputDeviceSection"
-
+    HnLabel {
+        id: unavailable
         Layout.fillWidth: true
-        Layout.topMargin: 16
+        visible: !AudioService.available
+        rawText: qsTr("Audio service unavailable")
+        role: HnTypographyRole.Body
+        color: HoloniightPalette.textSecondary
+        wrapMode: Text.Wrap
+    }
+    AudioDeviceSection {
+        id: outputSection
+        objectName: "outputDeviceSection"
+        Layout.fillWidth: true
+        visible: AudioService.available
         isInput: false
         expanded: root.outputExpanded
         onExpandRequested: root.outputExpanded = !root.outputExpanded
-      }
-
-      HnSeparator {
+    }
+    HnSeparator {
         objectName: "audioOutputSeparator"
-        fadeMode: HnSeparator.Solid
         Layout.fillWidth: true
-        Layout.leftMargin: -root.separatorBleed
-        Layout.rightMargin: -root.separatorBleed
-      }
-
-      AudioApplicationsSection { Layout.fillWidth: true }
-
-      HnSeparator {
+        visible: AudioService.available
+        fadeMode: HnSeparator.Solid
+    }
+    AudioApplicationsSection {
+        Layout.fillWidth: true
+        visible: AudioService.available
+    }
+    HnSeparator {
         objectName: "audioApplicationsSeparator"
+        Layout.fillWidth: true
+        visible: AudioService.available
         fadeMode: HnSeparator.Solid
-        Layout.fillWidth: true
-        Layout.leftMargin: -root.separatorBleed
-        Layout.rightMargin: -root.separatorBleed
-      }
-
-      AudioDeviceSection {
+    }
+    AudioDeviceSection {
+        id: inputSection
         objectName: "inputDeviceSection"
-
         Layout.fillWidth: true
+        visible: AudioService.available
         isInput: true
         expanded: root.inputExpanded
-        Layout.bottomMargin: 8
         onExpandRequested: root.inputExpanded = !root.inputExpanded
-      }
     }
-  }
-
-  // Pinned below the scrollable viewport (REQ-F-10001's "pinned at the bottom" option, matching
-  // the design mockup) rather than scrolling as the last column entry — KeyboardHintFooter draws
-  // its own top divider/background so it reads correctly detached from the scroll content.
-  KeyboardHintFooter {
-    id: footer
-
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    visible: AudioService.available
-    separatorBleed: root.separatorBleed
-    focusItem: root.Window.window ? root.Window.window.activeFocusItem : null
-  }
+    footer: AudioService.available ? hintFooter : null
+    property Component hintFooter: Component {
+        KeyboardHintFooter {
+            focusItem: root.Window.window ? root.Window.window.activeFocusItem : null
+        }
+    }
 }

@@ -12,7 +12,17 @@ Item {
   readonly property string activeLinkSpeedText: formatLinkSpeed(NetworkService.activeLinkSpeedMbps)
 
   Layout.fillWidth: true
-  Layout.preferredHeight: 160
+  Layout.minimumWidth: 0
+  implicitHeight: content.implicitHeight
+  implicitWidth: 3 * Math.max(ipTile.implicitWidth, speedTile.implicitWidth, bandTile.implicitWidth) + 16
+
+
+  TextMetrics {
+    id: statMetrics
+    font.family: AppearanceService.uiFont
+    font.pointSize: HolonightTheme.bodySize
+    text: "000.000.000.000       "
+  }
 
   function formatBand(frequencyMhz) {
     if (frequencyMhz >= 2400 && frequencyMhz <= 2500) return qsTr("2.4 GHz")
@@ -39,6 +49,7 @@ Item {
   }
 
   ColumnLayout {
+    id: content
     anchors.fill: parent
     spacing: 10
 
@@ -47,7 +58,6 @@ Item {
       rawText: qsTr("CURRENT CONNECTION")
       role: HnTypographyRole.MicroHeader
       color: HoloniightPalette.accentBlue
-      font.family: AppearanceService.uiFont
       elide: Text.ElideRight
     }
 
@@ -136,24 +146,27 @@ Item {
       }
     }
 
-    RowLayout {
+    Flow {
+      id: stats
       Layout.fillWidth: true
-      Layout.preferredHeight: 54
-      spacing: 10
+      spacing: 8
 
       StatTile {
+        id: ipTile
         icon: "ip"
         label: qsTr("IP ADDRESS")
         value: NetworkService.activeIp4Address.length > 0 ? NetworkService.activeIp4Address : qsTr("Resolving")
       }
 
       StatTile {
+        id: speedTile
         icon: "speed"
         label: qsTr("LINK SPEED")
         value: root.activeLinkSpeedText
       }
 
       StatTile {
+        id: bandTile
         icon: "band"
         label: qsTr("BAND")
         value: root.activeBandText
@@ -168,8 +181,10 @@ Item {
     property string label: ""
     property string value: ""
 
-    Layout.fillWidth: true
-    Layout.preferredHeight: 54
+    width: stats.width < root.implicitWidth - 1 ? stats.width : (stats.width - 16) / 3
+    height: implicitHeight
+    implicitHeight: Math.max(54, tileText.implicitHeight + 16)
+    implicitWidth: 56 + Math.max(statLabel.implicitWidth, Math.min(statValue.implicitWidth, statMetrics.advanceWidth))
     radius: 6
     color: Qt.rgba(HoloniightPalette.surface.r, HoloniightPalette.surface.g,
                    HoloniightPalette.surface.b, 0.22)
@@ -179,6 +194,8 @@ Item {
 
     Canvas {
       id: statIcon
+      readonly property color strokeColor: HoloniightPalette.accentCyan
+      onStrokeColorChanged: requestPaint()
       anchors {
         left: parent.left
         leftMargin: 12
@@ -190,7 +207,7 @@ Item {
       onPaint: {
         const ctx = getContext("2d")
         ctx.reset()
-        ctx.strokeStyle = HoloniightPalette.accentCyan
+        ctx.strokeStyle = statIcon.strokeColor
         ctx.lineWidth = 1.8
         ctx.lineCap = "round"
         ctx.lineJoin = "round"
@@ -230,6 +247,7 @@ Item {
     }
 
     Column {
+      id: tileText
       anchors {
         left: statIcon.right
         right: parent.right
@@ -240,15 +258,16 @@ Item {
       spacing: 2
 
       HnLabel {
+        id: statLabel
         width: parent.width
         rawText: tile.label
         role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.accentBlue
-        font.family: AppearanceService.uiFont
-        elide: Text.ElideRight
+          elide: Text.ElideRight
       }
 
       HnLabel {
+        id: statValue
         width: parent.width
         rawText: tile.value
         role: HnTypographyRole.Caption

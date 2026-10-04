@@ -827,3 +827,31 @@ StatusPopupSurface* status_popup_surface_ = nullptr;
    ```cpp
    status_popup_surface_->setSessionPopup(popup_surface_);
    ```
+
+
+## Content-driven popup layout
+
+Status popups now measure their QML bodies instead of selecting dimensions by popup ID.
+The bootstrap allocation is temporary and is replaced before the entrance animation.
+
+- Body `implicitWidth` expresses the natural composition width; `implicitHeight` expresses
+  the content height at the allocated width. Neither includes frame padding or glow.
+- `StatusPopup.qml` adds the single 16-pixel content inset, notch, and transparent glow room.
+  The C++ geometry helper receives this complete requested surface size and clamps it to
+  the output's available bounds, preserving trigger alignment and corner clearance.
+- `StatusPopupSurface` samples after layout processing through `afterAnimating`, updates
+  the existing host, and ignores unchanged geometry. Resizing preserves the loaded tree,
+  focus, input, and disclosure state. Screen changes schedule another measurement.
+- `PopupContentLayout` measures a natural-height body independently of its viewport. It
+  pins optional header/footer content while enough room remains, and scrolls the whole
+  composition on short outputs. Lists inside it do not own vertical wheel scrolling.
+- Utility popups use `PopupHeader`, HUD micro-header typography, 16-pixel section gaps,
+  8-pixel row gaps, and 4-pixel text gaps. Separators stay within the content inset.
+  Dimensions for controls and artwork remain local composition requirements.
+- Weather keeps its illustrated composition. Paired sections and sun events reflow when
+  their width requirements cannot fit. Its single vertical viewport supplies desired height.
+- Sparse lists and empty states occupy their actual content height. Hidden storage volumes
+  contribute no spacing. Battery reserves its profile-caption line so hover/focus is size-neutral.
+
+The former per-popup size-policy values elsewhere in this historical design are superseded
+by this contract. Public popup opening/dismissal APIs and service behavior are unchanged.

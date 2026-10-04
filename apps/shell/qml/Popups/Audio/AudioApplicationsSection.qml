@@ -24,11 +24,9 @@ ColumnLayout {
 
     HnLabel {
       Layout.fillWidth: true
-      Layout.leftMargin: 16
       rawText: qsTr("APPLICATION VOLUME")
       role: HnTypographyRole.MicroHeader
       color: HoloniightPalette.accentBlue
-      font.family: AppearanceService.uiFont
     }
 
     Item {
@@ -36,7 +34,6 @@ ColumnLayout {
 
       Layout.preferredWidth: showAllRow.implicitWidth
       Layout.preferredHeight: showAllRow.implicitHeight
-      Layout.rightMargin: 16
       visible: streamList.count > 4
 
       RowLayout {
@@ -81,9 +78,6 @@ ColumnLayout {
                                           : root.showAll ? streamList.contentHeight
                                                          : Math.min(streamList.contentHeight, collapsedHeight)
 
-    Behavior on implicitHeight {
-      NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-    }
 
     AudioStreamList {
       id: streamList

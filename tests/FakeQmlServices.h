@@ -151,6 +151,20 @@ class FakeNetworkService : public QObject {
   [[nodiscard]] QString lastError() const { return {}; }
   [[nodiscard]] QAbstractItemModel* wifiNetworks() { return &networks_; }
 
+  Q_INVOKABLE void setNetworkCount(int count) {
+    QList<WifiNetwork> rows;
+    for (int i = 0; i < count; ++i) {
+      WifiNetwork network;
+      network.ssid = QStringLiteral("Test Wi-Fi %1").arg(i);
+      network.strength = 82;
+      network.secured = true;
+      network.known = true;
+      network.connected = i == 0;
+      rows.append(network);
+    }
+    networks_.setNetworks(rows);
+  }
+
   Q_INVOKABLE void rescanWifi() {}
   Q_INVOKABLE void setWifiEnabled(bool /*enabled*/) {}
   Q_INVOKABLE void connectNetwork(int /*row*/) {}
@@ -181,12 +195,39 @@ class FakeWeatherService : public QObject {
   Q_PROPERTY(bool stale READ stale NOTIFY staleChanged)
   Q_PROPERTY(QString locationLabel READ locationLabel NOTIFY locationChanged)
   Q_PROPERTY(QVariant current READ current NOTIFY currentChanged)
+  Q_PROPERTY(QVariantList hourly READ hourly CONSTANT)
+  Q_PROPERTY(QVariantList daily READ daily CONSTANT)
 
  public:
   [[nodiscard]] bool hasData() const { return has_data_; }
   [[nodiscard]] bool stale() const { return false; }
   [[nodiscard]] QString locationLabel() const { return location_label_; }
   [[nodiscard]] QVariant current() const { return current_; }
+  [[nodiscard]] QVariantList hourly() const {
+    QVariantList rows;
+    for (int i = 0; i < 6; ++i) {
+      rows.append(QVariantMap{{"timestamp", 1791118800 + i * 3600},
+                              {"temperature", 18 - i},
+                              {"conditionId", 801},
+                              {"condition", "few clouds"},
+                              {"pop", 0.0},
+                              {"precipitation", 0.0}});
+    }
+    return rows;
+  }
+  [[nodiscard]] QVariantList daily() const {
+    QVariantList rows;
+    for (int i = 0; i < 5; ++i) {
+      rows.append(QVariantMap{{"date", 1791118800 + i * 86400},
+                              {"tempMax", 18 + i},
+                              {"tempMin", 7 + i},
+                              {"conditionId", 801},
+                              {"condition", "few clouds"},
+                              {"pop", 0.0},
+                              {"moonPhase", 0.75}});
+    }
+    return rows;
+  }
 
   Q_INVOKABLE [[nodiscard]] QString iconPath(int /*condition_id*/, bool /*is_day*/) const {
     return QStringLiteral("qrc:/HolonightShell/weather/wsymbol_0001_sunny.svg");
@@ -226,6 +267,15 @@ class FakeWeatherService : public QObject {
   QString location_label_{QStringLiteral("Lviv, Ukraine")};
   QVariant current_{QVariantMap{
       {QStringLiteral("temperature"), 18.0},
+      {QStringLiteral("humidity"), 73},
+      {QStringLiteral("visibility"), 10.0},
+      {QStringLiteral("pressure"), 1026},
+      {QStringLiteral("uvi"), 0.0},
+      {QStringLiteral("windSpeed"), 10},
+      {QStringLiteral("windGust"), 18},
+      {QStringLiteral("windDirection"), 270},
+      {QStringLiteral("aqi"), 2},
+      {QStringLiteral("timeUpdated"), QStringLiteral("2026-10-04T12:00:00Z")},
       {QStringLiteral("feelsLike"), 17.0},
       {QStringLiteral("condition"), QStringLiteral("clear sky")},
       {QStringLiteral("conditionId"), 800},
@@ -1133,6 +1183,56 @@ class NullStorageBackend : public HoloNight::System::StorageBackend {
  private:
   HoloNight::System::StorageResult last_request_;
 };
+class PopupTestSeed : public QObject {
+  Q_OBJECT
+ public:
+  PopupTestSeed(NullStorageBackend& storage, AudioService& audio, BatteryService& battery)
+      : storage_(storage), audio_(audio), battery_(battery) {}
+  Q_INVOKABLE void setStorageVolumeCount(int count) {
+    HoloNight::System::StorageDrive drive;
+    drive.id = "popup-drive";
+    drive.model = "USB SSD";
+    drive.connectionBus = "usb";
+    drive.removable = true;
+    drive.mediaPresent = true;
+    QList<HoloNight::System::StorageVolume> volumes;
+    for (int i = 0; i < count; ++i) {
+      HoloNight::System::StorageVolume volume;
+      volume.id = QStringLiteral("popup-volume-%1").arg(i);
+      volume.driveId = drive.id;
+      volume.label = QStringLiteral("Volume %1").arg(i);
+      volume.usage = "filesystem";
+      volume.canMount = true;
+      volumes.append(volume);
+    }
+    emit storage_.snapshotChanged(count > 0 ? QList{drive} : QList<HoloNight::System::StorageDrive>{}, volumes, true);
+  }
+  Q_INVOKABLE void setAudioDeviceCount(int count) {
+    audio_.outputs()->clear();
+    for (int i = 0; i < count; ++i) {
+      AudioDevice device;
+      device.id = static_cast<uint32_t>(i + 1);
+      device.name = QStringLiteral("Output %1").arg(i);
+      device.description = device.name;
+      device.volume = 55;
+      device.channel_count = 2;
+      device.is_default = i == 0;
+      audio_.outputs()->applyAdd(device);
+    }
+  }
+  Q_INVOKABLE void setBatteryMetrics(bool visible) {
+    BatteryStateUpdate update;
+    update.health = visible ? 82 : 0;
+    update.charge_cycles = visible ? 123 : 0;
+    battery_.applyStateUpdate(update);
+  }
+
+ private:
+  NullStorageBackend& storage_;
+  AudioService& audio_;
+  BatteryService& battery_;
+};
+
 class FakeWindowSurface : public QObject {
   Q_OBJECT
   Q_PROPERTY(QPointF menuPosition READ menuPosition NOTIFY changed)
@@ -1438,6 +1538,7 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StorageService", &storage_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PopupTestSeed", &popup_test_seed_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PowerProfilesService", &power_profiles_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TrayModel", &tray_model_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "KeyboardLayoutService", &keyboard_layout_) >= 0 &&
@@ -1501,6 +1602,7 @@ class FakeQmlServices {
   NullStorageBackend storage_backend_;
   HoloNight::System::StorageController storage_controller_{&storage_backend_};
   StorageService storage_{&storage_controller_};
+  PopupTestSeed popup_test_seed_{storage_backend_, audio_, battery_};
   PowerProfilesService power_profiles_;
   TrayModel tray_model_{&config_service_};
   FakeKeyboardLayoutService keyboard_layout_;

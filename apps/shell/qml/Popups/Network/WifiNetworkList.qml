@@ -8,7 +8,7 @@ Item {
   id: root
 
   Layout.fillWidth: true
-  Layout.fillHeight: true
+  implicitHeight: listView.visible ? listView.contentHeight : emptyLabel.implicitHeight + 32
 
   signal passwordRequested(int row, string ssid)
 
@@ -16,6 +16,7 @@ Item {
     id: listView
     anchors.fill: parent
     clip: true
+    interactive: false
     spacing: 0
     model: NetworkService.wifiNetworks
     visible: NetworkService.available && NetworkService.wifiEnabled && count > 0
@@ -27,6 +28,7 @@ Item {
   }
 
   HnLabel {
+    id: emptyLabel
     anchors.centerIn: parent
     width: parent.width - 32
     horizontalAlignment: Text.AlignHCenter

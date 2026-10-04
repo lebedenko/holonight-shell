@@ -8,6 +8,12 @@ import "../../WeatherIcon"
 
 Item {
     id: root
+    implicitWidth: 220 + 16 + temperatureMetrics.advanceWidth + tempUnitText.implicitWidth + 6
+    TextMetrics {
+        id: temperatureMetrics
+        font: tempText.font
+        text: "88"
+    }
     implicitHeight: Math.max(256, currentContent.implicitHeight + 44)
 
     readonly property color dividerColor: HoloniightPalette.borderPassive

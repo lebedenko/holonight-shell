@@ -2,21 +2,9 @@
 
 #include <QRect>
 #include <QSize>
-#include <QString>
 
-#include <cstdint>
-
-enum class StatusPopupOverflowMode : std::uint8_t {
-  FixedContent,
-  InternalList,
-};
-
-struct StatusPopupSizePolicy {
-  QSize minimum_content_size;
-  QSize preferred_content_size;
-  QSize maximum_content_size;
-  StatusPopupOverflowMode overflow_mode{StatusPopupOverflowMode::FixedContent};
-};
+// Bootstrap allocation only; QML measurements replace it before the entrance animation.
+inline constexpr QSize kStatusPopupInitialSize{480, 320};
 
 struct StatusPopupGeometry {
   int content_width{};
@@ -25,8 +13,8 @@ struct StatusPopupGeometry {
   int surface_height{};
   int left_margin{};
   int pointer_x{};
+  bool operator==(const StatusPopupGeometry&) const = default;
 };
 
-[[nodiscard]] StatusPopupSizePolicy statusPopupSizePolicy(const QString& popup_id);
-[[nodiscard]] StatusPopupGeometry statusPopupGeometry(const QString& popup_id, const QRect& screen_geometry,
+[[nodiscard]] StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, const QRect& screen_geometry,
                                                       const QRect& available_geometry, int anchor_x, int anchor_width);

@@ -3,7 +3,12 @@ import QtTest
 import HolonightShell
 
 TestCase {
+    id: root
     name: "Phase12PopupResilience"
+    width: 900
+    height: 1200
+    visible: true
+    when: windowShown
 
     Component {
         id: brightnessComponent
@@ -53,7 +58,7 @@ TestCase {
     }
 
     function test_weather_content_scrolls_within_a_bounded_viewport() {
-        const weather = createTemporaryObject(weatherComponent, null)
+        const weather = createTemporaryObject(weatherComponent, root)
         verify(weather)
 
         const viewport = findChild(weather, "weatherViewport")
@@ -67,7 +72,7 @@ TestCase {
     }
 
     function test_weather_content_does_not_scroll_when_preferred_frame_fits() {
-        const weather = createTemporaryObject(roomyWeatherComponent, null)
+        const weather = createTemporaryObject(roomyWeatherComponent, root)
         verify(weather)
 
         const viewport = findChild(weather, "weatherViewport")
@@ -78,7 +83,7 @@ TestCase {
 
     function test_weather_location_subtitle_tracks_service_label() {
         WeatherService.setLocationLabel("Lviv, Ukraine")
-        const weather = createTemporaryObject(roomyWeatherComponent, null)
+        const weather = createTemporaryObject(roomyWeatherComponent, root)
         verify(weather)
         const location = findChild(weather, "weatherLocationLabel")
         verify(location)

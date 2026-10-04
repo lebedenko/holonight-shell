@@ -31,7 +31,7 @@ TEST(PairedSurfacePolicy, DescribesStatusContentAndDismissSurfacesCompletely) {
   const int anchor_x = screen->geometry().x() + 300;
   const PairedLayerSurfaceSpec pair = StatusPopupSurface::surfaceSpec(screen, QStringLiteral("audio"), anchor_x, 40);
   const StatusPopupGeometry geometry =
-      statusPopupGeometry(QStringLiteral("audio"), screen->geometry(), screen->availableGeometry(), anchor_x, 40);
+      statusPopupGeometry(kStatusPopupInitialSize, screen->geometry(), screen->availableGeometry(), anchor_x, 40);
   expectDismissPolicy(pair.dismiss, screen, QStringLiteral("status-popup-dismiss"),
                       QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Status/StatusPopupDismissOverlay.qml")));
   EXPECT_EQ(pair.content.name_space, QStringLiteral("status-popup"));

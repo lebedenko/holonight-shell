@@ -6,13 +6,14 @@ import Holonight.Core
 import Holonight.Controls
 import Holonight.Components
 import HolonightShell
+import "../Status/PopupMetrics.js" as PopupMetrics
 
 // REQ-F-007: drive-grouped popup, each drive a collapsible header (StorageDriveSection) over
 // its StorageVolumeCard rows. REQ-F-020: transient empty-state, shown instead of closing the
 // popup when the last device disappears while it is open.
-ColumnLayout {
+PopupContentLayout {
     id: root
-    spacing: 8
+    naturalWidth: footerItem ? footerItem.implicitWidth : 0
 
     // {driveId: true} for collapsed drives; absent/false = expanded (default).
     property var collapsedDriveIds: ({})
@@ -27,38 +28,17 @@ ColumnLayout {
         root.collapsedDriveIds = next;
     }
 
-    HnPanelHeader {
-        Layout.fillWidth: true
-        dividerVisible: false
-        title: qsTr("Removable Storage")
-        description: StorageService.deviceCount === 0 ? qsTr("No devices connected")
-                     : (StorageService.deviceCount === 1 ? qsTr("1 device connected")
-                        : qsTr("%1 devices connected").arg(StorageService.deviceCount))
-
-        leadingContent: Component {
-            ExternalIcon {
-                iconName: "drive-removable-media-symbolic"
-                iconSize: 28
-                tintColor: HoloniightPalette.textPrimary
-            }
-        }
-
-        trailingContent: Component {
-            HnIconButton {
-                objectName: "storageSettingsButton"
-                icon.source: "preferences-system-symbolic"
-                icon.color: HoloniightPalette.textSecondary
-                Accessible.name: qsTr("Storage settings")
-                // Inert for now — holonight-settings has no Storage page yet; wiring this up
-                // is out of scope for this cycle (product decision).
-            }
+    header: Component {
+        PopupHeader {
+            title: qsTr("Removable Storage")
+            subtitle: StorageService.deviceCount === 1 ? qsTr("1 device connected") : qsTr("%1 devices connected").arg(StorageService.deviceCount)
+            iconSource: "drive-removable-media-symbolic"
         }
     }
 
     HnEmptyState {
         objectName: "storageEmptyState"
         Layout.fillWidth: true
-        Layout.fillHeight: true
         visible: StorageService.deviceCount === 0
         titleText: qsTr("No removable storage")
         descriptionText: qsTr("External drives and USB devices will appear here")
@@ -75,12 +55,12 @@ ColumnLayout {
     ListView {
         id: devices
         Layout.fillWidth: true
-        Layout.fillHeight: true
         visible: StorageService.deviceCount > 0
         clip: true
-        spacing: 10
+        spacing: 0
+        interactive: false
+        implicitHeight: contentHeight
         model: StorageService
-        Controls.ScrollBar.vertical: Controls.ScrollBar {}
         section.property: "driveId"
         section.delegate: StorageDriveSection {
             width: devices.width
@@ -91,13 +71,14 @@ ColumnLayout {
             id: volumeCard
             width: devices.width
             visible: !root.collapsedDriveIds[driveId]
-            height: visible ? implicitHeight : 0
+            height: visible ? implicitHeight + 8 : 0
         }
     }
 
-    RowLayout {
+    footer: Component { RowLayout {
+        id: actions
         Layout.fillWidth: true
-        spacing: 8
+        spacing: PopupMetrics.rowGap
 
         Controls.Button {
             text: qsTr("Open in Files")
@@ -107,5 +88,7 @@ ColumnLayout {
             text: qsTr("Show All Devices")
             onClicked: StorageService.showAllDevices()
         }
+        Item { Layout.fillWidth: true }
+    }
     }
 }

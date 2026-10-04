@@ -29,7 +29,14 @@ Item {
 
   signal toggled()
 
-  implicitHeight: 64
+  implicitWidth: content.implicitWidth + 32
+  implicitHeight: Math.max(64, content.implicitHeight + 16)
+  TextMetrics {
+    id: titleMetrics
+    font.family: AppearanceService.uiFont
+    font.pointSize: HolonightTheme.subheadingSize
+    text: "MMMMMMMMMMMMMMMMMMMM"
+  }
   activeFocusOnTab: true
   Accessible.role: Accessible.Button
   Accessible.name: root.title
@@ -66,6 +73,7 @@ Item {
   }
 
   RowLayout {
+    id: content
     anchors.fill: parent
     anchors.leftMargin: 16
     anchors.rightMargin: 16
@@ -94,6 +102,8 @@ Item {
     }
 
     ColumnLayout {
+      Layout.preferredWidth: titleMetrics.advanceWidth
+      Layout.minimumWidth: 0
       Layout.fillWidth: true
       spacing: 2
 

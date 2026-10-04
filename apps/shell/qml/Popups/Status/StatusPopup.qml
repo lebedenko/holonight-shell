@@ -5,12 +5,9 @@ import Holonight.Core
 import Holonight.Controls
 
 import "../../Utility" as Utility
+import "PopupMetrics.js" as PopupMetrics
 
-// First-iteration status popup: a styled empty container with an upward pointer notch that
-// is continuous with the panel border, plus glow, placeholder title, and entry animation.
-// Real per-widget content lands in later cycles. The surface (sized by StatusPopupSurface,
-// SizeRootObjectToView) is larger than the visible panel by the padding below, leaving room
-// for the glow. These padding values must match kGlowPadding / kTopPadding in C++.
+// Shared frame owns padding and publishes the loaded body's natural size to the surface host.
 Item {
     id: root
 
@@ -27,9 +24,7 @@ Item {
     })
     readonly property string displayTitle: root.popupTitles[root.popupId] ?? root.popupId
 
-    // Per-popupId rich content component. When empty the popup is just a titled placeholder
-    // (audio/network/battery/keyboard-layout); weather supplies a full content column and
-    // hides the title bar so the panel is owned entirely by the loaded component.
+    // Feature content is measured after loading; unknown IDs use the title fallback.
     readonly property var popupSources: ({
         "storage": "qrc:/HolonightShell/Popups/Storage/StoragePopupContent.qml",
         "weather": "qrc:/HolonightShell/Popups/Weather/WeatherPopupContent.qml",
@@ -38,7 +33,12 @@ Item {
         "battery": "qrc:/HolonightShell/Popups/Battery/BatteryPopupContent.qml"
     })
     readonly property string contentSource: root.popupSources[root.popupId] ?? ""
-    readonly property bool showTitle: root.contentSource.length === 0
+    readonly property bool showTitle: root.contentSource.length === 0 || contentLoader.status === Loader.Error
+    property bool geometryReady: false
+    readonly property int contentPadding: PopupMetrics.contentInset
+    readonly property Item loadedContent: contentLoader.status === Loader.Ready ? contentLoader.item as Item : null
+    implicitWidth: (loadedContent ? loadedContent.implicitWidth : titleText.implicitWidth) + 2 * (glowPadding + contentPadding)
+    implicitHeight: (loadedContent ? loadedContent.implicitHeight : titleText.implicitHeight) + panelTop + glowPadding + 2 * contentPadding
 
     readonly property int glowPadding: 24       // transparent room left/right/bottom for the glow
     readonly property int topPadding: 6         // transparent room above the notch tip
@@ -87,7 +87,7 @@ Item {
         to: 1.0
         duration: 250
         easing.type: Easing.OutCubic
-        running: true
+        running: root.geometryReady
     }
 
     // Glow declared before the panel shape and labels so it renders behind them
@@ -118,6 +118,9 @@ Item {
         function hasChamfer(corner) {
             return (root.panelChamferedCorners & corner) !== 0
         }
+
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
 
         onPaint: {
             const ctx = getContext("2d")
@@ -208,27 +211,25 @@ Item {
 
     HnLabel {
         id: titleText
-        x: root.panelLeft + 16
-        y: root.panelTop + 14
-        width: root.panelRight - root.panelLeft - 32
+        x: root.panelLeft + root.contentPadding
+        y: root.panelTop + root.contentPadding
+        width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
         visible: root.showTitle
-        rawText: root.displayTitle
+        rawText: contentLoader.status === Loader.Error ? qsTr("Unable to load %1").arg(root.displayTitle) : root.displayTitle
         role: HnTypographyRole.Body
         color: HoloniightPalette.textPrimary
         font.weight: Font.Medium
         elide: Text.ElideRight
     }
 
-    // Content area: loads the per-popupId component (currently weather). For titled
-    // placeholder popups it sits below the title; for title-less rich popups it fills the
-    // panel interior directly under the notch band.
+    // Allocate the interior independently from the body's natural size.
     Loader {
         id: contentLoader
         objectName: "statusPopupContentLoader"
-        x: root.panelLeft + 16
-        y: root.showTitle ? (titleText.y + titleText.height + 8) : (root.panelTop + 14)
-        width: root.panelRight - root.panelLeft - 32
-        height: root.panelBottom - y - 14
+        x: root.panelLeft + root.contentPadding
+        y: root.panelTop + root.contentPadding
+        width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
+        height: Math.max(0, root.panelBottom - y - root.contentPadding)
         active: root.contentSource.length > 0
         focus: active
         source: root.contentSource

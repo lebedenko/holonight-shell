@@ -17,8 +17,7 @@ ColumnLayout {
     objectName: "networkSettingsAction"
 
     Layout.fillWidth: true
-    Layout.fillHeight: true
-    sizeRole: HnControlSize.Large
+    sizeRole: HnControlSize.Normal
     title: qsTr("Network Settings")
     description: qsTr("Open NetworkManager settings")
     iconSource: "qrc:/HolonightShell/common/network-settings.svg"
@@ -29,8 +28,7 @@ ColumnLayout {
     objectName: "networkInfoAction"
 
     Layout.fillWidth: true
-    Layout.fillHeight: true
-    sizeRole: HnControlSize.Large
+    sizeRole: HnControlSize.Normal
     title: qsTr("Connection Information")
     description: qsTr("Details about this connection")
     iconSource: "qrc:/HolonightShell/common/network-info.svg"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PairedTransientSurfaceHost.h"
+#include "StatusPopupGeometry.h"
 
 #include <QQmlEngine>
 #include <QString>
@@ -45,10 +46,18 @@ class StatusPopupSurface : public PairedTransientSurfaceHost {
  private:
   [[nodiscard]] bool ensureSurface(const QString& popup_id, const QString& screen_name, int anchor_x, int anchor_width);
   void destroySurface();
+  void updateSurfaceGeometry();
   void setPopupVisible(bool visible);
   void setActivePopupId(const QString& popup_id);
   void setPointerX(int value);
 
+  QPointer<QScreen> current_screen_;
+  int anchor_local_x_ = 0;
+  int anchor_width_ = 0;
+  StatusPopupGeometry applied_geometry_;
+  QMetaObject::Connection frame_connection_;
+  QMetaObject::Connection screen_connection_;
+  QMetaObject::Connection available_connection_;
   QString active_popup_id_;
   int pointer_x_ = 0;
   bool popup_visible_ = false;

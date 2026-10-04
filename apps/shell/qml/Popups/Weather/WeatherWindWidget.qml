@@ -15,6 +15,7 @@ Item {
     readonly property int normalizedDirection: ((root.directionDeg % 360) + 360) % 360
     readonly property string directionCode: directionName(root.normalizedDirection, true)
     readonly property string directionLabel: directionName(root.normalizedDirection, false)
+    implicitWidth: Math.ceil(112 + 12 + Math.max(gustLabel.implicitWidth, directionLabel.implicitWidth, speedRow.implicitWidth))
     implicitHeight: Math.max(126, textColumn.implicitHeight + 8)
 
     function directionName(degrees, compact) {
@@ -57,6 +58,10 @@ Item {
 
             Canvas {
                 id: arrowCanvas
+                readonly property color cyan: HoloniightPalette.accentCyan
+                readonly property color blue: HoloniightPalette.accentBlue
+                onCyanChanged: requestPaint()
+                onBlueChanged: requestPaint()
                 anchors.centerIn: parent
                 width: 112
                 height: 112
@@ -69,11 +74,11 @@ Item {
                     ctx.translate(width / 2, height / 2)
 
                     const gradient = ctx.createLinearGradient(0, -40, 0, 8)
-                    gradient.addColorStop(0, HoloniightPalette.accentCyan)
-                    gradient.addColorStop(1, HoloniightPalette.accentBlue)
+                    gradient.addColorStop(0, arrowCanvas.cyan)
+                    gradient.addColorStop(1, arrowCanvas.blue)
 
                     ctx.shadowBlur = 10
-                    ctx.shadowColor = HoloniightPalette.accentBlue
+                    ctx.shadowColor = arrowCanvas.blue
                     ctx.strokeStyle = gradient
                     ctx.fillStyle = gradient
                     ctx.lineWidth = 2.2
@@ -107,6 +112,7 @@ Item {
             spacing: 2
 
             Row {
+                id: speedRow
                 spacing: 4
                 Text {
                     id: speedText
@@ -132,6 +138,7 @@ Item {
             }
 
             HnLabel {
+                id: directionLabel
                 width: parent.width
                 rawText: root.hasData ? "From " + root.directionLabel : ""
                 role: HnTypographyRole.Caption
@@ -140,6 +147,7 @@ Item {
             }
 
             HnLabel {
+                id: gustLabel
                 width: parent.width
                 rawText: root.hasData && root.gustKmh > 0 ? "gusts " + root.gustKmh + " km/h" : ""
                 role: HnTypographyRole.Caption

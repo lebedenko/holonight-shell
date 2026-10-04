@@ -56,11 +56,9 @@ ColumnLayout {
     objectName: "audioCurrentDeviceLabel"
 
     Layout.fillWidth: true
-    Layout.leftMargin: 16
     rawText: root.currentDeviceLabel
     role: HnTypographyRole.MicroHeader
     color: root.accentColor
-    font.family: AppearanceService.uiFont
   }
 
   AudioCurrentDeviceRow {
@@ -91,12 +89,10 @@ ColumnLayout {
     objectName: "audioDeviceSectionLabel"
 
     Layout.fillWidth: true
-    Layout.leftMargin: 16
     visible: root.expanded
     rawText: root.sectionLabel
     role: HnTypographyRole.MicroHeader
     color: root.accentColor
-    font.family: AppearanceService.uiFont
   }
 
   AudioDeviceList {

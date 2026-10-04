@@ -10,6 +10,8 @@ import "../../WeatherIcon"
 Column {
     id: root
     spacing: 6
+    readonly property int cardWidth: 108
+    readonly property real naturalWidth: 6 * cardWidth + 5 * strip.spacing
 
     function getDailyEntryForTimestamp(timestamp) {
         var hourlyDate = new Date(timestamp * 1000)
@@ -39,6 +41,7 @@ Column {
 
     ListView {
         id: strip
+        objectName: "weatherHourlyList"
         width: parent.width
         height: Math.max(144, 64 + AppearanceService.uiFontSize * 7)
         orientation: ListView.Horizontal
@@ -53,7 +56,7 @@ Column {
             required property var modelData  // HourlyEntry Q_GADGET
             required property int index
             readonly property bool isCurrent: card.index === 0
-            width: 108
+            width: root.cardWidth
             height: strip.height
             radius: 4
             color: {

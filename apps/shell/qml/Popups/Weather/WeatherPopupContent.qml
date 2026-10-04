@@ -6,15 +6,20 @@ import Holonight.Core
 import Holonight.Controls
 
 import "../../Topbar"
+import "../Status/PopupMetrics.js" as PopupMetrics
 
 Item {
     id: root
 
-    readonly property int sidePad: 10
-    readonly property int topPad: 8
+    readonly property int sidePad: 0
+    readonly property int topPad: 0
     readonly property color dividerColor: Qt.rgba(HoloniightPalette.borderPassive.r,
                                                   HoloniightPalette.borderPassive.g,
                                                   HoloniightPalette.borderPassive.b, 0.62)
+
+    implicitWidth: Math.max(currentSection.implicitWidth + detailsGrid.naturalWidth + 2 * PopupMetrics.sectionGap + HnMetrics.separatorWidth, hourlyStrip.naturalWidth)
+    implicitHeight: viewport.contentHeight
+    readonly property bool narrow: width < implicitWidth
 
     function updateTime() {
         if (!WeatherService.hasData || WeatherService.current.timeUpdated.length === 0) {
@@ -27,11 +32,7 @@ Item {
         return Qt.formatTime(parsed, "HH:mm")
     }
 
-    component SectionLabel: HnLabel {
-        role: HnTypographyRole.MicroHeader
-        color: HoloniightPalette.accentBlue
-        elide: Text.ElideRight
-    }
+    component SectionLabel: PopupSectionLabel {}
 
     Flickable {
         id: viewport
@@ -49,7 +50,7 @@ Item {
             x: root.sidePad
             y: root.topPad
             width: viewport.width - root.sidePad * 2
-            spacing: 8
+            spacing: PopupMetrics.sectionGap
 
             Column {
                 width: parent.width
@@ -70,28 +71,32 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                RowLayout {
+                GridLayout {
                     width: parent.width
-                    height: Math.max(256, currentSection.implicitHeight, detailsGrid.implicitHeight)
-                    spacing: 24
+                    height: implicitHeight
+                    columns: root.narrow ? 1 : 3
+                    columnSpacing: PopupMetrics.sectionGap
+                    rowSpacing: PopupMetrics.sectionGap
 
                     WeatherCurrentSection {
                         id: currentSection
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 490
+                        Layout.preferredWidth: currentSection.implicitWidth
                         Layout.fillHeight: true
                     }
 
                     HnSeparator {
                         orientation: Qt.Vertical
-                        implicitHeight: parent.height
-                        fadeMode: HnSeparator.FadeBoth
+                    visible: !root.narrow
+                    Layout.fillHeight: true
+                            fadeMode: HnSeparator.FadeBoth
                         opacity: 0.5
                     }
 
                     WeatherDetailsGrid {
                         id: detailsGrid
-                        Layout.preferredWidth: 220
+                        Layout.preferredWidth: detailsGrid.naturalWidth
+                        Layout.fillWidth: root.narrow
                         Layout.alignment: Qt.AlignTop
                     }
                 }
@@ -110,6 +115,7 @@ Item {
             }
 
             WeatherHourlyStrip {
+                id: hourlyStrip
                 width: parent.width
                 height: implicitHeight
             }
@@ -121,17 +127,19 @@ Item {
                 opacity: 0.5
             }
 
-            RowLayout {
+            GridLayout {
                 width: parent.width
-                height: Math.max(210, forecastSummary.implicitHeight + 16, forecastDetails.implicitHeight + 16)
-                spacing: 18
+                height: implicitHeight
+                columns: root.narrow ? 1 : 3
+                columnSpacing: PopupMetrics.sectionGap
+                rowSpacing: PopupMetrics.sectionGap
 
                 Column {
                     id: forecastSummary
                     Layout.fillWidth: true
                     Layout.preferredWidth: 455
                     Layout.alignment: Qt.AlignTop
-                    spacing: 8
+                    spacing: PopupMetrics.rowGap
 
                     SectionLabel {
                         rawText: qsTr("Forecast Summary")
@@ -145,14 +153,16 @@ Item {
 
                 HnSeparator {
                     orientation: Qt.Vertical
-                    implicitHeight: parent.height
+                    visible: !root.narrow
+                    Layout.fillHeight: true
                     fadeMode: HnSeparator.FadeBoth
                     opacity: 0.5
                 }
 
                 Column {
                     id: forecastDetails
-                    Layout.preferredWidth: 230
+                    Layout.preferredWidth: detailsGrid.naturalWidth
+                    Layout.fillWidth: root.narrow
                     Layout.alignment: Qt.AlignTop
                     spacing: 10
 
@@ -161,79 +171,27 @@ Item {
                         width: parent.width
                     }
 
-                    // Line 1: Sunrise & Sunset
-                    RowLayout {
+                    GridLayout {
+                        objectName: "weatherSunEvents"
                         width: parent.width
-                        spacing: 10
-
-                        RowLayout {
+                        columns: width >= sunrise.implicitWidth + sunset.implicitWidth + columnSpacing ? 2 : 1
+                        columnSpacing: PopupMetrics.rowGap
+                        rowSpacing: PopupMetrics.rowGap
+                        WeatherSunEvent {
+                            id: sunrise
+                            objectName: "weatherSunrise"
                             Layout.fillWidth: true
-                            spacing: 6
-                            Image {
-                                source: "qrc:/HolonightShell/weather-png/512x512/sunrise.png"
-                                Layout.preferredWidth: 48
-                                Layout.preferredHeight: 48
-                                sourceSize: Qt.size(48, 48)
-                                fillMode: Image.PreserveAspectFit
-                                smooth: true
-                                mipmap: true
-                            }
-                            Column {
-                                Layout.fillWidth: true
-                                spacing: 1
-                                HnLabel {
-                                    width: parent.width
-                                    rawText: qsTr("Sunrise")
-                                    role: HnTypographyRole.MicroHeader
-                                    color: HoloniightPalette.textSecondary
-                                    font.family: AppearanceService.uiFont
-                                    elide: Text.ElideRight
-                                }
-                                HnLabel {
-                                    width: parent.width
-                                    rawText: WeatherService.hasData
-                                        ? Qt.formatTime(new Date(WeatherService.current.sunrise * 1000), "HH:mm")
-                                        : "—"
-                                    role: HnTypographyRole.Caption
-                                    color: HoloniightPalette.textPrimary
-                                    elide: Text.ElideRight
-                                }
-                            }
+                            title: qsTr("Sunrise")
+                            iconSource: "qrc:/HolonightShell/weather-png/512x512/sunrise.png"
+                            timeText: WeatherService.hasData ? Qt.formatTime(new Date(WeatherService.current.sunrise * 1000), "HH:mm") : "—"
                         }
-
-                        RowLayout {
+                        WeatherSunEvent {
+                            id: sunset
+                            objectName: "weatherSunset"
                             Layout.fillWidth: true
-                            spacing: 6
-                            Image {
-                                source: "qrc:/HolonightShell/weather-png/512x512/sunset.png"
-                                Layout.preferredWidth: 48
-                                Layout.preferredHeight: 48
-                                sourceSize: Qt.size(48, 48)
-                                fillMode: Image.PreserveAspectFit
-                                smooth: true
-                                mipmap: true
-                            }
-                            Column {
-                                Layout.fillWidth: true
-                                spacing: 1
-                                HnLabel {
-                                    width: parent.width
-                                    rawText: qsTr("Sunset")
-                                    role: HnTypographyRole.MicroHeader
-                                    color: HoloniightPalette.textSecondary
-                                    font.family: AppearanceService.uiFont
-                                    elide: Text.ElideRight
-                                }
-                                HnLabel {
-                                    width: parent.width
-                                    rawText: WeatherService.hasData
-                                        ? Qt.formatTime(new Date(WeatherService.current.sunset * 1000), "HH:mm")
-                                        : "—"
-                                    role: HnTypographyRole.Caption
-                                    color: HoloniightPalette.textPrimary
-                                    elide: Text.ElideRight
-                                }
-                            }
+                            title: qsTr("Sunset")
+                            iconSource: "qrc:/HolonightShell/weather-png/512x512/sunset.png"
+                            timeText: WeatherService.hasData ? Qt.formatTime(new Date(WeatherService.current.sunset * 1000), "HH:mm") : "—"
                         }
                     }
 
@@ -272,8 +230,7 @@ Item {
                                 rawText: qsTr("Moon")
                                 role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.uiFont
-                                elide: Text.ElideRight
+                                            elide: Text.ElideRight
                             }
                             HnLabel {
                                 width: parent.width
@@ -317,8 +274,7 @@ Item {
                                 rawText: qsTr("Air Quality")
                                 role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.textSecondary
-                                font.family: AppearanceService.uiFont
-                                elide: Text.ElideRight
+                                            elide: Text.ElideRight
                             }
                             HnLabel {
                                 width: parent.width
@@ -347,17 +303,19 @@ Item {
                 opacity: 0.5
             }
 
-            RowLayout {
+            GridLayout {
                 width: parent.width
-                height: Math.max(152, temperatureGraphColumn.implicitHeight, precipitationGraphColumn.implicitHeight)
-                spacing: 16
+                height: implicitHeight
+                columns: root.narrow ? 1 : 3
+                columnSpacing: PopupMetrics.sectionGap
+                rowSpacing: PopupMetrics.sectionGap
 
                 Column {
                     id: temperatureGraphColumn
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
-                    spacing: 4
+                    spacing: PopupMetrics.textGap
 
                     SectionLabel {
                         rawText: qsTr("Temperature (°C)")
@@ -371,7 +329,8 @@ Item {
 
                 HnSeparator {
                     orientation: Qt.Vertical
-                    implicitHeight: parent.height
+                    visible: !root.narrow
+                    Layout.fillHeight: true
                     fadeMode: HnSeparator.FadeBoth
                     opacity: 0.32
                 }
@@ -381,7 +340,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
-                    spacing: 4
+                    spacing: PopupMetrics.textGap
 
                     SectionLabel {
                         rawText: qsTr("Precipitation (mm)")

@@ -6,6 +6,7 @@ import Holonight.Core
 Column {
     id: root
     spacing: 8
+    readonly property real naturalWidth: Math.max(30 + 90 + 8 + 90, wind.implicitWidth)
 
     component DetailCell: Item {
         id: cell
@@ -17,6 +18,10 @@ Column {
 
         Canvas {
             id: iconCanvas
+            readonly property color cyan: HoloniightPalette.accentCyan
+            readonly property color violet: HoloniightPalette.accentViolet
+            onCyanChanged: requestPaint()
+            onVioletChanged: requestPaint()
             x: 0
             y: 1
             width: 20
@@ -30,8 +35,8 @@ Column {
                 ctx.lineJoin = "round"
                 ctx.scale(width / 24, height / 24)
                 const gradient = ctx.createLinearGradient(4, 4, 20, 20)
-                gradient.addColorStop(0, HoloniightPalette.accentCyan)
-                gradient.addColorStop(1, HoloniightPalette.accentViolet)
+                gradient.addColorStop(0, iconCanvas.cyan)
+                gradient.addColorStop(1, iconCanvas.violet)
                 ctx.strokeStyle = gradient
                 ctx.fillStyle = gradient
                 ctx.lineWidth = 1.7
@@ -143,6 +148,7 @@ Column {
     }
 
     WeatherWindWidget {
+        id: wind
         width: parent.width
         height: implicitHeight
         hasData: WeatherService.hasData

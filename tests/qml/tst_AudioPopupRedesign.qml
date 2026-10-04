@@ -263,9 +263,9 @@ TestCase {
         verify(outputSection)
         verify(viewport)
         verify(headerSeparator.y + headerSeparator.height <= masterPanel.y)
-        compare(viewport.y, pinnedHeader.y + pinnedHeader.height)
+        verify(viewport.y >= pinnedHeader.y + pinnedHeader.height)
         verify(masterPanel.y + masterPanel.height <= viewport.y)
-        verify(outputSection.y >= 16)
+        verify(outputSection.mapToItem(popup, 0, 0).y >= masterPanel.mapToItem(popup, 0, 0).y + masterPanel.height + 16)
     }
 
     function test_separators_keep_the_shared_control_opacity() {

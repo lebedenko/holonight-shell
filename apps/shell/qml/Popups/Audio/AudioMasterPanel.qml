@@ -18,12 +18,14 @@ Item {
   property Item previousTabItem: null
   property alias volumeSlider: masterSlider
 
-  implicitHeight: 72
+  implicitWidth: content.implicitWidth
+  implicitHeight: Math.max(72, content.implicitHeight)
 
   readonly property int masterVolume: AudioService.volume
   readonly property bool masterMuted: AudioService.muted
 
   RowLayout {
+    id: content
     anchors.fill: parent
     spacing: 16
 
@@ -73,7 +75,6 @@ Item {
         rawText: qsTr("MASTER VOLUME")
         role: HnTypographyRole.MicroHeader
         color: HoloniightPalette.accentBlue
-        font.family: AppearanceService.uiFont
       }
 
       RowLayout {
