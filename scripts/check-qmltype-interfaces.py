@@ -35,6 +35,21 @@ def main() -> int:
     if not method or not re.search(r'Parameter \{ name: "page_key"; type: "QString" \}', method.group()):
         problems.append("SettingsNavigationService: missing openPage(QString) method")
 
+    audio = components.get("HoloNight::System::AudioController", "")
+    for name in ("volume", "muted", "available", "inputLevel", "inputs", "outputs",
+                 "playbackStreams", "recordingStreams"):
+        if f'name: "{name}"' not in audio:
+            problems.append(f"AudioController: missing inherited {name} property")
+    for name in ("AudioDeviceModel", "AudioStreamModel"):
+        qualified = f"HoloNight::System::{name}"
+        block = components.get(qualified, "")
+        if 'prototype: "QAbstractListModel"' not in block:
+            problems.append(f"{name}: missing anonymous provider model metadata")
+        if "exports:" in block:
+            problems.append(f"{name}: provider model must remain anonymous")
+        if f'type: "{qualified}"' not in audio:
+            problems.append(f"{name}: inherited property type is unresolved")
+
     if problems:
         print("QML interface metadata errors:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1

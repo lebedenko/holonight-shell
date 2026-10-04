@@ -4,13 +4,13 @@
 
 #include <AudioController.h>
 
-using AudioDevice = HoloNight::System::AudioDevice;
-using AudioDeviceModel = HoloNight::System::AudioDeviceModel;
-using AudioDeviceType = HoloNight::System::AudioDeviceType;
-using AudioHealthState = HoloNight::System::AudioHealthState;
-using AudioStream = HoloNight::System::AudioStream;
-using AudioStreamModel = HoloNight::System::AudioStreamModel;
-using AudioStreamType = HoloNight::System::AudioStreamType;
+using HoloNight::System::AudioDevice;
+using HoloNight::System::AudioDeviceModel;
+using HoloNight::System::AudioDeviceType;
+using HoloNight::System::AudioHealthState;
+using HoloNight::System::AudioStream;
+using HoloNight::System::AudioStreamModel;
+using HoloNight::System::AudioStreamType;
 
 class AudioService final : public HoloNight::System::AudioController {
   Q_OBJECT
@@ -20,4 +20,16 @@ class AudioService final : public HoloNight::System::AudioController {
  public:
   explicit AudioService(QObject* parent = nullptr) : AudioController(parent) {}
   explicit AudioService(SkipInitTag tag, QObject* parent = nullptr) : AudioController(tag, parent) {}
+};
+
+// Anonymous model metadata lets tools resolve inherited provider properties.
+struct AudioDeviceModelForeign {
+  Q_GADGET
+  QML_FOREIGN(HoloNight::System::AudioDeviceModel)
+  QML_ANONYMOUS
+};
+struct AudioStreamModelForeign {
+  Q_GADGET
+  QML_FOREIGN(HoloNight::System::AudioStreamModel)
+  QML_ANONYMOUS
 };
