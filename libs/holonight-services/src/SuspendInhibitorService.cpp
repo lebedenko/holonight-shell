@@ -53,11 +53,16 @@ QList<InhibitorEntry> SuspendInhibitorService::listInhibitors() {
   // Qt's reply.arguments() crashes on a(ssssuu) replies (same libdbus assertion bug as
   // ListSessions a(susso)). Use busctl as a reliable out-of-process fallback.
   QProcess busctl;
-  busctl.start(QStringLiteral("busctl"),
-               {QStringLiteral("call"), QStringLiteral("--system"), QStringLiteral("--no-pager"),
-                QStringLiteral("org.freedesktop.login1"), QStringLiteral("/org/freedesktop/login1"),
-                QStringLiteral("org.freedesktop.login1.Manager"), QStringLiteral("ListInhibitors"),
-                QStringLiteral("--json=short")});
+  busctl.start(QStringLiteral("busctl"), {
+                                             QStringLiteral("call"),
+                                             QStringLiteral("--system"),
+                                             QStringLiteral("--no-pager"),
+                                             QStringLiteral("org.freedesktop.login1"),
+                                             QStringLiteral("/org/freedesktop/login1"),
+                                             QStringLiteral("org.freedesktop.login1.Manager"),
+                                             QStringLiteral("ListInhibitors"),
+                                             QStringLiteral("--json=short"),
+                                         });
   if (!busctl.waitForFinished(kBusctlTimeoutMs) || busctl.exitCode() != 0) {
     qCWarning(lcSuspendInhibitor) << "ListInhibitors via busctl failed:" << busctl.errorString();
     return {};
@@ -110,10 +115,16 @@ void SuspendInhibitorService::startAsyncPoll() {
 
   auto* process = new QProcess(this);
   process->setProgram(QStringLiteral("busctl"));
-  process->setArguments({QStringLiteral("call"), QStringLiteral("--system"), QStringLiteral("--no-pager"),
-                         QStringLiteral("org.freedesktop.login1"), QStringLiteral("/org/freedesktop/login1"),
-                         QStringLiteral("org.freedesktop.login1.Manager"), QStringLiteral("ListInhibitors"),
-                         QStringLiteral("--json=short")});
+  process->setArguments({
+      QStringLiteral("call"),
+      QStringLiteral("--system"),
+      QStringLiteral("--no-pager"),
+      QStringLiteral("org.freedesktop.login1"),
+      QStringLiteral("/org/freedesktop/login1"),
+      QStringLiteral("org.freedesktop.login1.Manager"),
+      QStringLiteral("ListInhibitors"),
+      QStringLiteral("--json=short"),
+  });
 
   auto* timeout = new QTimer(process);
   timeout->setSingleShot(true);

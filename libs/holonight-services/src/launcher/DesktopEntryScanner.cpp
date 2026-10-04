@@ -137,7 +137,7 @@ void applyDesktopEntryField(const QString& key, const QString& value, DesktopEnt
   } else {
     for (const DesktopEntryTextField& field : kDesktopEntryTextFields) {
       if (!field.desktop_key.isEmpty() && key == field.desktop_key) {
-        state->parsed.*(field.member) = value;
+        state->parsed.*field.member = value;
         return;
       }
     }

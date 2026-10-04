@@ -49,8 +49,10 @@ void inspectSwayTree(const QJsonObject& node, const QString& output, const QStri
     const auto pid = positiveInteger<quint32>(node.value(QStringLiteral("pid")));
     const auto container_id = positiveInteger<quint64>(node.value(QStringLiteral("id")));
     if (pid && container_id) {
-      activation_windows->append({.candidate = {.pid = *pid, .title = node.value(QStringLiteral("name")).toString()},
-                                  .container_id = *container_id});
+      activation_windows->append({
+          .candidate = {.pid = *pid, .title = node.value(QStringLiteral("name")).toString()},
+          .container_id = *container_id,
+      });
     }
   }
 
@@ -148,12 +150,15 @@ std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_j
 
   CompositorSnapshot snapshot{
       .connected = true,
-      .capabilities = {.workspace_listing = true,
-                       .workspace_activation = true,
-                       .active_window = true,
-                       .focused_output = true,
-                       .urgency = true,
-                       .occupancy = true},
+      .capabilities =
+          {
+              .workspace_listing = true,
+              .workspace_activation = true,
+              .active_window = true,
+              .focused_output = true,
+              .urgency = true,
+              .occupancy = true,
+          },
   };
   QHash<QString, bool> occupied;
   QList<SwayWindowInfo> activation_windows;
@@ -180,26 +185,34 @@ std::optional<SwayRefreshResult> parseSwayRefresh(const QByteArray& workspaces_j
     const int number = workspace.value(QStringLiteral("num")).toInt(-1);
     const QString output = workspace.value(QStringLiteral("output")).toString();
     const bool focused = workspace.value(QStringLiteral("focused")).toBool(false);
-    const QString id = workspace.contains(QStringLiteral("id"))
-                           ? QString::number(workspace.value(QStringLiteral("id")).toInteger())
-                           : QStringLiteral("name:") + name;
-    names.insert(id, name);
-    if (number > 0) numbered.assignments.insert(id, number);
-    if (number <= 0 || name != QString::number(number) || seen.contains(number)) numbered.eligible = false;
+    const QString identifier = workspace.contains(QStringLiteral("id"))
+                                   ? QString::number(workspace.value(QStringLiteral("id")).toInteger())
+                                   : QStringLiteral("name:") + name;
+    names.insert(identifier, name);
+    if (number > 0) {
+      numbered.assignments.insert(identifier, number);
+    }
+    if (number <= 0 || name != QString::number(number) || seen.contains(number)) {
+      numbered.eligible = false;
+    }
     seen.insert(number);
-    snapshot.workspaces.append({.id = id,
-                                .display_name = name,
-                                .stable_order = order++,
-                                .outputs = output.isEmpty() ? QStringList{} : QStringList{output},
-                                .active = workspace.value(QStringLiteral("visible")).toBool(false),
-                                .focused = focused,
-                                .urgent = workspace.value(QStringLiteral("urgent")).toBool(false),
-                                .occupied = occupied.value(name, false)});
+    snapshot.workspaces.append({
+        .id = identifier,
+        .display_name = name,
+        .stable_order = order++,
+        .outputs = output.isEmpty() ? QStringList{} : QStringList{output},
+        .active = workspace.value(QStringLiteral("visible")).toBool(false),
+        .focused = focused,
+        .urgent = workspace.value(QStringLiteral("urgent")).toBool(false),
+        .occupied = occupied.value(name, false),
+    });
   }
-  return SwayRefreshResult{.snapshot = std::move(snapshot),
-                           .windows = std::move(activation_windows),
-                           .numbered = std::move(numbered),
-                           .names = std::move(names)};
+  return SwayRefreshResult{
+      .snapshot = std::move(snapshot),
+      .windows = std::move(activation_windows),
+      .numbered = std::move(numbered),
+      .names = std::move(names),
+  };
 }
 
 std::optional<CompositorSnapshot> parseSwaySnapshot(const QByteArray& workspaces_json, const QByteArray& outputs_json,

@@ -80,8 +80,10 @@ void waitForWritesToSettle(QSignalSpy& write_spy, int quiet_ms = 500) {
 TEST(NotificationRuleStore, LoadsValidRules) {
   QTemporaryDir dir;
   ASSERT_TRUE(dir.isValid());
-  writeRuleFile(rulesPath(dir), {ruleJson(QStringLiteral("Slack"), QStringLiteral("slack"),
-                                          QStringLiteral("slack-icon"), false, 3, 1730000000000)});
+  writeRuleFile(rulesPath(dir), {
+                                    ruleJson(QStringLiteral("Slack"), QStringLiteral("slack"),
+                                             QStringLiteral("slack-icon"), false, 3, 1730000000000),
+                                });
 
   const NotificationRuleStore store(rulesPath(dir));
   const QList<AppNotificationRule> rules = store.load();
@@ -125,13 +127,18 @@ TEST(NotificationRuleStore, WritesExpectedJson) {
   ASSERT_TRUE(dir.isValid());
   NotificationRuleStore store(rulesPath(dir));
   QSignalSpy write_spy(&store, &NotificationRuleStore::writeCompleted);
-  store.persist({AppNotificationRule{.app_name = QStringLiteral("Slack"),
-                                     .desktop_entry = QStringLiteral("slack"),
-                                     .app_icon = QStringLiteral("slack-icon"),
-                                     .enabled = false,
-                                     .urgency_filter = UrgencyFilter::Normal,
-                                     .last_seen_ms = 42}},
-                QStringLiteral("updateRule"));
+  store.persist(
+      {
+          AppNotificationRule{
+              .app_name = QStringLiteral("Slack"),
+              .desktop_entry = QStringLiteral("slack"),
+              .app_icon = QStringLiteral("slack-icon"),
+              .enabled = false,
+              .urgency_filter = UrgencyFilter::Normal,
+              .last_seen_ms = 42,
+          },
+      },
+      QStringLiteral("updateRule"));
 
   ASSERT_TRUE(write_spy.wait(2000));
 
@@ -394,8 +401,10 @@ TEST(NotificationRuleModel, ResolvesDisplayNameAndIconFromDesktopEntry) {
   ASSERT_TRUE(dir.isValid());
   writeDesktopEntry(appsDir(dir), QStringLiteral("satty.desktop"),
                     QByteArrayLiteral("NoDisplay=true\nStartupWMClass=com.gabm.satty\nName=Satty\nIcon=satty\n"));
-  writeRuleFile(rulesPath(dir), {ruleJson(QStringLiteral("satty"), QStringLiteral("com.gabm.satty"),
-                                          QStringLiteral("raw-icon"), true, 0, 1)});
+  writeRuleFile(rulesPath(dir), {
+                                    ruleJson(QStringLiteral("satty"), QStringLiteral("com.gabm.satty"),
+                                             QStringLiteral("raw-icon"), true, 0, 1),
+                                });
 
   NotificationRuleStore store(rulesPath(dir));
   NotificationRuleModel model(&store, DesktopEntryScanner({appsDir(dir)}));

@@ -10,9 +10,11 @@
 
 QStringList IntegrationLoader::defaultDirectories() {
   const QDir executable(QCoreApplication::applicationDirPath());
-  return {executable.filePath(QStringLiteral("holonight/backends")),
-          executable.filePath(QStringLiteral("../holonight/backends")),
-          executable.filePath(QStringLiteral(HOLONIGHT_BACKEND_RELATIVE_PATH))};
+  return {
+      executable.filePath(QStringLiteral("holonight/backends")),
+      executable.filePath(QStringLiteral("../holonight/backends")),
+      executable.filePath(QStringLiteral(HOLONIGHT_BACKEND_RELATIVE_PATH)),
+  };
 }
 QList<IntegrationDescriptor> IntegrationLoader::discover(const QStringList& directories) {
   QList<IntegrationDescriptor> result;
@@ -24,20 +26,28 @@ QList<IntegrationDescriptor> IntegrationLoader::discover(const QStringList& dire
       QJsonObject metadata;
       if (file.endsWith(QStringLiteral(".json"))) {
         QFile catalog(path);
-        if (!catalog.open(QIODevice::ReadOnly)) continue;
+        if (!catalog.open(QIODevice::ReadOnly)) {
+          continue;
+        }
         metadata = QJsonDocument::fromJson(catalog.readAll()).object();
-        if (metadata.value(QStringLiteral("iid")).toString() != QLatin1String(HolonightIntegration_iid)) continue;
+        if (metadata.value(QStringLiteral("iid")).toString() != QLatin1String(HolonightIntegration_iid)) {
+          continue;
+        }
         path = dir.filePath(metadata.value(QStringLiteral("library")).toString());
       } else {
         QPluginLoader candidate(path);
         const auto envelope = candidate.metaData();
-        if (envelope.value(QStringLiteral("IID")).toString() != QLatin1String(HolonightIntegration_iid)) continue;
+        if (envelope.value(QStringLiteral("IID")).toString() != QLatin1String(HolonightIntegration_iid)) {
+          continue;
+        }
         metadata = envelope.value(QStringLiteral("MetaData")).toObject();
       }
       path = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
-      if (paths.contains(path)) continue;
+      if (paths.contains(path)) {
+        continue;
+      }
       paths.insert(path);
-      result.append({path, metadata});
+      result.append({.path = path, .metadata = metadata});
     }
   }
   return result;
@@ -49,17 +59,26 @@ QString IntegrationLoader::select(const QList<IntegrationDescriptor>& descriptor
   QString fallback;
   for (const auto& descriptor : descriptors) {
     const auto& metadata = descriptor.metadata;
-    const QString id = metadata.value(QStringLiteral("id")).toString();
-    if (metadata.value(QStringLiteral("fallback")).toBool()) fallback = id;
+    const QString identifier = metadata.value(QStringLiteral("id")).toString();
+    if (metadata.value(QStringLiteral("fallback")).toBool()) {
+      fallback = identifier;
+    }
     for (const auto token : metadata.value(QStringLiteral("desktops")).toArray()) {
       for (const auto& desktop : environment.value(QStringLiteral("XDG_CURRENT_DESKTOP")).split(':')) {
-        if (desktop.trimmed().compare(token.toString(), Qt::CaseInsensitive) == 0) desktops.insert(id);
+        if (desktop.trimmed().compare(token.toString(), Qt::CaseInsensitive) == 0) {
+          desktops.insert(identifier);
+        }
       }
     }
-    for (const auto marker : metadata.value(QStringLiteral("markers")).toArray())
-      if (!environment.value(marker.toString()).isEmpty()) markers.insert(id);
+    for (const auto marker : metadata.value(QStringLiteral("markers")).toArray()) {
+      if (!environment.value(marker.toString()).isEmpty()) {
+        markers.insert(identifier);
+      }
+    }
   }
-  if (!desktops.isEmpty()) return desktops.size() == 1 ? *desktops.begin() : fallback;
+  if (!desktops.isEmpty()) {
+    return desktops.size() == 1 ? *desktops.begin() : fallback;
+  }
   return markers.size() == 1 ? *markers.begin() : fallback;
 }
 IntegrationLoader::IntegrationLoader(QObject* parent)
@@ -70,12 +89,18 @@ IntegrationLoader::IntegrationLoader(const QStringList& directories, const QProc
   const auto descriptors = discover(directories);
   const auto selected = select(descriptors, environment);
   for (const auto& descriptor : descriptors) {
-    if (descriptor.metadata.value(QStringLiteral("id")).toString() == selected && load(descriptor)) return;
+    if (descriptor.metadata.value(QStringLiteral("id")).toString() == selected && load(descriptor)) {
+      return;
+    }
   }
-  if (diagnostic_.isEmpty()) diagnostic_ = QStringLiteral("No selected integration plugin available");
+  if (diagnostic_.isEmpty()) {
+    diagnostic_ = QStringLiteral("No selected integration plugin available");
+  }
   qWarning().noquote() << diagnostic_;
   for (const auto& descriptor : descriptors) {
-    if (descriptor.metadata.value(QStringLiteral("fallback")).toBool() && load(descriptor)) return;
+    if (descriptor.metadata.value(QStringLiteral("fallback")).toBool() && load(descriptor)) {
+      return;
+    }
   }
 }
 bool IntegrationLoader::load(const IntegrationDescriptor& descriptor) {
@@ -94,7 +119,7 @@ bool IntegrationLoader::load(const IntegrationDescriptor& descriptor) {
     return false;
   }
   auto* plugin = qobject_cast<IntegrationPlugin*>(loader->instance());
-  if (!plugin) {
+  if (plugin == nullptr) {
     diagnostic_ = QStringLiteral("Cannot load integration %1: %2").arg(descriptor.path, loader->errorString());
     return false;
   }
@@ -104,7 +129,9 @@ bool IntegrationLoader::load(const IntegrationDescriptor& descriptor) {
   return true;
 }
 std::unique_ptr<CompositorBackend> IntegrationLoader::createCompositor() {
-  if (!integration_) return {};
+  if (integration_ == nullptr) {
+    return {};
+  }
   auto backend = integration_->createCompositor();
   contribution_model_ = integration_->topbarComponent().isEmpty() ? nullptr : backend.get();
   return backend;

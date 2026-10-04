@@ -14,14 +14,20 @@ class SpecialModel : public QObject {
   Q_OBJECT
   Q_PROPERTY(QVariantList specialWorkspaces READ specialWorkspaces NOTIFY changed)
  public:
-  QVariantList specialWorkspaces() const { return rows; }
-  Q_INVOKABLE void activateSpecialWorkspace(const QString& id) { activated = id; }
-  QVariantList rows{{QVariantMap{{"id", "special:magic"},
-                                 {"name", "magic"},
-                                 {"active", true},
-                                 {"urgent", false},
-                                 {"occupied", true},
-                                 {"monitorNames", QStringList{"DP-1"}}}}};
+  [[nodiscard]] QVariantList specialWorkspaces() const { return rows; }
+  Q_INVOKABLE void activateSpecialWorkspace(const QString& identifier) { activated = identifier; }
+  QVariantList rows{
+      {
+          QVariantMap{
+              {"id", "special:magic"},
+              {"name", "magic"},
+              {"active", true},
+              {"urgent", false},
+              {"occupied", true},
+              {"monitorNames", QStringList{"DP-1"}},
+          },
+      },
+  };
   QString activated;
  Q_SIGNALS:
   void changed();
@@ -47,9 +53,14 @@ TEST(HyprlandQml, PrivateContributionUsesInjectedInstanceAndMonitor) {
   EXPECT_EQ(item->property("implicitHeight").toDouble(), 32);
   EXPECT_TRUE(item->property("visible").toBool());
   const auto findDot = [](auto&& self, QQuickItem* parent) -> QQuickItem* {
-    if (parent->objectName() == "specialWorkspaceDot") return parent;
-    for (auto* child : parent->childItems())
-      if (auto* found = self(self, child)) return found;
+    if (parent->objectName() == "specialWorkspaceDot") {
+      return parent;
+    }
+    for (auto* child : parent->childItems()) {
+      if (auto* found = self(self, child)) {
+        return found;
+      }
+    }
     return nullptr;
   };
   auto* dot = findDot(findDot, qobject_cast<QQuickItem*>(item.get()));

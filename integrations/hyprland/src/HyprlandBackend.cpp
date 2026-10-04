@@ -87,26 +87,31 @@ void appendWorkspaces(const QJsonArray& workspaces, const QList<HyprlandClientIn
         });
       });
     }
-    CompositorWorkspace entry{.id = special ? name : QString::number(workspace_id),
-                              .display_name = name,
-                              .stable_order = order++,
-                              .outputs = workspace_outputs.contains(workspace_id)
-                                             ? QStringList{workspace_outputs.value(workspace_id)}
-                                             : QStringList{},
-                              .active = active,
-                              .focused = active && workspace_outputs.value(workspace_id) == snapshot->focused_output,
-                              .urgent = urgent,
-                              .occupied = window_counts.value(workspace_id) > 0};
+    CompositorWorkspace entry{
+        .id = special ? name : QString::number(workspace_id),
+        .display_name = name,
+        .stable_order = order++,
+        .outputs = workspace_outputs.contains(workspace_id) ? QStringList{workspace_outputs.value(workspace_id)}
+                                                            : QStringList{},
+        .active = active,
+        .focused = active && workspace_outputs.value(workspace_id) == snapshot->focused_output,
+        .urgent = urgent,
+        .occupied = window_counts.value(workspace_id) > 0,
+    };
     if (active) {
-      for (const auto& output : entry.outputs) snapshot->occupied_outputs[output] |= entry.occupied.value_or(false);
+      for (const auto& output : entry.outputs) {
+        snapshot->occupied_outputs[output] |= entry.occupied.value_or(false);
+      }
     }
     if (special) {
-      specials->append(QVariantMap{{QStringLiteral("id"), entry.id},
-                                   {QStringLiteral("name"), entry.display_name},
-                                   {QStringLiteral("active"), entry.active},
-                                   {QStringLiteral("urgent"), entry.urgent},
-                                   {QStringLiteral("occupied"), entry.occupied.value_or(false)},
-                                   {QStringLiteral("monitorNames"), entry.outputs}});
+      specials->append(QVariantMap{
+          {QStringLiteral("id"), entry.id},
+          {QStringLiteral("name"), entry.display_name},
+          {QStringLiteral("active"), entry.active},
+          {QStringLiteral("urgent"), entry.urgent},
+          {QStringLiteral("occupied"), entry.occupied.value_or(false)},
+          {QStringLiteral("monitorNames"), entry.outputs},
+      });
     } else {
       numbered->assignments.insert(entry.id, workspace_id);
       snapshot->workspaces.append(std::move(entry));
@@ -314,12 +319,15 @@ void HyprlandBackend::publishClients(const QByteArray& clients_json) {
   }
   CompositorSnapshot snapshot{
       .connected = true,
-      .capabilities = {.workspace_listing = true,
-                       .workspace_activation = true,
-                       .active_window = true,
-                       .focused_output = true,
-                       .urgency = true,
-                       .occupancy = true},
+      .capabilities =
+          {
+              .workspace_listing = true,
+              .workspace_activation = true,
+              .active_window = true,
+              .focused_output = true,
+              .urgency = true,
+              .occupancy = true,
+          },
   };
   QHash<int, QString> workspace_outputs;
   QSet<int> active_workspaces;
@@ -369,17 +377,22 @@ WindowActivationResult HyprlandBackend::requestWindowActivation(const WindowActi
 }
 
 void HyprlandBackend::activateWorkspace(const QString& workspace_id) {
-  if (numbered_.assignments.contains(workspace_id)) dispatchWorkspace(workspace_id);
+  if (numbered_.assignments.contains(workspace_id)) {
+    dispatchWorkspace(workspace_id);
+  }
 }
 void HyprlandBackend::activateNumberedSlot(int slot) {
-  if (slot > 0) dispatchWorkspace(QString::number(slot));
+  if (slot > 0) {
+    dispatchWorkspace(QString::number(slot));
+  }
 }
-void HyprlandBackend::activateSpecialWorkspace(const QString& id) {
-  for (const auto& value : special_workspaces_)
-    if (value.toMap().value(QStringLiteral("id")).toString() == id) {
-      dispatchWorkspace(id);
+void HyprlandBackend::activateSpecialWorkspace(const QString& identifier) {
+  for (const auto& value : special_workspaces_) {
+    if (value.toMap().value(QStringLiteral("id")).toString() == identifier) {
+      dispatchWorkspace(identifier);
       return;
     }
+  }
 }
 void HyprlandBackend::dispatchWorkspace(const QString& workspace_id) {
   const bool special = workspace_id.startsWith(QStringLiteral("special:"));

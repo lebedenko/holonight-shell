@@ -26,7 +26,7 @@ inline QJsonObject toJson(const DesktopEntry& entry) {
 
   QJsonObject obj;
   for (const DesktopEntryTextField& field : kDesktopEntryTextFields) {
-    obj[jsonKey(field)] = entry.*(field.member);
+    obj[jsonKey(field)] = entry.*field.member;
   }
   obj[QStringLiteral("terminal")] = entry.terminal;
   obj[QStringLiteral("no_display")] = entry.no_display;
@@ -54,7 +54,7 @@ inline std::optional<DesktopEntry> fromJson(const QJsonObject& obj) {
 
   DesktopEntry entry;
   for (const DesktopEntryTextField& field : kDesktopEntryTextFields) {
-    entry.*(field.member) = obj[jsonKey(field)].toString();
+    entry.*field.member = obj[jsonKey(field)].toString();
   }
   entry.terminal = obj[QStringLiteral("terminal")].toBool(false);
   entry.no_display = obj[QStringLiteral("no_display")].toBool(false);

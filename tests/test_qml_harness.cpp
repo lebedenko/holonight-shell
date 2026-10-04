@@ -23,12 +23,14 @@ namespace {
 class TestIconProvider : public QQuickImageProvider {
  public:
   TestIconProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}
-  QImage requestImage(const QString& id, QSize* size, const QSize& requested) override {
+  QImage requestImage(const QString& identifier, QSize* size, const QSize& requested) override {
     const QSize dimensions = requested.isValid() ? requested : QSize(32, 32);
     if (size != nullptr) {
       *size = dimensions;
     }
-    if (id.startsWith("strict/")) return QImage(id.mid(7));
+    if (identifier.startsWith("strict/")) {
+      return QImage(identifier.mid(7));
+    }
     QImage image(dimensions, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
     return image;
@@ -42,7 +44,9 @@ class Setup : public QObject {
   Setup() {
     QImage icon(15, 15, QImage::Format_ARGB32);
     icon.fill(QColor("#c14287"));
-    if (!icon.save(modules_dir_.filePath("window-icon.png"))) qFatal("Cannot create test icon");
+    if (!icon.save(modules_dir_.filePath("window-icon.png"))) {
+      qFatal("Cannot create test icon");
+    }
 #ifndef HOLONIGHT_COMPILED_ACCEPTANCE
     // 1. Create a temporary directory for our mock QML modules.
     if (!modules_dir_.isValid() || !QDir(modules_dir_.path()).mkpath(QStringLiteral("HolonightShell"))) {
@@ -74,9 +78,11 @@ class Setup : public QObject {
       return false;
     });
   }
-  Q_INVOKABLE QString coloredIconPath() const { return modules_dir_.filePath("window-icon.png"); }
+  Q_INVOKABLE [[nodiscard]] QString coloredIconPath() const { return modules_dir_.filePath("window-icon.png"); }
   Q_INVOKABLE QObject* captureItem(QQuickItem* item) {
-    if (item == nullptr || item->window() == nullptr) return nullptr;
+    if (item == nullptr || item->window() == nullptr) {
+      return nullptr;
+    }
     const auto bounds = item->mapRectToScene(QRectF(0, 0, item->width(), item->height()));
     const qreal ratio = item->window()->devicePixelRatio();
     const QRect pixels(qFloor(bounds.x() * ratio), qFloor(bounds.y() * ratio), qCeil(bounds.width() * ratio),

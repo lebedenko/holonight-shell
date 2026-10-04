@@ -166,7 +166,7 @@ void SidebarManager::openOnMonitor(const QString& monitor_name) {
       Qt::QueuedConnection);
   connect(
       host.get(), &LayerSurfaceHost::closed, this,
-      [this, monitor_name, generation, expected_host]() {
+      [this, monitor_name, generation, expected_host] {
         handleHostTerminated(monitor_name, generation, expected_host);
       },
       Qt::QueuedConnection);

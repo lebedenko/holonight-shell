@@ -202,16 +202,19 @@ void QtNetworkManagerBackend::refresh() {
   query_queued_ = false;
 
   NetworkStats stats{
-      .rx_bytes = previous_rx_bytes_, .tx_bytes = previous_tx_bytes_, .stat_time_ms = previous_stat_time_ms_};
-  watcher_->setFuture(QtConcurrent::run([stats]() { return doQueryState(stats); }));
+      .rx_bytes = previous_rx_bytes_,
+      .tx_bytes = previous_tx_bytes_,
+      .stat_time_ms = previous_stat_time_ms_,
+  };
+  watcher_->setFuture(QtConcurrent::run([stats] { return doQueryState(stats); }));
 }
 
 void QtNetworkManagerBackend::requestScan() {
-  trackOperation(QtConcurrent::run([this]() {
+  trackOperation(QtConcurrent::run([this] {
     const QList<QString> devices = wirelessDevicePaths();
     if (devices.isEmpty()) {
       QMetaObject::invokeMethod(
-          this, [this]() { emitError(QStringLiteral("No Wi-Fi device found")); }, Qt::QueuedConnection);
+          this, [this] { emitError(QStringLiteral("No Wi-Fi device found")); }, Qt::QueuedConnection);
       return;
     }
 
@@ -228,14 +231,14 @@ void QtNetworkManagerBackend::requestScan() {
     }
     if (!requested) {
       const QString message = operationErrorMessage(QStringLiteral("Wi-Fi scan request failed"), error_detail);
-      QMetaObject::invokeMethod(this, [this, message]() { emitError(message); }, Qt::QueuedConnection);
+      QMetaObject::invokeMethod(this, [this, message] { emitError(message); }, Qt::QueuedConnection);
     }
     QMetaObject::invokeMethod(this, &QtNetworkManagerBackend::refresh, Qt::QueuedConnection);
   }));
 }
 
 void QtNetworkManagerBackend::setWirelessEnabled(bool enabled) {
-  trackOperation(QtConcurrent::run([this, enabled]() {
+  trackOperation(QtConcurrent::run([this, enabled] {
     QDBusInterface props(kNmService, kNmPath, kPropsIface, dbusConnection());
     const QDBusReply<void> reply =
         props.call(QStringLiteral("Set"), QLatin1String(kNmIface), QStringLiteral("WirelessEnabled"),
@@ -243,14 +246,14 @@ void QtNetworkManagerBackend::setWirelessEnabled(bool enabled) {
     if (!reply.isValid()) {
       const QString message =
           operationErrorMessage(QStringLiteral("Could not change Wi-Fi radio state"), reply.error().message());
-      QMetaObject::invokeMethod(this, [this, message]() { emitError(message); }, Qt::QueuedConnection);
+      QMetaObject::invokeMethod(this, [this, message] { emitError(message); }, Qt::QueuedConnection);
     }
     QMetaObject::invokeMethod(this, &QtNetworkManagerBackend::refresh, Qt::QueuedConnection);
   }));
 }
 
 void QtNetworkManagerBackend::activateKnown(const WifiNetwork& network) {
-  trackOperation(QtConcurrent::run([this, network]() {
+  trackOperation(QtConcurrent::run([this, network] {
     QDBusInterface network_manager(kNmService, kNmPath, kNmIface, dbusConnection());
     const QDBusReply<QDBusObjectPath> reply =
         network_manager.call(QStringLiteral("ActivateConnection"), QDBusObjectPath(network.connection_path),
@@ -258,7 +261,7 @@ void QtNetworkManagerBackend::activateKnown(const WifiNetwork& network) {
     if (!reply.isValid()) {
       const QString message =
           operationErrorMessage(QStringLiteral("Could not activate saved Wi-Fi network"), reply.error().message());
-      QMetaObject::invokeMethod(this, [this, message]() { emitError(message); }, Qt::QueuedConnection);
+      QMetaObject::invokeMethod(this, [this, message] { emitError(message); }, Qt::QueuedConnection);
     }
     QMetaObject::invokeMethod(this, &QtNetworkManagerBackend::refresh, Qt::QueuedConnection);
   }));
@@ -279,7 +282,7 @@ void QtNetworkManagerBackend::disconnectActive(const QString& active_connection_
     emitError(QStringLiteral("No active network connection to disconnect"));
     return;
   }
-  trackOperation(QtConcurrent::run([this, active_connection_path]() {
+  trackOperation(QtConcurrent::run([this, active_connection_path] {
     QDBusInterface network_manager(kNmService, kNmPath, kNmIface, dbusConnection());
     const QDBusReply<void> reply =
         network_manager.call(QStringLiteral("DeactivateConnection"), QDBusObjectPath(active_connection_path));
@@ -287,7 +290,7 @@ void QtNetworkManagerBackend::disconnectActive(const QString& active_connection_
       const QString message =
           operationErrorMessage(QStringLiteral("Could not disconnect active network"), reply.error().message());
       // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
-      QMetaObject::invokeMethod(this, [this, message]() { emitError(message); }, Qt::QueuedConnection);
+      QMetaObject::invokeMethod(this, [this, message] { emitError(message); }, Qt::QueuedConnection);
     }
     QMetaObject::invokeMethod(this, &QtNetworkManagerBackend::refresh, Qt::QueuedConnection);
   }));
@@ -742,19 +745,23 @@ void QtNetworkManagerBackend::trackOperation(const QFuture<void>& future) {
 }
 
 void QtNetworkManagerBackend::addAndActivate(const WifiNetwork& network, const QString& password) {
-  trackOperation(QtConcurrent::run([this, network, password]() {
+  trackOperation(QtConcurrent::run([this, network, password] {
     QDBusInterface network_manager(kNmService, kNmPath, kNmIface, dbusConnection());
     QVariantMap options;
     options.insert(QStringLiteral("persist"), QStringLiteral("disk"));
     const ConnectionSettings settings = makeConnectionSettings(network, password);
-    const QDBusMessage reply = network_manager.callWithArgumentList(
-        QDBus::Block, QStringLiteral("AddAndActivateConnection2"),
-        {QVariant::fromValue(settings), QVariant::fromValue(QDBusObjectPath(network.device_path)),
-         QVariant::fromValue(QDBusObjectPath(network.access_point_path)), QVariant::fromValue(options)});
+    const QDBusMessage reply =
+        network_manager.callWithArgumentList(QDBus::Block, QStringLiteral("AddAndActivateConnection2"),
+                                             {
+                                                 QVariant::fromValue(settings),
+                                                 QVariant::fromValue(QDBusObjectPath(network.device_path)),
+                                                 QVariant::fromValue(QDBusObjectPath(network.access_point_path)),
+                                                 QVariant::fromValue(options),
+                                             });
     if (reply.type() == QDBusMessage::ErrorMessage) {
       const QString message =
           operationErrorMessage(QStringLiteral("Could not add and activate Wi-Fi network"), reply.errorMessage());
-      QMetaObject::invokeMethod(this, [this, message]() { emitError(message); }, Qt::QueuedConnection);
+      QMetaObject::invokeMethod(this, [this, message] { emitError(message); }, Qt::QueuedConnection);
     }
     QMetaObject::invokeMethod(this, &QtNetworkManagerBackend::refresh, Qt::QueuedConnection);
   }));

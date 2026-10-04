@@ -47,7 +47,7 @@ AppearanceService::AppearanceService(QObject* parent) : QObject(parent) {
   debug_overlays_ = QCoreApplication::arguments().contains(QStringLiteral("--debug-overlays"));
   applyAppearance(reader_.appearance(), reader_.revision());
   connect(&reader_, &Holonight::AppearanceReader::appearanceChanged, this,
-          [this]() { applyAppearance(reader_.appearance(), reader_.revision()); });
+          [this] { applyAppearance(reader_.appearance(), reader_.revision()); });
 }
 
 QString AppearanceService::colorMode() const { return colorModeName(appearance_.color_mode); }

@@ -7,9 +7,13 @@
 struct wl_output;
 
 inline QList<WindowCommand> foreignToplevelOperations(int version) {
-  QList<WindowCommand> result{WindowCommand::Activate, WindowCommand::Minimize,   WindowCommand::Restore,
-                              WindowCommand::Maximize, WindowCommand::Unmaximize, WindowCommand::Close};
-  if (version >= 2) result.append({WindowCommand::Fullscreen, WindowCommand::Unfullscreen});
+  QList<WindowCommand> result{
+      WindowCommand::Activate, WindowCommand::Minimize,   WindowCommand::Restore,
+      WindowCommand::Maximize, WindowCommand::Unmaximize, WindowCommand::Close,
+  };
+  if (version >= 2) {
+    result.append({WindowCommand::Fullscreen, WindowCommand::Unfullscreen});
+  }
   return result;
 }
 
@@ -26,7 +30,9 @@ struct ForeignToplevelState {
   } pending, committed;
 
   void setActivated(bool activated, quint64& order) {
-    if (activated && !pending.activated) pending.order = ++order;
+    if (activated && !pending.activated) {
+      pending.order = ++order;
+    }
     pending.activated = activated;
   }
   bool ready{false};
@@ -38,16 +44,20 @@ struct ForeignToplevelState {
   static const ForeignToplevelState* active(const QList<const ForeignToplevelState*>& windows) {
     const ForeignToplevelState* selected = nullptr;
     for (const auto* window : windows) {
-      if (window->committed.activated && (!selected || window->committed.order > selected->committed.order))
+      if (window->committed.activated &&
+          ((selected == nullptr) || window->committed.order > selected->committed.order)) {
         selected = window;
+      }
     }
     return selected;
   }
-  QHash<QString, CompositorActiveWindow> onOutputs(const QHash<wl_output*, QString>& names) const {
+  [[nodiscard]] QHash<QString, CompositorActiveWindow> onOutputs(const QHash<wl_output*, QString>& names) const {
     QHash<QString, CompositorActiveWindow> result;
     for (auto* output : committed.outputs) {
       const auto name = names.value(output);
-      if (!name.isEmpty()) result.insert(name, committed.window);
+      if (!name.isEmpty()) {
+        result.insert(name, committed.window);
+      }
     }
     return result;
   }
@@ -59,9 +69,10 @@ inline CompositorSnapshot mergeLabwcSnapshot(const CompositorSnapshot& workspace
   snapshot.connected |= windows_available;
   snapshot.capabilities.active_window = windows_available;
   snapshot.active_windows = windows_available ? windows : QHash<QString, CompositorActiveWindow>{};
-  if (snapshot.connected)
+  if (snapshot.connected) {
     snapshot.diagnostic.clear();
-  else
+  } else {
     snapshot.diagnostic = QStringLiteral("labwc workspace and foreign-toplevel protocols are unavailable");
+  }
   return snapshot;
 }

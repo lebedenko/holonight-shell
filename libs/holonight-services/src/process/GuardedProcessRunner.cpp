@@ -35,7 +35,7 @@ void runGuardedProcess(const QString& program, const QStringList& arguments, int
     }
   };
 
-  QObject::connect(timer, &QTimer::timeout, proc, [proc, completed, deliver]() mutable {
+  QObject::connect(timer, &QTimer::timeout, proc, [proc, completed, deliver] mutable {
     if (*completed) {
       return;
     }

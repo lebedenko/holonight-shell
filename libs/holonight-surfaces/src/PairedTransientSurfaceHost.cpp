@@ -86,7 +86,7 @@ void PairedTransientSurfaceHost::openPendingPair() {
 void PairedTransientSurfaceHost::connectTerminalSignals(LayerSurfaceHost& host, quint64 generation) {
   connect(
       &host, &LayerSurfaceHost::configured, this,
-      [this, generation]() {
+      [this, generation] {
         if (generation == generation_ && hasPair()) {
           onPairConfigured();
         }
@@ -97,7 +97,7 @@ void PairedTransientSurfaceHost::connectTerminalSignals(LayerSurfaceHost& host, 
       [this, generation](const QString& diagnostic) { terminateGeneration(generation, diagnostic); },
       Qt::QueuedConnection);
   connect(
-      &host, &LayerSurfaceHost::closed, this, [this, generation]() { terminateGeneration(generation); },
+      &host, &LayerSurfaceHost::closed, this, [this, generation] { terminateGeneration(generation); },
       Qt::QueuedConnection);
 }
 

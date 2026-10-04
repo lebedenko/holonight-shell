@@ -91,7 +91,7 @@ void SysfsBackend::setupInotify() {
     return;
   }
   notifier_ = std::make_unique<QSocketNotifier>(ifd_, QSocketNotifier::Read, this);
-  connect(notifier_.get(), &QSocketNotifier::activated, this, [this]() { onInotifyEvent(); });
+  connect(notifier_.get(), &QSocketNotifier::activated, this, [this] { onInotifyEvent(); });
   qCInfo(lcBrightness) << "inotify watch set up on" << brightness_path_;
 }
 

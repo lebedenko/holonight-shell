@@ -30,11 +30,10 @@ QVariant IdentityListModel::data(const QModelIndex& index, int role) const {
   return {};
 }
 QHash<int, QByteArray> IdentityListModel::roleNames() const {
-  return {{StableIdRole, "stableId"},
-          {DisplayLabelRole, "displayLabel"},
-          {UsernameRole, "username"},
-          {FullNameRole, "fullName"},
-          {AvatarUrlRole, "avatarUrl"}};
+  return {
+      {StableIdRole, "stableId"}, {DisplayLabelRole, "displayLabel"}, {UsernameRole, "username"},
+      {FullNameRole, "fullName"}, {AvatarUrlRole, "avatarUrl"},
+  };
 }
 void IdentityListModel::setItems(QList<Identity> items) {
   beginResetModel();
@@ -66,10 +65,12 @@ bool IdentityListModel::updateProfile(const Identity& profile) {
 QVariantMap IdentityListModel::profile(const QString& stable_id) const {
   for (const auto& item : items_) {
     if (item.stable_id == stable_id) {
-      return {{QStringLiteral("displayLabel"), item.display_label},
-              {QStringLiteral("username"), item.username},
-              {QStringLiteral("fullName"), item.full_name},
-              {QStringLiteral("avatarUrl"), item.avatar_url}};
+      return {
+          {QStringLiteral("displayLabel"), item.display_label},
+          {QStringLiteral("username"), item.username},
+          {QStringLiteral("fullName"), item.full_name},
+          {QStringLiteral("avatarUrl"), item.avatar_url},
+      };
     }
   }
   return {};

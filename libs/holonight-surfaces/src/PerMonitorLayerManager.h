@@ -59,7 +59,7 @@ class PerMonitorLayerManager : public QObject {
     QVariantMap initial_properties;
   };
 
-  PerMonitorLayerManager(const char* log_tag, QObject* parent = nullptr);
+  explicit PerMonitorLayerManager(const char* log_tag, QObject* parent = nullptr);
   using HostFactory = std::function<std::unique_ptr<Holonight::Wayland::LayerSurfaceHost>()>;
   PerMonitorLayerManager(const char* log_tag, HostFactory host_factory, QObject* parent = nullptr);
 

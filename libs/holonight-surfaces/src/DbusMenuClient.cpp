@@ -106,7 +106,7 @@ void DbusMenuClient::doAboutToShow(const QList<int>& root_ids, DbusMenuModel* mo
   timeout->setSingleShot(true);
   timeout->setInterval(kAboutToShowTimeoutMs);
 
-  auto finish = [this, model, screen_x, screen_y, timeout, finished]() {
+  auto finish = [this, model, screen_x, screen_y, timeout, finished] {
     if (*finished) {
       return;
     }

@@ -51,7 +51,7 @@ TrayModel::TrayModel(ConfigService* config, QObject* parent)
       max_visible_(config != nullptr ? config->barSystemTray().max_items : BarSystemTrayConfig{}.max_items),
       tray_icon_overrides_(config != nullptr ? config->trayIconOverrides() : TrayIconOverridesConfig{}) {
   if (config != nullptr) {
-    connect(config, &ConfigService::barSystemTrayChanged, this, [this, config]() {
+    connect(config, &ConfigService::barSystemTrayChanged, this, [this, config] {
       const int updated = config->barSystemTray().max_items;
       if (max_visible_ != updated) {
         max_visible_ = updated;
@@ -59,7 +59,7 @@ TrayModel::TrayModel(ConfigService* config, QObject* parent)
       }
     });
     connect(config, &ConfigService::trayIconOverridesChanged, this,
-            [this, config]() { updateTrayIconOverrides(config->trayIconOverrides()); });
+            [this, config] { updateTrayIconOverrides(config->trayIconOverrides()); });
   }
 }
 
@@ -380,7 +380,7 @@ void TrayModel::fetchMenuPath(const QString& key, const TrayItem& item, int scre
               connect(menu_client_, &DbusMenuClient::menuClosed, menu_surface_, &TrayMenuSurface::hide);
             }
             connect(menu_client_, &DbusMenuClient::menuFailed, this,
-                    []() { qCWarning(lcTrayModel) << "DBusMenu fetch failed"; });
+                    [] { qCWarning(lcTrayModel) << "DBusMenu fetch failed"; });
             menu_client_->open(service, menu_path, screen_x, screen_y);
           });
 }

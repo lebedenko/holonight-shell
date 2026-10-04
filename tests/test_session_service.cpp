@@ -435,8 +435,9 @@ TEST(SessionServiceTest, LabwcLogoutUsesUwsmOrValidatedInheritedPid) {
   EXPECT_EQ(runner.lastArgs(), QStringList{"stop"});
   runner.setShouldFail(true);
   EXPECT_FALSE(backend.logout().ok);
-  if (had_pid)
+  if (had_pid) {
     qputenv("LABWC_PID", previous_pid);
-  else
+  } else {
     qunsetenv("LABWC_PID");
+  }
 }

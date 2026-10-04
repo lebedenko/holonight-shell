@@ -18,7 +18,7 @@ class StorageService : public QAbstractListModel {
   Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY changed)
  public:
   explicit StorageService(QObject* parent = nullptr);
-  StorageService(HoloNight::System::StorageController* controller, QObject* parent = nullptr);
+  explicit StorageService(HoloNight::System::StorageController* controller, QObject* parent = nullptr);
   enum class Role : uint16_t {
     TargetId = Qt::UserRole + 1,
     DriveId,
@@ -35,7 +35,7 @@ class StorageService : public QAbstractListModel {
     TotalBytes,
     FreeBytes,
     OperationText,
-    ErrorText
+    ErrorText,
   };
   [[nodiscard]] int rowCount(const QModelIndex& parent = {}) const override;
   [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
@@ -58,13 +58,14 @@ class StorageService : public QAbstractListModel {
   Q_INVOKABLE void powerOff(const QString& targetId);
   Q_INVOKABLE void retry(const QString& targetId);
   Q_INVOKABLE void openVolume(const QString& targetId);
+  // NOLINTNEXTLINE(readability-convert-member-functions-to-static): QML method.
   Q_INVOKABLE void openInFiles() const;
   Q_INVOKABLE void showAllDevices() const;
  signals:
   void changed();
 
  private:
-  enum class DeviceKind { Optical, Thumb, Flash, HardDisk, SolidState, Unknown };
+  enum class DeviceKind : std::uint8_t { Optical, Thumb, Flash, HardDisk, SolidState, Unknown };
   static DeviceKind classifyDevice(const HoloNight::System::StorageDrive& drive);
   struct ErrorEntry {
     HoloNight::System::StorageOperation operation = HoloNight::System::StorageOperation::Mount;
@@ -78,8 +79,8 @@ class StorageService : public QAbstractListModel {
   [[nodiscard]] QString operationTextFor(const QString& targetId) const;
   [[nodiscard]] QString errorTextFor(const QString& targetId) const;
   void notifyNewlyConnectedDrives(const QSet<QString>& current_drive_ids);
-  void sendStorageNotification(const QString& summary) const;
-  void sendSafeToRemoveNotification(const QString& label) const;
+  static void sendStorageNotification(const QString& summary);
+  static void sendSafeToRemoveNotification(const QString& label);
   void sendDriveConnectedNotification(const QString& driveId) const;
   HoloNight::System::StorageController* controller_;
   QList<QVariantMap> rows_;

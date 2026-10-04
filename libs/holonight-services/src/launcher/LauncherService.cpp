@@ -142,10 +142,11 @@ QString findTerminalEmulator() {
     return env_terminal;
   }
 
-  static const QStringList candidates = {QStringLiteral("foot"),           QStringLiteral("kitty"),
-                                         QStringLiteral("alacritty"),      QStringLiteral("wezterm"),
-                                         QStringLiteral("konsole"),        QStringLiteral("gnome-terminal"),
-                                         QStringLiteral("xfce4-terminal"), QStringLiteral("xterm")};
+  static const QStringList candidates = {
+      QStringLiteral("foot"),           QStringLiteral("kitty"),   QStringLiteral("alacritty"),
+      QStringLiteral("wezterm"),        QStringLiteral("konsole"), QStringLiteral("gnome-terminal"),
+      QStringLiteral("xfce4-terminal"), QStringLiteral("xterm"),
+  };
   for (const QString& term : candidates) {
     if (!QStandardPaths::findExecutable(term).isEmpty()) {
       return term;
@@ -551,7 +552,7 @@ void LauncherService::runValidator() {
   }
   if (watcher_ == nullptr) {
     watcher_ = new QFutureWatcher<ScanResult>(this);
-    connect(watcher_, &QFutureWatcher<ScanResult>::finished, this, [this]() {
+    connect(watcher_, &QFutureWatcher<ScanResult>::finished, this, [this] {
       const ScanResult& result = watcher_->result();
       preserve_selection_on_model_reset_ = true;
       model_.setEntries(result.entries);
@@ -576,7 +577,7 @@ void LauncherService::runValidator() {
   }
 
   const QString db_path = db_path_;
-  watcher_->setFuture(QtConcurrent::run([this, db_path]() { return validateAgainstCache(scanner_, db_path); }));
+  watcher_->setFuture(QtConcurrent::run([this, db_path] { return validateAgainstCache(scanner_, db_path); }));
 }
 
 void LauncherService::captureSelectionBeforeModelReset() {
@@ -590,9 +591,11 @@ void LauncherService::captureSelectionBeforeModelReset() {
     return;
   }
 
-  SelectionIdentity identity{.desktop_file = entry->desktop_file,
-                             .previous_index = selected_index_,
-                             .is_action = model_.isActionRow(selected_index_)};
+  SelectionIdentity identity{
+      .desktop_file = entry->desktop_file,
+      .previous_index = selected_index_,
+      .is_action = model_.isActionRow(selected_index_),
+  };
   if (identity.is_action) {
     const int action_index = model_.actionIndexAt(selected_index_);
     if (action_index < 0 || action_index >= entry->actions.size()) {
@@ -640,16 +643,22 @@ void LauncherService::setSelectedIndexInternal(int index) {
 }
 
 QString LauncherService::iconForAppId(const QString& app_id) const {
-  if (app_id.isEmpty()) return {};
-  QString id = app_id;
-  if (id.endsWith(".desktop", Qt::CaseInsensitive)) id.chop(8);
+  if (app_id.isEmpty()) {
+    return {};
+  }
+  QString identifier = app_id;
+  if (identifier.endsWith(".desktop", Qt::CaseInsensitive)) {
+    identifier.chop(8);
+  }
   for (auto sensitivity : {Qt::CaseSensitive, Qt::CaseInsensitive}) {
     for (bool wm_class : {false, true}) {
       for (int i = 0; i < model_.allEntriesCount(); ++i) {
         const auto* entry = model_.allEntryAt(i);
         const QString candidate =
             wm_class ? entry->startup_wm_class : QFileInfo(entry->desktop_file).completeBaseName();
-        if (!candidate.isEmpty() && candidate.compare(wm_class ? app_id : id, sensitivity) == 0) return entry->icon;
+        if (!candidate.isEmpty() && candidate.compare(wm_class ? app_id : identifier, sensitivity) == 0) {
+          return entry->icon;
+        }
       }
     }
   }

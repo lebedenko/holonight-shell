@@ -11,7 +11,7 @@ class TrayModel;
 class LayerShellManager : public PerMonitorLayerManager {
   Q_OBJECT
  public:
-  LayerShellManager(TrayModel* tray_model, QObject* parent = nullptr);
+  explicit LayerShellManager(TrayModel* tray_model, QObject* parent = nullptr);
 
  protected:
   [[nodiscard]] LayerConfig layerConfig() const override;

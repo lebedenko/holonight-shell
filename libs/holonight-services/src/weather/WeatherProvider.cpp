@@ -155,7 +155,7 @@ void WeatherProvider::fetchGeolocation(const QString& geo_api_key) {
   query.addQueryItem(QStringLiteral("apiKey"), geo_api_key);
   url.setQuery(query);
   geo_reply_ = nam_.get(QNetworkRequest(url));
-  connect(geo_reply_, &QNetworkReply::finished, this, [this]() { onGeoReply(geo_reply_); });
+  connect(geo_reply_, &QNetworkReply::finished, this, [this] { onGeoReply(geo_reply_); });
 }
 
 void WeatherProvider::reverseGeocode(double lat, double lon, const QString& api_key) {
@@ -172,7 +172,7 @@ void WeatherProvider::reverseGeocode(double lat, double lon, const QString& api_
   query.addQueryItem(QStringLiteral("appid"), api_key);
   url.setQuery(query);
   location_reply_ = nam_.get(QNetworkRequest(url));
-  connect(location_reply_, &QNetworkReply::finished, this, [this]() { onLocationReply(location_reply_); });
+  connect(location_reply_, &QNetworkReply::finished, this, [this] { onLocationReply(location_reply_); });
 }
 
 void WeatherProvider::cancelPending() { cleanupReplies(); }

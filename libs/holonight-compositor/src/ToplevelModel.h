@@ -8,36 +8,45 @@ class ToplevelModel final : public QAbstractListModel {
   Q_OBJECT
  public:
   using QAbstractListModel::QAbstractListModel;
+  // NOLINTNEXTLINE(cppcoreguidelines-use-enum-class,performance-enum-size): Qt role API.
   enum Role { Id = Qt::UserRole + 1, Title, AppId, Activated, Minimized, Maximized, Fullscreen, Outputs, Operations };
-  int rowCount(const QModelIndex& parent = {}) const override { return parent.isValid() ? 0 : rows_.size(); }
-  QHash<int, QByteArray> roleNames() const override {
-    return {{Id, "windowId"},           {Title, "title"},         {AppId, "appId"},
-            {Activated, "activated"},   {Minimized, "minimized"}, {Maximized, "maximized"},
-            {Fullscreen, "fullscreen"}, {Outputs, "outputs"},     {Operations, "operations"}};
+  [[nodiscard]] int rowCount(const QModelIndex& parent = {}) const override {
+    return parent.isValid() ? 0 : static_cast<int>(rows_.size());
   }
-  QVariant data(const QModelIndex& index, int role) const override {
-    if (!index.isValid() || index.row() < 0 || index.row() >= rows_.size()) return {};
-    const auto& w = rows_[index.row()];
+  [[nodiscard]] QHash<int, QByteArray> roleNames() const override {
+    return {
+        {Id, "windowId"},           {Title, "title"},         {AppId, "appId"},
+        {Activated, "activated"},   {Minimized, "minimized"}, {Maximized, "maximized"},
+        {Fullscreen, "fullscreen"}, {Outputs, "outputs"},     {Operations, "operations"},
+    };
+  }
+  [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override {
+    if (!index.isValid() || index.row() < 0 || index.row() >= rows_.size()) {
+      return {};
+    }
+    const auto& window = rows_[index.row()];
     switch (role) {
       case Id:
-        return w.id;
+        return window.id;
       case Title:
-        return w.title;
+        return window.title;
       case AppId:
-        return w.app_id;
+        return window.app_id;
       case Activated:
-        return w.activated;
+        return window.activated;
       case Minimized:
-        return w.minimized;
+        return window.minimized;
       case Maximized:
-        return w.maximized;
+        return window.maximized;
       case Fullscreen:
-        return w.fullscreen;
+        return window.fullscreen;
       case Outputs:
-        return w.outputs;
+        return window.outputs;
       case Operations: {
         QVariantList result;
-        for (auto command : w.operations) result.append(static_cast<int>(command));
+        for (auto command : window.operations) {
+          result.append(static_cast<int>(command));
+        }
         return result;
       }
       default:
@@ -45,7 +54,9 @@ class ToplevelModel final : public QAbstractListModel {
     }
   }
   void replace(QList<CompositorWindow> rows) {
-    if (rows_ == rows) return;
+    if (rows_ == rows) {
+      return;
+    }
     beginResetModel();
     rows_ = std::move(rows);
     endResetModel();

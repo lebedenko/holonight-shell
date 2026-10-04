@@ -98,10 +98,11 @@ class FakeWeatherProvider : public WeatherProvider {
 // --- Part 1: Icon Mapping Tests (existing) ---
 
 TEST(WeatherService, IconPathMapsKnownDayAndNightConditions) {
-  const std::vector<std::pair<int, QString>> cases{{200, "11"}, {299, "11"}, {300, "09"}, {399, "09"}, {500, "10"},
-                                                   {504, "10"}, {511, "13"}, {520, "09"}, {531, "09"}, {600, "13"},
-                                                   {699, "13"}, {700, "50"}, {799, "50"}, {800, "01"}, {801, "02"},
-                                                   {802, "03"}, {803, "04"}, {804, "04"}};
+  const std::vector<std::pair<int, QString>> cases{
+      {200, "11"}, {299, "11"}, {300, "09"}, {399, "09"}, {500, "10"}, {504, "10"},
+      {511, "13"}, {520, "09"}, {531, "09"}, {600, "13"}, {699, "13"}, {700, "50"},
+      {799, "50"}, {800, "01"}, {801, "02"}, {802, "03"}, {803, "04"}, {804, "04"},
+  };
   for (const auto& [condition_id, icon] : cases) {
     EXPECT_EQ(WeatherService::iconPath(condition_id, true), weatherIcon(icon + QStringLiteral("d.svg")));
     EXPECT_EQ(WeatherService::iconPath(condition_id, false), weatherIcon(icon + QStringLiteral("n.svg")));
@@ -158,15 +159,19 @@ TEST(WeatherProviderParsing, ParseCurrentJsonSuccess) {
 }
 
 TEST(WeatherProviderParsing, ParsesLocationWithoutAdministrativeRegion) {
-  const QJsonObject automatic{{QStringLiteral("city"), QStringLiteral("Kyiv")},
-                              {QStringLiteral("country_name"), QStringLiteral("Ukraine")},
-                              {QStringLiteral("state_prov"), QStringLiteral("Kyiv City")}};
+  const QJsonObject automatic{
+      {QStringLiteral("city"), QStringLiteral("Kyiv")},
+      {QStringLiteral("country_name"), QStringLiteral("Ukraine")},
+      {QStringLiteral("state_prov"), QStringLiteral("Kyiv City")},
+  };
   EXPECT_EQ(WeatherProvider::parseLocationJson(automatic),
             (WeatherLocation{QStringLiteral("Kyiv"), QStringLiteral("Ukraine")}));
 
-  const QJsonObject reverse{{QStringLiteral("name"), QStringLiteral("Lviv")},
-                            {QStringLiteral("country"), QStringLiteral("UA")},
-                            {QStringLiteral("state"), QStringLiteral("Lviv Oblast")}};
+  const QJsonObject reverse{
+      {QStringLiteral("name"), QStringLiteral("Lviv")},
+      {QStringLiteral("country"), QStringLiteral("UA")},
+      {QStringLiteral("state"), QStringLiteral("Lviv Oblast")},
+  };
   EXPECT_EQ(WeatherProvider::parseLocationJson(reverse),
             (WeatherLocation{QStringLiteral("Lviv"), QStringLiteral("Ukraine")}));
 }

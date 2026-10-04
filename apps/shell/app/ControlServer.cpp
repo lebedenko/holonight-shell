@@ -38,7 +38,9 @@ QString ControlServer::socketPath() {
 
 ControlServer::DecodedCommand ControlServer::decodeCommand(const QByteArray& command) {
   const QByteArray trimmed = command.trimmed();
-  if (trimmed == QByteArrayLiteral("toggle-window-overview")) return {.type = CommandType::ToggleWindowOverview};
+  if (trimmed == QByteArrayLiteral("toggle-window-overview")) {
+    return {.type = CommandType::ToggleWindowOverview};
+  }
   if (trimmed == QByteArrayLiteral("toggle-launcher")) {
     return {.type = CommandType::ToggleLauncher};
   }

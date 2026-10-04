@@ -10,8 +10,8 @@ SessionService::SessionService(IntegrationPlugin* integration, QObject* parent)
     : QObject(parent),
       env_(std::make_unique<SystemProcessEnvironment>()),
       runner_(std::make_unique<DetachedCommandRunner>()),
-      backend_(integration ? integration->createSession(env_.get(), runner_.get())
-                           : std::make_unique<LogindSessionBackend>(env_.get(), runner_.get())) {}
+      backend_((integration != nullptr) ? integration->createSession(env_.get(), runner_.get())
+                                        : std::make_unique<LogindSessionBackend>(env_.get(), runner_.get())) {}
 
 SessionService::SessionService(std::unique_ptr<SessionBackend> backend, QObject* parent)
     : QObject(parent), backend_(std::move(backend)) {}

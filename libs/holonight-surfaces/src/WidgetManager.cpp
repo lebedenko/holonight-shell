@@ -49,10 +49,12 @@ WidgetManager::WidgetManager(WidgetDefinition definition, int margin, int index,
 }
 
 PerMonitorLayerManager::LayerConfig WidgetManager::layerConfig() const {
-  return {.layer = Holonight::Wayland::Layer::Bottom,
-          .namespace_name = QStringLiteral("widget"),
-          // Non-interactive in v1: an empty input region lets clicks fall through to windows below.
-          .extra_flags = Qt::WindowTransparentForInput};
+  return {
+      .layer = Holonight::Wayland::Layer::Bottom,
+      .namespace_name = QStringLiteral("widget"),
+      // Non-interactive in v1: an empty input region lets clicks fall through to windows below.
+      .extra_flags = Qt::WindowTransparentForInput,
+  };
 }
 
 void WidgetManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
@@ -76,23 +78,29 @@ void WidgetManager::onHostConfigured(const QString& monitor_name) { applyVisibil
 PerMonitorLayerManager::QmlSource WidgetManager::qmlSource(QScreen* screen) {
   const QUrl url(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml"));
   if (definition_.type == WidgetType::Clock) {
-    return {.url = url,
-            .initial_properties = {
+    return {
+        .url = url,
+        .initial_properties =
+            {
                 {QStringLiteral("widgetType"), QStringLiteral("clock")},
                 {QStringLiteral("barMonitorName"), screen->name()},
                 {QStringLiteral("timeText"), clock_time_text_},
                 {QStringLiteral("secondsText"), clock_seconds_text_},
                 {QStringLiteral("dateText"), clock_date_text_},
-            }};
+            },
+    };
   }
-  return {.url = url,
-          .initial_properties = {
+  return {
+      .url = url,
+      .initial_properties =
+          {
               {QStringLiteral("widgetType"), QStringLiteral("time-to-event")},
               {QStringLiteral("barMonitorName"), screen->name()},
               {QStringLiteral("titleText"), definition_.time_to_event.title},
               {QStringLiteral("remainingText"), remaining_text_},
               {QStringLiteral("deadlineLabelText"), deadlineLabelText()},
-          }};
+          },
+  };
 }
 
 bool WidgetManager::shouldCreateSurface(QScreen* screen) const {

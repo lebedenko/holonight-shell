@@ -62,28 +62,35 @@ class AuthenticationUiFixture : public QObject {
     model_.cancel();
     QList<Holonight::Authentication::Identity> identities;
     for (int index = 0; index < count; ++index) {
-      identities.append({.stable_id = QStringLiteral("account-%1").arg(index),
-                         .display_label = QStringLiteral("Account %1").arg(index),
-                         .uid = static_cast<uint>(1000 + index),
-                         .has_uid = true,
-                         .username = index == 2 ? QString{} : QStringLiteral("user-%1").arg(index),
-                         .full_name = index == 0 ? QStringLiteral("<b>Full Name</b>") : QString{}});
+      identities.append({
+          .stable_id = QStringLiteral("account-%1").arg(index),
+          .display_label = QStringLiteral("Account %1").arg(index),
+          .uid = static_cast<uint>(1000 + index),
+          .has_uid = true,
+          .username = index == 2 ? QString{} : QStringLiteral("user-%1").arg(index),
+          .full_name = index == 0 ? QStringLiteral("<b>Full Name</b>") : QString{},
+      });
     }
-    return coordinator_.enqueue({.token = QStringLiteral("ui-%1").arg(++request_index_),
-                                 .action_id = QStringLiteral("org.example.synthetic"),
-                                 .message = QStringLiteral("Synthetic authentication request"),
-                                 .cookie = QStringLiteral("test-only"),
-                                 .identities = identities,
-                                 .complete = [](bool) {}});
+    return coordinator_.enqueue({
+        .token = QStringLiteral("ui-%1").arg(++request_index_),
+        .action_id = QStringLiteral("org.example.synthetic"),
+        .message = QStringLiteral("Synthetic authentication request"),
+        .cookie = QStringLiteral("test-only"),
+        .identities = identities,
+        .complete = [](bool) {},
+    });
   }
   Q_INVOKABLE bool beginAskpass() {
     model_.cancel();
-    return model_.beginRequest({.token = QStringLiteral("askpass-%1").arg(++request_index_),
-                                .message = QStringLiteral("Synthetic Askpass request"),
-                                .prompt = QStringLiteral("Password:"),
-                                .input_mode = Model::InputMode::Secret,
-                                .frontend_kind = Model::FrontendKind::SudoAskpass},
-                               [](auto, const QString&) {});
+    return model_.beginRequest(
+        {
+            .token = QStringLiteral("askpass-%1").arg(++request_index_),
+            .message = QStringLiteral("Synthetic Askpass request"),
+            .prompt = QStringLiteral("Password:"),
+            .input_mode = Model::InputMode::Secret,
+            .frontend_kind = Model::FrontendKind::SudoAskpass,
+        },
+        [](auto, const QString&) {});
   }
   Q_INVOKABLE bool updateProfile(const QString& stable_id, const QString& username, const QString& full_name,
                                  const QUrl& avatar) {

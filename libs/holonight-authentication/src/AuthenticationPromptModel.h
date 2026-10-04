@@ -38,7 +38,7 @@ class AuthenticationPromptModel : public QObject {
     Busy,
     RetryableError,
     Completed,
-    Cancelled
+    Cancelled,
   };
   Q_ENUM(LifecycleState)
   enum class ResponseKind : quint8 { Text, Confirmation, Acknowledgement, Cancellation, Identity, Retry };

@@ -60,18 +60,20 @@ bool TooltipSurface::ensureSurface(const QString& screen_name, int anchor_x, int
 LayerSurfaceSpec TooltipSurface::surfaceSpec(QScreen* screen, int anchor_x, int anchor_width) {
   const int left =
       TooltipGeometry::leftMargin(screen->geometry().width(), screen->geometry().x(), anchor_x, anchor_width);
-  return {.output = screen,
-          .name_space = QStringLiteral("tooltip"),
-          .layer = Layer::Top,
-          .anchors = Anchor::Top | Anchor::Left,
-          .width = TooltipGeometry::kWidth,
-          .height = kTooltipHeight,
-          .margin_top = kTooltipGap,
-          .margin_left = left,
-          .exclusive_zone = 0,
-          .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Tooltip/TooltipPopup.qml")),
-          .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
-          .color = Qt::transparent};
+  return {
+      .output = screen,
+      .name_space = QStringLiteral("tooltip"),
+      .layer = Layer::Top,
+      .anchors = Anchor::Top | Anchor::Left,
+      .width = TooltipGeometry::kWidth,
+      .height = kTooltipHeight,
+      .margin_top = kTooltipGap,
+      .margin_left = left,
+      .exclusive_zone = 0,
+      .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Tooltip/TooltipPopup.qml")),
+      .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+      .color = Qt::transparent,
+  };
 }
 
 void TooltipSurface::onSurfaceTerminated() { setTooltipVisible(false); }

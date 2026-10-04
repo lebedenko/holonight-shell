@@ -333,10 +333,14 @@ TEST(MimeServiceDefaults, ImageViewerSetterUsesDeclaredImageMimeTypes) {
   MimeService service(QStringList{}, std::move(owned_resolver));
   QTest::qWait(0);
 
-  service.setDefaultImageViewer(
-      QStringLiteral("org.test.QView.desktop"),
-      {QStringLiteral("image/jpeg"), QStringLiteral("image/jxl"), QStringLiteral("image/jpg"),
-       QStringLiteral("image/pjpeg"), QStringLiteral("image/x-png"), QStringLiteral("application/pdf")});
+  service.setDefaultImageViewer(QStringLiteral("org.test.QView.desktop"), {
+                                                                              QStringLiteral("image/jpeg"),
+                                                                              QStringLiteral("image/jxl"),
+                                                                              QStringLiteral("image/jpg"),
+                                                                              QStringLiteral("image/pjpeg"),
+                                                                              QStringLiteral("image/x-png"),
+                                                                              QStringLiteral("application/pdf"),
+                                                                          });
 
   EXPECT_EQ(resolver->set_defaults.value(QStringLiteral("image/jpeg")), QStringLiteral("org.test.QView.desktop"));
   EXPECT_EQ(resolver->set_defaults.value(QStringLiteral("image/png")), QStringLiteral("org.test.QView.desktop"));
@@ -366,9 +370,12 @@ TEST(MimeServiceDefaults, BrowserSetterDoesNotUseDeclaredImageMimeTypes) {
   MimeService service(QStringList{}, std::move(owned_resolver));
   QTest::qWait(0);
 
-  service.setDefaultBrowser(QStringLiteral("firefox.desktop"),
-                            {QStringLiteral("text/html"), QStringLiteral("application/xhtml+xml"),
-                             QStringLiteral("image/png"), QStringLiteral("image/jpeg")});
+  service.setDefaultBrowser(QStringLiteral("firefox.desktop"), {
+                                                                   QStringLiteral("text/html"),
+                                                                   QStringLiteral("application/xhtml+xml"),
+                                                                   QStringLiteral("image/png"),
+                                                                   QStringLiteral("image/jpeg"),
+                                                               });
 
   EXPECT_EQ(resolver->set_browser_arg, QStringLiteral("firefox.desktop"));
   EXPECT_EQ(resolver->set_defaults.value(QStringLiteral("text/html")), QStringLiteral("firefox.desktop"));

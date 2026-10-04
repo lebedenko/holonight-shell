@@ -43,7 +43,11 @@ struct CoordinatorFixture {
       &model, 1000,
       [this](const QString& identity, const QString& cookie, quint64 generation, PamSession::Callbacks callbacks) {
         auto state = std::make_shared<FakeSessionState>(FakeSessionState{
-            .callbacks = std::move(callbacks), .identity = identity, .cookie = cookie, .generation = generation});
+            .callbacks = std::move(callbacks),
+            .identity = identity,
+            .cookie = cookie,
+            .generation = generation,
+        });
         sessions.append(state);
         return std::make_unique<FakeSession>(state);
       }};
@@ -52,12 +56,14 @@ Identity identity(const QString& stable_id, uint uid) {
   return {.stable_id = stable_id, .display_label = stable_id, .uid = uid, .has_uid = true};
 }
 PolkitRequest request(const QString& token, QList<Identity> identities, QList<bool>* results) {
-  return {.token = token,
-          .action_id = QStringLiteral("org.example.action"),
-          .message = QStringLiteral("Authenticate"),
-          .cookie = QStringLiteral("cookie-%1").arg(token),
-          .identities = std::move(identities),
-          .complete = [results](bool result) { results->append(result); }};
+  return {
+      .token = token,
+      .action_id = QStringLiteral("org.example.action"),
+      .message = QStringLiteral("Authenticate"),
+      .cookie = QStringLiteral("cookie-%1").arg(token),
+      .identities = std::move(identities),
+      .complete = [results](bool result) { results->append(result); },
+  };
 }
 void drainEvents() { QCoreApplication::processEvents(); }
 }  // namespace
@@ -74,9 +80,11 @@ TEST(AuthenticationText, NormalizesControlsLinesAndLimits) {
 }
 
 TEST(AuthenticationText, FiltersUnsafeRequesterDetails) {
-  const auto details = safeRequesterDetails({{QStringLiteral("application"), QStringLiteral("Settings")},
-                                             {QStringLiteral("vendor"), QStringLiteral("/usr/bin/tool")},
-                                             {QStringLiteral("command"), QStringLiteral("safe-looking")}});
+  const auto details = safeRequesterDetails({
+      {QStringLiteral("application"), QStringLiteral("Settings")},
+      {QStringLiteral("vendor"), QStringLiteral("/usr/bin/tool")},
+      {QStringLiteral("command"), QStringLiteral("safe-looking")},
+  });
   EXPECT_EQ(details.size(), 1);
   EXPECT_EQ(details.value(QStringLiteral("application")).toString(), QStringLiteral("Settings"));
 }
@@ -119,12 +127,15 @@ TEST(AuthenticationAskpass, DispatchesFromBasenameAndExactHint) {
 
 TEST(AuthenticationModels, PreserveIdentityOrderAndStableSelection) {
   IdentityListModel model;
-  model.setItems(
-      {{.stable_id = QStringLiteral("first"), .display_label = QStringLiteral("Same"), .uid = 0, .has_uid = false},
-       {.stable_id = QStringLiteral("current"),
-        .display_label = QStringLiteral("Same"),
-        .uid = 1000,
-        .has_uid = true}});
+  model.setItems({
+      {.stable_id = QStringLiteral("first"), .display_label = QStringLiteral("Same"), .uid = 0, .has_uid = false},
+      {
+          .stable_id = QStringLiteral("current"),
+          .display_label = QStringLiteral("Same"),
+          .uid = 1000,
+          .has_uid = true,
+      },
+  });
   EXPECT_EQ(model.rowCount(), 2);
   EXPECT_EQ(model.data(model.index(0), IdentityListModel::StableIdRole).toString(), QStringLiteral("first"));
   EXPECT_EQ(model.preferred(1000), QStringLiteral("current"));
@@ -135,14 +146,17 @@ TEST(AuthenticationPrompt, RejectsInvalidOperationsAndClearsOnSubmission) {
   int callbacks = 0;
   QString response;
   QObject::connect(&model, &AuthenticationPromptModel::clearSensitiveInput, [&] { response.clear(); });
-  model.beginRequest({.token = QStringLiteral("opaque"),
-                      .prompt = QStringLiteral("Password"),
-                      .input_mode = AuthenticationPromptModel::InputMode::Secret},
-                     [&](auto kind, const QString& value) {
-                       ++callbacks;
-                       EXPECT_EQ(kind, AuthenticationPromptModel::ResponseKind::Text);
-                       response = value;
-                     });
+  model.beginRequest(
+      {
+          .token = QStringLiteral("opaque"),
+          .prompt = QStringLiteral("Password"),
+          .input_mode = AuthenticationPromptModel::InputMode::Secret,
+      },
+      [&](auto kind, const QString& value) {
+        ++callbacks;
+        EXPECT_EQ(kind, AuthenticationPromptModel::ResponseKind::Text);
+        response = value;
+      });
   model.confirm(true);
   EXPECT_EQ(callbacks, 0);
   model.respond(QStringLiteral("marker-secret"));
@@ -307,8 +321,11 @@ TEST(PolkitIntegration, IndependentAgentInstancesDoNotCrossRouteSameUidSessions)
 
 TEST(PolkitSecurity, HasNoPasswordOutputOrRemoteControlPath) {
   const QString source_root = QString::fromUtf8(TEST_SOURCE_DIR) + QStringLiteral("/apps/authentication/polkit/");
-  for (const QString& name : {QStringLiteral("main.cpp"), QStringLiteral("PolkitListenerBridge.cpp"),
-                              QStringLiteral("PolkitSessionAdapter.cpp")}) {
+  for (const QString& name : {
+           QStringLiteral("main.cpp"),
+           QStringLiteral("PolkitListenerBridge.cpp"),
+           QStringLiteral("PolkitSessionAdapter.cpp"),
+       }) {
     QFile file(source_root + name);
     ASSERT_TRUE(file.open(QIODevice::ReadOnly));
     const QByteArray source = file.readAll();
@@ -347,8 +364,12 @@ TEST(AuthenticationWriter, StopsOnZeroAndHardFailureIncludingAfterPartialOutput)
 
 TEST(AuthenticationPrompt, ConsumesEachPromptBeforeCallingController) {
   using Model = AuthenticationPromptModel;
-  for (const auto mode : {Model::InputMode::Visible, Model::InputMode::Secret, Model::InputMode::Confirmation,
-                          Model::InputMode::Notification}) {
+  for (const auto mode : {
+           Model::InputMode::Visible,
+           Model::InputMode::Secret,
+           Model::InputMode::Confirmation,
+           Model::InputMode::Notification,
+       }) {
     Model model;
     int calls = 0;
     bool cleared = false;
@@ -399,12 +420,22 @@ TEST(PolkitCoordinator, IgnoresAllCallbacksAfterFailedSessionBeforeRetry) {
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(AuthenticationPrompt, RejectsOperationsOutsideTheirModeAndLifecycle) {
   using Model = AuthenticationPromptModel;
-  for (const auto mode : {Model::InputMode::None, Model::InputMode::Visible, Model::InputMode::Secret,
-                          Model::InputMode::Confirmation, Model::InputMode::Notification}) {
-    for (const auto state :
-         {Model::LifecycleState::Idle, Model::LifecycleState::SelectingIdentity, Model::LifecycleState::AwaitingInput,
-          Model::LifecycleState::Busy, Model::LifecycleState::RetryableError, Model::LifecycleState::Completed,
-          Model::LifecycleState::Cancelled}) {
+  for (const auto mode : {
+           Model::InputMode::None,
+           Model::InputMode::Visible,
+           Model::InputMode::Secret,
+           Model::InputMode::Confirmation,
+           Model::InputMode::Notification,
+       }) {
+    for (const auto state : {
+             Model::LifecycleState::Idle,
+             Model::LifecycleState::SelectingIdentity,
+             Model::LifecycleState::AwaitingInput,
+             Model::LifecycleState::Busy,
+             Model::LifecycleState::RetryableError,
+             Model::LifecycleState::Completed,
+             Model::LifecycleState::Cancelled,
+         }) {
       Model model;
       int calls = 0;
       if (state != Model::LifecycleState::Idle) {

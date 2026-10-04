@@ -367,9 +367,11 @@ TEST(SessionIntegrationServiceTest, ReportsMissingSystemdDesktopEnvironmentAsWar
   auto runner = std::make_unique<FakeCommandRunner>();
   runner->executables.insert(QStringLiteral("systemctl"));
   runner->results.insert(QStringLiteral("systemctl --user show-environment"),
-                         {.exit_code = 0,
-                          .stdout_text = QStringLiteral("WAYLAND_DISPLAY=wayland-1\nXDG_SESSION_TYPE=wayland\n"),
-                          .stderr_text = {}});
+                         {
+                             .exit_code = 0,
+                             .stdout_text = QStringLiteral("WAYLAND_DISPLAY=wayland-1\nXDG_SESSION_TYPE=wayland\n"),
+                             .stderr_text = {},
+                         });
   auto bus = std::make_unique<FakeBusProbe>();
   SessionIntegrationService service = makeService(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {});
 
@@ -387,17 +389,19 @@ TEST(SessionIntegrationServiceTest, ParsesSystemdEnvironmentValuesWithEquals) {
   runner->executables.insert(QStringLiteral("systemctl"));
   runner->results.insert(
       QStringLiteral("systemctl --user show-environment"),
-      {.exit_code = 0,
-       .stdout_text = QStringLiteral("IGNORED_LINE\n"
-                                     "WAYLAND_DISPLAY=wayland-1\n"
-                                     "XDG_CURRENT_DESKTOP=Hyprland\n"
-                                     "XDG_SESSION_DESKTOP=Hyprland\n"
-                                     "XDG_SESSION_TYPE=wayland\n"
-                                     "XDG_MENU_PREFIX=hyprland-\n"
-                                     "XDG_DATA_DIRS=/usr/local/share:/usr/share\n"
-                                     "XDG_CONFIG_DIRS=/etc/xdg\n"
-                                     "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus,guid=a=b=c\n"),
-       .stderr_text = {}});
+      {
+          .exit_code = 0,
+          .stdout_text = QStringLiteral("IGNORED_LINE\n"
+                                        "WAYLAND_DISPLAY=wayland-1\n"
+                                        "XDG_CURRENT_DESKTOP=Hyprland\n"
+                                        "XDG_SESSION_DESKTOP=Hyprland\n"
+                                        "XDG_SESSION_TYPE=wayland\n"
+                                        "XDG_MENU_PREFIX=hyprland-\n"
+                                        "XDG_DATA_DIRS=/usr/local/share:/usr/share\n"
+                                        "XDG_CONFIG_DIRS=/etc/xdg\n"
+                                        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus,guid=a=b=c\n"),
+          .stderr_text = {},
+      });
   auto bus = std::make_unique<FakeBusProbe>();
   QProcessEnvironment env = baseEnvironment(temp.path());
   env.insert(QStringLiteral("XDG_DATA_DIRS"), QStringLiteral("/usr/local/share:/usr/share"));
@@ -609,9 +613,11 @@ TEST(SessionIntegrationServiceTest, ReportsPortalAndDesktopDbusOwners) {
   bus->owners.insert(QStringLiteral("org.freedesktop.Notifications"), QStringLiteral(":1.12"));
   bus->owners.insert(QStringLiteral("org.kde.StatusNotifierWatcher"), QStringLiteral(":1.13"));
   bus->owners.insert(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"), QStringLiteral(":1.14"));
-  bus->names = {QStringLiteral("org.freedesktop.impl.portal.desktop.hyprland"),
-                QStringLiteral("org.freedesktop.impl.portal.desktop.gtk"),
-                QStringLiteral("org.freedesktop.impl.portal.desktop.holonight")};
+  bus->names = {
+      QStringLiteral("org.freedesktop.impl.portal.desktop.hyprland"),
+      QStringLiteral("org.freedesktop.impl.portal.desktop.gtk"),
+      QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"),
+  };
   SessionIntegrationService service = makeService(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {});
 
   refreshAndWait(service);
@@ -793,8 +799,13 @@ TEST(SessionIntegrationServiceTest, RebuildApplicationCachesIssuesExactlyOneRebu
 
   auto runner = std::make_unique<ThreadSafeSpyCommandRunner>();
   ThreadSafeSpyCommandRunner* runner_ptr = runner.get();
-  runner->executables = {QStringLiteral("update-desktop-database"), QStringLiteral("kbuildsycoca6"),
-                         QStringLiteral("systemctl"), QStringLiteral("xdg-settings"), QStringLiteral("xdg-mime")};
+  runner->executables = {
+      QStringLiteral("update-desktop-database"),
+      QStringLiteral("kbuildsycoca6"),
+      QStringLiteral("systemctl"),
+      QStringLiteral("xdg-settings"),
+      QStringLiteral("xdg-mime"),
+  };
   auto bus = std::make_unique<FakeBusProbe>();
   SessionIntegrationService service(std::move(runner), std::move(bus), baseEnvironment(temp.path()), {app_dir});
 

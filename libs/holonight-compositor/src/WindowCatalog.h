@@ -9,40 +9,53 @@ class WindowCatalog {
  public:
   void replace(const QList<CompositorWindow>& windows) {
     for (const auto& window : windows) {
-      if (window.activated && !active_.contains(window.id)) history_[window.id] = ++sequence_;
+      if (window.activated && !active_.contains(window.id)) {
+        history_[window.id] = ++sequence_;
+      }
     }
     active_.clear();
     for (const auto& window : windows) {
-      if (window.activated) active_.insert(window.id, true);
+      if (window.activated) {
+        active_.insert(window.id, true);
+      }
     }
     windows_ = windows;
     for (auto it = history_.begin(); it != history_.end();) {
-      if (!find(it.key()))
+      if (find(it.key()) == nullptr) {
         it = history_.erase(it);
-      else
+      } else {
         ++it;
+      }
     }
   }
-  const CompositorWindow* find(const QString& id) const {
-    for (const auto& window : windows_)
-      if (window.id == id) return &window;
+  [[nodiscard]] const CompositorWindow* find(const QString& identifier) const {
+    for (const auto& window : windows_) {
+      if (window.id == identifier) {
+        return &window;
+      }
+    }
     return nullptr;
   }
-  WindowCommandResult validate(const QString& id, WindowCommand command, bool connected) const {
-    if (!connected) return WindowCommandResult::Disconnected;
-    const auto* window = find(id);
-    if (!window) return WindowCommandResult::InvalidWindow;
+  [[nodiscard]] WindowCommandResult validate(const QString& identifier, WindowCommand command, bool connected) const {
+    if (!connected) {
+      return WindowCommandResult::Disconnected;
+    }
+    const auto* window = find(identifier);
+    if (window == nullptr) {
+      return WindowCommandResult::InvalidWindow;
+    }
     return window->operations.contains(command) ? WindowCommandResult::Accepted : WindowCommandResult::Unsupported;
   }
-  QList<CompositorWindow> search(const QString& query) const {
+  [[nodiscard]] QList<CompositorWindow> search(const QString& query) const {
     QList<CompositorWindow> result;
     for (const auto& window : windows_) {
-      if (window.title.contains(query, Qt::CaseInsensitive) || window.app_id.contains(query, Qt::CaseInsensitive))
+      if (window.title.contains(query, Qt::CaseInsensitive) || window.app_id.contains(query, Qt::CaseInsensitive)) {
         result.append(window);
+      }
     }
     return result;
   }
-  quint64 activationOrder(const QString& id) const { return history_.value(id); }
+  [[nodiscard]] quint64 activationOrder(const QString& identifier) const { return history_.value(identifier); }
   static QString groupKey(const CompositorWindow& window, bool grouped) {
     return grouped && !window.app_id.isEmpty() ? QStringLiteral("app:") + window.app_id
                                                : QStringLiteral("window:") + window.id;

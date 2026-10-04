@@ -84,7 +84,7 @@ void CalendarSyncManager::runTestConnections() {
   auto shared_errors = std::make_shared<QList<SyncError>>();
   auto* watcher = new QFutureWatcher<void>(this);
   sync_watchers_.append(watcher);
-  connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, shared_errors]() {
+  connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, shared_errors] {
     sync_watchers_.removeOne(watcher);
     watcher->deleteLater();
     for (const SyncError& err : *shared_errors) {
@@ -104,7 +104,7 @@ void CalendarSyncManager::runTestConnections() {
     }
   });
 
-  watcher->setFuture(QtConcurrent::run([this, shared_errors]() {
+  watcher->setFuture(QtConcurrent::run([this, shared_errors] {
     for (const auto& provider : caldav_providers_) {
       const auto result = provider->testConnection();
       if (!result) {
@@ -145,20 +145,22 @@ void CalendarSyncManager::runProviderSync(ICalendarProvider& provider, const QSt
   in_progress_.insert(key, true);
 
   const QDateTime now = QDateTime::currentDateTimeUtc();
-  const DateRange range{.start_utc = now.addDays(-CalendarCache::kRetainPastDays),
-                        .end_utc = now.addDays(CalendarCache::kRetainFutureDays)};
+  const DateRange range{
+      .start_utc = now.addDays(-CalendarCache::kRetainPastDays),
+      .end_utc = now.addDays(CalendarCache::kRetainFutureDays),
+  };
 
   auto shared_result = std::make_shared<std::expected<QList<CalendarEvent>, SyncError>>();
   auto* watcher = new QFutureWatcher<void>(this);
   sync_watchers_.append(watcher);
   auto* ptr = &provider;
 
-  connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, account, provider_type, shared_result]() {
+  connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, account, provider_type, shared_result] {
     sync_watchers_.removeOne(watcher);
     watcher->deleteLater();
     onSyncFinished(provider_type, account, std::move(*shared_result));
   });
-  watcher->setFuture(QtConcurrent::run([ptr, range, shared_result]() { *shared_result = ptr->fetchEvents(range); }));
+  watcher->setFuture(QtConcurrent::run([ptr, range, shared_result] { *shared_result = ptr->fetchEvents(range); }));
 }
 
 void CalendarSyncManager::onSyncFinished(const QString& provider_type, const QString& account,
@@ -190,8 +192,10 @@ void CalendarSyncManager::onSyncFinished(const QString& provider_type, const QSt
   }
 
   if (!cache_.upsertEvents(*result) || !cache_.reconcileAccountEvents(provider_type, account, *result)) {
-    handle_error(SyncError{.kind = SyncError::Kind::StorageError,
-                           .message = QStringLiteral("Failed to persist calendar sync results")});
+    handle_error(SyncError{
+        .kind = SyncError::Kind::StorageError,
+        .message = QStringLiteral("Failed to persist calendar sync results"),
+    });
     return;
   }
 

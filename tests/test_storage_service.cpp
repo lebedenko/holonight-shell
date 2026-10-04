@@ -26,12 +26,14 @@ class FakeStorage : public StorageBackend {
   void start() override {}
   void stop() override {}
   void execute(const QString& targetId, StorageOperation operation, const QString& target) override {
-    calls.append({.requestId = targetId,
-                  .targetId = target,
-                  .operation = operation,
-                  .mountPath = {},
-                  .errorName = {},
-                  .errorMessage = {}});
+    calls.append({
+        .requestId = targetId,
+        .targetId = target,
+        .operation = operation,
+        .mountPath = {},
+        .errorName = {},
+        .errorMessage = {},
+    });
   }
   void publish() {
     emit snapshotChanged(drives, volumes, true);
@@ -41,12 +43,14 @@ class FakeStorage : public StorageBackend {
   // would, correlating by the controller-assigned stepId recorded in `calls`.
   void completeLast(bool success, const QString& mountPath = {}) {
     const auto request = calls.last();
-    emit operationFinished({.requestId = request.requestId,
-                            .targetId = request.targetId,
-                            .operation = request.operation,
-                            .mountPath = mountPath,
-                            .errorName = success ? QString() : QStringLiteral("org.holonight.Storage.Busy"),
-                            .errorMessage = success ? QString() : QStringLiteral("busy")});
+    emit operationFinished({
+        .requestId = request.requestId,
+        .targetId = request.targetId,
+        .operation = request.operation,
+        .mountPath = mountPath,
+        .errorName = success ? QString() : QStringLiteral("org.holonight.Storage.Busy"),
+        .errorMessage = success ? QString() : QStringLiteral("busy"),
+    });
     QCoreApplication::processEvents();
   }
 };
@@ -95,7 +99,7 @@ class StorageNotifications : public testing::Test {
       qputenv("XDG_STATE_HOME", previous_state_home_);
     }
   }
-  void flushNotifications() {
+  static void flushNotifications() {
     // A bus round trip fences previously queued storage Notify calls without a timed sleep.
     auto message = QDBusMessage::createMethodCall(
         QStringLiteral("org.freedesktop.Notifications"), QStringLiteral("/org/freedesktop/Notifications"),
@@ -104,11 +108,18 @@ class StorageNotifications : public testing::Test {
     ASSERT_TRUE(QTest::qWaitFor([&] { return reply.isFinished(); }));
     ASSERT_FALSE(reply.isError());
   }
-  QString summary() const { return notifications_->index(0).data(NotificationService::SummaryRole).toString(); }
+  [[nodiscard]] QString summary() const {
+    return notifications_->index(0).data(NotificationService::SummaryRole).toString();
+  }
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): TEST_F state.
   QTemporaryDir state_dir_;
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): TEST_F state.
   QByteArray previous_state_home_;
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): TEST_F state.
   NotificationRuleModel rules_;
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): TEST_F state.
   std::unique_ptr<NotificationService> notifications_;
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes): TEST_F state.
   std::unique_ptr<NotificationServer> server_;
 };
 }  // namespace
@@ -359,8 +370,8 @@ TEST_F(StorageNotifications, HotplugBypassesDndAndAppRulesWithoutEnteringHistory
   backend.publish();
   flushNotifications();
   ASSERT_EQ(notifications_->rowCount(), 1);
-  const auto id = notifications_->index(0).data(NotificationService::NotifIdRole).toUInt();
-  notifications_->requestClose(id);
+  const auto identifier = notifications_->index(0).data(NotificationService::NotifIdRole).toUInt();
+  notifications_->requestClose(identifier);
   EXPECT_TRUE(notifications_->recentHistoryGrouped(10).isEmpty());
   EXPECT_EQ(notifications_->unreadCount(), 0);
 }
@@ -458,22 +469,134 @@ TEST(ShellStorage, MetadataClassifierKeepsIconsAndSubtitlesConsistent) {
     QString label;
   };
   const QList<Case> cases = {
-      {"thumb", {}, {}, false, "qrc:/HolonightShell/common/usb-stick.svg", "USB flash drive"},
-      {"", {}, 0, false, "drive-harddisk-solidstate-symbolic", "Solid state"},
-      {"", {}, 5400, false, "drive-harddisk-symbolic", "Hard disk"},
-      {"", {}, {}, false, "drive-removable-media-symbolic", "Removable"},
-      {"", {"thumb", "flash_sd"}, 7200, false, "qrc:/HolonightShell/common/usb-stick.svg", "USB flash drive"},
-      {"flash", {}, 0, false, "media-flash-symbolic", "Flash media"},
-      {"", {"flash"}, 7200, false, "media-flash-symbolic", "Flash media"},
-      {"flash_sd", {}, 7200, false, "media-flash-symbolic", "Flash media"},
-      {"", {"flash_mmc"}, {}, false, "media-flash-symbolic", "Flash media"},
-      {"thumb", {"optical_cd"}, 0, false, "media-optical-symbolic", "Optical"},
-      {"optical", {"thumb"}, 7200, false, "media-optical-symbolic", "Optical"},
-      {"optical_dvd", {"flash_sd"}, {}, false, "media-optical-symbolic", "Optical"},
-      {"thumb", {}, {}, true, "media-optical-symbolic", "Optical"},
-      {"", {}, -1, false, "drive-removable-media-symbolic", "Removable"},
-      {"optical_unknown", {}, {}, false, "drive-removable-media-symbolic", "Removable"},
-      {"thumb_ssd", {"nvme", "not_flash_sd"}, {}, false, "drive-removable-media-symbolic", "Removable"},
+      {
+          .media = "thumb",
+          .compatibility = {},
+          .rotation = {},
+          .optical = false,
+          .icon = "qrc:/HolonightShell/common/usb-stick.svg",
+          .label = "USB flash drive",
+      },
+      {
+          .media = "",
+          .compatibility = {},
+          .rotation = 0,
+          .optical = false,
+          .icon = "drive-harddisk-solidstate-symbolic",
+          .label = "Solid state",
+      },
+      {
+          .media = "",
+          .compatibility = {},
+          .rotation = 5400,
+          .optical = false,
+          .icon = "drive-harddisk-symbolic",
+          .label = "Hard disk",
+      },
+      {
+          .media = "",
+          .compatibility = {},
+          .rotation = {},
+          .optical = false,
+          .icon = "drive-removable-media-symbolic",
+          .label = "Removable",
+      },
+      {
+          .media = "",
+          .compatibility = {"thumb", "flash_sd"},
+          .rotation = 7200,
+          .optical = false,
+          .icon = "qrc:/HolonightShell/common/usb-stick.svg",
+          .label = "USB flash drive",
+      },
+      {
+          .media = "flash",
+          .compatibility = {},
+          .rotation = 0,
+          .optical = false,
+          .icon = "media-flash-symbolic",
+          .label = "Flash media",
+      },
+      {
+          .media = "",
+          .compatibility = {"flash"},
+          .rotation = 7200,
+          .optical = false,
+          .icon = "media-flash-symbolic",
+          .label = "Flash media",
+      },
+      {
+          .media = "flash_sd",
+          .compatibility = {},
+          .rotation = 7200,
+          .optical = false,
+          .icon = "media-flash-symbolic",
+          .label = "Flash media",
+      },
+      {
+          .media = "",
+          .compatibility = {"flash_mmc"},
+          .rotation = {},
+          .optical = false,
+          .icon = "media-flash-symbolic",
+          .label = "Flash media",
+      },
+      {
+          .media = "thumb",
+          .compatibility = {"optical_cd"},
+          .rotation = 0,
+          .optical = false,
+          .icon = "media-optical-symbolic",
+          .label = "Optical",
+      },
+      {
+          .media = "optical",
+          .compatibility = {"thumb"},
+          .rotation = 7200,
+          .optical = false,
+          .icon = "media-optical-symbolic",
+          .label = "Optical",
+      },
+      {
+          .media = "optical_dvd",
+          .compatibility = {"flash_sd"},
+          .rotation = {},
+          .optical = false,
+          .icon = "media-optical-symbolic",
+          .label = "Optical",
+      },
+      {
+          .media = "thumb",
+          .compatibility = {},
+          .rotation = {},
+          .optical = true,
+          .icon = "media-optical-symbolic",
+          .label = "Optical",
+      },
+      {
+          .media = "",
+          .compatibility = {},
+          .rotation = -1,
+          .optical = false,
+          .icon = "drive-removable-media-symbolic",
+          .label = "Removable",
+      },
+      {
+          .media = "optical_unknown",
+          .compatibility = {},
+          .rotation = {},
+          .optical = false,
+          .icon = "drive-removable-media-symbolic",
+          .label = "Removable",
+      },
+      {
+          .media = "thumb_ssd",
+          .compatibility = {"nvme", "not_flash_sd"},
+          .rotation = {},
+          .optical = false,
+          .icon = "drive-removable-media-symbolic",
+          .label = "Removable",
+      },
   };
   auto drive = device();
   drive.connectionBus = "usb";

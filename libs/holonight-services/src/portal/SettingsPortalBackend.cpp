@@ -142,9 +142,11 @@ QDBusVariant SettingsPortalBackend::variantForColorScheme(int color_scheme) {
 }
 
 QDBusVariant SettingsPortalBackend::variantForAccentColor(const QColor& color) {
-  const SettingsPortalAccentColor accent{.red = std::clamp(static_cast<double>(color.redF()), 0.0, 1.0),
-                                         .green = std::clamp(static_cast<double>(color.greenF()), 0.0, 1.0),
-                                         .blue = std::clamp(static_cast<double>(color.blueF()), 0.0, 1.0)};
+  const SettingsPortalAccentColor accent{
+      .red = std::clamp(static_cast<double>(color.redF()), 0.0, 1.0),
+      .green = std::clamp(static_cast<double>(color.greenF()), 0.0, 1.0),
+      .blue = std::clamp(static_cast<double>(color.blueF()), 0.0, 1.0),
+  };
   return QDBusVariant{QVariant::fromValue(accent)};
 }
 

@@ -14,11 +14,13 @@ bool hasWritePermissionBit(const QFileInfo& info) {
 }
 
 ApplicationCacheRebuildStep missingExecutableStep(const QString& program) {
-  return {.program = program,
-          .arguments = {},
-          .exit_code = -1,
-          .stderr_text = QStringLiteral("executable not found"),
-          .success = false};
+  return {
+      .program = program,
+      .arguments = {},
+      .exit_code = -1,
+      .stderr_text = QStringLiteral("executable not found"),
+      .success = false,
+  };
 }
 }  // namespace
 
@@ -36,22 +38,26 @@ QVector<ApplicationCacheRebuildStep> ApplicationCacheRebuilder::rebuild(const QS
       const QStringList arguments{dir_path};
       const SessionIntegrationCommandResult result =
           command_runner_->run(QStringLiteral("update-desktop-database"), arguments);
-      steps.append({.program = QStringLiteral("update-desktop-database"),
-                    .arguments = arguments,
-                    .exit_code = result.exit_code,
-                    .stderr_text = result.stderr_text,
-                    .success = result.exit_code == 0});
+      steps.append({
+          .program = QStringLiteral("update-desktop-database"),
+          .arguments = arguments,
+          .exit_code = result.exit_code,
+          .stderr_text = result.stderr_text,
+          .success = result.exit_code == 0,
+      });
     }
   }
 
   if (command_runner_->executableExists(QStringLiteral("kbuildsycoca6"))) {
     const QStringList arguments{QStringLiteral("--noincremental")};
     const SessionIntegrationCommandResult result = command_runner_->run(QStringLiteral("kbuildsycoca6"), arguments);
-    steps.append({.program = QStringLiteral("kbuildsycoca6"),
-                  .arguments = arguments,
-                  .exit_code = result.exit_code,
-                  .stderr_text = result.stderr_text,
-                  .success = result.exit_code == 0});
+    steps.append({
+        .program = QStringLiteral("kbuildsycoca6"),
+        .arguments = arguments,
+        .exit_code = result.exit_code,
+        .stderr_text = result.stderr_text,
+        .success = result.exit_code == 0,
+    });
   }
 
   return steps;

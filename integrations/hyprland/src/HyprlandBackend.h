@@ -16,10 +16,10 @@ class HyprlandBackend final : public CompositorBackend, public NumberedWorkspace
  public:
   explicit HyprlandBackend(HyprlandIpcTransportPtr transport = {}, QObject* parent = nullptr);
   void start() override;
-  NumberedWorkspaceState numberedWorkspaces() const override { return numbered_; }
+  [[nodiscard]] NumberedWorkspaceState numberedWorkspaces() const override { return numbered_; }
   void activateNumberedSlot(int slot) override;
-  QVariantList specialWorkspaces() const { return special_workspaces_; }
-  Q_INVOKABLE void activateSpecialWorkspace(const QString& id);
+  [[nodiscard]] QVariantList specialWorkspaces() const { return special_workspaces_; }
+  Q_INVOKABLE void activateSpecialWorkspace(const QString& identifier);
  Q_SIGNALS:
   void specialWorkspacesChanged();
 
@@ -36,7 +36,7 @@ class HyprlandBackend final : public CompositorBackend, public NumberedWorkspace
     WorkspaceActivation,
     LuaActivation,
     WindowActivation,
-    LuaWindowActivation
+    LuaWindowActivation,
   };
   void scheduleRefresh();
   void beginRefresh();
@@ -50,7 +50,7 @@ class HyprlandBackend final : public CompositorBackend, public NumberedWorkspace
   void publishClients(const QByteArray& clients_json);
   void fail(const QString& diagnostic);
 
-  void dispatchWorkspace(const QString& id);
+  void dispatchWorkspace(const QString& workspace_id);
   NumberedWorkspaceState numbered_;
   QVariantList special_workspaces_;
   HyprlandIpcTransportPtr transport_;

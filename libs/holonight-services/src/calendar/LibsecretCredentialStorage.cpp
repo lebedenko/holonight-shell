@@ -39,7 +39,7 @@ LibsecretCredentialStorage::LibsecretCredentialStorage() {
   // blocking I/O itself (REQ-F-011). The lambda captures a shared_ptr to the flag, not `this`, so
   // the probe is safe to outlive this object.
   std::shared_ptr<std::atomic<bool>> flag = service_available_;
-  [[maybe_unused]] const QFuture<void> probe_future = QtConcurrent::run([flag]() {
+  [[maybe_unused]] const QFuture<void> probe_future = QtConcurrent::run([flag] {
     GError* error = nullptr;
     SecretService* service = secret_service_get_sync(SECRET_SERVICE_NONE, nullptr, &error);
     if (error != nullptr) {

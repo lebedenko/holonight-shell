@@ -138,9 +138,12 @@ TEST(TrayWatcher, OptionalPropertyWithUnrelatedFailureStillNeedsWarning) {
 
 TEST(TrayWatcher, DiscoversExistingStatusNotifierItemsWhenBecomingWatcher) {
   TrayModel model;
-  auto registration = std::make_unique<FakeTrayRegistrationClient>(QStringList(
-      {QStringLiteral("org.kde.StatusNotifierItem-9999-1"), QStringLiteral("org.unrelated.Service"),
-       QStringLiteral("org.kde.StatusNotifierWatcher"), QStringLiteral("org.kde.StatusNotifierHost-test")}));
+  auto registration = std::make_unique<FakeTrayRegistrationClient>(QStringList({
+      QStringLiteral("org.kde.StatusNotifierItem-9999-1"),
+      QStringLiteral("org.unrelated.Service"),
+      QStringLiteral("org.kde.StatusNotifierWatcher"),
+      QStringLiteral("org.kde.StatusNotifierHost-test"),
+  }));
   TrayWatcher watcher(&model, std::move(registration));
 
   watcher.start();

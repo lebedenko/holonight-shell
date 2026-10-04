@@ -120,20 +120,24 @@ TEST(DbusMenuClient, StripsMnemonicUnderscore) {
 
 TEST(DbusMenuModel, ExposesAllRoles) {
   QList<DbusMenuItem> items = {
-      DbusMenuItem{.id = 1,
-                   .label = QStringLiteral("Cut"),
-                   .type = QStringLiteral("standard"),
-                   .icon_name = QStringLiteral("edit-cut"),
-                   .enabled = true,
-                   .visible = true,
-                   .toggle_type = QString{},
-                   .toggle_state = -1},
-      DbusMenuItem{.id = 2,
-                   .label = QString{},
-                   .type = QStringLiteral("separator"),
-                   .enabled = true,
-                   .visible = true,
-                   .toggle_state = -1},
+      DbusMenuItem{
+          .id = 1,
+          .label = QStringLiteral("Cut"),
+          .type = QStringLiteral("standard"),
+          .icon_name = QStringLiteral("edit-cut"),
+          .enabled = true,
+          .visible = true,
+          .toggle_type = QString{},
+          .toggle_state = -1,
+      },
+      DbusMenuItem{
+          .id = 2,
+          .label = QString{},
+          .type = QStringLiteral("separator"),
+          .enabled = true,
+          .visible = true,
+          .toggle_state = -1,
+      },
   };
 
   DbusMenuModel model(items);
@@ -168,19 +172,23 @@ TEST(DbusMenuModel, RoleNamesExposeQmlContract) {
 }
 
 TEST(DbusMenuModel, SubmenuAtReturnsChildModel) {
-  DbusMenuItem child{.id = 10,
-                     .label = QStringLiteral("Child"),
-                     .type = QStringLiteral("standard"),
-                     .enabled = true,
-                     .visible = true,
-                     .toggle_state = -1};
-  DbusMenuItem parent{.id = 1,
-                      .label = QStringLiteral("Parent"),
-                      .type = QStringLiteral("standard"),
-                      .enabled = true,
-                      .visible = true,
-                      .toggle_state = -1,
-                      .children = {child}};
+  DbusMenuItem child{
+      .id = 10,
+      .label = QStringLiteral("Child"),
+      .type = QStringLiteral("standard"),
+      .enabled = true,
+      .visible = true,
+      .toggle_state = -1,
+  };
+  DbusMenuItem parent{
+      .id = 1,
+      .label = QStringLiteral("Parent"),
+      .type = QStringLiteral("standard"),
+      .enabled = true,
+      .visible = true,
+      .toggle_state = -1,
+      .children = {child},
+  };
 
   DbusMenuModel model({parent});
   EXPECT_TRUE(model.data(model.index(0, 0), DbusMenuModel::HasSubmenuRole).toBool());
@@ -195,23 +203,27 @@ TEST(DbusMenuModel, SubmenuAtReturnsChildModel) {
 }
 
 TEST(DbusMenuModel, SubmenuAtReturnsNullForNoChildren) {
-  DbusMenuItem leaf{.id = 1,
-                    .label = QStringLiteral("Leaf"),
-                    .type = QStringLiteral("standard"),
-                    .enabled = true,
-                    .visible = true,
-                    .toggle_state = -1};
+  DbusMenuItem leaf{
+      .id = 1,
+      .label = QStringLiteral("Leaf"),
+      .type = QStringLiteral("standard"),
+      .enabled = true,
+      .visible = true,
+      .toggle_state = -1,
+  };
   DbusMenuModel model({leaf});
   EXPECT_EQ(model.submenuAt(0), nullptr);
 }
 
 TEST(DbusMenuModel, LabelRoleStripsLeadingUnderscore) {
-  DbusMenuItem item{.id = 1,
-                    .label = QStringLiteral("_File"),
-                    .type = QStringLiteral("standard"),
-                    .enabled = true,
-                    .visible = true,
-                    .toggle_state = -1};
+  DbusMenuItem item{
+      .id = 1,
+      .label = QStringLiteral("_File"),
+      .type = QStringLiteral("standard"),
+      .enabled = true,
+      .visible = true,
+      .toggle_state = -1,
+  };
   DbusMenuModel model({item});
   EXPECT_EQ(model.data(model.index(0, 0), DbusMenuModel::LabelRole).toString(), QStringLiteral("File"));
 }

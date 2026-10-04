@@ -25,11 +25,13 @@ BackgroundManager::BackgroundManager(ConfigService* config_service, QObject* par
 }
 
 PerMonitorLayerManager::LayerConfig BackgroundManager::layerConfig() const {
-  return {.layer = Holonight::Wayland::Layer::Background,
-          .namespace_name = QStringLiteral("background"),
-          // WindowTransparentForInput makes Qt maintain an empty input region and re-apply it on every
-          // commit, so pointer/keyboard events fall through to the desktop below.
-          .extra_flags = desktop_menu_enabled_ ? Qt::WindowFlags{} : Qt::WindowTransparentForInput};
+  return {
+      .layer = Holonight::Wayland::Layer::Background,
+      .namespace_name = QStringLiteral("background"),
+      // WindowTransparentForInput makes Qt maintain an empty input region and re-apply it on every
+      // commit, so pointer/keyboard events fall through to the desktop below.
+      .extra_flags = desktop_menu_enabled_ ? Qt::WindowFlags{} : Qt::WindowTransparentForInput,
+  };
 }
 
 void BackgroundManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec, QScreen* /*screen*/) {
@@ -43,10 +45,15 @@ void BackgroundManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& s
 }
 
 PerMonitorLayerManager::QmlSource BackgroundManager::qmlSource(QScreen* screen) {
-  return {.url = QUrl(QStringLiteral("qrc:/HolonightShell/Background/Background.qml")),
-          .initial_properties = {{QStringLiteral("imagePath"), imageUrlForScreen(screen)},
-                                 {QStringLiteral("desktopMenuEnabled"), desktop_menu_enabled_},
-                                 {QStringLiteral("monitorName"), screen->name()}}};
+  return {
+      .url = QUrl(QStringLiteral("qrc:/HolonightShell/Background/Background.qml")),
+      .initial_properties =
+          {
+              {QStringLiteral("imagePath"), imageUrlForScreen(screen)},
+              {QStringLiteral("desktopMenuEnabled"), desktop_menu_enabled_},
+              {QStringLiteral("monitorName"), screen->name()},
+          },
+  };
 }
 
 void BackgroundManager::onScreenSetChanged() {
@@ -56,7 +63,9 @@ void BackgroundManager::onScreenSetChanged() {
 }
 
 void BackgroundManager::setDesktopMenuEnabled(bool enabled) {
-  if (desktop_menu_enabled_ == enabled) return;
+  if (desktop_menu_enabled_ == enabled) {
+    return;
+  }
   desktop_menu_enabled_ = enabled;
   rebuildSurfaces();
 }

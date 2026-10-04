@@ -15,7 +15,7 @@ class NumberedFake : public NumberedWorkspaceProvider {
  public:
   NumberedWorkspaceState state{.eligible = true, .assignments = {{"opaque-one", 1}, {"opaque-eight", 8}}};
   int activated{0};
-  NumberedWorkspaceState numberedWorkspaces() const override { return state; }
+  [[nodiscard]] NumberedWorkspaceState numberedWorkspaces() const override { return state; }
   void activateNumberedSlot(int slot) override { activated = slot; }
 };
 }  // namespace
@@ -25,21 +25,28 @@ TEST(CompositorService, PublishesOneAtomicRevisionWithOpaqueWorkspaceRoles) {
   CompositorSnapshot snapshot{
       .connected = true,
       .focused_output = QStringLiteral("DP-1"),
-      .capabilities = {.workspace_listing = true,
-                       .workspace_activation = true,
-                       .active_window = true,
-                       .focused_output = true,
-                       .urgency = true,
-                       .occupancy = true},
+      .capabilities =
+          {
+              .workspace_listing = true,
+              .workspace_activation = true,
+              .active_window = true,
+              .focused_output = true,
+              .urgency = true,
+              .occupancy = true,
+          },
       .workspaces =
-          {{.id = QStringLiteral("dev:web"),
-            .display_name = QStringLiteral("dev:web"),
-            .stable_order = 2,
-            .outputs = {QStringLiteral("DP-1")},
-            .active = true,
-            .focused = true,
-            .occupied = true},
-           {.id = QStringLiteral("1"), .display_name = QStringLiteral("1"), .stable_order = 1, .occupied = false}},
+          {
+              {
+                  .id = QStringLiteral("dev:web"),
+                  .display_name = QStringLiteral("dev:web"),
+                  .stable_order = 2,
+                  .outputs = {QStringLiteral("DP-1")},
+                  .active = true,
+                  .focused = true,
+                  .occupied = true,
+              },
+              {.id = QStringLiteral("1"), .display_name = QStringLiteral("1"), .stable_order = 1, .occupied = false},
+          },
       .active_windows = {{QStringLiteral("DP-1"), {.app_id = QStringLiteral("foot"), .title = QStringLiteral("vim")}}},
   };
 
@@ -65,11 +72,14 @@ TEST(CompositorService, GatesActivationAndUnknownOccupancy) {
   EXPECT_EQ(activations.count(), 0);
   EXPECT_FALSE(service.isOutputEmpty(QStringLiteral("DP-1")));
 
-  service.publishSnapshotForTest(
-      {.connected = true,
-       .capabilities = {.workspace_activation = true, .occupancy = true},
-       .workspaces = {
-           {.id = QStringLiteral("opaque"), .outputs = {QStringLiteral("DP-1")}, .active = true, .occupied = false}}});
+  service.publishSnapshotForTest({
+      .connected = true,
+      .capabilities = {.workspace_activation = true, .occupancy = true},
+      .workspaces =
+          {
+              {.id = QStringLiteral("opaque"), .outputs = {QStringLiteral("DP-1")}, .active = true, .occupied = false},
+          },
+  });
   service.activateWorkspace(QStringLiteral("opaque"));
   EXPECT_EQ(activations.count(), 1);
   EXPECT_TRUE(service.isOutputEmpty(QStringLiteral("DP-1")));
@@ -77,11 +87,13 @@ TEST(CompositorService, GatesActivationAndUnknownOccupancy) {
 
 TEST(CompositorService, DisconnectClearsTransientStateAndCapabilities) {
   CompositorService service{};
-  service.publishSnapshotForTest({.connected = true,
-                                  .focused_output = QStringLiteral("DP-1"),
-                                  .capabilities = {.workspace_listing = true, .active_window = true},
-                                  .workspaces = {{.id = QStringLiteral("dev")}},
-                                  .active_windows = {{QStringLiteral("DP-1"), {.title = QStringLiteral("editor")}}}});
+  service.publishSnapshotForTest({
+      .connected = true,
+      .focused_output = QStringLiteral("DP-1"),
+      .capabilities = {.workspace_listing = true, .active_window = true},
+      .workspaces = {{.id = QStringLiteral("dev")}},
+      .active_windows = {{QStringLiteral("DP-1"), {.title = QStringLiteral("editor")}}},
+  });
 
   service.publishSnapshotForTest({.diagnostic = QStringLiteral("subscription disconnected")});
 
@@ -100,8 +112,12 @@ TEST(WorkspacePresentation, EmptySlotsNeverEnterActualSnapshotAndCountChangesImm
   CompositorSnapshot snapshot{
       .connected = true,
       .capabilities = {.workspace_listing = true, .workspace_activation = true},
-      .workspaces = {{.id = "opaque-one", .display_name = "One", .outputs = {"DP-1"}, .active = true, .focused = true},
-                     {.id = "opaque-eight", .display_name = "Eight", .urgent = true, .occupied = true}}};
+      .workspaces =
+          {
+              {.id = "opaque-one", .display_name = "One", .outputs = {"DP-1"}, .active = true, .focused = true},
+              {.id = "opaque-eight", .display_name = "Eight", .urgent = true, .occupied = true},
+          },
+  };
   service.publishSnapshotForTest(snapshot);
   EXPECT_TRUE(presentation.useNumericWorkspacePresentation());
   EXPECT_EQ(presentation.workspaceDisplayCount(), 5);
@@ -144,9 +160,10 @@ TEST(WorkspacePresentation, NoOptionalProviderUsesNamedRows) {
   CompositorService service;
   WorkspacePresentation presentation(&service, nullptr);
   CompositorSnapshot snapshot{.connected = true};
-  for (int row = 0; row < 7; ++row)
+  for (int row = 0; row < 7; ++row) {
     snapshot.workspaces.append(
         {.id = QString::number(row), .display_name = "same", .stable_order = row, .focused = row == 5});
+  }
   service.publishSnapshotForTest(snapshot);
   presentation.setWorkspaceDisplayCount(3);
   EXPECT_FALSE(presentation.useNumericWorkspacePresentation());
@@ -155,9 +172,11 @@ TEST(WorkspacePresentation, NoOptionalProviderUsesNamedRows) {
 TEST(CompositorService, PerWorkspaceCapabilitiesGateExistingIdentity) {
   CompositorService service;
   QSignalSpy requests(&service, &CompositorService::workspaceActivationRequested);
-  CompositorSnapshot snapshot{.connected = true,
-                              .capabilities = {.workspace_activation = true},
-                              .workspaces = {{.id = "opaque", .display_name = "mutable", .can_activate = false}}};
+  CompositorSnapshot snapshot{
+      .connected = true,
+      .capabilities = {.workspace_activation = true},
+      .workspaces = {{.id = "opaque", .display_name = "mutable", .can_activate = false}},
+  };
   service.publishSnapshotForTest(snapshot);
   service.activateWorkspace("opaque");
   EXPECT_EQ(requests.count(), 0);

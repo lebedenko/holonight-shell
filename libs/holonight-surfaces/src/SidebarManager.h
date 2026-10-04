@@ -46,7 +46,7 @@ class SidebarManager : public QObject {
 
  protected:
   using HostFactory = std::function<std::unique_ptr<Holonight::Wayland::LayerSurfaceHost>()>;
-  SidebarManager(HostFactory host_factory, QObject* parent = nullptr);
+  explicit SidebarManager(HostFactory host_factory, QObject* parent = nullptr);
   virtual bool openHost(Holonight::Wayland::LayerSurfaceHost& host, const Holonight::Wayland::LayerSurfaceSpec& spec);
   [[nodiscard]] virtual bool providerAvailable() const;
   [[nodiscard]] virtual QScreen* screenForName(const QString& monitor_name) const;

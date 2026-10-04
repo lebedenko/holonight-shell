@@ -9,11 +9,15 @@ class LabwcWindow;
 class LabwcBackend final : public CompositorBackend {
   Q_OBJECT
  public:
+  LabwcBackend(const LabwcBackend&) = delete;
+  LabwcBackend& operator=(const LabwcBackend&) = delete;
+  LabwcBackend(LabwcBackend&&) = delete;
+  LabwcBackend& operator=(LabwcBackend&&) = delete;
   explicit LabwcBackend(QObject* parent = nullptr, int maximum_protocol_version = 3);
   ~LabwcBackend() override;
   void start() override;
-  WindowCommandResult requestWindowCommand(const QString& id, WindowCommand command) override;
-  void activateWorkspace(const QString& id) override;
+  WindowCommandResult requestWindowCommand(const QString& identifier, WindowCommand command) override;
+  void activateWorkspace(const QString& identifier) override;
 
  private:
   friend class LabwcProtocol;

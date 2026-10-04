@@ -67,8 +67,11 @@ TEST(WeatherIconMapper, FewCloudsDay) {
 }
 
 TEST(WeatherIconMapper, FewCloudsNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(), WeatherIconLayer::kMoonNew.toString(),
-                                WeatherIconLayer::kFewCloudsOverlayNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kMoonNew.toString(),
+      WeatherIconLayer::kFewCloudsOverlayNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(801, false, MoonPhase::New), expected);
 }
 
@@ -80,9 +83,11 @@ TEST(WeatherIconMapper, ScatteredCloudsDay) {
 }
 
 TEST(WeatherIconMapper, ScatteredCloudsNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kMoonWaxingCrescent.toString(),
-                                WeatherIconLayer::kScatteredCloudsNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kMoonWaxingCrescent.toString(),
+      WeatherIconLayer::kScatteredCloudsNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(802, false, MoonPhase::WaxingCrescent), expected);
 }
 
@@ -114,8 +119,10 @@ TEST_P(LightDrizzleCodeTest, DayReturnsLightDrizzleOnly) {
 INSTANTIATE_TEST_SUITE_P(BoundaryAndAllCodes, LightDrizzleCodeTest, ::testing::Values(300, 301, 310, 313, 315));
 
 TEST(WeatherIconMapper, LightDrizzleNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kLightDrizzleNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kLightDrizzleNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(300, false, MoonPhase::New), expected);
 }
 
@@ -130,8 +137,10 @@ TEST_P(HeavyDrizzleCodeTest, DayReturnsHeavyDrizzleOnly) {
 INSTANTIATE_TEST_SUITE_P(AllCodes, HeavyDrizzleCodeTest, ::testing::Values(302, 311, 312, 314));
 
 TEST(WeatherIconMapper, HeavyDrizzleNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kHeavyDrizzleNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kHeavyDrizzleNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(302, false, MoonPhase::Full), expected);
 }
 
@@ -176,8 +185,10 @@ TEST_P(FreezingRainCodeTest, DayReturnsFreezingRainOnly) {
 INSTANTIATE_TEST_SUITE_P(AllCodes, FreezingRainCodeTest, ::testing::Values(511));
 
 TEST(WeatherIconMapper, FreezingRainNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kFreezingRainNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kFreezingRainNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(511, false, MoonPhase::New), expected);
 }
 
@@ -196,8 +207,10 @@ TEST(WeatherIconMapper, HurricaneLayers) {
   EXPECT_EQ(WeatherIconMapper::mapLayers(WeatherIconMapper::kHurricaneConditionCode, true, MoonPhase::New),
             layer(WeatherIconLayer::kHurricaneDay));
 
-  const QList<QString> expected_night{WeatherIconLayer::kStarField.toString(),
-                                      WeatherIconLayer::kHurricaneNight.toString()};
+  const QList<QString> expected_night{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kHurricaneNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(WeatherIconMapper::kHurricaneConditionCode, false, MoonPhase::Full),
             expected_night);
 }
@@ -215,8 +228,10 @@ TEST(WeatherIconBridge, HurricaneForceWindOverridesConditionCode) {
   EXPECT_EQ(WeatherIconBridge::layersForWeather(800, true, QDateTime{}, QStringLiteral("clear sky"), 119),
             layer(WeatherIconLayer::kHurricaneDay));
 
-  const QList<QString> expected_night{WeatherIconLayer::kStarField.toString(),
-                                      WeatherIconLayer::kHurricaneNight.toString()};
+  const QList<QString> expected_night{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kHurricaneNight.toString(),
+  };
   EXPECT_EQ(WeatherIconBridge::layersForWeather(800, false, QDateTime{}, QStringLiteral("clear sky"), 120),
             expected_night);
 }
@@ -297,8 +312,10 @@ TEST_P(RainSnowMixCodeTest, DayReturnsRainSnowMixOnly) {
 INSTANTIATE_TEST_SUITE_P(AllCodes, RainSnowMixCodeTest, ::testing::Values(615, 616));
 
 TEST(WeatherIconMapper, RainSnowMixNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kRainSnowMixNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kRainSnowMixNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(615, false, MoonPhase::WaningCrescent), expected);
 }
 
@@ -313,8 +330,10 @@ TEST_P(SnowShowersCodeTest, DayReturnsSnowShowersOnly) {
 INSTANTIATE_TEST_SUITE_P(AllCodes, SnowShowersCodeTest, ::testing::Values(613, 621));
 
 TEST(WeatherIconMapper, SnowShowersNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kSnowShowersNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kSnowShowersNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(613, false, MoonPhase::New), expected);
 }
 
@@ -329,8 +348,10 @@ TEST_P(ThunderstormCodeTest, DayReturnsThunderstormOnly) {
 INSTANTIATE_TEST_SUITE_P(AllCodes, ThunderstormCodeTest, ::testing::Values(200, 201, 202, 230, 231, 232));
 
 TEST(WeatherIconMapper, ThunderstormNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kThunderstormNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kThunderstormNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(200, false, MoonPhase::WaxingCrescent), expected);
 }
 
@@ -346,8 +367,10 @@ TEST_P(HeavyThunderstormCodeTest, DayReturnsHeavyThunderstormOnly) {
 INSTANTIATE_TEST_SUITE_P(AllCodes, HeavyThunderstormCodeTest, ::testing::Values(210, 211, 212, 221));
 
 TEST(WeatherIconMapper, HeavyThunderstormNight) {
-  const QList<QString> expected{WeatherIconLayer::kStarField.toString(),
-                                WeatherIconLayer::kHeavyThunderstormNight.toString()};
+  const QList<QString> expected{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kHeavyThunderstormNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(210, false, MoonPhase::Full), expected);
 }
 
@@ -367,8 +390,10 @@ INSTANTIATE_TEST_SUITE_P(AllCodes, MistCodeTest, ::testing::Values(701, 721, 741
 TEST(WeatherIconMapper, SmokeLayers) {
   EXPECT_EQ(WeatherIconMapper::mapLayers(711, true, MoonPhase::New), layer(WeatherIconLayer::kSmokeDay));
 
-  const QList<QString> expected_night{WeatherIconLayer::kStarField.toString(),
-                                      WeatherIconLayer::kSmokeNight.toString()};
+  const QList<QString> expected_night{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kSmokeNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(711, false, MoonPhase::Full), expected_night);
 }
 
@@ -377,8 +402,10 @@ class DustStormCodeTest : public ::testing::TestWithParam<int> {};
 TEST_P(DustStormCodeTest, MapsToDustStormLayers) {
   EXPECT_EQ(WeatherIconMapper::mapLayers(GetParam(), true, MoonPhase::New), layer(WeatherIconLayer::kDustStormDay));
 
-  const QList<QString> expected_night{WeatherIconLayer::kStarField.toString(),
-                                      WeatherIconLayer::kDustStormNight.toString()};
+  const QList<QString> expected_night{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kDustStormNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(GetParam(), false, MoonPhase::Full), expected_night);
 }
 
@@ -394,16 +421,19 @@ TEST(WeatherIconMapper, WindLayers) {
 TEST(WeatherIconMapper, TornadoLayers) {
   EXPECT_EQ(WeatherIconMapper::mapLayers(781, true, MoonPhase::New), layer(WeatherIconLayer::kTornadoDay));
 
-  const QList<QString> expected_night{WeatherIconLayer::kStarField.toString(),
-                                      WeatherIconLayer::kTornadoNight.toString()};
+  const QList<QString> expected_night{
+      WeatherIconLayer::kStarField.toString(),
+      WeatherIconLayer::kTornadoNight.toString(),
+  };
   EXPECT_EQ(WeatherIconMapper::mapLayers(781, false, MoonPhase::Full), expected_night);
 }
 
 TEST(WeatherIconMapper, AllOpenWeatherConditionCodesReturnLayers) {
-  const QList<int> official_codes{200, 201, 202, 210, 211, 212, 221, 230, 231, 232, 300, 301, 302, 310,
-                                  311, 312, 313, 314, 321, 500, 501, 502, 503, 504, 511, 520, 521, 522,
-                                  531, 600, 601, 602, 611, 612, 613, 615, 616, 620, 621, 622, 701, 711,
-                                  721, 731, 741, 751, 761, 762, 771, 781, 800, 801, 802, 803, 804};
+  const QList<int> official_codes{
+      200, 201, 202, 210, 211, 212, 221, 230, 231, 232, 300, 301, 302, 310, 311, 312, 313, 314, 321,
+      500, 501, 502, 503, 504, 511, 520, 521, 522, 531, 600, 601, 602, 611, 612, 613, 615, 616, 620,
+      621, 622, 701, 711, 721, 731, 741, 751, 761, 762, 771, 781, 800, 801, 802, 803, 804,
+  };
 
   for (int code : official_codes) {
     EXPECT_FALSE(WeatherIconMapper::mapLayers(code, true, MoonPhase::New).isEmpty()) << "day code " << code;

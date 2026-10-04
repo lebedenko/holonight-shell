@@ -17,7 +17,7 @@ QNetworkRequest requestFor(const QTcpServer& server) {
 }
 
 void keepAcceptedSocketOpen(QTcpServer& server) {
-  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server] {
     QTcpSocket* socket = server.nextPendingConnection();
     if (socket != nullptr) {
       socket->setParent(&server);
@@ -52,7 +52,7 @@ TEST(HttpSyncClientTest, TimesOutOnHungServer) {
 TEST(HttpSyncClientTest, ReturnsErrorOnImmediateClose) {
   QTcpServer server;
   ASSERT_TRUE(server.listen(QHostAddress::LocalHost));
-  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server] {
     QTcpSocket* socket = server.nextPendingConnection();
     if (socket != nullptr) {
       socket->disconnectFromHost();
@@ -73,12 +73,12 @@ TEST(HttpSyncClientTest, ReturnsErrorOnImmediateClose) {
 TEST(HttpSyncClientTest, ReturnsConnectErrorOnHttpStatusFailure) {
   QTcpServer server;
   ASSERT_TRUE(server.listen(QHostAddress::LocalHost));
-  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server] {
     QTcpSocket* socket = server.nextPendingConnection();
     if (socket == nullptr) {
       return;
     }
-    QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket]() {
+    QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket] {
       socket->readAll();
       const QByteArray response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       socket->write(response);
@@ -101,12 +101,12 @@ TEST(HttpSyncClientTest, ReturnsBodyOnValidResponse) {
   QTcpServer server;
   ASSERT_TRUE(server.listen(QHostAddress::LocalHost));
   const QByteArray body = "hello from fake server";
-  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server, &body]() {
+  QObject::connect(&server, &QTcpServer::newConnection, &server, [&server, &body] {
     QTcpSocket* socket = server.nextPendingConnection();
     if (socket == nullptr) {
       return;
     }
-    QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket, &body]() {
+    QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket, &body] {
       socket->readAll();
       const QByteArray response = "HTTP/1.1 200 OK\r\nContent-Length: " + QByteArray::number(body.size()) +
                                   "\r\nConnection: close\r\n\r\n" + body;

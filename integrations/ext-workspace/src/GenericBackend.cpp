@@ -13,7 +13,7 @@ GenericWorkspaceHandle::~GenericWorkspaceHandle() {
   }
 }
 
-void GenericWorkspaceHandle::ext_workspace_handle_v1_id(const QString& id) { state_.setId(id); }
+void GenericWorkspaceHandle::ext_workspace_handle_v1_id(const QString& identifier) { state_.setId(identifier); }
 void GenericWorkspaceHandle::ext_workspace_handle_v1_capabilities(uint32_t capabilities) {
   state_.setCapabilities(capabilities);
 }
@@ -71,7 +71,9 @@ void GenericWorkspaceGroup::ext_workspace_group_handle_v1_removed() {
 
 GenericProtocol::GenericProtocol(GenericBackend* backend) : QWaylandClientExtensionTemplate(1), backend_(backend) {}
 GenericProtocol::~GenericProtocol() {
-  if (isInitialized()) ::ext_workspace_manager_v1_destroy(object());
+  if (isInitialized()) {
+    ::ext_workspace_manager_v1_destroy(object());
+  }
 }
 void GenericProtocol::ext_workspace_manager_v1_finished() { backend_->protocolFinished(); }
 
@@ -101,7 +103,9 @@ void GenericBackend::connectProtocol() {
   finished_ = false;
   protocol_ = std::make_unique<GenericProtocol>(this);
   connect(protocol_.get(), &QWaylandClientExtension::activeChanged, this, [this] {
-    if (!protocol_->isActive()) protocolFinished();
+    if (!protocol_->isActive()) {
+      protocolFinished();
+    }
   });
 }
 void GenericBackend::protocolFinished() {
@@ -111,18 +115,26 @@ void GenericBackend::protocolFinished() {
   reconnect_timer_.start();
 }
 void GenericBackend::start() {
-  if (!protocol_) connectProtocol();
-  if (!protocol_->isActive()) emit snapshotReady({.diagnostic = QStringLiteral("waiting for ext-workspace-v1")});
+  if (!protocol_) {
+    connectProtocol();
+  }
+  if (!protocol_->isActive()) {
+    emit snapshotReady({.diagnostic = QStringLiteral("waiting for ext-workspace-v1")});
+  }
 }
 
 void GenericBackend::publishSnapshotOnDone() {
-  if (finished_) return;
+  if (finished_) {
+    return;
+  }
   CompositorSnapshot snapshot{
       .connected = true,
       .capabilities = {.workspace_listing = true, .workspace_activation = false, .urgency = true},
   };
   for (GenericWorkspaceHandle* handle : std::as_const(handles_)) {
-    if (handle->state_.hidden) continue;
+    if (handle->state_.hidden) {
+      continue;
+    }
     CompositorWorkspace workspace = handle->state_.workspace;
     for (const GenericWorkspaceGroup* group : std::as_const(groups_)) {
       if (group->workspaces_.contains(handle->raw_)) {

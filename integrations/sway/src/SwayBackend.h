@@ -15,7 +15,7 @@ class SwayBackend final : public CompositorBackend, public NumberedWorkspaceProv
  public:
   explicit SwayBackend(QString socket_path = {}, QObject* parent = nullptr);
   void start() override;
-  NumberedWorkspaceState numberedWorkspaces() const override { return numbered_; }
+  [[nodiscard]] NumberedWorkspaceState numberedWorkspaces() const override { return numbered_; }
   void activateNumberedSlot(int slot) override;
   void activateWorkspace(const QString& workspace_id) override;
   [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) override;

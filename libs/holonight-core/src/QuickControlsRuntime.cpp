@@ -29,9 +29,11 @@ void configureQuickControls() {
   qCDebug(lcControlsRuntime) << "phase=selection configured=" << QQuickStyle::name();
   QQmlEngine discovery;
   qCDebug(lcControlsRuntime) << "phase=discovery roots=" << discovery.importPathList();
-  for (const QString& module :
-       {QStringLiteral("Holonight/Core"), QStringLiteral("Holonight/Controls"),
-        QQuickStyle::name() == QStringLiteral("Holonight") ? QStringLiteral("Holonight") : QString{}}) {
+  for (const QString& module : {
+           QStringLiteral("Holonight/Core"),
+           QStringLiteral("Holonight/Controls"),
+           QQuickStyle::name() == QStringLiteral("Holonight") ? QStringLiteral("Holonight") : QString{},
+       }) {
     if (module.isEmpty()) {
       continue;
     }

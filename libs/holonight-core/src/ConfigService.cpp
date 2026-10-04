@@ -61,10 +61,8 @@ void ConfigService::writeConfig() {
 }
 
 void ConfigService::parseFile() {
-  if (watcher_active_) {
-    if (QFileInfo::exists(config_path_)) {
-      watcher_.addPath(config_path_);
-    }
+  if (watcher_active_ && QFileInfo::exists(config_path_)) {
+    watcher_.addPath(config_path_);
   }
   QFile file(config_path_);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -85,10 +83,8 @@ void ConfigService::parseFile() {
   HoloNight::ShellConfig::MissingDefaults missing;
   const HoloNight::ShellConfig::ProductConfig parsed = HoloNight::ShellConfig::parseConfigTable(table, missing);
 
-  if (missing.any()) {
-    if (HoloNight::ShellConfig::writeMissingDefaults(config_path_, missing)) {
-      qCInfo(lcConfig) << "Wrote missing config keys back to:" << config_path_;
-    }
+  if (missing.any() && HoloNight::ShellConfig::writeMissingDefaults(config_path_, missing)) {
+    qCInfo(lcConfig) << "Wrote missing config keys back to:" << config_path_;
   }
 
   applyParsedConfig(parsed);

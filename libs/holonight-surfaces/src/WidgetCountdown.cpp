@@ -32,10 +32,14 @@ QString formatCountdown(const QDateTime& deadline, const QDateTime& now, bool sh
     qint64 value{};
     QChar suffix;
   };
-  std::array<Unit, 4> units{{{.value = days, .suffix = QLatin1Char('d')},
-                             {.value = hours, .suffix = QLatin1Char('h')},
-                             {.value = minutes, .suffix = QLatin1Char('m')},
-                             {.value = seconds, .suffix = QLatin1Char('s')}}};
+  std::array<Unit, 4> units{
+      {
+          {.value = days, .suffix = QLatin1Char('d')},
+          {.value = hours, .suffix = QLatin1Char('h')},
+          {.value = minutes, .suffix = QLatin1Char('m')},
+          {.value = seconds, .suffix = QLatin1Char('s')},
+      },
+  };
   // Drop the seconds column entirely when it must never be shown.
   const size_t count = show_seconds ? units.size() : units.size() - 1;
 

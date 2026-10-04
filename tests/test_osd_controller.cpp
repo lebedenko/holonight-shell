@@ -161,9 +161,11 @@ TEST(OsdEventTest, BothEventsAreCopyableAndAssignable) {
   EXPECT_EQ(level_copy, level);
   EXPECT_EQ(level_assigned, level);
 
-  const OsdSelectionEvent selection{.channel = QStringLiteral("keyboard-layout"),
-                                    .short_label = QStringLiteral("UK"),
-                                    .full_label = QStringLiteral("Ukrainian")};
+  const OsdSelectionEvent selection{
+      .channel = QStringLiteral("keyboard-layout"),
+      .short_label = QStringLiteral("UK"),
+      .full_label = QStringLiteral("Ukrainian"),
+  };
   // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
   const OsdSelectionEvent selection_copy = selection;
   OsdSelectionEvent selection_assigned;
@@ -179,9 +181,11 @@ TEST(OsdEventTest, DefaultedEqualityComparesEveryMember) {
   EXPECT_NE(base, (OsdLevelEvent{.channel = QStringLiteral("audio-volume"), .value = 51, .muted = false}));
   EXPECT_NE(base, (OsdLevelEvent{.channel = QStringLiteral("audio-volume"), .value = 50, .muted = true}));
 
-  const OsdSelectionEvent selection{.channel = QStringLiteral("keyboard-layout"),
-                                    .short_label = QStringLiteral("EN"),
-                                    .full_label = QStringLiteral("English (US)")};
+  const OsdSelectionEvent selection{
+      .channel = QStringLiteral("keyboard-layout"),
+      .short_label = QStringLiteral("EN"),
+      .full_label = QStringLiteral("English (US)"),
+  };
   EXPECT_EQ(selection, (OsdSelectionEvent{.channel = QStringLiteral("keyboard-layout"),
                                           .short_label = QStringLiteral("EN"),
                                           .full_label = QStringLiteral("English (US)")}));
@@ -193,9 +197,11 @@ TEST(OsdEventTest, DefaultedEqualityComparesEveryMember) {
 
 TEST(OsdEventTest, VariantAlternativesAreDistinguishable) {
   const OsdEvent level = OsdLevelEvent{.channel = QStringLiteral("audio-volume"), .value = 10, .muted = false};
-  const OsdEvent selection = OsdSelectionEvent{.channel = QStringLiteral("keyboard-layout"),
-                                               .short_label = QStringLiteral("DE"),
-                                               .full_label = QStringLiteral("German")};
+  const OsdEvent selection = OsdSelectionEvent{
+      .channel = QStringLiteral("keyboard-layout"),
+      .short_label = QStringLiteral("DE"),
+      .full_label = QStringLiteral("German"),
+  };
 
   EXPECT_TRUE(std::holds_alternative<OsdLevelEvent>(level));
   EXPECT_FALSE(std::holds_alternative<OsdSelectionEvent>(level));
@@ -212,9 +218,11 @@ TEST(OsdEventTest, AllThreeTypesRoundTripThroughQVariant) {
   ASSERT_TRUE(level_variant.canConvert<OsdLevelEvent>());
   EXPECT_EQ(level_variant.value<OsdLevelEvent>(), level);
 
-  const OsdSelectionEvent selection{.channel = QStringLiteral("keyboard-layout"),
-                                    .short_label = QStringLiteral("EN"),
-                                    .full_label = QStringLiteral("English (US)")};
+  const OsdSelectionEvent selection{
+      .channel = QStringLiteral("keyboard-layout"),
+      .short_label = QStringLiteral("EN"),
+      .full_label = QStringLiteral("English (US)"),
+  };
   const QVariant selection_variant = QVariant::fromValue(selection);
   ASSERT_TRUE(selection_variant.canConvert<OsdSelectionEvent>());
   EXPECT_EQ(selection_variant.value<OsdSelectionEvent>(), selection);

@@ -483,8 +483,10 @@ QString WeatherService::formatLocationLabel(const WeatherLocation& location) {
 }
 
 WeatherLocation WeatherService::mergeConfiguredLocation(const WeatherLocation& location) const {
-  return {.city = configured_city_.trimmed().isEmpty() ? location.city : configured_city_,
-          .country = configured_country_.trimmed().isEmpty() ? location.country : configured_country_};
+  return {
+      .city = configured_city_.trimmed().isEmpty() ? location.city : configured_city_,
+      .country = configured_country_.trimmed().isEmpty() ? location.country : configured_country_,
+  };
 }
 
 void WeatherService::setResolvedLocation(const WeatherLocation& location) {
@@ -547,8 +549,10 @@ void WeatherService::loadCache() {
   hourly_ = hourlyFromJson(root.value(QStringLiteral("hourly")).toArray());
   daily_ = dailyFromJson(root.value(QStringLiteral("daily")).toArray());
   const QJsonObject location = root.value(QStringLiteral("location")).toObject();
-  setResolvedLocation({.city = location.value(QStringLiteral("city")).toString(),
-                       .country = location.value(QStringLiteral("country")).toString()});
+  setResolvedLocation({
+      .city = location.value(QStringLiteral("city")).toString(),
+      .country = location.value(QStringLiteral("country")).toString(),
+  });
   rebuildForecastVariants();
   fetched_at_ = static_cast<qint64>(root.value(QStringLiteral("fetched_at")).toDouble(0.0));
   setHasData(true);

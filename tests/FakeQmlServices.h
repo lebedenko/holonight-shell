@@ -187,7 +187,7 @@ class FakeWeatherService : public QObject {
   [[nodiscard]] QString locationLabel() const { return location_label_; }
   [[nodiscard]] QVariant current() const { return current_; }
 
-  Q_INVOKABLE QString iconPath(int /*condition_id*/, bool /*is_day*/) const {
+  Q_INVOKABLE [[nodiscard]] QString iconPath(int /*condition_id*/, bool /*is_day*/) const {
     return QStringLiteral("qrc:/HolonightShell/weather/wsymbol_0001_sunny.svg");
   }
 
@@ -223,12 +223,14 @@ class FakeWeatherService : public QObject {
  private:
   bool has_data_{true};
   QString location_label_{QStringLiteral("Lviv, Ukraine")};
-  QVariant current_{QVariantMap{{QStringLiteral("temperature"), 18.0},
-                                {QStringLiteral("feelsLike"), 17.0},
-                                {QStringLiteral("condition"), QStringLiteral("clear sky")},
-                                {QStringLiteral("conditionId"), 800},
-                                {QStringLiteral("sunrise"), 0},
-                                {QStringLiteral("sunset"), QVariant::fromValue<qint64>(4102444800)}}};
+  QVariant current_{QVariantMap{
+      {QStringLiteral("temperature"), 18.0},
+      {QStringLiteral("feelsLike"), 17.0},
+      {QStringLiteral("condition"), QStringLiteral("clear sky")},
+      {QStringLiteral("conditionId"), 800},
+      {QStringLiteral("sunrise"), 0},
+      {QStringLiteral("sunset"), QVariant::fromValue<qint64>(4102444800)},
+  }};
 };
 
 class FakeBrightnessService : public QObject {
@@ -500,6 +502,7 @@ class FakeNotificationModel : public QAbstractListModel {
  public:
   explicit FakeNotificationModel(QObject* parent = nullptr) : QAbstractListModel(parent) {}
 
+  // NOLINTNEXTLINE(cppcoreguidelines-use-enum-class,performance-enum-size): Qt role API.
   enum Roles {
     NotifIdRole = Qt::UserRole + 1,
     SummaryRole,
@@ -515,12 +518,12 @@ class FakeNotificationModel : public QAbstractListModel {
     CreatedAtMsRole,
   };
 
-  int rowCount(const QModelIndex& parent = {}) const override {
+  [[nodiscard]] int rowCount(const QModelIndex& parent = {}) const override {
     Q_UNUSED(parent);
-    return list_.size();
+    return static_cast<int>(list_.size());
   }
 
-  QVariant data(const QModelIndex& index, int role) const override {
+  [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override {
     if (!index.isValid() || index.row() < 0 || index.row() >= list_.size()) {
       return {};
     }
@@ -555,14 +558,16 @@ class FakeNotificationModel : public QAbstractListModel {
     }
   }
 
-  QHash<int, QByteArray> roleNames() const override {
-    return {{NotifIdRole, "notifId"},       {SummaryRole, "summary"},     {BodyRole, "body"},
-            {AppIconRole, "appIcon"},       {ActionsRole, "actions"},     {HasDefaultActionRole, "hasDefaultAction"},
-            {AccentKindRole, "accentKind"}, {UrgencyRole, "urgency"},     {IsResidentRole, "isResident"},
-            {MonitorRole, "monitor"},       {LifecycleRole, "lifecycle"}, {CreatedAtMsRole, "createdAtMs"}};
+  [[nodiscard]] QHash<int, QByteArray> roleNames() const override {
+    return {
+        {NotifIdRole, "notifId"},       {SummaryRole, "summary"},     {BodyRole, "body"},
+        {AppIconRole, "appIcon"},       {ActionsRole, "actions"},     {HasDefaultActionRole, "hasDefaultAction"},
+        {AccentKindRole, "accentKind"}, {UrgencyRole, "urgency"},     {IsResidentRole, "isResident"},
+        {MonitorRole, "monitor"},       {LifecycleRole, "lifecycle"}, {CreatedAtMsRole, "createdAtMs"},
+    };
   }
 
-  void setNotifications(QVariantList list) {
+  void setNotifications(const QVariantList& list) {
     beginResetModel();
     list_.clear();
     for (const auto& var : list) {
@@ -587,16 +592,18 @@ class FakeNotificationService : public QObject {
   [[nodiscard]] bool daemonConflict() const { return false; }
   [[nodiscard]] QString daemonConflictOwner() const { return {}; }
   FakeNotificationService() : visible_model_(this) {
-    visible_model_.setNotifications({QVariantMap{
-        {QStringLiteral("notifId"), 42},
-        {QStringLiteral("summary"), QStringLiteral("Test Notification")},
-        {QStringLiteral("body"), QStringLiteral("This is a smoke test notification")},
-        {QStringLiteral("appIcon"), QStringLiteral("dialog-information")},
-        {QStringLiteral("actions"), QVariantList{}},
-        {QStringLiteral("hasDefaultAction"), true},
-        {QStringLiteral("accentKind"), QStringLiteral("cyan")},
-        {QStringLiteral("createdAtMs"), 1718000000000LL},
-    }});
+    visible_model_.setNotifications({
+        QVariantMap{
+            {QStringLiteral("notifId"), 42},
+            {QStringLiteral("summary"), QStringLiteral("Test Notification")},
+            {QStringLiteral("body"), QStringLiteral("This is a smoke test notification")},
+            {QStringLiteral("appIcon"), QStringLiteral("dialog-information")},
+            {QStringLiteral("actions"), QVariantList{}},
+            {QStringLiteral("hasDefaultAction"), true},
+            {QStringLiteral("accentKind"), QStringLiteral("cyan")},
+            {QStringLiteral("createdAtMs"), 1718000000000LL},
+        },
+    });
   }
 
   [[nodiscard]] int unreadCount() const { return unread_count_; }
@@ -635,7 +642,7 @@ class FakeNotificationService : public QObject {
 
  Q_SIGNALS:
   void unreadCountChanged();
-  void notificationClosed(uint id, uint reason);
+  void notificationClosed(uint identifier, uint reason);
   void dndEnabledChanged();
 
  private:
@@ -656,6 +663,7 @@ class FakeCalendarService : public QObject {
   Q_PROPERTY(int upcomingState READ upcomingState CONSTANT)
   Q_PROPERTY(QString lastError READ lastError CONSTANT)
  public:
+  // NOLINTNEXTLINE(cppcoreguidelines-use-enum-class,performance-enum-size): Qt role API.
   enum State { Ready, Loading, ConnectError, Offline };
   Q_ENUM(State)
   [[nodiscard]] QString weekStartDay() const { return QStringLiteral("Mon"); }
@@ -708,6 +716,7 @@ class FakeNotificationRuleModel : public QAbstractListModel {
   Q_OBJECT
 
  public:
+  // NOLINTNEXTLINE(cppcoreguidelines-use-enum-class,performance-enum-size): Qt role API.
   enum Role {
     AppNameRole = Qt::UserRole + 1,
     DisplayNameRole,
@@ -744,11 +753,10 @@ class FakeNotificationRuleModel : public QAbstractListModel {
 
  protected:
   [[nodiscard]] QHash<int, QByteArray> roleNames() const override {
-    return {{AppNameRole, "appName"},
-            {DisplayNameRole, "displayName"},
-            {DisplayIconRole, "displayIcon"},
-            {RuleEnabledRole, "ruleEnabled"},
-            {UrgencyFilterRole, "urgencyFilter"}};
+    return {
+        {AppNameRole, "appName"},         {DisplayNameRole, "displayName"},     {DisplayIconRole, "displayIcon"},
+        {RuleEnabledRole, "ruleEnabled"}, {UrgencyFilterRole, "urgencyFilter"},
+    };
   }
 };
 
@@ -783,23 +791,29 @@ class FakeLauncherService : public QObject {
   Q_PROPERTY(QVariantList selectedEntryActions READ selectedEntryActions CONSTANT)
 
  public:
-  Q_INVOKABLE QString iconForAppId(const QString& app) const { return icons_.value(app); }
+  Q_INVOKABLE [[nodiscard]] QString iconForAppId(const QString& app) const { return icons_.value(app); }
   Q_INVOKABLE void setAppIcon(const QString& app, const QString& icon) {
     icons_.insert(app, icon);
     emit entriesUpdated();
   }
+
+ private:
   QHash<QString, QString> icons_;
+
+ public:
   Q_SIGNAL void entriesUpdated();
   FakeLauncherService() {
-    results_.setItemRoleNames({{Qt::UserRole, "name"},
-                               {Qt::UserRole + 1, "subtitle"},
-                               {Qt::UserRole + 2, "iconName"},
-                               {Qt::UserRole + 3, "desktopFile"},
-                               {Qt::UserRole + 4, "isAction"},
-                               {Qt::UserRole + 5, "actionParent"},
-                               {Qt::UserRole + 6, "actionExec"},
-                               {Qt::UserRole + 7, "actionIndex"},
-                               {Qt::UserRole + 8, "isActionSection"}});
+    results_.setItemRoleNames({
+        {Qt::UserRole, "name"},
+        {Qt::UserRole + 1, "subtitle"},
+        {Qt::UserRole + 2, "iconName"},
+        {Qt::UserRole + 3, "desktopFile"},
+        {Qt::UserRole + 4, "isAction"},
+        {Qt::UserRole + 5, "actionParent"},
+        {Qt::UserRole + 6, "actionExec"},
+        {Qt::UserRole + 7, "actionIndex"},
+        {Qt::UserRole + 8, "isActionSection"},
+    });
     seedResults({QVariantMap{{"name", "App 1"}}, QVariantMap{{"name", "App 2"}}});
   }
   [[nodiscard]] int lastLaunchedIndex() const { return last_launched_index_; }
@@ -815,8 +829,12 @@ class FakeLauncherService : public QObject {
       auto* item = new QStandardItem;
       for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
         QVariant fallback = QString();
-        if (it.value() == "isAction") fallback = false;
-        if (it.value() == "actionIndex") fallback = -1;
+        if (it.value() == "isAction") {
+          fallback = false;
+        }
+        if (it.value() == "actionIndex") {
+          fallback = -1;
+        }
         item->setData(values.value(QString::fromUtf8(it.value()), fallback), it.key());
       }
       results_.appendRow(item);
@@ -855,7 +873,7 @@ class FakeLauncherService : public QObject {
     emit selectedIndexChanged();
   }
   Q_INVOKABLE void moveSelection(int delta) {
-    setSelectedIndex(resultCount() ? (selected_index_ + delta + resultCount()) % resultCount() : -1);
+    setSelectedIndex((resultCount() != 0) ? (selected_index_ + delta + resultCount()) % resultCount() : -1);
   }
   Q_INVOKABLE bool launchSelected() { return launch(selected_index_); }
   Q_INVOKABLE bool launch(int index) {
@@ -871,25 +889,27 @@ class FakeLauncherService : public QObject {
     active_category_ = category;
     emit activeCategoryChanged();
   }
-  Q_INVOKABLE QVariant entryInfoForDesktopFile(const QString& desktopFile) const {
-    return QVariantMap{{QStringLiteral("name"), QStringLiteral("Firefox")},
-                       {QStringLiteral("iconName"), QStringLiteral("firefox")},
-                       {QStringLiteral("desktopFile"), desktopFile}};
+  Q_INVOKABLE [[nodiscard]] QVariant entryInfoForDesktopFile(const QString& desktopFile) const {
+    return QVariantMap{
+        {QStringLiteral("name"), QStringLiteral("Firefox")},
+        {QStringLiteral("iconName"), QStringLiteral("firefox")},
+        {QStringLiteral("desktopFile"), desktopFile},
+    };
   }
   Q_INVOKABLE bool launchDesktopFile(const QString& /*desktopFile*/) { return true; }
-  Q_INVOKABLE QStringList availableCategories() const {
+  Q_INVOKABLE [[nodiscard]] QStringList availableCategories() const {
     return QStringList{QStringLiteral("Internet"), QStringLiteral("Development")};
   }
-  Q_INVOKABLE int countForCategory(const QString& /*category*/) const { return 5; }
+  Q_INVOKABLE [[nodiscard]] int countForCategory(const QString& /*category*/) const { return 5; }
   Q_INVOKABLE void launchAction(int index, int /*actionIndex*/) { launch(index); }
-  Q_INVOKABLE QVariantList defaultAppEntriesForMimeTypes(const QStringList& /*mime_types*/) const {
+  Q_INVOKABLE [[nodiscard]] QVariantList defaultAppEntriesForMimeTypes(const QStringList& /*mime_types*/) const {
     return defaultAppEntries();
   }
-  Q_INVOKABLE QVariantList defaultAppEntriesForMimeTypesAndCategories(const QStringList& /*mime_types*/,
-                                                                      const QStringList& /*categories*/) const {
+  Q_INVOKABLE [[nodiscard]] QVariantList defaultAppEntriesForMimeTypesAndCategories(
+      const QStringList& /*mime_types*/, const QStringList& /*categories*/) const {
     return defaultAppEntries();
   }
-  Q_INVOKABLE QVariantList defaultAppEntriesForCategory(const QString& /*category*/) const {
+  Q_INVOKABLE [[nodiscard]] QVariantList defaultAppEntriesForCategory(const QString& /*category*/) const {
     return defaultAppEntries();
   }
 
@@ -904,14 +924,18 @@ class FakeLauncherService : public QObject {
  private:
   [[nodiscard]] static QVariantList defaultAppEntries() {
     return {
-        QVariantMap{{QStringLiteral("name"), QStringLiteral("First Candidate")},
-                    {QStringLiteral("icon"), QStringLiteral("first-candidate-icon")},
-                    {QStringLiteral("desktopFile"), QStringLiteral("first.desktop")},
-                    {QStringLiteral("mimeTypes"), QStringList{QStringLiteral("text/plain")}}},
-        QVariantMap{{QStringLiteral("name"), QStringLiteral("Selected Candidate")},
-                    {QStringLiteral("icon"), QStringLiteral("selected-candidate-icon")},
-                    {QStringLiteral("desktopFile"), QStringLiteral("selected.desktop")},
-                    {QStringLiteral("mimeTypes"), QStringList{QStringLiteral("text/plain")}}},
+        QVariantMap{
+            {QStringLiteral("name"), QStringLiteral("First Candidate")},
+            {QStringLiteral("icon"), QStringLiteral("first-candidate-icon")},
+            {QStringLiteral("desktopFile"), QStringLiteral("first.desktop")},
+            {QStringLiteral("mimeTypes"), QStringList{QStringLiteral("text/plain")}},
+        },
+        QVariantMap{
+            {QStringLiteral("name"), QStringLiteral("Selected Candidate")},
+            {QStringLiteral("icon"), QStringLiteral("selected-candidate-icon")},
+            {QStringLiteral("desktopFile"), QStringLiteral("selected.desktop")},
+            {QStringLiteral("mimeTypes"), QStringList{QStringLiteral("text/plain")}},
+        },
     };
   }
 
@@ -925,13 +949,15 @@ class FakeLauncherService : public QObject {
 class FakeRecentAppsTracker : public QObject {
   Q_OBJECT
  public:
-  Q_INVOKABLE QVariantList recentEntries(int /*count*/) const {
+  Q_INVOKABLE [[nodiscard]] QVariantList recentEntries(int /*count*/) const {
     if (empty_) {
       return {};
     }
     return QVariantList{QVariantMap{{QStringLiteral("desktopFile"), QStringLiteral("firefox.desktop")}}};
   }
-  Q_INVOKABLE QDateTime lastUsedFor(const QString& /*desktopFile*/) const { return QDateTime::currentDateTime(); }
+  Q_INVOKABLE [[nodiscard]] QDateTime lastUsedFor(const QString& /*desktopFile*/) const {
+    return QDateTime::currentDateTime();
+  }
   Q_INVOKABLE void setEmpty(bool empty) {
     if (empty_ == empty) {
       return;
@@ -1107,11 +1133,11 @@ class FakeWindowSurface : public QObject {
   Q_PROPERTY(QString screenName READ screenName NOTIFY changed)
   Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
  public:
-  int mode() const { return mode_; }
-  bool visible() const { return visible_; }
-  QString target() const { return target_; }
-  QString screenName() const { return screen_; }
-  QStringList choices() const { return choices_; }
+  [[nodiscard]] int mode() const { return mode_; }
+  [[nodiscard]] bool visible() const { return visible_; }
+  [[nodiscard]] QString target() const { return target_; }
+  [[nodiscard]] QString screenName() const { return screen_; }
+  [[nodiscard]] QStringList choices() const { return choices_; }
   Q_INVOKABLE void toggle(const QString& screen = {}) {
     if (visible_) {
       hide();
@@ -1122,10 +1148,10 @@ class FakeWindowSurface : public QObject {
     choices_.clear();
     open(screen);
   }
-  Q_INVOKABLE void menu(const QString& id, const QString& screen) {
+  Q_INVOKABLE void menu(const QString& identifier, const QString& screen) {
     hide();
     mode_ = 1;
-    target_ = id;
+    target_ = identifier;
     open(screen);
   }
   Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen) {
@@ -1168,41 +1194,59 @@ class CompositorTestSeed : public QObject {
   explicit CompositorTestSeed(CompositorService& service) : service_(service) {}
   Q_INVOKABLE void setToplevels(bool first, bool second, bool second_active = true) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
-    if (first)
-      snapshot.windows.append({.id = "first",
-                               .title = "First document",
-                               .app_id = "org.sample",
-                               .activated = !second_active,
-                               .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close}});
-    if (second)
-      snapshot.windows.append({.id = "second",
-                               .title = "Second document",
-                               .app_id = "org.sample",
-                               .activated = second_active,
-                               .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close}});
+    if (first) {
+      snapshot.windows.append({
+          .id = "first",
+          .title = "First document",
+          .app_id = "org.sample",
+          .activated = !second_active,
+          .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close},
+      });
+    }
+    if (second) {
+      snapshot.windows.append({
+          .id = "second",
+          .title = "Second document",
+          .app_id = "org.sample",
+          .activated = second_active,
+          .operations = {WindowCommand::Activate, WindowCommand::Minimize, WindowCommand::Close},
+      });
+    }
     service_.publishSnapshotForTest(snapshot);
   }
   Q_INVOKABLE void setWindow(bool available, const QString& output, const QString& title, const QString& app) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.active_window = available}};
-    if (!output.isEmpty()) snapshot.active_windows.insert(output, {.app_id = app, .title = title});
+    if (!output.isEmpty()) {
+      snapshot.active_windows.insert(output, {.app_id = app, .title = title});
+    }
     service_.publishSnapshotForTest(snapshot);
   }
 
   Q_INVOKABLE void reset() {
-    service_.publishSnapshotForTest({.connected = true,
-                                     .focused_output = "DP-1",
-                                     .capabilities = {.workspace_listing = true,
-                                                      .workspace_activation = true,
-                                                      .active_window = true,
-                                                      .focused_output = true,
-                                                      .urgency = true,
-                                                      .occupancy = true},
-                                     .workspaces = {{.id = "1",
-                                                     .display_name = "1",
-                                                     .outputs = {"DP-1"},
-                                                     .active = true,
-                                                     .focused = true,
-                                                     .occupied = true}}});
+    service_.publishSnapshotForTest({
+        .connected = true,
+        .focused_output = "DP-1",
+        .capabilities =
+            {
+                .workspace_listing = true,
+                .workspace_activation = true,
+                .active_window = true,
+                .focused_output = true,
+                .urgency = true,
+                .occupancy = true,
+            },
+        .workspaces =
+            {
+                {
+                    .id = "1",
+                    .display_name = "1",
+                    .outputs = {"DP-1"},
+                    .active = true,
+                    .focused = true,
+                    .occupied = true,
+                },
+            },
+    });
   }
 
  private:
@@ -1212,7 +1256,9 @@ class CompositorTestSeed : public QObject {
 class FakeNumberedProvider : public QObject, public NumberedWorkspaceProvider {
   Q_OBJECT
  public:
-  NumberedWorkspaceState numberedWorkspaces() const override { return {.eligible = true, .assignments = {{"1", 1}}}; }
+  [[nodiscard]] NumberedWorkspaceState numberedWorkspaces() const override {
+    return {.eligible = true, .assignments = {{"1", 1}}};
+  }
   void activateNumberedSlot(int slot) override { emit slotActivated(slot); }
  Q_SIGNALS:
   void slotActivated(int slot);
@@ -1225,20 +1271,30 @@ class FakeQmlServices {
         audio_(AudioService::SkipInit),
         power_profiles_(PowerProfilesService::SkipInit),
         topbar_test_seed_(weather_, audio_, battery_, keyboard_layout_, network_) {
-    compositor_.publishSnapshotForTest({.connected = true,
-                                        .focused_output = QStringLiteral("DP-1"),
-                                        .capabilities = {.workspace_listing = true,
-                                                         .workspace_activation = true,
-                                                         .active_window = true,
-                                                         .focused_output = true,
-                                                         .urgency = true,
-                                                         .occupancy = true},
-                                        .workspaces = {{.id = QStringLiteral("1"),
-                                                        .display_name = QStringLiteral("1"),
-                                                        .outputs = {QStringLiteral("DP-1")},
-                                                        .active = true,
-                                                        .focused = true,
-                                                        .occupied = true}}});
+    compositor_.publishSnapshotForTest({
+        .connected = true,
+        .focused_output = QStringLiteral("DP-1"),
+        .capabilities =
+            {
+                .workspace_listing = true,
+                .workspace_activation = true,
+                .active_window = true,
+                .focused_output = true,
+                .urgency = true,
+                .occupancy = true,
+            },
+        .workspaces =
+            {
+                {
+                    .id = QStringLiteral("1"),
+                    .display_name = QStringLiteral("1"),
+                    .outputs = {QStringLiteral("DP-1")},
+                    .active = true,
+                    .focused = true,
+                    .occupied = true,
+                },
+            },
+    });
 
     BatteryStateUpdate battery_update;
     battery_update.percent = 74;

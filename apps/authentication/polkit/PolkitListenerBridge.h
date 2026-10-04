@@ -19,6 +19,10 @@ namespace Holonight::Authentication {
 
 class PolkitListenerBridge final : public QObject {
  public:
+  PolkitListenerBridge(const PolkitListenerBridge&) = delete;
+  PolkitListenerBridge& operator=(const PolkitListenerBridge&) = delete;
+  PolkitListenerBridge(PolkitListenerBridge&&) = delete;
+  PolkitListenerBridge& operator=(PolkitListenerBridge&&) = delete;
   using RequestHandler = std::function<void(PolkitRequest)>;
   using CancelHandler = std::function<void(const QString&)>;
   struct RegistrationHooks {

@@ -323,8 +323,19 @@ TEST(MprisService, InitialSnapshotEmitsEachChangedPropertyExactlyOnce) {
                                     QStringLiteral("t1"), QStringLiteral("VLC"), QStringLiteral("vlc")));
   dbus->emitNameOwnerChanged(QString::fromLatin1(kVlc), QString(), QStringLiteral(":1.1"));
 
-  for (const QSignalSpy* spy : {&has_active_spy, &title_spy, &artist_spy, &identity_spy, &desktop_entry_spy,
-                                &status_spy, &next_spy, &previous_spy, &play_spy, &pause_spy, &control_spy}) {
+  for (const QSignalSpy* spy : {
+           &has_active_spy,
+           &title_spy,
+           &artist_spy,
+           &identity_spy,
+           &desktop_entry_spy,
+           &status_spy,
+           &next_spy,
+           &previous_spy,
+           &play_spy,
+           &pause_spy,
+           &control_spy,
+       }) {
     EXPECT_EQ(spy->size(), 1);
   }
 }
@@ -332,7 +343,7 @@ TEST(MprisService, InitialSnapshotEmitsEachChangedPropertyExactlyOnce) {
 TEST(MprisService, CoalescedSnapshotSignalObservesCompleteState) {
   auto [service, dbus] = makeService();
   int snapshot_count = 0;
-  QObject::connect(service.get(), &MprisService::activeSnapshotChanged, service.get(), [&]() {
+  QObject::connect(service.get(), &MprisService::activeSnapshotChanged, service.get(), [&] {
     ++snapshot_count;
     EXPECT_TRUE(service->hasActivePlayer());
     EXPECT_EQ(service->activeTitle(), QStringLiteral("Song"));

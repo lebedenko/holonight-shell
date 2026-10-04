@@ -25,7 +25,8 @@ TEST(LabwcWindows, PropertiesCommitAtomically) {
 
 TEST(LabwcWindows, FocusTransferInEitherOrderAndClosure) {
   for (bool deactivate_first : {false, true}) {
-    ForeignToplevelState first, second;
+    ForeignToplevelState first;
+    ForeignToplevelState second;
     quint64 order = 0;
     first.setActivated(true, order);
     first.commit();
@@ -46,9 +47,14 @@ TEST(LabwcWindows, FocusTransferInEitherOrderAndClosure) {
 
 TEST(LabwcWindows, OutputMovementSpanningUnknownAndRemoval) {
   ForeignToplevelState state;
-  int first_token, second_token, unknown_token;
+  int first_token{};
+  int second_token{};
+  int unknown_token{};
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Opaque identity; never dereferenced.
   auto* first = reinterpret_cast<wl_output*>(&first_token);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Opaque identity; never dereferenced.
   auto* second = reinterpret_cast<wl_output*>(&second_token);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Opaque identity; never dereferenced.
   auto* unknown = reinterpret_cast<wl_output*>(&unknown_token);
   QHash<wl_output*, QString> names{{first, "DP-1"}, {second, "DP-2"}};
   state.pending.window.title = "title";
@@ -69,9 +75,11 @@ TEST(LabwcWindows, OutputMovementSpanningUnknownAndRemoval) {
 }
 
 TEST(LabwcWindows, SourcesMergeIndependentlyAndProtocolAvailabilitySurvivesEmptyWindows) {
-  CompositorSnapshot workspace{.connected = true,
-                               .capabilities = {.workspace_listing = true, .workspace_activation = true},
-                               .workspaces = {{.id = "one"}}};
+  CompositorSnapshot workspace{
+      .connected = true,
+      .capabilities = {.workspace_listing = true, .workspace_activation = true},
+      .workspaces = {{.id = "one"}},
+  };
   QHash<QString, CompositorActiveWindow> windows{{"DP-1", {.app_id = "app", .title = "title"}}};
   auto snapshot = mergeLabwcSnapshot(workspace, true, windows);
   EXPECT_TRUE(snapshot.capabilities.active_window);
@@ -121,11 +129,13 @@ TEST(LabwcWindows, IndependentFlagsAndUncommittedInventory) {
 
 TEST(WindowCatalog, IdentityCapabilitySearchGroupingAndHistory) {
   WindowCatalog catalog;
-  CompositorWindow first{.id = "first",
-                         .title = "Editor",
-                         .app_id = "app",
-                         .activated = true,
-                         .operations = {WindowCommand::Activate, WindowCommand::Close}};
+  CompositorWindow first{
+      .id = "first",
+      .title = "Editor",
+      .app_id = "app",
+      .activated = true,
+      .operations = {WindowCommand::Activate, WindowCommand::Close},
+  };
   CompositorWindow second{.id = "second", .title = "Editor", .app_id = "app", .minimized = true};
   catalog.replace({first, second});
   EXPECT_EQ(catalog.validate("first", WindowCommand::Close, true), WindowCommandResult::Accepted);

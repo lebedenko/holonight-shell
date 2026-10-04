@@ -108,24 +108,26 @@ bool OsdSurface::createSurface(const QString& screen_name) {
 
 LayerSurfaceSpec OsdSurface::surfaceSpec(QScreen* screen, const QString& screen_name) const {
   const int top = widgetPositionIsTopAnchored(position_) ? kBarHeight + kOsdMargin : kOsdMargin;
-  return {.output = screen,
-          .name_space = QStringLiteral("osd"),
-          .layer = Layer::Overlay,
-          .anchors = anchorsForPosition(position_),
-          .width = kFallbackWidth,
-          .height = kFallbackHeight,
-          .margin_top = top,
-          .margin_right = kOsdMargin,
-          .margin_bottom = kOsdMargin,
-          .margin_left = kOsdMargin,
-          .exclusive_zone = 0,
-          .keyboard_interactivity = KeyboardInteractivity::None,
-          .input_region_policy = InputRegionPolicy::Empty,
-          .input_region = {},
-          .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Osd/OsdView.qml")),
-          .initial_properties = {{QStringLiteral("monitorName"), screen_name}},
-          .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
-          .color = Qt::transparent};
+  return {
+      .output = screen,
+      .name_space = QStringLiteral("osd"),
+      .layer = Layer::Overlay,
+      .anchors = anchorsForPosition(position_),
+      .width = kFallbackWidth,
+      .height = kFallbackHeight,
+      .margin_top = top,
+      .margin_right = kOsdMargin,
+      .margin_bottom = kOsdMargin,
+      .margin_left = kOsdMargin,
+      .exclusive_zone = 0,
+      .keyboard_interactivity = KeyboardInteractivity::None,
+      .input_region_policy = InputRegionPolicy::Empty,
+      .input_region = {},
+      .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Osd/OsdView.qml")),
+      .initial_properties = {{QStringLiteral("monitorName"), screen_name}},
+      .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+      .color = Qt::transparent,
+  };
 }
 
 void OsdSurface::onSurfaceConfigured() {

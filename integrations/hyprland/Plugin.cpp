@@ -15,8 +15,8 @@ class Plugin final : public QObject, public IntegrationPlugin {
   std::unique_ptr<KeyboardLayoutProvider> createKeyboard() override {
     return std::make_unique<HyprlandLayoutProvider>();
   }
-  QUrl topbarComponent() const override {
-    return QUrl(QStringLiteral("qrc:/HolonightShell/Integrations/Hyprland/SpecialWorkspaces.qml"));
+  [[nodiscard]] QUrl topbarComponent() const override {
+    return {QStringLiteral("qrc:/HolonightShell/Integrations/Hyprland/SpecialWorkspaces.qml")};
   }
 };
 #include "Plugin.moc"

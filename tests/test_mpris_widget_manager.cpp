@@ -88,9 +88,13 @@ TEST(MprisWidgetManagerTrackKey, ChangesWhenTitleArtistAlbumOrArtUrlChange) {
 
   dbus->emitPlayerPropertiesChanged(
       QString::fromLatin1(kVlc),
-      {{QStringLiteral("Metadata"),
-        metadataDict(QStringLiteral("Song B"), QStringLiteral("Artist"), QStringLiteral("Album"),
-                     QStringLiteral("file:///a.jpg"), QStringLiteral("t2"))}});
+      {
+          {
+              QStringLiteral("Metadata"),
+              metadataDict(QStringLiteral("Song B"), QStringLiteral("Artist"), QStringLiteral("Album"),
+                           QStringLiteral("file:///a.jpg"), QStringLiteral("t2")),
+          },
+      });
 
   const QString second_key = manager.currentTrackKeyForTest();
   EXPECT_NE(first_key, second_key) << "title change must produce a different composite key";

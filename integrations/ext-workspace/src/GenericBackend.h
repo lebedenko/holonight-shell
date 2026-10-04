@@ -24,7 +24,7 @@ class GenericWorkspaceHandle final : public QtWayland::ext_workspace_handle_v1 {
   GenericWorkspaceHandle& operator=(GenericWorkspaceHandle&&) = delete;
 
  protected:
-  void ext_workspace_handle_v1_id(const QString& id) override;
+  void ext_workspace_handle_v1_id(const QString& identifier) override;
   void ext_workspace_handle_v1_capabilities(uint32_t capabilities) override;
   void ext_workspace_handle_v1_name(const QString& name) override;
   void ext_workspace_handle_v1_state(uint32_t state) override;
@@ -66,6 +66,10 @@ class GenericProtocol final : public QWaylandClientExtensionTemplate<GenericProt
                               public QtWayland::ext_workspace_manager_v1 {
  public:
   explicit GenericProtocol(GenericBackend* backend);
+  GenericProtocol(const GenericProtocol&) = delete;
+  GenericProtocol& operator=(const GenericProtocol&) = delete;
+  GenericProtocol(GenericProtocol&&) = delete;
+  GenericProtocol& operator=(GenericProtocol&&) = delete;
   ~GenericProtocol() override;
 
  protected:

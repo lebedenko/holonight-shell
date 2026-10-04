@@ -45,13 +45,19 @@ void SwayBackend::connectSockets() {
 }
 
 void SwayBackend::activateWorkspace(const QString& workspace_id) {
-  if (workspace_names_.contains(workspace_id)) dispatchActivation({.id = workspace_id});
+  if (workspace_names_.contains(workspace_id)) {
+    dispatchActivation({.id = workspace_id});
+  }
 }
 void SwayBackend::activateNumberedSlot(int slot) {
-  if (slot > 0) dispatchActivation({.slot = slot});
+  if (slot > 0) {
+    dispatchActivation({.slot = slot});
+  }
 }
 void SwayBackend::dispatchActivation(const WorkspaceActivation& activation) {
-  if (request_socket_.state() != QLocalSocket::ConnectedState) return;
+  if (request_socket_.state() != QLocalSocket::ConnectedState) {
+    return;
+  }
   if (phase_ != RequestPhase::Idle) {
     pending_activation_ = activation;
     return;

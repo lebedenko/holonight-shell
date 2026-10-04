@@ -541,8 +541,13 @@ QString MimeService::resolveRole(const QStringList& role_mimes) const {
 
 QStringList MimeService::trackedRoleMimes() const {
   QStringList all;
-  for (const QStringList& role_mimes : {terminal_role_mimes_, file_manager_role_mimes_, image_viewer_role_mimes_,
-                                        text_editor_role_mimes_, video_player_role_mimes_}) {
+  for (const QStringList& role_mimes : {
+           terminal_role_mimes_,
+           file_manager_role_mimes_,
+           image_viewer_role_mimes_,
+           text_editor_role_mimes_,
+           video_player_role_mimes_,
+       }) {
     for (const QString& mime : role_mimes) {
       appendUnique(&all, mime);
     }

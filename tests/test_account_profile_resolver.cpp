@@ -12,11 +12,13 @@ using namespace Holonight::Authentication;
 
 namespace {
 Identity account() {
-  return {.stable_id = QStringLiteral("unix-user:1000"),
-          .display_label = QStringLiteral("Original label"),
-          .uid = 1000,
-          .has_uid = true,
-          .username = QStringLiteral("local")};
+  return {
+      .stable_id = QStringLiteral("unix-user:1000"),
+      .display_label = QStringLiteral("Original label"),
+      .uid = 1000,
+      .has_uid = true,
+      .username = QStringLiteral("local"),
+  };
 }
 void begin(AuthenticationPromptModel& model, QString token = QStringLiteral("request")) {
   ASSERT_TRUE(model.beginRequest({.token = std::move(token),
@@ -29,10 +31,12 @@ void begin(AuthenticationPromptModel& model, QString token = QStringLiteral("req
 }  // namespace
 
 TEST(AuthenticationProfiles, ResolvesLocalUserAndPreservesIdentity) {
-  Identity input{.stable_id = QStringLiteral("stable"),
-                 .display_label = QStringLiteral("Existing label"),
-                 .uid = static_cast<uint>(getuid()),
-                 .has_uid = true};
+  Identity input{
+      .stable_id = QStringLiteral("stable"),
+      .display_label = QStringLiteral("Existing label"),
+      .uid = static_cast<uint>(getuid()),
+      .has_uid = true,
+  };
   const auto profile = AccountProfileResolver::localProfile(input);
   EXPECT_FALSE(profile.username.isEmpty());
   EXPECT_EQ(profile.stable_id, input.stable_id);

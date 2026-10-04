@@ -53,7 +53,7 @@ void TransientSurfaceHost::openPendingSurface() {
   const auto is_current = [this, expected_host] { return host_.get() == expected_host; };
   connect(
       next_host.get(), &LayerSurfaceHost::configured, this,
-      [this, is_current]() {
+      [this, is_current] {
         if (is_current()) {
           onSurfaceConfigured();
         }
@@ -71,7 +71,7 @@ void TransientSurfaceHost::openPendingSurface() {
       Qt::QueuedConnection);
   connect(
       next_host.get(), &LayerSurfaceHost::closed, this,
-      [this, expected_host, is_current]() {
+      [this, expected_host, is_current] {
         if (is_current()) {
           removeCurrentHost(expected_host);
         }

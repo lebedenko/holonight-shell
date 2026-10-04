@@ -10,12 +10,14 @@ using namespace Holonight::Wayland;
 namespace {
 PairedLayerSurfaceSpec pairSpec(QScreen* screen) {
   const auto spec = [screen](const QString& name) {
-    return LayerSurfaceSpec{.output = screen,
-                            .name_space = name,
-                            .anchors = Anchor::Top | Anchor::Left,
-                            .width = 100,
-                            .height = 50,
-                            .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml"))};
+    return LayerSurfaceSpec{
+        .output = screen,
+        .name_space = name,
+        .anchors = Anchor::Top | Anchor::Left,
+        .width = 100,
+        .height = 50,
+        .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml")),
+    };
   };
   return {.dismiss = spec(QStringLiteral("test-dismiss")), .content = spec(QStringLiteral("test-content"))};
 }

@@ -10,5 +10,7 @@ KeyboardLayoutService::KeyboardLayoutService(std::unique_ptr<KeyboardLayoutProvi
   }
 }
 void KeyboardLayoutService::start() {
-  if (provider_) provider_->start();
+  if (provider_) {
+    provider_->start();
+  }
 }

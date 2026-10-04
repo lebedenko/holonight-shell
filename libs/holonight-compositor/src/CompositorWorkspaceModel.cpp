@@ -56,10 +56,12 @@ QVariant CompositorWorkspaceModel::data(const QModelIndex& index, int role) cons
 }
 
 QHash<int, QByteArray> CompositorWorkspaceModel::roleNames() const {
-  return {{WorkspaceIdRole, "workspaceId"}, {DisplayNameRole, "displayName"}, {StableOrderRole, "stableOrder"},
-          {CanActivateRole, "canActivate"}, {GroupsRole, "groups"},           {OutputsRole, "outputs"},
-          {ActiveRole, "active"},           {FocusedRole, "focused"},         {UrgentRole, "urgent"},
-          {OccupiedRole, "occupied"},       {VisualStateRole, "visualState"}};
+  return {
+      {WorkspaceIdRole, "workspaceId"}, {DisplayNameRole, "displayName"}, {StableOrderRole, "stableOrder"},
+      {CanActivateRole, "canActivate"}, {GroupsRole, "groups"},           {OutputsRole, "outputs"},
+      {ActiveRole, "active"},           {FocusedRole, "focused"},         {UrgentRole, "urgent"},
+      {OccupiedRole, "occupied"},       {VisualStateRole, "visualState"},
+  };
 }
 
 void CompositorWorkspaceModel::replace(QList<CompositorWorkspace> workspaces) {

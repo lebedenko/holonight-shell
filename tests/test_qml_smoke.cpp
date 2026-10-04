@@ -98,10 +98,12 @@ void expectBatteryIndicatorState(QQmlEngine* engine, const QString& source_root,
                                  bool pulse_glow, const QColor& glow_color) {
   const auto object = createQmlObject(
       engine, QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Topbar/BatteryIndicator.qml")),
-      {{QStringLiteral("percent"), percent},
-       {QStringLiteral("charging"), charging},
-       {QStringLiteral("discharging"), discharging},
-       {QStringLiteral("fullyCharged"), fully_charged}});
+      {
+          {QStringLiteral("percent"), percent},
+          {QStringLiteral("charging"), charging},
+          {QStringLiteral("discharging"), discharging},
+          {QStringLiteral("fullyCharged"), fully_charged},
+      });
   ASSERT_NE(object, nullptr);
 
   EXPECT_EQ(object->property("highDischarging").toBool(), high_discharging);
@@ -302,10 +304,8 @@ TEST(QmlSmoke, StorageDriveHeaderUpdatesMetadataWithoutCountChange) {
   EXPECT_EQ(icon->property("resolvedColor"), icon->property("normalColor"));
   ASSERT_TRUE(QTest::qWaitFor([&] {
     const auto images = icon->findChildren<QObject*>();
-    for (auto* image : images) {
-      if (image->inherits("QQuickImage") && image->property("status").toInt() == 1) return true;
-    }
-    return false;
+    return std::ranges::any_of(
+        images, [](auto* image) { return image->inherits("QQuickImage") && image->property("status").toInt() == 1; });
   }));
   EXPECT_FALSE(icon->property("hasError").toBool());
   services.seedStorage({}, 7200);
@@ -337,9 +337,11 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
   engine.addImportPath(modules.path());
 
   expectFileLoads(&engine, QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Topbar/TopBar.qml")),
-                  {{QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
-                   {QStringLiteral("width"), 1200},
-                   {QStringLiteral("height"), 40}});
+                  {
+                      {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
+                      {QStringLiteral("width"), 1200},
+                      {QStringLiteral("height"), 40},
+                  });
 
   const QVariantMap bar_properties = {{QStringLiteral("barMonitorName"), QStringLiteral("DP-1")}};
   expectFileLoads(&engine,
@@ -369,17 +371,21 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
       {{QStringLiteral("width"), 600}, {QStringLiteral("height"), 640}});
   expectFileLoads(&engine,
                   QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Popups/Status/StatusPopup.qml")),
-                  {{QStringLiteral("popupId"), QStringLiteral("network")},
-                   {QStringLiteral("width"), 688},
-                   {QStringLiteral("height"), 730}});
+                  {
+                      {QStringLiteral("popupId"), QStringLiteral("network")},
+                      {QStringLiteral("width"), 688},
+                      {QStringLiteral("height"), 730},
+                  });
   expectFileLoads(&engine, QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Launcher/Launcher.qml")),
                   {{QStringLiteral("width"), 1200}, {QStringLiteral("height"), 800}});
   expectFileLoads(&engine,
                   QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/RightSidebar/RightSidebar.qml")),
-                  {{QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
-                   {QStringLiteral("active"), true},
-                   {QStringLiteral("width"), 380},
-                   {QStringLiteral("height"), 760}});
+                  {
+                      {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
+                      {QStringLiteral("active"), true},
+                      {QStringLiteral("width"), 380},
+                      {QStringLiteral("height"), 760},
+                  });
   services.seedStorage();
   expectFileLoads(&engine,
                   QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Topbar/StorageWidget.qml")),
@@ -400,18 +406,22 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
                   {{QStringLiteral("monitorName"), QStringLiteral("DP-1")}});
   expectFileLoads(&engine,
                   QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Widgets/WidgetSurface.qml")),
-                  {{QStringLiteral("widgetType"), QStringLiteral("time-to-event")},
-                   {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
-                   {QStringLiteral("titleText"), QStringLiteral("Launch Event")},
-                   {QStringLiteral("remainingText"), QStringLiteral("02:14:05")},
-                   {QStringLiteral("deadlineLabelText"), QStringLiteral("June 20, 2026")}});
+                  {
+                      {QStringLiteral("widgetType"), QStringLiteral("time-to-event")},
+                      {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
+                      {QStringLiteral("titleText"), QStringLiteral("Launch Event")},
+                      {QStringLiteral("remainingText"), QStringLiteral("02:14:05")},
+                      {QStringLiteral("deadlineLabelText"), QStringLiteral("June 20, 2026")},
+                  });
   expectFileLoads(&engine,
                   QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Widgets/WidgetSurface.qml")),
-                  {{QStringLiteral("widgetType"), QStringLiteral("clock")},
-                   {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
-                   {QStringLiteral("timeText"), QStringLiteral("12:34")},
-                   {QStringLiteral("secondsText"), QStringLiteral("56")},
-                   {QStringLiteral("dateText"), QStringLiteral("Friday, June 19")}});
+                  {
+                      {QStringLiteral("widgetType"), QStringLiteral("clock")},
+                      {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
+                      {QStringLiteral("timeText"), QStringLiteral("12:34")},
+                      {QStringLiteral("secondsText"), QStringLiteral("56")},
+                      {QStringLiteral("dateText"), QStringLiteral("Friday, June 19")},
+                  });
 
   expectLoads(&engine, R"(
       import QtQuick
@@ -441,26 +451,36 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
                               QColor(QStringLiteral("#9a8cff")));
 
   services.notifications().setHistoryGroups({
-      QVariantMap{{QStringLiteral("appName"), QStringLiteral("Mail")},
-                  {QStringLiteral("latestSummary"), QStringLiteral("Inbox")},
-                  {QStringLiteral("totalCount"), 5},
-                  {QStringLiteral("latestTimestampMs"), 1718000000000LL}},
-      QVariantMap{{QStringLiteral("appName"), QStringLiteral("Chat")},
-                  {QStringLiteral("latestSummary"), QStringLiteral("Ping")},
-                  {QStringLiteral("totalCount"), 1},
-                  {QStringLiteral("latestTimestampMs"), 1718000005000LL}},
-      QVariantMap{{QStringLiteral("appName"), QStringLiteral("System")},
-                  {QStringLiteral("latestSummary"), QStringLiteral("Update")},
-                  {QStringLiteral("totalCount"), 2},
-                  {QStringLiteral("latestTimestampMs"), 1718000010000LL}},
-      QVariantMap{{QStringLiteral("appName"), QStringLiteral("Calendar")},
-                  {QStringLiteral("latestSummary"), QStringLiteral("Event")},
-                  {QStringLiteral("totalCount"), 3},
-                  {QStringLiteral("latestTimestampMs"), 1718000015000LL}},
-      QVariantMap{{QStringLiteral("appName"), QStringLiteral("Weather")},
-                  {QStringLiteral("latestSummary"), QStringLiteral("Rain")},
-                  {QStringLiteral("totalCount"), 4},
-                  {QStringLiteral("latestTimestampMs"), 1718000020000LL}},
+      QVariantMap{
+          {QStringLiteral("appName"), QStringLiteral("Mail")},
+          {QStringLiteral("latestSummary"), QStringLiteral("Inbox")},
+          {QStringLiteral("totalCount"), 5},
+          {QStringLiteral("latestTimestampMs"), 1718000000000LL},
+      },
+      QVariantMap{
+          {QStringLiteral("appName"), QStringLiteral("Chat")},
+          {QStringLiteral("latestSummary"), QStringLiteral("Ping")},
+          {QStringLiteral("totalCount"), 1},
+          {QStringLiteral("latestTimestampMs"), 1718000005000LL},
+      },
+      QVariantMap{
+          {QStringLiteral("appName"), QStringLiteral("System")},
+          {QStringLiteral("latestSummary"), QStringLiteral("Update")},
+          {QStringLiteral("totalCount"), 2},
+          {QStringLiteral("latestTimestampMs"), 1718000010000LL},
+      },
+      QVariantMap{
+          {QStringLiteral("appName"), QStringLiteral("Calendar")},
+          {QStringLiteral("latestSummary"), QStringLiteral("Event")},
+          {QStringLiteral("totalCount"), 3},
+          {QStringLiteral("latestTimestampMs"), 1718000015000LL},
+      },
+      QVariantMap{
+          {QStringLiteral("appName"), QStringLiteral("Weather")},
+          {QStringLiteral("latestSummary"), QStringLiteral("Rain")},
+          {QStringLiteral("totalCount"), 4},
+          {QStringLiteral("latestTimestampMs"), 1718000020000LL},
+      },
   });
 
   const auto sidebar_overview = createQmlObject(
@@ -485,9 +505,11 @@ TEST(QmlSmoke, LoadsTopbarTrayAndStatusComponentsWithFakeServices) {
 
   const auto notifications_widget = createQmlObject(
       &engine, QUrl::fromLocalFile(source_root + QStringLiteral("/apps/shell/qml/Topbar/NotificationsWidget.qml")),
-      {{QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
-       {QStringLiteral("width"), 40},
-       {QStringLiteral("height"), 30}});
+      {
+          {QStringLiteral("barMonitorName"), QStringLiteral("DP-1")},
+          {QStringLiteral("width"), 40},
+          {QStringLiteral("height"), 30},
+      });
   ASSERT_NE(notifications_widget, nullptr);
   EXPECT_DOUBLE_EQ(notifications_widget->property("opacity").toDouble(), 0.55);
   services.notifications().setUnreadState(3, QStringLiteral("Mail, Chat"));

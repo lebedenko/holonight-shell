@@ -27,7 +27,9 @@ class IntegrationLoader final : public QObject {
   [[nodiscard]] QString backendName() const { return backend_name_; }
   [[nodiscard]] QString diagnostic() const { return diagnostic_; }
   std::unique_ptr<CompositorBackend> createCompositor();
-  [[nodiscard]] QUrl componentUrl() const { return integration_ ? integration_->topbarComponent() : QUrl{}; }
+  [[nodiscard]] QUrl componentUrl() const {
+    return (integration_ != nullptr) ? integration_->topbarComponent() : QUrl{};
+  }
   [[nodiscard]] QObject* contributionModel() const { return contribution_model_; }
 
  private:

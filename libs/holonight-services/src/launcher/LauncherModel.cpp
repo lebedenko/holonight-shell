@@ -276,7 +276,11 @@ void LauncherModel::rebuildSearchResults() {
         const int action_score = fieldScore(action.name, query_, 900, 800, 750, 600);
         if (action_score > 0) {
           results_.append(ScoredEntry{
-              .entry_index = entry_index, .score = action_score, .is_action = true, .action_index = action_idx});
+              .entry_index = entry_index,
+              .score = action_score,
+              .is_action = true,
+              .action_index = action_idx,
+          });
         }
       }
     }

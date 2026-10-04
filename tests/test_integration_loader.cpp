@@ -12,13 +12,23 @@
 
 namespace {
 QList<IntegrationDescriptor> descriptors() {
-  return {{"a", {{"id", "a"}, {"desktops", QJsonArray{"Alpha"}}, {"markers", QJsonArray{"ALPHA_SOCKET"}}}},
-          {"b", {{"id", "b"}, {"desktops", QJsonArray{"Beta"}}, {"markers", QJsonArray{"BETA_SOCKET"}}}},
-          {"fallback", {{"id", "fallback"}, {"fallback", true}}}};
+  return {
+      {
+          .path = "a",
+          .metadata = {{"id", "a"}, {"desktops", QJsonArray{"Alpha"}}, {"markers", QJsonArray{"ALPHA_SOCKET"}}},
+      },
+      {
+          .path = "b",
+          .metadata = {{"id", "b"}, {"desktops", QJsonArray{"Beta"}}, {"markers", QJsonArray{"BETA_SOCKET"}}},
+      },
+      {.path = "fallback", .metadata = {{"id", "fallback"}, {"fallback", true}}},
+  };
 }
 QByteArray mappings() {
   QFile file("/proc/self/maps");
-  if (!file.open(QIODevice::ReadOnly)) return {};
+  if (!file.open(QIODevice::ReadOnly)) {
+    return {};
+  }
   return file.readAll();
 }
 void copy(const QString& source, const QString& directory) {
@@ -112,13 +122,14 @@ TEST(IntegrationLoader, MissingAndIncompatibleSelectedPluginFallBackWithoutInsta
     copy(WAYLAND_PLUGIN, isolated.path());
     QFile catalog(isolated.filePath("selected.json"));
     ASSERT_TRUE(catalog.open(QIODevice::WriteOnly));
-    catalog.write(
-        QJsonDocument(QJsonObject{{"iid", HolonightIntegration_iid},
-                                  {"id", "missing"},
-                                  {"desktops", QJsonArray{"Missing"}},
-                                  {"library", "missing.so"},
-                                  {"shellVersion", incompatible ? "incompatible" : HOLONIGHT_INTEGRATION_VERSION}})
-            .toJson());
+    catalog.write(QJsonDocument(QJsonObject{
+                                    {"iid", HolonightIntegration_iid},
+                                    {"id", "missing"},
+                                    {"desktops", QJsonArray{"Missing"}},
+                                    {"library", "missing.so"},
+                                    {"shellVersion", incompatible ? "incompatible" : HOLONIGHT_INTEGRATION_VERSION},
+                                })
+                      .toJson());
     catalog.close();
     QProcessEnvironment environment;
     environment.insert("XDG_CURRENT_DESKTOP", "Missing");

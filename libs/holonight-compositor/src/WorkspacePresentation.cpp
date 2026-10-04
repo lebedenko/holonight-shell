@@ -15,16 +15,20 @@ WorkspacePresentation::WorkspacePresentation(CompositorService* service, Numbere
 }
 void WorkspacePresentation::setWorkspaceDisplayCount(int count) {
   count = std::clamp(count, 1, 20);
-  if (display_count_ == count) return;
+  if (display_count_ == count) {
+    return;
+  }
   display_count_ = count;
   emit workspaceDisplayCountChanged();
   emit revisionChanged();
 }
 int WorkspacePresentation::firstVisibleWorkspaceRow() const {
-  return static_cast<CompositorWorkspaceModel*>(service_->workspaces())->firstVisibleRow(display_count_);
+  return qobject_cast<CompositorWorkspaceModel*>(service_->workspaces())->firstVisibleRow(display_count_);
 }
 void WorkspacePresentation::activateNumberedSlot(int slot) {
-  if (eligible_ && slot > 0 && provider_) provider_->activateNumberedSlot(slot);
+  if (eligible_ && slot > 0 && (provider_ != nullptr)) {
+    provider_->activateNumberedSlot(slot);
+  }
 }
 int WorkspacePresentation::activeNumericWorkspaceForOutput(const QString& output) const {
   const auto found =
@@ -89,20 +93,26 @@ int WorkspacePresentation::lastUrgentNumericWorkspaceBefore(int slot) const {
 }
 
 int WorkspacePresentation::viewportStart(const QString& output, int pan) const {
-  const qint64 center = std::max(1, activeNumericWorkspaceForOutput(output) - (display_count_ - 1) / 2);
+  const qint64 center = std::max(1, activeNumericWorkspaceForOutput(output) - ((display_count_ - 1) / 2));
   return static_cast<int>(std::clamp<qint64>(center + pan, 1, std::numeric_limits<int>::max() - display_count_ - 2));
 }
 QVariantList WorkspacePresentation::numberedSlots(int start, int count) const {
   QVariantList entries;
-  if (!eligible_) return entries;
+  if (!eligible_) {
+    return entries;
+  }
   count = std::clamp(count, 0, 24);
   for (int index = 0; index < count; ++index) {
     const qint64 slot = static_cast<qint64>(start) + index;
-    if (slot <= 0 || slot > std::numeric_limits<int>::max()) continue;
+    if (slot <= 0 || slot > std::numeric_limits<int>::max()) {
+      continue;
+    }
     const auto number = static_cast<int>(slot);
-    entries.append(QVariantMap{{QStringLiteral("slot"), number},
-                               {QStringLiteral("workspaceId"), slots_.key(number)},
-                               {QStringLiteral("visualState"), numericWorkspaceVisualState(number)}});
+    entries.append(QVariantMap{
+        {QStringLiteral("slot"), number},
+        {QStringLiteral("workspaceId"), slots_.key(number)},
+        {QStringLiteral("visualState"), numericWorkspaceVisualState(number)},
+    });
   }
   return entries;
 }

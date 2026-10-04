@@ -71,8 +71,9 @@ ChildProcess startAskpass(const char* basename, const char* hint = nullptr, bool
     QByteArray extra("extra");
     QByteArray style_option("-style");
     QByteArray fusion("Fusion");
-    std::array<char*, 6> arguments{entry_name.data(), prompt.data(), extra_argument ? extra.data() : nullptr,
-                                   nullptr,           nullptr,       nullptr};
+    std::array<char*, 6> arguments{
+        entry_name.data(), prompt.data(), extra_argument ? extra.data() : nullptr, nullptr, nullptr, nullptr,
+    };
     if (fusion_cli) {
       arguments = {entry_name.data(), style_option.data(), fusion.data(), prompt.data(), nullptr, nullptr};
       setenv("QT_QUICK_CONTROLS_STYLE", "Holonight", 1);
@@ -136,10 +137,12 @@ ProcessResult finish(ChildProcess child) {
     kill(child.pid, SIGKILL);
     waitpid(child.pid, &wait_status, 0);
   }
-  return {.output = readAll(child.output),
-          .error = readAll(child.error),
-          .status = WIFEXITED(wait_status) ? WEXITSTATUS(wait_status) : 128 + WTERMSIG(wait_status),
-          .core_dumped = WCOREDUMP(wait_status) != 0};
+  return {
+      .output = readAll(child.output),
+      .error = readAll(child.error),
+      .status = WIFEXITED(wait_status) ? WEXITSTATUS(wait_status) : 128 + WTERMSIG(wait_status),
+      .core_dumped = WCOREDUMP(wait_status) != 0,
+  };
 }
 
 TEST(AskpassProcess, InstalledTargetIgnoresTestAutomationChannel) {

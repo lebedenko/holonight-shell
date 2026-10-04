@@ -6,13 +6,18 @@ class GroupedApplicationModel final : public QAbstractListModel {
   Q_OBJECT
  public:
   using QAbstractListModel::QAbstractListModel;
+  // NOLINTNEXTLINE(cppcoreguidelines-use-enum-class,performance-enum-size): Qt role API.
   enum Role { Key = Qt::UserRole + 1, AppId, Title, Windows, Active, Minimized };
-  int rowCount(const QModelIndex& parent = {}) const override { return parent.isValid() ? 0 : rows_.size(); }
-  QHash<int, QByteArray> roleNames() const override {
-    return {{Key, "groupKey"},    {AppId, "appId"},   {Title, "title"},
-            {Windows, "windows"}, {Active, "active"}, {Minimized, "minimized"}};
+  [[nodiscard]] int rowCount(const QModelIndex& parent = {}) const override {
+    return parent.isValid() ? 0 : static_cast<int>(rows_.size());
   }
-  QVariant data(const QModelIndex& index, int role) const override;
+  [[nodiscard]] QHash<int, QByteArray> roleNames() const override {
+    return {
+        {Key, "groupKey"},    {AppId, "appId"},   {Title, "title"},
+        {Windows, "windows"}, {Active, "active"}, {Minimized, "minimized"},
+    };
+  }
+  [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
   void replace(const QList<CompositorWindow>& windows, bool grouped);
 
  private:
@@ -40,11 +45,11 @@ class WindowPresentation final : public QObject {
   Q_PROPERTY(QVariantList overview READ overview NOTIFY changed)
  public:
   WindowPresentation(CompositorService* service, bool task_management, QObject* parent = nullptr);
-  int revision() const { return service_->revision(); }
-  bool enabled() const { return task_management_ && service_->canListWindows(); }
-  bool taskbarEnabled() const { return enabled() && taskbar_enabled_; }
-  bool overviewAccess() const { return enabled() && overview_access_; }
-  bool desktopMenu() const { return task_management_ && desktop_menu_; }
+  [[nodiscard]] int revision() const { return service_->revision(); }
+  [[nodiscard]] bool enabled() const { return task_management_ && service_->canListWindows(); }
+  [[nodiscard]] bool taskbarEnabled() const { return enabled() && taskbar_enabled_; }
+  [[nodiscard]] bool overviewAccess() const { return enabled() && overview_access_; }
+  [[nodiscard]] bool desktopMenu() const { return task_management_ && desktop_menu_; }
   void configure(bool enabled, bool grouped, bool overview_access, bool desktop_menu) {
     taskbar_enabled_ = enabled;
     grouped_ = grouped;
@@ -52,18 +57,22 @@ class WindowPresentation final : public QObject {
     desktop_menu_ = desktop_menu;
     refresh();
   }
-  bool grouped() const { return grouped_; }
+  [[nodiscard]] bool grouped() const { return grouped_; }
   void setGrouped(bool value);
   QAbstractItemModel* applications() { return &groups_; }
-  QStringList windowIds() const {
+  [[nodiscard]] QStringList windowIds() const {
     QStringList ids;
-    for (const auto& window : service_->snapshot().windows) ids.append(window.id);
+    for (const auto& window : service_->snapshot().windows) {
+      ids.append(window.id);
+    }
     return ids;
   }
-  QVariantList overview() const;
-  Q_INVOKABLE QVariantMap window(const QString& id) const;
-  Q_INVOKABLE int command(const QString& id, int operation) { return service_->commandWindow(id, operation); }
-  Q_INVOKABLE void click(const QString& id);
+  [[nodiscard]] QVariantList overview() const;
+  Q_INVOKABLE [[nodiscard]] QVariantMap window(const QString& identifier) const;
+  Q_INVOKABLE int command(const QString& identifier, int operation) {
+    return service_->commandWindow(identifier, operation);
+  }
+  Q_INVOKABLE void click(const QString& identifier);
   Q_INVOKABLE void beginOverview();
   Q_INVOKABLE void endOverview();
   Q_INVOKABLE void setSearch(const QString& query);

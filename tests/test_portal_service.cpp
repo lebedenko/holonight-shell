@@ -140,8 +140,10 @@ TEST(PortalServiceTest, BrokerPresent_AvailableTrue) {
 }
 
 TEST(PortalServiceTest, BrokerPresent_InterfacesParsed) {
-  const QStringList ifaces = {QStringLiteral("org.freedesktop.portal.Settings"),
-                              QStringLiteral("org.freedesktop.portal.FileChooser")};
+  const QStringList ifaces = {
+      QStringLiteral("org.freedesktop.portal.Settings"),
+      QStringLiteral("org.freedesktop.portal.FileChooser"),
+  };
   PortalService service(makeDbus(true, ifaces));
   drainEvents();
   EXPECT_EQ(service.interfaces().size(), 2);
@@ -152,7 +154,8 @@ TEST(PortalServiceTest, BrokerPresent_CorrectBooleans) {
   const QStringList ifaces = {
       QStringLiteral("org.freedesktop.portal.Settings"),   QStringLiteral("org.freedesktop.portal.FileChooser"),
       QStringLiteral("org.freedesktop.portal.OpenURI"),    QStringLiteral("org.freedesktop.portal.Inhibit"),
-      QStringLiteral("org.freedesktop.portal.ScreenCast"), QStringLiteral("org.freedesktop.portal.GlobalShortcuts")};
+      QStringLiteral("org.freedesktop.portal.ScreenCast"), QStringLiteral("org.freedesktop.portal.GlobalShortcuts"),
+  };
   PortalService service(makeDbus(true, ifaces));
   drainEvents();
   EXPECT_TRUE(service.settingsAvailable());
@@ -175,9 +178,11 @@ TEST(PortalServiceTest, BrokerPresent_PartialInterfaces_CorrectBooleans) {
 // ─── Backend detection ───────────────────────────────────────────────────────
 
 TEST(PortalServiceTest, BackendsListedFromListNames) {
-  const QStringList all_names = {QStringLiteral("org.freedesktop.impl.portal.Hyprland"),
-                                 QStringLiteral("org.freedesktop.impl.portal.gtk"),
-                                 QStringLiteral("org.freedesktop.DBus")};  // should be filtered out
+  const QStringList all_names = {
+      QStringLiteral("org.freedesktop.impl.portal.Hyprland"),
+      QStringLiteral("org.freedesktop.impl.portal.gtk"),
+      QStringLiteral("org.freedesktop.DBus"),
+  };  // should be filtered out
   PortalService service(makeDbus(true, {}, all_names));
   drainEvents();
   EXPECT_EQ(service.backends().size(), 2);

@@ -67,8 +67,10 @@ class FakePowerProfilesDbusClient final : public DbusPropertyClient {
 TEST(PowerProfilesService, PrefersFreedesktopNameWhenBothRegistered) {
   auto dbus = std::make_unique<FakePowerProfilesDbusClient>();
   auto* dbus_ptr = dbus.get();
-  dbus->registered = {QStringLiteral("org.freedesktop.UPower.PowerProfiles"),
-                      QStringLiteral("net.hadess.PowerProfiles")};
+  dbus->registered = {
+      QStringLiteral("org.freedesktop.UPower.PowerProfiles"),
+      QStringLiteral("net.hadess.PowerProfiles"),
+  };
   dbus->properties.insert(QStringLiteral("ActiveProfile"), QStringLiteral("balanced"));
   PowerProfilesService service(std::move(dbus));
 
@@ -96,8 +98,10 @@ TEST(PowerProfilesService, StartAppliesProfilesFromPropertyList) {
   dbus->registered = {QStringLiteral("org.freedesktop.UPower.PowerProfiles")};
   dbus->properties.insert(QStringLiteral("ActiveProfile"), QStringLiteral("balanced"));
   dbus->properties.insert(QStringLiteral("Profiles"),
-                          QVariantList{QVariantMap{{QStringLiteral("Profile"), QStringLiteral("balanced")}},
-                                       QVariantMap{{QStringLiteral("Profile"), QStringLiteral("performance")}}});
+                          QVariantList{
+                              QVariantMap{{QStringLiteral("Profile"), QStringLiteral("balanced")}},
+                              QVariantMap{{QStringLiteral("Profile"), QStringLiteral("performance")}},
+                          });
   PowerProfilesService service(std::move(dbus));
 
   service.start();

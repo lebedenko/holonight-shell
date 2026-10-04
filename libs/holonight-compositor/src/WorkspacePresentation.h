@@ -16,9 +16,9 @@ class WorkspacePresentation final : public QObject {
   [[nodiscard]] bool useNumericWorkspacePresentation() const { return eligible_; }
   [[nodiscard]] int workspaceDisplayCount() const { return display_count_; }
   void setWorkspaceDisplayCount(int count);
-  Q_INVOKABLE int firstVisibleWorkspaceRow() const;
-  Q_INVOKABLE int viewportStart(const QString& output, int pan) const;
-  Q_INVOKABLE QVariantList numberedSlots(int start, int count) const;
+  Q_INVOKABLE [[nodiscard]] int firstVisibleWorkspaceRow() const;
+  Q_INVOKABLE [[nodiscard]] int viewportStart(const QString& output, int pan) const;
+  Q_INVOKABLE [[nodiscard]] QVariantList numberedSlots(int start, int count) const;
   Q_INVOKABLE void activateNumberedSlot(int slot);
   Q_INVOKABLE [[nodiscard]] int activeNumericWorkspaceForOutput(const QString& output) const;
   Q_INVOKABLE [[nodiscard]] QString numericWorkspaceVisualState(int slot) const;

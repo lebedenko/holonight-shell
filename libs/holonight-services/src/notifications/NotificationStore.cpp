@@ -300,7 +300,7 @@ void NotificationStore::launchWrite(QList<NotificationHistoryItem> snapshot) {
   }
 
   watcher_->setFuture(QtConcurrent::run(
-      [path, items = std::move(snapshot), persist_body]() { writeHistoryToDisk(path, items, persist_body); }));
+      [path, items = std::move(snapshot), persist_body] { writeHistoryToDisk(path, items, persist_body); }));
 }
 
 void NotificationStore::onWriteFinished() {

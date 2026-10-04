@@ -34,8 +34,10 @@ constexpr QLatin1StringView kUpsertQuery{
     "VALUES (:path, :mtime, :size, :name, :categories, :data)"};
 
 const QSet<QString>& requiredColumns() {
-  static const QSet<QString> kColumns{QStringLiteral("path"), QStringLiteral("mtime"),      QStringLiteral("size"),
-                                      QStringLiteral("name"), QStringLiteral("categories"), QStringLiteral("data")};
+  static const QSet<QString> kColumns{
+      QStringLiteral("path"), QStringLiteral("mtime"),      QStringLiteral("size"),
+      QStringLiteral("name"), QStringLiteral("categories"), QStringLiteral("data"),
+  };
   return kColumns;
 }
 

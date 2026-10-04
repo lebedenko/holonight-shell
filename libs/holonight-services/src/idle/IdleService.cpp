@@ -141,7 +141,7 @@ void IdleService::detectDaemon(NotificationService* notif) {
 
   if (!daemon_detected_ && notif != nullptr) {
     QTimer::singleShot(
-        kMissingDaemonNotificationDelayMs, this, [this, notif_ptr = QPointer<NotificationService>(notif)]() {
+        kMissingDaemonNotificationDelayMs, this, [this, notif_ptr = QPointer<NotificationService>(notif)] {
           if (notif_ptr == nullptr) {
             return;
           }

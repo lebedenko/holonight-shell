@@ -446,7 +446,7 @@ void MprisService::applyActiveSnapshot(  // NOLINT(readability-function-cognitiv
   const qint64 position_before = activePosition();
 
   has_active_player_ = new_has_active_player;
-  active_title_ = new_title;
+  active_title_ = std::move(new_title);
   active_artist_ = new_artist;
   active_identity_ = new_identity;
   active_desktop_entry_ = new_desktop_entry;

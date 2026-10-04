@@ -4,7 +4,9 @@
 #include <QString>
 #include <QStringList>
 
+// NOLINTNEXTLINE(performance-enum-size): Preserve plugin ABI.
 enum class WindowCommand { Activate, Minimize, Restore, Maximize, Unmaximize, Fullscreen, Unfullscreen, Close };
+// NOLINTNEXTLINE(performance-enum-size): Preserve plugin ABI.
 enum class WindowCommandResult { Accepted, InvalidWindow, Unsupported, Disconnected, MissingSeat };
 
 struct CompositorWindow {

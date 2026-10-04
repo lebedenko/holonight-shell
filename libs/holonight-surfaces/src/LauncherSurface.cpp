@@ -15,7 +15,7 @@ Q_LOGGING_CATEGORY(lcLauncher, "holonight.launcher")
 using namespace Holonight::Wayland;
 
 LauncherSurface::LauncherSurface(QObject* parent) : TransientSurfaceHost("LauncherSurface", parent) {
-  connect(LayerShellContext::instance(), &LayerShellContext::availabilityChanged, this, [this]() {
+  connect(LayerShellContext::instance(), &LayerShellContext::availabilityChanged, this, [this] {
     executeCommand(lifecycle_.providerAvailabilityChanged(LayerShellContext::instance()->isAvailable()));
   });
 }
@@ -72,20 +72,21 @@ void LauncherSurface::destroySurface() {
 }
 
 LayerSurfaceSpec LauncherSurface::surfaceSpec(QScreen* screen) {
-  return {.output = screen,
-          .name_space = QStringLiteral("launcher"),
-          .layer = Layer::Top,
-          .anchors = Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
-          .width = 0,
-          .height = 0,
-          .exclusive_zone = 0,
-          .keyboard_interactivity = KeyboardInteractivity::Exclusive,
-          .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Launcher/Launcher.qml")),
-          .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
-          .color = Qt::transparent,
-          .before_load = [](QQmlEngine* engine) {
-            engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider());
-          }};
+  return {
+      .output = screen,
+      .name_space = QStringLiteral("launcher"),
+      .layer = Layer::Top,
+      .anchors = Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
+      .width = 0,
+      .height = 0,
+      .exclusive_zone = 0,
+      .keyboard_interactivity = KeyboardInteractivity::Exclusive,
+      .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Launcher/Launcher.qml")),
+      .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+      .color = Qt::transparent,
+      .before_load =
+          [](QQmlEngine* engine) { engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider()); },
+  };
 }
 
 void LauncherSurface::onSurfaceTerminated() { executeCommand(lifecycle_.surfaceClosed()); }

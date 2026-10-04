@@ -181,15 +181,16 @@ void PolkitListenerBridge::receive(const char* action_id, const char* message, P
       [this, token, action = QString::fromUtf8((action_id != nullptr) ? action_id : ""),
        text = QString::fromUtf8((message != nullptr) ? message : ""), details = std::move(details),
        cookie_text = QString::fromUtf8((cookie != nullptr) ? cookie : ""), identities = std::move(identities),
-       completion, retained_cancellable]() mutable {
-        request_handler_(
-            {.token = token,
-             .action_id = action,
-             .message = text,
-             .details = std::move(details),
-             .cookie = cookie_text,
-             .identities = std::move(identities),
-             .complete = [completion, retained_cancellable](bool authorized) { completion->finish(authorized); }});
+       completion, retained_cancellable] mutable {
+        request_handler_({
+            .token = token,
+            .action_id = action,
+            .message = text,
+            .details = std::move(details),
+            .cookie = cookie_text,
+            .identities = std::move(identities),
+            .complete = [completion, retained_cancellable](bool authorized) { completion->finish(authorized); },
+        });
       },
       Qt::QueuedConnection);
   g_cancellable_connect(cancellable, G_CALLBACK(cancellableTriggered),

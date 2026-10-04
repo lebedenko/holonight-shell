@@ -10,7 +10,7 @@ namespace {
 
 QByteArray argbBytes(const QList<QRgb>& pixels) {
   QByteArray data;
-  data.reserve(static_cast<qsizetype>(pixels.size() * 4));
+  data.reserve((pixels.size() * 4));
   for (QRgb pixel : pixels) {
     data.append(static_cast<char>(qAlpha(pixel)));
     data.append(static_cast<char>(qRed(pixel)));

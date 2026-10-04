@@ -15,7 +15,7 @@ class QScreen;
 class BackgroundManager : public PerMonitorLayerManager {
   Q_OBJECT
  public:
-  BackgroundManager(ConfigService* config_service, QObject* parent = nullptr);
+  explicit BackgroundManager(ConfigService* config_service, QObject* parent = nullptr);
   void setDesktopMenuEnabled(bool enabled);
 
  protected:

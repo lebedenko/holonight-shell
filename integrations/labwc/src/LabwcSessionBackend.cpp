@@ -18,10 +18,10 @@ SessionCommandResult LabwcSessionBackend::logout() {
   }
   // labwc --exit signals the inherited LABWC_PID. Reject process-group and invalid IDs.
   const auto value = qEnvironmentVariable("LABWC_PID");
-  bool ok = false;
-  const auto pid = value.toLongLong(&ok);
+  bool valid = false;
+  const auto pid = value.toLongLong(&valid);
   static const QRegularExpression digits(QStringLiteral("^[0-9]+$"));
-  if (!ok || !digits.match(value).hasMatch() || pid <= 1 || pid > std::numeric_limits<int>::max()) {
+  if (!valid || !digits.match(value).hasMatch() || pid <= 1 || pid > std::numeric_limits<int>::max()) {
     return SessionCommandResult::failure(QStringLiteral("cannot identify labwc session: valid LABWC_PID is required"));
   }
   return run(QStringLiteral("labwc"), {QStringLiteral("--exit")});

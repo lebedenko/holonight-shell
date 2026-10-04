@@ -168,7 +168,7 @@ TEST(KeyboardLayoutService, NameIsAlreadyCommittedWhenTheCodeSignalFires) {
 
   QString name_seen_with_code_change;
   QObject::connect(&service, &KeyboardLayoutService::layoutCodeChanged, &service,
-                   [&service, &name_seen_with_code_change]() { name_seen_with_code_change = service.layoutName(); });
+                   [&service, &name_seen_with_code_change] { name_seen_with_code_change = service.layoutName(); });
 
   fake->fireEventLine("activelayout>>kbd,Ukrainian");
 

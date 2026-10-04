@@ -120,8 +120,8 @@ TEST_F(AppearanceIntegrationTest, LiveReplacementEmitsPreciseSignalsBeforeRevisi
   QSignalSpy icon_theme_spy(&appearance, &AppearanceService::iconThemeChanged);
   QSignalSpy revision_spy(&appearance, &AppearanceService::revisionChanged);
   QStringList signal_order;
-  QObject::connect(&appearance, &AppearanceService::uiFontChanged, [&signal_order]() { signal_order << "uiFont"; });
-  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order]() { signal_order << "revision"; });
+  QObject::connect(&appearance, &AppearanceService::uiFontChanged, [&signal_order] { signal_order << "uiFont"; });
+  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order] { signal_order << "revision"; });
 
   QByteArray edited(kCustomAppearance);
   edited.replace("ui_family = \"Fira Code\"", "ui_family = \"Cascadia Code\"");
@@ -140,12 +140,12 @@ TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionNotification) 
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
   QStringList signal_order;
-  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order]() { signal_order << "revision"; });
+  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order] { signal_order << "revision"; });
   ThemeService theme(&appearance);
   auto* portal = theme.findChild<SettingsPortalBackend*>();
   ASSERT_NE(portal, nullptr);
   QSignalSpy portal_spy(portal, &SettingsPortalBackend::SettingChanged);
-  QObject::connect(portal, &SettingsPortalBackend::SettingChanged, [&signal_order]() { signal_order << "portal"; });
+  QObject::connect(portal, &SettingsPortalBackend::SettingChanged, [&signal_order] { signal_order << "portal"; });
 
   QByteArray edited(kCustomAppearance);
   edited.replace("scheme = \"holonight-dark\"", "scheme = \"holonight-day\"");
@@ -237,8 +237,12 @@ TEST_F(AppearanceIntegrationTest, PublicApiDoesNotExposeProductConfiguration) {
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
   const QMetaObject* meta_object = appearance.metaObject();
-  const QStringList forbidden_fragments = {QStringLiteral("api"), QStringLiteral("credential"),
-                                           QStringLiteral("password"), QStringLiteral("url")};
+  const QStringList forbidden_fragments = {
+      QStringLiteral("api"),
+      QStringLiteral("credential"),
+      QStringLiteral("password"),
+      QStringLiteral("url"),
+  };
 
   for (int index = meta_object->propertyOffset(); index < meta_object->propertyCount(); ++index) {
     const QString property_name = QString::fromLatin1(meta_object->property(index).name()).toLower();

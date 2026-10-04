@@ -133,7 +133,7 @@ TEST(MprisArtworkCacheResolve, CacheHitReusesFileWithoutRefetchWithin50ms) {
 
   auto second_result = std::make_shared<QString>();
   auto second_done = std::make_shared<bool>(false);
-  const qint64 elapsed_ms = [&]() {
+  const qint64 elapsed_ms = [&] {
     QElapsedTimer timer;
     timer.start();
     cache.resolve(art_url, [second_result, second_done](QString path) {

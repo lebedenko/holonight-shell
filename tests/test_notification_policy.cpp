@@ -21,7 +21,10 @@ TEST(NotificationPolicy, EnqueuesNormalOverflowAtRear) {
   QList<uint32_t> visible{1, 2, 3};
   QList<uint32_t> queue{4};
   const QHash<uint32_t, NotifUrgency> urgencies{
-      {1, NotifUrgency::Normal}, {2, NotifUrgency::Normal}, {3, NotifUrgency::Normal}};
+      {1, NotifUrgency::Normal},
+      {2, NotifUrgency::Normal},
+      {3, NotifUrgency::Normal},
+  };
 
   const NotificationPlacementDecision decision =
       placeNotification(visible, queue, 5, NotifUrgency::Normal, urgencies, 3);
@@ -37,7 +40,10 @@ TEST(NotificationPolicy, CriticalPreemptsOldestVisibleNonCriticalToQueueFront) {
   QList<uint32_t> visible{1, 2, 3};
   QList<uint32_t> queue{4};
   const QHash<uint32_t, NotifUrgency> urgencies{
-      {1, NotifUrgency::Critical}, {2, NotifUrgency::Normal}, {3, NotifUrgency::Low}};
+      {1, NotifUrgency::Critical},
+      {2, NotifUrgency::Normal},
+      {3, NotifUrgency::Low},
+  };
 
   const NotificationPlacementDecision decision =
       placeNotification(visible, queue, 5, NotifUrgency::Critical, urgencies, 3);
@@ -53,7 +59,10 @@ TEST(NotificationPolicy, CriticalOverflowEnqueuesWhenEveryVisibleNotificationIsC
   QList<uint32_t> visible{1, 2, 3};
   QList<uint32_t> queue;
   const QHash<uint32_t, NotifUrgency> urgencies{
-      {1, NotifUrgency::Critical}, {2, NotifUrgency::Critical}, {3, NotifUrgency::Critical}};
+      {1, NotifUrgency::Critical},
+      {2, NotifUrgency::Critical},
+      {3, NotifUrgency::Critical},
+  };
 
   const NotificationPlacementDecision decision =
       placeNotification(visible, queue, 4, NotifUrgency::Critical, urgencies, 3);

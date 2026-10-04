@@ -39,16 +39,18 @@ TEST(BatteryState, MapsEveryRelevantUPowerState) {
     bool fully_charged;
   };
 
-  constexpr std::array<ExpectedState, 8> kStates = {{
-      {.state = 0, .charging = false, .discharging = false, .fully_charged = false},
-      {.state = 1, .charging = true, .discharging = false, .fully_charged = false},
-      {.state = 2, .charging = false, .discharging = true, .fully_charged = false},
-      {.state = 3, .charging = false, .discharging = false, .fully_charged = false},
-      {.state = 4, .charging = false, .discharging = false, .fully_charged = true},
-      {.state = 5, .charging = false, .discharging = false, .fully_charged = false},
-      {.state = 6, .charging = false, .discharging = true, .fully_charged = false},
-      {.state = 99, .charging = false, .discharging = false, .fully_charged = false},
-  }};
+  constexpr std::array<ExpectedState, 8> kStates = {
+      {
+          {.state = 0, .charging = false, .discharging = false, .fully_charged = false},
+          {.state = 1, .charging = true, .discharging = false, .fully_charged = false},
+          {.state = 2, .charging = false, .discharging = true, .fully_charged = false},
+          {.state = 3, .charging = false, .discharging = false, .fully_charged = false},
+          {.state = 4, .charging = false, .discharging = false, .fully_charged = true},
+          {.state = 5, .charging = false, .discharging = false, .fully_charged = false},
+          {.state = 6, .charging = false, .discharging = true, .fully_charged = false},
+          {.state = 99, .charging = false, .discharging = false, .fully_charged = false},
+      },
+  };
 
   for (const ExpectedState& expected : kStates) {
     SCOPED_TRACE(expected.state);

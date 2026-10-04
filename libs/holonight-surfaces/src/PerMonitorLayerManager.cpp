@@ -39,9 +39,13 @@ QQuickView* PerMonitorLayerManager::viewForMonitor(const QString& monitor_name) 
 }
 
 void PerMonitorLayerManager::rebuildSurfaces() {
-  if (!started_) return;
+  if (!started_) {
+    return;
+  }
   closeAllSurfaces();
-  for (auto* screen : QGuiApplication::screens()) createSurface(screen);
+  for (auto* screen : QGuiApplication::screens()) {
+    createSurface(screen);
+  }
 }
 
 void PerMonitorLayerManager::start() {
@@ -53,7 +57,7 @@ void PerMonitorLayerManager::start() {
   connect(qGuiApp, &QGuiApplication::screenAdded, this, &PerMonitorLayerManager::handleScreenAdded);
   connect(qGuiApp, &QGuiApplication::screenRemoved, this, &PerMonitorLayerManager::handleScreenRemoved);
   connect(Holonight::Wayland::LayerShellContext::instance(),
-          &Holonight::Wayland::LayerShellContext::availabilityChanged, this, [this]() {
+          &Holonight::Wayland::LayerShellContext::availabilityChanged, this, [this] {
             if (!Holonight::Wayland::LayerShellContext::instance()->isAvailable()) {
               closeAllSurfaces();
             }
@@ -67,14 +71,16 @@ void PerMonitorLayerManager::start() {
 LayerSurfaceSpec PerMonitorLayerManager::surfaceSpec(QScreen* screen) {
   const LayerConfig cfg = layerConfig();
   const QmlSource source = qmlSource(screen);
-  LayerSurfaceSpec spec{.output = screen,
-                        .name_space = cfg.namespace_name,
-                        .layer = cfg.layer,
-                        .qml_url = source.url,
-                        .initial_properties = source.initial_properties,
-                        .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint | cfg.extra_flags,
-                        .color = Qt::transparent,
-                        .before_load = [this](QQmlEngine* engine) { decorateEngine(*engine); }};
+  LayerSurfaceSpec spec{
+      .output = screen,
+      .name_space = cfg.namespace_name,
+      .layer = cfg.layer,
+      .qml_url = source.url,
+      .initial_properties = source.initial_properties,
+      .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint | cfg.extra_flags,
+      .color = Qt::transparent,
+      .before_load = [this](QQmlEngine* engine) { decorateEngine(*engine); },
+  };
   configureSurface(spec, screen);
   return spec;
 }
@@ -92,7 +98,7 @@ void PerMonitorLayerManager::createSurface(QScreen* screen) {
   };
   connect(
       host.get(), &LayerSurfaceHost::configured, this,
-      [this, output_name, isCurrent]() {
+      [this, output_name, isCurrent] {
         if (isCurrent()) {
           onHostConfigured(output_name);
           if (auto* view = viewForMonitor(output_name)) {
@@ -113,7 +119,7 @@ void PerMonitorLayerManager::createSurface(QScreen* screen) {
       Qt::QueuedConnection);
   connect(
       host.get(), &LayerSurfaceHost::closed, this,
-      [this, output_name, expected_host, isCurrent]() {
+      [this, output_name, expected_host, isCurrent] {
         if (isCurrent()) {
           removeCurrentSurface(output_name, expected_host);
         }

@@ -52,10 +52,12 @@ MprisWidgetManager::MprisWidgetManager(WidgetDefinition definition, int margin, 
 }
 
 PerMonitorLayerManager::LayerConfig MprisWidgetManager::layerConfig() const {
-  return {.layer = Holonight::Wayland::Layer::Bottom,
-          .namespace_name = QStringLiteral("widget"),
-          // Non-interactive: an empty input region lets clicks fall through (REQ-U-001).
-          .extra_flags = Qt::WindowTransparentForInput};
+  return {
+      .layer = Holonight::Wayland::Layer::Bottom,
+      .namespace_name = QStringLiteral("widget"),
+      // Non-interactive: an empty input region lets clicks fall through (REQ-U-001).
+      .extra_flags = Qt::WindowTransparentForInput,
+  };
 }
 
 void MprisWidgetManager::decorateEngine(QQmlEngine& engine) {
@@ -83,8 +85,10 @@ PerMonitorLayerManager::QmlSource MprisWidgetManager::qmlSource(QScreen* screen)
   // Everything beyond barMonitorName arrives via live property pushes (resyncSurface/tick), not
   // setInitialProperties — MPRIS content changes continuously while mapped, unlike Clock/TTE's
   // seed-once-then-tick-push model (§2.3).
-  return {.url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/MprisWidgetSurface.qml")),
-          .initial_properties = {{QStringLiteral("barMonitorName"), screen->name()}}};
+  return {
+      .url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/MprisWidgetSurface.qml")),
+      .initial_properties = {{QStringLiteral("barMonitorName"), screen->name()}},
+  };
 }
 
 bool MprisWidgetManager::shouldCreateSurface(QScreen* screen) const {

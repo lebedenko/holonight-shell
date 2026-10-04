@@ -25,13 +25,13 @@ class HyprlandLayoutProvider : public KeyboardLayoutProvider {
   HyprlandLayoutProvider(HyprlandLayoutProvider&&) = delete;
   HyprlandLayoutProvider& operator=(HyprlandLayoutProvider&&) = delete;
 
-  void start();
+  void start() override;
 
-  [[nodiscard]] QString layoutCode() const { return layout_code_; }
+  [[nodiscard]] QString layoutCode() const override { return layout_code_; }
 
   // REQ-C-014. Full layout name as reported by Hyprland (e.g. "English (US)"), retained alongside
   // the derived two-letter code for consumers that want to spell it out.
-  [[nodiscard]] QString layoutName() const { return layout_name_; }
+  [[nodiscard]] QString layoutName() const override { return layout_name_; }
 
  private:
   void connectSocket();

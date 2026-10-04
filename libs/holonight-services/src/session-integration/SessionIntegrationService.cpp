@@ -56,9 +56,11 @@ class ProcessCommandRunner final : public ISessionIntegrationCommandRunner {
       proc.waitForFinished(1000);
       return {.exit_code = -1, .stdout_text = {}, .stderr_text = proc.errorString()};
     }
-    return {.exit_code = proc.exitCode(),
-            .stdout_text = QString::fromUtf8(proc.readAllStandardOutput()).trimmed(),
-            .stderr_text = QString::fromUtf8(proc.readAllStandardError()).trimmed()};
+    return {
+        .exit_code = proc.exitCode(),
+        .stdout_text = QString::fromUtf8(proc.readAllStandardOutput()).trimmed(),
+        .stderr_text = QString::fromUtf8(proc.readAllStandardError()).trimmed(),
+    };
   }
 };
 
@@ -177,10 +179,10 @@ void SessionIntegrationService::refresh() {
   QList<QFuture<QVariantList>> futures;
   futures.reserve(kDiagnosticFns.size());
   for (DiagFn diag_fn : kDiagnosticFns) {
-    futures.append(QtConcurrent::run([this, diag_fn]() { return (this->*diag_fn)(); }));
+    futures.append(QtConcurrent::run([this, diag_fn] { return (this->*diag_fn)(); }));
   }
   watcher->setFuture(QtFuture::whenAll(futures.begin(), futures.end()));
-  connect(watcher, &QFutureWatcher<CombinedFuture>::finished, this, [this, watcher]() {
+  connect(watcher, &QFutureWatcher<CombinedFuture>::finished, this, [this, watcher] {
     diagnostics_.clear();
     for (const QFuture<QVariantList>& future : watcher->result()) {
       diagnostics_.append(future.result());  // input order preserved by whenAll — deterministic row order
@@ -415,9 +417,11 @@ QVariantList SessionIntegrationService::addXdgMenuDiagnostics() const {
 
 QVariantList SessionIntegrationService::addKdeCacheDiagnostics() const {
   if (!command_runner_->executableExists(QStringLiteral("kbuildsycoca6"))) {
-    return {addDiagnostic(QStringLiteral("kde-sycoca"), QStringLiteral("KDE application cache"), QStringLiteral("info"),
-                          QStringLiteral("kbuildsycoca6 missing"), QStringLiteral("optional"),
-                          QStringLiteral("KDE sycoca checks are skipped because kbuildsycoca6 is not installed."))};
+    return {
+        addDiagnostic(QStringLiteral("kde-sycoca"), QStringLiteral("KDE application cache"), QStringLiteral("info"),
+                      QStringLiteral("kbuildsycoca6 missing"), QStringLiteral("optional"),
+                      QStringLiteral("KDE sycoca checks are skipped because kbuildsycoca6 is not installed.")),
+    };
   }
 
   const QStringList cache_dirs{xdgCacheHome()};
@@ -436,12 +440,14 @@ QVariantList SessionIntegrationService::addKdeCacheDiagnostics() const {
     detail = QStringLiteral("A desktop entry or MIME cache is newer than KDE sycoca. Rebuild application caches.");
   }
 
-  return {addDiagnostic(
-      QStringLiteral("kde-sycoca"), QStringLiteral("KDE application cache"), status,
-      QStringLiteral("sycoca=%1; desktop=%2; mimeinfo=%3")
-          .arg(observedMtime(newest_sycoca), observedMtime(newest_desktop), observedMtime(newest_mime_cache)),
-      QStringLiteral("ksycoca6 is present and newer than application metadata"), detail,
-      QStringLiteral("kbuildsycoca6 --noincremental"))};
+  return {
+      addDiagnostic(
+          QStringLiteral("kde-sycoca"), QStringLiteral("KDE application cache"), status,
+          QStringLiteral("sycoca=%1; desktop=%2; mimeinfo=%3")
+              .arg(observedMtime(newest_sycoca), observedMtime(newest_desktop), observedMtime(newest_mime_cache)),
+          QStringLiteral("ksycoca6 is present and newer than application metadata"), detail,
+          QStringLiteral("kbuildsycoca6 --noincremental")),
+  };
 }
 
 QVariantList SessionIntegrationService::addMimeDiagnostics() const {
@@ -453,31 +459,47 @@ QVariantList SessionIntegrationService::addMimeDiagnostics() const {
     QStringList arguments;
   };
   const QList<RoleCheck> roles{
-      {.id = QStringLiteral("browser"),
-       .title = QStringLiteral("Default browser"),
-       .program = QStringLiteral("xdg-settings"),
-       .arguments = {QStringLiteral("get"), QStringLiteral("default-web-browser")}},
-      {.id = QStringLiteral("terminal"),
-       .title = QStringLiteral("Default terminal"),
-       .program = QStringLiteral("xdg-mime"),
-       .arguments = {QStringLiteral("query"), QStringLiteral("default"),
-                     QStringLiteral("application/x-terminal-emulator")}},
-      {.id = QStringLiteral("file-manager"),
-       .title = QStringLiteral("Default file manager"),
-       .program = QStringLiteral("xdg-mime"),
-       .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("inode/directory")}},
-      {.id = QStringLiteral("image-viewer"),
-       .title = QStringLiteral("Default image viewer"),
-       .program = QStringLiteral("xdg-mime"),
-       .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("image/png")}},
-      {.id = QStringLiteral("text-editor"),
-       .title = QStringLiteral("Default text editor"),
-       .program = QStringLiteral("xdg-mime"),
-       .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("text/plain")}},
-      {.id = QStringLiteral("video-player"),
-       .title = QStringLiteral("Default video player"),
-       .program = QStringLiteral("xdg-mime"),
-       .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("video/mp4")}},
+      {
+          .id = QStringLiteral("browser"),
+          .title = QStringLiteral("Default browser"),
+          .program = QStringLiteral("xdg-settings"),
+          .arguments = {QStringLiteral("get"), QStringLiteral("default-web-browser")},
+      },
+      {
+          .id = QStringLiteral("terminal"),
+          .title = QStringLiteral("Default terminal"),
+          .program = QStringLiteral("xdg-mime"),
+          .arguments =
+              {
+                  QStringLiteral("query"),
+                  QStringLiteral("default"),
+                  QStringLiteral("application/x-terminal-emulator"),
+              },
+      },
+      {
+          .id = QStringLiteral("file-manager"),
+          .title = QStringLiteral("Default file manager"),
+          .program = QStringLiteral("xdg-mime"),
+          .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("inode/directory")},
+      },
+      {
+          .id = QStringLiteral("image-viewer"),
+          .title = QStringLiteral("Default image viewer"),
+          .program = QStringLiteral("xdg-mime"),
+          .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("image/png")},
+      },
+      {
+          .id = QStringLiteral("text-editor"),
+          .title = QStringLiteral("Default text editor"),
+          .program = QStringLiteral("xdg-mime"),
+          .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("text/plain")},
+      },
+      {
+          .id = QStringLiteral("video-player"),
+          .title = QStringLiteral("Default video player"),
+          .program = QStringLiteral("xdg-mime"),
+          .arguments = {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("video/mp4")},
+      },
   };
 
   for (const RoleCheck& role : roles) {

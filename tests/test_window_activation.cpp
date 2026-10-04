@@ -47,8 +47,10 @@ TEST(WindowActivationResolver, IgnoresDuplicateLineageEntriesAndUnrelatedTitles)
 }
 
 TEST(WindowActivationResolver, UsesCaseSensitiveExactTitleOnlyForDisambiguation) {
-  const QList<WindowActivationCandidate> candidates{{.pid = 42, .title = QStringLiteral("Agent")},
-                                                    {.pid = 42, .title = QStringLiteral("agent")}};
+  const QList<WindowActivationCandidate> candidates{
+      {.pid = 42, .title = QStringLiteral("Agent")},
+      {.pid = 42, .title = QStringLiteral("agent")},
+  };
   EXPECT_EQ(resolveWindowActivation(request({42}), candidates).result, WindowActivationResult::Ambiguous);
   EXPECT_EQ(resolveWindowActivation(request({42}, QStringLiteral("Agent")), candidates).candidate_index, 0);
   EXPECT_EQ(resolveWindowActivation(request({42}, QStringLiteral("AGENT")), candidates).result,

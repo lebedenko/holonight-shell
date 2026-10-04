@@ -64,8 +64,8 @@ class CompositorService final : public QObject {
   Q_INVOKABLE void activateWorkspace(const QString& workspace_id);
   [[nodiscard]] WindowActivationResult requestWindowActivation(const WindowActivationRequest& request);
   QAbstractItemModel* toplevels() { return &toplevel_model_; }
-  bool canListWindows() const { return snapshot_.capabilities.window_listing; }
-  Q_INVOKABLE int commandWindow(const QString& id, int command);
+  [[nodiscard]] bool canListWindows() const { return snapshot_.capabilities.window_listing; }
+  Q_INVOKABLE int commandWindow(const QString& identifier, int command);
   void start();
 #ifdef HOLONIGHT_TESTS
   void publishSnapshotForTest(CompositorSnapshot snapshot) { publishSnapshot(std::move(snapshot)); }

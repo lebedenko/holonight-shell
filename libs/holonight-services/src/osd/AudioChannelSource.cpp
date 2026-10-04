@@ -12,7 +12,7 @@ AudioChannelSource::AudioChannelSource(AudioService* service, QObject* parent)
   connect(service_, &AudioService::mutedChanged, this, &AudioChannelSource::emitCurrentState);
   // AudioService::availableChanged() carries no argument, so it cannot be chained straight into
   // the base class's availableChanged(bool) — re-read the property and forward it.
-  connect(service_, &AudioService::availableChanged, this, [this]() { emit availableChanged(service_->available()); });
+  connect(service_, &AudioService::availableChanged, this, [this] { emit availableChanged(service_->available()); });
 }
 
 bool AudioChannelSource::isAvailable() const { return service_ != nullptr && service_->available(); }

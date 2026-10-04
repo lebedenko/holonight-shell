@@ -22,39 +22,51 @@ QSize boundedDimension(const QSize& minimum, const QSize& preferred, const QSize
 
 StatusPopupSizePolicy statusPopupSizePolicy(const QString& popup_id) {
   if (popup_id == QLatin1String("storage")) {
-    return {.minimum_content_size = {360, 280},
-            .preferred_content_size = {480, 560},
-            .maximum_content_size = {600, 820},
-            .overflow_mode = StatusPopupOverflowMode::InternalList};
+    return {
+        .minimum_content_size = {360, 280},
+        .preferred_content_size = {480, 560},
+        .maximum_content_size = {600, 820},
+        .overflow_mode = StatusPopupOverflowMode::InternalList,
+    };
   }
   if (popup_id == QLatin1String("audio")) {
-    return {.minimum_content_size = {600, 480},
-            .preferred_content_size = {780, 820},
-            .maximum_content_size = {780, 820},
-            .overflow_mode = StatusPopupOverflowMode::InternalList};
+    return {
+        .minimum_content_size = {600, 480},
+        .preferred_content_size = {780, 820},
+        .maximum_content_size = {780, 820},
+        .overflow_mode = StatusPopupOverflowMode::InternalList,
+    };
   }
   if (popup_id == QLatin1String("network")) {
-    return {.minimum_content_size = {480, 500},
-            .preferred_content_size = {600, 866},
-            .maximum_content_size = {600, 866},
-            .overflow_mode = StatusPopupOverflowMode::InternalList};
+    return {
+        .minimum_content_size = {480, 500},
+        .preferred_content_size = {600, 866},
+        .maximum_content_size = {600, 866},
+        .overflow_mode = StatusPopupOverflowMode::InternalList,
+    };
   }
   if (popup_id == QLatin1String("weather")) {
-    return {.minimum_content_size = {600, 640},
-            .preferred_content_size = {760, 960},
-            .maximum_content_size = {760, 960},
-            .overflow_mode = StatusPopupOverflowMode::FixedContent};
+    return {
+        .minimum_content_size = {600, 640},
+        .preferred_content_size = {760, 960},
+        .maximum_content_size = {760, 960},
+        .overflow_mode = StatusPopupOverflowMode::FixedContent,
+    };
   }
   if (popup_id == QLatin1String("battery")) {
-    return {.minimum_content_size = {280, 280},
-            .preferred_content_size = {300, 360},
-            .maximum_content_size = {300, 360},
-            .overflow_mode = StatusPopupOverflowMode::FixedContent};
+    return {
+        .minimum_content_size = {280, 280},
+        .preferred_content_size = {300, 360},
+        .maximum_content_size = {300, 360},
+        .overflow_mode = StatusPopupOverflowMode::FixedContent,
+    };
   }
-  return {.minimum_content_size = {320, 240},
-          .preferred_content_size = {480, 320},
-          .maximum_content_size = {480, 320},
-          .overflow_mode = StatusPopupOverflowMode::FixedContent};
+  return {
+      .minimum_content_size = {320, 240},
+      .preferred_content_size = {480, 320},
+      .maximum_content_size = {480, 320},
+      .overflow_mode = StatusPopupOverflowMode::FixedContent,
+  };
 }
 
 StatusPopupGeometry statusPopupGeometry(const QString& popup_id, const QRect& screen_geometry,

@@ -3,13 +3,14 @@
 #include <gtest/gtest.h>
 
 TEST(GenericWorkspaceProtocol, DuplicateMutableNamesDoNotIdentifyHandles) {
-  GenericWorkspaceState first(1), second(2);
+  GenericWorkspaceState first(1);
+  GenericWorkspaceState second(2);
   first.setName("duplicate");
   second.setName("duplicate");
   EXPECT_NE(first.workspace.id, second.workspace.id);
-  const auto id = first.workspace.id;
+  const auto identifier = first.workspace.id;
   first.setName("renamed");
-  EXPECT_EQ(first.workspace.id, id);
+  EXPECT_EQ(first.workspace.id, identifier);
   first.setId("stable");
   first.setName("another rename");
   EXPECT_EQ(first.workspace.id, "protocol:stable");

@@ -26,7 +26,9 @@ KeyboardLayoutChannelSource::KeyboardLayoutChannelSource(KeyboardLayoutService* 
 }
 
 void KeyboardLayoutChannelSource::emitCurrentState() {
-  if (!service_->available() || service_->layoutName().isEmpty()) return;
+  if (!service_->available() || service_->layoutName().isEmpty()) {
+    return;
+  }
   const QString code = service_->layoutCode();
   const QString name = service_->layoutName();
 

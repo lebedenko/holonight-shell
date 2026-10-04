@@ -119,12 +119,14 @@ TEST(TransientSurfaceLifecycle, RetainsConfigureAndGuardsDuplicateTerminalCallba
   QScreen* screen = QGuiApplication::primaryScreen();
   ASSERT_NE(screen, nullptr);
   TransientHostLifecycleHarness harness;
-  LayerSurfaceSpec spec{.output = screen,
-                        .name_space = QStringLiteral("test-transient"),
-                        .anchors = Anchor::Top | Anchor::Left,
-                        .width = 100,
-                        .height = 50,
-                        .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml"))};
+  LayerSurfaceSpec spec{
+      .output = screen,
+      .name_space = QStringLiteral("test-transient"),
+      .anchors = Anchor::Top | Anchor::Left,
+      .width = 100,
+      .height = 50,
+      .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml")),
+  };
   ASSERT_TRUE(harness.request(spec));
   ASSERT_EQ(harness.hosts.size(), 1);
   LayerSurfaceHost* first = harness.hosts.front();
@@ -144,12 +146,14 @@ TEST(TransientSurfaceLifecycle, ReplacementIgnoresStaleTerminalCallback) {
   QScreen* screen = QGuiApplication::primaryScreen();
   ASSERT_NE(screen, nullptr);
   TransientHostLifecycleHarness harness;
-  LayerSurfaceSpec spec{.output = screen,
-                        .name_space = QStringLiteral("test-transient"),
-                        .anchors = Anchor::Top | Anchor::Left,
-                        .width = 100,
-                        .height = 50,
-                        .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml"))};
+  LayerSurfaceSpec spec{
+      .output = screen,
+      .name_space = QStringLiteral("test-transient"),
+      .anchors = Anchor::Top | Anchor::Left,
+      .width = 100,
+      .height = 50,
+      .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Widgets/WidgetSurface.qml")),
+  };
   ASSERT_TRUE(harness.request(spec));
   LayerSurfaceHost* stale = harness.hosts.front();
   ASSERT_TRUE(harness.request(spec));

@@ -50,27 +50,29 @@ struct Agent {
 class FakeAuthority {
  public:
   PolkitListenerBridge::RegistrationHooks hooks() {
-    return {.register_session = [this](PolkitAgentListener*, const QByteArray& session, QString* error) -> void* {
-              if (registrations_.contains(session)) {
-                if (error) {
-                  *error = QStringLiteral("Agent already registered for session");
+    return {
+        .register_session = [this](PolkitAgentListener*, const QByteArray& session, QString* error) -> void* {
+          if (registrations_.contains(session)) {
+            if (error) {
+              *error = QStringLiteral("Agent already registered for session");
+            }
+            return nullptr;
+          }
+          auto token = std::make_unique<QByteArray>(session);
+          void* address = token.get();
+          registrations_.emplace(session, std::move(token));
+          return address;
+        },
+        .unregister =
+            [this](void* registration) {
+              for (auto iterator = registrations_.begin(); iterator != registrations_.end(); ++iterator) {
+                if (iterator->second.get() == registration) {
+                  registrations_.erase(iterator);
+                  return;
                 }
-                return nullptr;
               }
-              auto token = std::make_unique<QByteArray>(session);
-              void* address = token.get();
-              registrations_.emplace(session, std::move(token));
-              return address;
             },
-            .unregister =
-                [this](void* registration) {
-                  for (auto iterator = registrations_.begin(); iterator != registrations_.end(); ++iterator) {
-                    if (iterator->second.get() == registration) {
-                      registrations_.erase(iterator);
-                      return;
-                    }
-                  }
-                }};
+    };
   }
 
  private:

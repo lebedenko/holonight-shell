@@ -58,7 +58,7 @@ QString volumeState(const StorageVolume& volume, bool busy) {
 }
 QString formatBytes(qint64 bytes) {
   static const QStringList units = {"B", "KB", "MB", "GB", "TB", "PB"};
-  double value = static_cast<double>(bytes);
+  auto value = static_cast<double>(bytes);
   int unit_index = 0;
   while (value >= 1000.0 && unit_index < units.size() - 1) {
     value /= 1000.0;
@@ -75,27 +75,29 @@ StorageService::DeviceKind StorageService::classifyDevice(const StorageDrive& dr
   auto media = drive.mediaCompatibility;
   media.append(drive.media);
   const auto has = [&media](auto predicate) { return std::ranges::any_of(media, predicate); };
-  static const QStringList opticalMedia = {"optical",
-                                           "optical_cd",
-                                           "optical_cd_r",
-                                           "optical_cd_rw",
-                                           "optical_dvd",
-                                           "optical_dvd_r",
-                                           "optical_dvd_rw",
-                                           "optical_dvd_ram",
-                                           "optical_dvd_plus_r",
-                                           "optical_dvd_plus_rw",
-                                           "optical_dvd_plus_r_dl",
-                                           "optical_dvd_plus_rw_dl",
-                                           "optical_bd",
-                                           "optical_bd_r",
-                                           "optical_bd_re",
-                                           "optical_hddvd",
-                                           "optical_hddvd_r",
-                                           "optical_hddvd_rw",
-                                           "optical_mo",
-                                           "optical_mrw",
-                                           "optical_mrw_w"};
+  static const QStringList opticalMedia = {
+      "optical",
+      "optical_cd",
+      "optical_cd_r",
+      "optical_cd_rw",
+      "optical_dvd",
+      "optical_dvd_r",
+      "optical_dvd_rw",
+      "optical_dvd_ram",
+      "optical_dvd_plus_r",
+      "optical_dvd_plus_rw",
+      "optical_dvd_plus_r_dl",
+      "optical_dvd_plus_rw_dl",
+      "optical_bd",
+      "optical_bd_r",
+      "optical_bd_re",
+      "optical_hddvd",
+      "optical_hddvd_r",
+      "optical_hddvd_rw",
+      "optical_mo",
+      "optical_mrw",
+      "optical_mrw_w",
+  };
   if (drive.optical || has([](const QString& token) { return opticalMedia.contains(token); })) {
     return DeviceKind::Optical;
   }
@@ -118,8 +120,10 @@ StorageService::StorageService(QObject* parent) : StorageService(new StorageCont
 }
 StorageService::StorageService(StorageController* controller, QObject* parent)
     : QAbstractListModel(parent), controller_(controller) {
-  for (auto* model : {static_cast<QAbstractItemModel*>(controller_->drives()),
-                      static_cast<QAbstractItemModel*>(controller_->volumes())}) {
+  for (auto* model : {
+           static_cast<QAbstractItemModel*>(controller_->drives()),
+           static_cast<QAbstractItemModel*>(controller_->volumes()),
+       }) {
     connect(model, &QAbstractItemModel::rowsInserted, this, &StorageService::refresh);
     connect(model, &QAbstractItemModel::rowsRemoved, this, &StorageService::refresh);
     connect(model, &QAbstractItemModel::dataChanged, this, &StorageService::refresh);
@@ -141,11 +145,12 @@ StorageService::StorageService(StorageController* controller, QObject* parent)
     } else {
       pending_open_after_mount_.remove(result.targetId);
       const auto generation = ++next_error_generation_;
-      last_errors_.insert(result.targetId, {result.operation, operationError(result), generation});
+      last_errors_.insert(result.targetId,
+                          {.operation = result.operation, .message = operationError(result), .generation = generation});
       const auto targetId = result.targetId;
       QTimer::singleShot(kErrorExpiryMs, this, [this, targetId, generation] {
-        const auto it = last_errors_.constFind(targetId);
-        if (it != last_errors_.constEnd() && it->generation == generation) {
+        const auto iterator = last_errors_.constFind(targetId);
+        if (iterator != last_errors_.constEnd() && iterator->generation == generation) {
           last_errors_.remove(targetId);
           refresh();
         }
@@ -163,22 +168,24 @@ QVariant StorageService::data(const QModelIndex& index, int role) const {
   return rows_[index.row()].value(QString::fromLatin1(roleNames().value(role)));
 }
 QHash<int, QByteArray> StorageService::roleNames() const {
-  return {{static_cast<int>(Role::TargetId), "targetId"},
-          {static_cast<int>(Role::DriveId), "driveId"},
-          {static_cast<int>(Role::Name), "name"},
-          {static_cast<int>(Role::DriveName), "driveName"},
-          {static_cast<int>(Role::State), "stateText"},
-          {static_cast<int>(Role::Mounted), "mounted"},
-          {static_cast<int>(Role::Busy), "busy"},
-          {static_cast<int>(Role::CanMount), "canMount"},
-          {static_cast<int>(Role::CanUnmount), "canUnmount"},
-          {static_cast<int>(Role::CanEject), "canEject"},
-          {static_cast<int>(Role::CanPowerOff), "canPowerOff"},
-          {static_cast<int>(Role::UsedBytes), "usedBytes"},
-          {static_cast<int>(Role::TotalBytes), "totalBytes"},
-          {static_cast<int>(Role::FreeBytes), "freeBytes"},
-          {static_cast<int>(Role::OperationText), "operationText"},
-          {static_cast<int>(Role::ErrorText), "errorText"}};
+  return {
+      {static_cast<int>(Role::TargetId), "targetId"},
+      {static_cast<int>(Role::DriveId), "driveId"},
+      {static_cast<int>(Role::Name), "name"},
+      {static_cast<int>(Role::DriveName), "driveName"},
+      {static_cast<int>(Role::State), "stateText"},
+      {static_cast<int>(Role::Mounted), "mounted"},
+      {static_cast<int>(Role::Busy), "busy"},
+      {static_cast<int>(Role::CanMount), "canMount"},
+      {static_cast<int>(Role::CanUnmount), "canUnmount"},
+      {static_cast<int>(Role::CanEject), "canEject"},
+      {static_cast<int>(Role::CanPowerOff), "canPowerOff"},
+      {static_cast<int>(Role::UsedBytes), "usedBytes"},
+      {static_cast<int>(Role::TotalBytes), "totalBytes"},
+      {static_cast<int>(Role::FreeBytes), "freeBytes"},
+      {static_cast<int>(Role::OperationText), "operationText"},
+      {static_cast<int>(Role::ErrorText), "errorText"},
+  };
 }
 int StorageService::deviceCount() const {
   QSet<QString> ids;
@@ -207,22 +214,24 @@ void StorageService::refresh() {
       free_bytes = info.bytesAvailable();
       used_bytes = total_bytes - free_bytes;
     }
-    rows.append({{"targetId", volume.id},
-                 {"driveId", drive->id},
-                 {"name", volumeName(volume)},
-                 {"driveName", driveName(*drive)},
-                 {"mounted", !volume.mountPoints.isEmpty()},
-                 {"busy", busy},
-                 {"stateText", volumeState(volume, busy)},
-                 {"canMount", volume.canMount && !volume.locked && !busy},
-                 {"canUnmount", volume.canUnmount && !busy},
-                 {"canEject", drive->canEject && !busy},
-                 {"canPowerOff", drive->canPowerOff && !busy},
-                 {"usedBytes", used_bytes},
-                 {"totalBytes", total_bytes},
-                 {"freeBytes", free_bytes},
-                 {"operationText", operationTextFor(volume.id)},
-                 {"errorText", errorTextFor(volume.id)}});
+    rows.append({
+        {"targetId", volume.id},
+        {"driveId", drive->id},
+        {"name", volumeName(volume)},
+        {"driveName", driveName(*drive)},
+        {"mounted", !volume.mountPoints.isEmpty()},
+        {"busy", busy},
+        {"stateText", volumeState(volume, busy)},
+        {"canMount", volume.canMount && !volume.locked && !busy},
+        {"canUnmount", volume.canUnmount && !busy},
+        {"canEject", drive->canEject && !busy},
+        {"canPowerOff", drive->canPowerOff && !busy},
+        {"usedBytes", used_bytes},
+        {"totalBytes", total_bytes},
+        {"freeBytes", free_bytes},
+        {"operationText", operationTextFor(volume.id)},
+        {"errorText", errorTextFor(volume.id)},
+    });
   }
   appendOpticalDrives(rows);
   std::ranges::sort(rows, [](const auto& first, const auto& second) {
@@ -236,7 +245,7 @@ void StorageService::refresh() {
   notifyNewlyConnectedDrives(current_drive_ids);
   if (rows != rows_) {
     beginResetModel();
-    rows_ = rows;
+    rows_ = std::move(rows);
     endResetModel();
   }
   emit changed();
@@ -248,11 +257,11 @@ bool StorageService::visibleTarget(const QString& targetId, const char* capabili
   });
 }
 QString StorageService::operationTextFor(const QString& targetId) const {
-  const auto it = in_flight_ops_.constFind(targetId);
-  if (it == in_flight_ops_.constEnd()) {
+  const auto iterator = in_flight_ops_.constFind(targetId);
+  if (iterator == in_flight_ops_.constEnd()) {
     return {};
   }
-  switch (it.value()) {
+  switch (iterator.value()) {
     case StorageOperation::Mount:
       return tr("Mounting…");
     case StorageOperation::Unmount:
@@ -265,8 +274,8 @@ QString StorageService::operationTextFor(const QString& targetId) const {
   return {};
 }
 QString StorageService::errorTextFor(const QString& targetId) const {
-  const auto it = last_errors_.constFind(targetId);
-  return it == last_errors_.constEnd() ? QString() : it->message;
+  const auto iterator = last_errors_.constFind(targetId);
+  return iterator == last_errors_.constEnd() ? QString() : iterator->message;
 }
 void StorageService::beginOperation(const QString& targetId, StorageOperation operation) {
   last_errors_.remove(targetId);
@@ -292,17 +301,17 @@ void StorageService::notifyNewlyConnectedDrives(const QSet<QString>& current_dri
   known_drive_ids_ = current_drive_ids;
   known_drive_ids_seeded_ = true;
 }
-void StorageService::sendStorageNotification(const QString& summary) const {
+void StorageService::sendStorageNotification(const QString& summary) {
   auto message = QDBusMessage::createMethodCall(
       QStringLiteral("org.freedesktop.Notifications"), QStringLiteral("/org/freedesktop/Notifications"),
       QStringLiteral("org.freedesktop.Notifications"), QStringLiteral("Notify"));
   message << QStringLiteral("holonight-shell") << 0U << QString() << summary << QString() << QStringList{}
           << QVariantMap{{QStringLiteral("transient"), true},
-                         {QStringLiteral("category"), QString::fromLatin1(kStorageNotificationCategory)}}
+                         {QStringLiteral("category"), QString::fromLatin1(kStorageNotificationCategory)},}
           << 5000;
   QDBusConnection::sessionBus().asyncCall(message);
 }
-void StorageService::sendSafeToRemoveNotification(const QString& label) const {
+void StorageService::sendSafeToRemoveNotification(const QString& label) {
   sendStorageNotification(tr("%1 can be safely removed").arg(label));
 }
 void StorageService::sendDriveConnectedNotification(const QString& driveId) const {
@@ -338,11 +347,11 @@ void StorageService::powerOff(const QString& targetId) {
   controller_->powerOff(targetId, controller_->removalScope(targetId, true));
 }
 void StorageService::retry(const QString& targetId) {
-  const auto it = last_errors_.constFind(targetId);
-  if (it == last_errors_.constEnd()) {
+  const auto iterator = last_errors_.constFind(targetId);
+  if (iterator == last_errors_.constEnd()) {
     return;
   }
-  switch (it->operation) {
+  switch (iterator->operation) {
     case StorageOperation::Mount:
       mount(targetId);
       return;
@@ -369,6 +378,7 @@ void StorageService::openVolume(const QString& targetId) {
   pending_open_after_mount_.insert(targetId);
   mount(targetId);
 }
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static): QML method.
 void StorageService::openInFiles() const { QProcess::startDetached(QStringLiteral("holonight-files")); }
 void StorageService::showAllDevices() const {
   for (const auto& row : rows_) {
@@ -433,7 +443,9 @@ QString StorageService::driveSubtitle(const QString& driveId) const {
       parts.append(tr("Solid state"));
       break;
     case DeviceKind::Unknown:
-      if (drive->removable || drive->mediaRemovable) parts.append(tr("Removable"));
+      if (drive->removable || drive->mediaRemovable) {
+        parts.append(tr("Removable"));
+      }
       break;
   }
   return parts.join(QStringLiteral(" · "));
@@ -486,21 +498,23 @@ void StorageService::appendOpticalDrives(QList<QVariantMap>& rows) const {
       continue;
     }
     const bool busy = controller_->busy(drive.id);
-    rows.append({{"targetId", drive.id},
-                 {"driveId", drive.id},
-                 {"name", driveName(drive)},
-                 {"driveName", driveName(drive)},
-                 {"stateText", tr("No usable filesystem")},
-                 {"mounted", false},
-                 {"busy", busy},
-                 {"canMount", false},
-                 {"canUnmount", false},
-                 {"canEject", drive.canEject && !busy},
-                 {"canPowerOff", drive.canPowerOff && !busy},
-                 {"usedBytes", static_cast<qint64>(0)},
-                 {"totalBytes", static_cast<qint64>(0)},
-                 {"freeBytes", static_cast<qint64>(0)},
-                 {"operationText", operationTextFor(drive.id)},
-                 {"errorText", errorTextFor(drive.id)}});
+    rows.append({
+        {"targetId", drive.id},
+        {"driveId", drive.id},
+        {"name", driveName(drive)},
+        {"driveName", driveName(drive)},
+        {"stateText", tr("No usable filesystem")},
+        {"mounted", false},
+        {"busy", busy},
+        {"canMount", false},
+        {"canUnmount", false},
+        {"canEject", drive.canEject && !busy},
+        {"canPowerOff", drive.canPowerOff && !busy},
+        {"usedBytes", static_cast<qint64>(0)},
+        {"totalBytes", static_cast<qint64>(0)},
+        {"freeBytes", static_cast<qint64>(0)},
+        {"operationText", operationTextFor(drive.id)},
+        {"errorText", errorTextFor(drive.id)},
+    });
   }
 }

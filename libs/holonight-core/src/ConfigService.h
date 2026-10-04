@@ -23,7 +23,7 @@ class ConfigService : public QObject {
   // Returns nullptr if ConfigService was never constructed (e.g. in unit tests).
   static ConfigService* instance();
 
-  const HoloNight::ShellConfig::TaskbarConfig& taskbar() const { return taskbar_; }
+  [[nodiscard]] const HoloNight::ShellConfig::TaskbarConfig& taskbar() const { return taskbar_; }
   [[nodiscard]] const HoloNight::ShellConfig::BarWorkspacesConfig& barWorkspaces() const { return bar_workspaces_; }
   [[nodiscard]] const HoloNight::ShellConfig::BarSystemTrayConfig& barSystemTray() const { return bar_system_tray_; }
   [[nodiscard]] const HoloNight::ShellConfig::TrayIconOverridesConfig& trayIconOverrides() const {

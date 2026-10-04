@@ -28,6 +28,8 @@ void LayerShellManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& s
 }
 
 PerMonitorLayerManager::QmlSource LayerShellManager::qmlSource(QScreen* screen) {
-  return {.url = QUrl(QStringLiteral("qrc:/HolonightShell/Topbar/TopBar.qml")),
-          .initial_properties = {{QStringLiteral("barMonitorName"), screen->name()}}};
+  return {
+      .url = QUrl(QStringLiteral("qrc:/HolonightShell/Topbar/TopBar.qml")),
+      .initial_properties = {{QStringLiteral("barMonitorName"), screen->name()}},
+  };
 }

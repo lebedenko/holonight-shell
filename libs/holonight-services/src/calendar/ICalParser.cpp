@@ -232,7 +232,7 @@ std::optional<CalendarEvent> buildCalendarEvent(const VEventData& vevt, const QS
   evt.account_name = account_name;
   evt.title = vevt.summary;
   evt.start_time = start;
-  evt.end_time = end;
+  evt.end_time = std::move(end);
   evt.is_all_day = is_all_day;
   evt.description = vevt.description;
   evt.location = vevt.location;

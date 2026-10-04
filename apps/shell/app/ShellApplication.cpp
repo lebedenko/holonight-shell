@@ -115,7 +115,7 @@ ShellApplication::ShellApplication(QObject* parent)
           compositor_, dynamic_cast<NumberedWorkspaceProvider*>(compositor_->backend()), this)),
       window_activation_server_(new WindowActivationServer(compositor_, this)),
       keyboard_layout_(new KeyboardLayoutService(
-          integration_->integration() ? integration_->integration()->createKeyboard() : nullptr, this)),
+          (integration_->integration() != nullptr) ? integration_->integration()->createKeyboard() : nullptr, this)),
       ai_chat_service_(new AiChatService(this)),
       settings_navigation_service_(new SettingsNavigationService(this)),
       battery_(new BatteryService(this)),
@@ -152,8 +152,11 @@ ShellApplication::ShellApplication(QObject* parent)
       // The empty NowFn is the controller's documented "use the real clock" argument; it is only
       // spelled out because `parent` follows it.
       osd_controller_(new OsdController(
-          {new AudioChannelSource(audio_, this), new BrightnessChannelSource(brightness_service_, this),
-           new KeyboardLayoutChannelSource(keyboard_layout_, this)},
+          {
+              new AudioChannelSource(audio_, this),
+              new BrightnessChannelSource(brightness_service_, this),
+              new KeyboardLayoutChannelSource(keyboard_layout_, this),
+          },
           {}, this)),
       osd_surface_(new OsdSurface(this)),
       idle_service_(new IdleService(notification_service_, this)),
@@ -165,7 +168,7 @@ ShellApplication::ShellApplication(QObject* parent)
       control_server_(new ControlServer(this)) {
   session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme());
   connect(appearance_, &AppearanceService::cursorThemeChanged, this,
-          [this]() { session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme()); });
+          [this] { session_integration_service_->setExpectedCursorTheme(appearance_->cursorTheme()); });
 }
 
 ShellApplication::~ShellApplication() = default;
@@ -188,11 +191,11 @@ void ShellApplication::registerQmlTypes() {
   reg(portal_service_, "PortalService");
   reg(calendar_service_, "CalendarService");
   reg(compositor_, "CompositorService");
-  auto* windows =
-      new WindowPresentation(compositor_,
-                             integration_->integration() && integration_->integration()->windowPresentationPolicy() ==
-                                                                WindowPresentationPolicy::TaskManagement,
-                             this);
+  auto* windows = new WindowPresentation(
+      compositor_,
+      (integration_->integration() != nullptr) &&
+          integration_->integration()->windowPresentationPolicy() == WindowPresentationPolicy::TaskManagement,
+      this);
   reg(windows, "WindowPresentation");
   const auto configure_windows = [this, windows] {
     const auto& cfg = config_service_->taskbar();
@@ -206,7 +209,9 @@ void ShellApplication::registerQmlTypes() {
   connect(window_surface, &WindowSurface::opened, windows, &WindowPresentation::beginOverview);
   connect(window_surface, &WindowSurface::dismissed, windows, &WindowPresentation::endOverview);
   connect(control_server_, &ControlServer::toggleWindowOverviewRequested, this, [this, windows, window_surface] {
-    if (windows->overviewAccess()) window_surface->toggle(resolveOsdMonitor());
+    if (windows->overviewAccess()) {
+      window_surface->toggle(resolveOsdMonitor());
+    }
   });
   reg(workspace_presentation_, "WorkspacePresentation");
   reg(integration_, "IntegrationLoader");
@@ -389,14 +394,14 @@ void ShellApplication::startLayerSurfacesWhenReady() {
     return;
   }
 
-  connect(context, &Holonight::Wayland::LayerShellContext::availabilityChanged, this, [this, context]() {
+  connect(context, &Holonight::Wayland::LayerShellContext::availabilityChanged, this, [this, context] {
     if (context->isAvailable()) {
       startLayerSurfaces();
     }
   });
 
   // Fallback if the compositor never announces the global.
-  QTimer::singleShot(3000, this, [this, context]() {
+  QTimer::singleShot(3000, this, [this, context] {
     if (managers_started_) {
       return;
     }
@@ -451,7 +456,9 @@ void ShellApplication::closeTransientOverlays() {
   tooltip_surface_->hide();
   status_popup_surface_->hide();
   launcher_surface_->hide();
-  if (window_surface_) window_surface_->hide();
+  if (window_surface_ != nullptr) {
+    window_surface_->hide();
+  }
   tray_menu_surface_->hide();
   if (sidebar_manager_ != nullptr) {
     sidebar_manager_->closeAll();

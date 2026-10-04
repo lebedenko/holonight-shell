@@ -87,39 +87,48 @@ PairedLayerSurfaceSpec TrayMenuSurface::surfaceSpec(QScreen* screen, int screen_
   applyGeometry(geometry);
 
   return {
-      .dismiss = {.output = screen,
-                  .name_space = QStringLiteral("tray-menu-dismiss"),
-                  .layer = Layer::Top,
-                  .anchors = Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
-                  .width = 0,
-                  .height = 0,
-                  .exclusive_zone = 0,
-                  .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Tray/TrayMenuDismissOverlay.qml")),
-                  .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
-                  .color = Qt::transparent},
-      .content = {.output = screen,
-                  .name_space = QStringLiteral("tray-menu"),
-                  .layer = Layer::Top,
-                  .anchors = Anchor::Top | Anchor::Left,
-                  .width = geometry.surface_width,
-                  .height = geometry.surface_height,
-                  .margin_top = geometry.margin_top,
-                  .margin_left = geometry.margin_left,
-                  .exclusive_zone = 0,
-                  .keyboard_interactivity = KeyboardInteractivity::OnDemand,
-                  .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Tray/TrayMenuPopup.qml")),
-                  .initial_properties = {{QStringLiteral("menuModel"), QVariant::fromValue(model)},
-                                         {QStringLiteral("menuClient"),
-                                          QVariant::fromValue(static_cast<QObject*>(this))},
-                                         {QStringLiteral("columnWidth"), kTrayMenuWidth},
-                                         {QStringLiteral("columnGap"), kTraySubmenuGap},
-                                         {QStringLiteral("columnStep"), current_placement_.column_step}},
-                  .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
-                  .color = Qt::transparent,
-                  .before_load =
-                      [](QQmlEngine* engine) {
-                        engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider());
-                      }},
+      .dismiss =
+          {
+              .output = screen,
+              .name_space = QStringLiteral("tray-menu-dismiss"),
+              .layer = Layer::Top,
+              .anchors = Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
+              .width = 0,
+              .height = 0,
+              .exclusive_zone = 0,
+              .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Tray/TrayMenuDismissOverlay.qml")),
+              .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+              .color = Qt::transparent,
+          },
+      .content =
+          {
+              .output = screen,
+              .name_space = QStringLiteral("tray-menu"),
+              .layer = Layer::Top,
+              .anchors = Anchor::Top | Anchor::Left,
+              .width = geometry.surface_width,
+              .height = geometry.surface_height,
+              .margin_top = geometry.margin_top,
+              .margin_left = geometry.margin_left,
+              .exclusive_zone = 0,
+              .keyboard_interactivity = KeyboardInteractivity::OnDemand,
+              .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Tray/TrayMenuPopup.qml")),
+              .initial_properties =
+                  {
+                      {QStringLiteral("menuModel"), QVariant::fromValue(model)},
+                      {
+                          QStringLiteral("menuClient"),
+                          QVariant::fromValue(static_cast<QObject*>(this)),
+                      },
+                      {QStringLiteral("columnWidth"), kTrayMenuWidth},
+                      {QStringLiteral("columnGap"), kTraySubmenuGap},
+                      {QStringLiteral("columnStep"), current_placement_.column_step},
+                  },
+              .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+              .color = Qt::transparent,
+              .before_load =
+                  [](QQmlEngine* engine) { engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider()); },
+          },
   };
 }
 

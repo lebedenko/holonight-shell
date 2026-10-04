@@ -102,18 +102,21 @@ void PolkitRequestCoordinator::activateNext() {
   active_->selected_identity = policy.preferred(current_uid_);
   const QString token = active_->request.token;
   const bool multiple = active_->request.identities.size() > 1;
-  if (!model_->beginRequest({.token = token,
-                             .message = active_->request.message,
-                             .reference = active_->request.action_id,
-                             .details = active_->request.details,
-                             .identities = active_->request.identities,
-                             .preferred_identity = active_->selected_identity,
-                             .frontend_kind = AuthenticationPromptModel::FrontendKind::Polkit},
-                            [this, token](auto kind, const QString& value) {
-                              if (active_ && active_->request.token == token) {
-                                handleResponse(kind, value);
-                              }
-                            })) {
+  if (!model_->beginRequest(
+          {
+              .token = token,
+              .message = active_->request.message,
+              .reference = active_->request.action_id,
+              .details = active_->request.details,
+              .identities = active_->request.identities,
+              .preferred_identity = active_->selected_identity,
+              .frontend_kind = AuthenticationPromptModel::FrontendKind::Polkit,
+          },
+          [this, token](auto kind, const QString& value) {
+            if (active_ && active_->request.token == token) {
+              handleResponse(kind, value);
+            }
+          })) {
     finishActive(false);
     return;
   }
@@ -195,7 +198,8 @@ void PolkitRequestCoordinator::startSession(const QString& identity) {
             if (guard) {
               guard->sessionCompleted(token, generation, authorized);
             }
-          }};
+          },
+  };
   session_ = session_factory_(identity, active_->request.cookie, generation, std::move(callbacks));
   if (!session_) {
     finishActive(false);

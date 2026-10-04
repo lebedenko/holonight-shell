@@ -44,10 +44,11 @@ TEST(WindowActivationServerTest, MapsOnlyAcceptedBackendResultToTrue) {
   ServerFixture fixture;
   WindowActivationServer server(fixture.compositor.get());
 
-  const QList rejected_results{WindowActivationResult::InvalidRequest, WindowActivationResult::Unsupported,
-                               WindowActivationResult::Disconnected,   WindowActivationResult::Missing,
-                               WindowActivationResult::Ambiguous,      WindowActivationResult::Busy,
-                               WindowActivationResult::Failed};
+  const QList rejected_results{
+      WindowActivationResult::InvalidRequest, WindowActivationResult::Unsupported, WindowActivationResult::Disconnected,
+      WindowActivationResult::Missing,        WindowActivationResult::Ambiguous,   WindowActivationResult::Busy,
+      WindowActivationResult::Failed,
+  };
   for (const WindowActivationResult result : rejected_results) {
     fixture.fake->result = result;
     EXPECT_FALSE(server.requestWindowActivation({42U}, QStringLiteral("terminal")));

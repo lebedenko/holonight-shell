@@ -56,22 +56,23 @@ bool NotificationToastSurface::createSurface(const QString& screen_name) {
 }
 
 LayerSurfaceSpec NotificationToastSurface::surfaceSpec(QScreen* screen, const QString& screen_name) {
-  return {.output = screen,
-          .name_space = QStringLiteral("notifications"),
-          .layer = Layer::Overlay,
-          .anchors = Anchor::Top | Anchor::Right,
-          .width = kSurfaceWidth,
-          .height = kFallbackHeight,
-          .margin_top = kTopGap,
-          .margin_right = kRightMargin,
-          .exclusive_zone = 0,
-          .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Notifications/ToastStack.qml")),
-          .initial_properties = {{QStringLiteral("monitorName"), screen_name}},
-          .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
-          .color = Qt::transparent,
-          .before_load = [](QQmlEngine* engine) {
-            engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider());
-          }};
+  return {
+      .output = screen,
+      .name_space = QStringLiteral("notifications"),
+      .layer = Layer::Overlay,
+      .anchors = Anchor::Top | Anchor::Right,
+      .width = kSurfaceWidth,
+      .height = kFallbackHeight,
+      .margin_top = kTopGap,
+      .margin_right = kRightMargin,
+      .exclusive_zone = 0,
+      .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Notifications/ToastStack.qml")),
+      .initial_properties = {{QStringLiteral("monitorName"), screen_name}},
+      .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
+      .color = Qt::transparent,
+      .before_load =
+          [](QQmlEngine* engine) { engine->addImageProvider(QStringLiteral("icon"), new IconImageProvider()); },
+  };
 }
 
 void NotificationToastSurface::onSurfaceConfigured() {

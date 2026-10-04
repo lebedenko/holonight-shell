@@ -200,7 +200,9 @@ TEST_F(SwayBackendTest, RejectionPublishesBoundedDiagnosticAndSchedulesRefresh) 
 TEST_F(SwayBackendTest, PreservesExactNamesAndQueuesNumericActivationDuringRefresh) {
   const QStringList names{"dev:\"web\\tools", "0", "02", "2:web", "+2", "2147483648"};
   QJsonArray workspaces;
-  for (const auto& name : names) workspaces.append(QJsonObject{{"name", name}, {"num", -1}});
+  for (const auto& name : names) {
+    workspaces.append(QJsonObject{{"name", name}, {"num", -1}});
+  }
   backend_->activateNumberedSlot(5);
   finishRefresh(R"({"type":"root","nodes":[],"floating_nodes":[]})", QJsonDocument(workspaces).toJson());
   EXPECT_EQ(nextRequest().payload, QByteArrayLiteral("workspace --no-auto-back-and-forth number 5"));

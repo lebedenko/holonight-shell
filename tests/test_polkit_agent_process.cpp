@@ -106,13 +106,19 @@ TEST(PolkitAgentProcess, SigtermExitsPersistentDialogAndUnregisters) {
   qDBusRegisterMetaType<QMap<QString, QString>>();
   const QList<AgentTestIdentity> identities{
       {.kind = QStringLiteral("unix-user"), .details = {{QStringLiteral("uid"), 0U}}},
-      {.kind = QStringLiteral("unix-user"), .details = {{QStringLiteral("uid"), 65534U}}}};
+      {.kind = QStringLiteral("unix-user"), .details = {{QStringLiteral("uid"), 65534U}}},
+  };
   auto request = QDBusMessage::createMethodCall(authority.agent_service, QStringLiteral("/org/holonight/PolkitAgent"),
                                                 QStringLiteral("org.freedesktop.PolicyKit1.AuthenticationAgent"),
                                                 QStringLiteral("BeginAuthentication"));
-  request.setArguments({QStringLiteral("org.example.test"), QStringLiteral("Synthetic shutdown check"), QString{},
-                        QVariant::fromValue(QMap<QString, QString>{}), QStringLiteral("test-cookie"),
-                        QVariant::fromValue(identities)});
+  request.setArguments({
+      QStringLiteral("org.example.test"),
+      QStringLiteral("Synthetic shutdown check"),
+      QString{},
+      QVariant::fromValue(QMap<QString, QString>{}),
+      QStringLiteral("test-cookie"),
+      QVariant::fromValue(identities),
+  });
   QDBusPendingCallWatcher pending(connection.asyncCall(request));
   QTest::qWait(qEnvironmentVariableIsSet("UQC_POLKIT_LOG") ? 1500 : 250);
   ASSERT_FALSE(pending.isFinished()) << pending.error().message().toStdString();
@@ -176,7 +182,8 @@ TEST_P(PolkitCancellationProcess, RepliesAndRequesterExitsWhileAgentRemainsAvail
   qDBusRegisterMetaType<QList<AgentTestIdentity>>();
   qDBusRegisterMetaType<QMap<QString, QString>>();
   QList<AgentTestIdentity> identities{
-      {.kind = QStringLiteral("unix-user"), .details = {{QStringLiteral("uid"), 1000U}}}};
+      {.kind = QStringLiteral("unix-user"), .details = {{QStringLiteral("uid"), 1000U}}},
+  };
   if (production) {
     identities.append({.kind = QStringLiteral("unix-user"), .details = {{QStringLiteral("uid"), 0U}}});
   }
@@ -193,9 +200,14 @@ TEST_P(PolkitCancellationProcess, RepliesAndRequesterExitsWhileAgentRemainsAvail
   auto request = QDBusMessage::createMethodCall(authority.agent_service, QStringLiteral("/org/holonight/PolkitAgent"),
                                                 QStringLiteral("org.freedesktop.PolicyKit1.AuthenticationAgent"),
                                                 QStringLiteral("BeginAuthentication"));
-  request.setArguments({QStringLiteral("org.example.test"), QStringLiteral("Synthetic cancellation"), QString{},
-                        QVariant::fromValue(QMap<QString, QString>{}), QStringLiteral("pending-cookie"),
-                        QVariant::fromValue(identities)});
+  request.setArguments({
+      QStringLiteral("org.example.test"),
+      QStringLiteral("Synthetic cancellation"),
+      QString{},
+      QVariant::fromValue(QMap<QString, QString>{}),
+      QStringLiteral("pending-cookie"),
+      QVariant::fromValue(identities),
+  });
   QDBusPendingCallWatcher pending(connection.asyncCall(request, 10000));
   if (production) {
     cancelFromAuthority(QStringLiteral("pending-cookie"));
@@ -213,14 +225,26 @@ TEST_P(PolkitCancellationProcess, RepliesAndRequesterExitsWhileAgentRemainsAvail
   // own timeout, while the same persistent agent handles it without stale callbacks.
   requester.start(
       QStringLiteral("gdbus"),
-      {QStringLiteral("call"), QStringLiteral("--address"), address, QStringLiteral("--dest"), authority.agent_service,
-       QStringLiteral("--object-path"), QStringLiteral("/org/holonight/PolkitAgent"), QStringLiteral("--method"),
-       QStringLiteral("org.freedesktop.PolicyKit1.AuthenticationAgent.BeginAuthentication"),
-       QStringLiteral("--timeout"), QStringLiteral("10"), QStringLiteral("org.example.test"),
-       QStringLiteral("Synthetic cancellation"), QStringLiteral(""), QStringLiteral("{}"),
-       QStringLiteral("requester-cookie"),
-       production ? QStringLiteral("[('unix-user', {'uid': <uint32 1000>}), ('unix-user', {'uid': <uint32 0>})]")
-                  : QStringLiteral("[('unix-user', {'uid': <uint32 1000>})]")});
+      {
+          QStringLiteral("call"),
+          QStringLiteral("--address"),
+          address,
+          QStringLiteral("--dest"),
+          authority.agent_service,
+          QStringLiteral("--object-path"),
+          QStringLiteral("/org/holonight/PolkitAgent"),
+          QStringLiteral("--method"),
+          QStringLiteral("org.freedesktop.PolicyKit1.AuthenticationAgent.BeginAuthentication"),
+          QStringLiteral("--timeout"),
+          QStringLiteral("10"),
+          QStringLiteral("org.example.test"),
+          QStringLiteral("Synthetic cancellation"),
+          QStringLiteral(""),
+          QStringLiteral("{}"),
+          QStringLiteral("requester-cookie"),
+          production ? QStringLiteral("[('unix-user', {'uid': <uint32 1000>}), ('unix-user', {'uid': <uint32 0>})]")
+                     : QStringLiteral("[('unix-user', {'uid': <uint32 1000>})]"),
+      });
   ASSERT_TRUE(requester.waitForStarted());
   if (production) {
     cancelFromAuthority(QStringLiteral("requester-cookie"));

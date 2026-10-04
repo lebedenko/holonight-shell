@@ -215,7 +215,7 @@ MprisArtworkCache::~MprisArtworkCache() {
 void MprisArtworkCache::trackDecodeFuture(const QFuture<QString>& future, const QString& art_url,
                                           const std::function<void(QString)>& on_ready) {
   auto* watcher = new QFutureWatcher<QString>();
-  QObject::connect(watcher, &QFutureWatcher<QString>::finished, watcher, [this, watcher, art_url, on_ready]() {
+  QObject::connect(watcher, &QFutureWatcher<QString>::finished, watcher, [this, watcher, art_url, on_ready] {
     const QString result = watcher->result();
     pending_.remove(art_url);
     watcher->deleteLater();
@@ -248,7 +248,7 @@ void MprisArtworkCache::resolve(const QString& art_url, std::function<void(QStri
     // Unsupported scheme (anything not file:/http(s):/data:) — "silently skipped" per REQ-F-027,
     // resolves to "no artwork" immediately, still via the queued path for a uniform caller
     // contract.
-    QMetaObject::invokeMethod(qApp, [on_ready = std::move(on_ready)]() { on_ready(QString()); }, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(qApp, [on_ready = std::move(on_ready)] { on_ready(QString()); }, Qt::QueuedConnection);
     return;
   }
 
@@ -258,7 +258,7 @@ void MprisArtworkCache::resolve(const QString& art_url, std::function<void(QStri
     if (cached_reader.canRead()) {
       touchCacheEntry(dest_path);
       QMetaObject::invokeMethod(
-          qApp, [dest_path, on_ready = std::move(on_ready)]() { on_ready(dest_path); }, Qt::QueuedConnection);
+          qApp, [dest_path, on_ready = std::move(on_ready)] { on_ready(dest_path); }, Qt::QueuedConnection);
       return;
     }
     if (QFile::remove(dest_path)) {
@@ -303,7 +303,7 @@ void MprisArtworkCache::resolve(const QString& art_url, std::function<void(QStri
                      }
                    });
 
-  QObject::connect(reply, &QNetworkReply::finished, reply, [this, reply, art_url, dest_path, on_ready]() {
+  QObject::connect(reply, &QNetworkReply::finished, reply, [this, reply, art_url, dest_path, on_ready] {
     pending_replies_.remove(art_url);
     const bool fetch_ok = reply->error() == QNetworkReply::NoError;
     QByteArray bytes;

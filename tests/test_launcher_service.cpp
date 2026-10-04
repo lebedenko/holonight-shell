@@ -68,17 +68,19 @@ class EnvVarGuard {
 };
 
 DesktopEntry makeEntry(const QString& name, const QString& exec, const QString& desktop_file) {
-  return {.name = name,
-          .generic_name = QStringLiteral("Utility"),
-          .comment = QStringLiteral("Test entry"),
-          .exec = exec,
-          .icon = QStringLiteral("test-icon"),
-          .categories = QStringLiteral("Utility;"),
-          .path = QStringLiteral("/tmp"),
-          .desktop_file = desktop_file,
-          .startup_wm_class = QStringLiteral("org.example.TestApp"),
-          .terminal = false,
-          .actions = {{.name = QStringLiteral("New Window"), .exec = exec + QStringLiteral(" --new-window")}}};
+  return {
+      .name = name,
+      .generic_name = QStringLiteral("Utility"),
+      .comment = QStringLiteral("Test entry"),
+      .exec = exec,
+      .icon = QStringLiteral("test-icon"),
+      .categories = QStringLiteral("Utility;"),
+      .path = QStringLiteral("/tmp"),
+      .desktop_file = desktop_file,
+      .startup_wm_class = QStringLiteral("org.example.TestApp"),
+      .terminal = false,
+      .actions = {{.name = QStringLiteral("New Window"), .exec = exec + QStringLiteral(" --new-window")}},
+  };
 }
 
 QString launcherDbPath(const QTemporaryDir& dir) { return dir.path() + QStringLiteral("/launcher.db"); }
@@ -986,9 +988,10 @@ TEST(LauncherModel, ResultRowsResolveCurrentEntriesAfterReplacement) {
 
 TEST(LauncherModel, FindEntryByDesktopFileReturnsMatchingEntry) {
   LauncherModel model;
-  model.setEntries(
-      {makeEntry(QStringLiteral("First"), QStringLiteral("first"), QStringLiteral("/tmp/first.desktop")),
-       makeEntry(QStringLiteral("Second"), QStringLiteral("second"), QStringLiteral("/tmp/second.desktop"))});
+  model.setEntries({
+      makeEntry(QStringLiteral("First"), QStringLiteral("first"), QStringLiteral("/tmp/first.desktop")),
+      makeEntry(QStringLiteral("Second"), QStringLiteral("second"), QStringLiteral("/tmp/second.desktop")),
+  });
 
   const DesktopEntry* entry = model.findEntryByDesktopFile(QStringLiteral("/tmp/second.desktop"));
   ASSERT_NE(entry, nullptr);
@@ -1001,9 +1004,10 @@ TEST(LauncherModel, FindEntryByDesktopFileReturnsMatchingEntry) {
 // even when callers provide duplicate desktop-file paths.
 TEST(LauncherModel, FindEntryByDesktopFileReturnsFirstDuplicate) {
   LauncherModel model;
-  model.setEntries(
-      {makeEntry(QStringLiteral("First"), QStringLiteral("first"), QStringLiteral("/tmp/shared.desktop")),
-       makeEntry(QStringLiteral("Second"), QStringLiteral("second"), QStringLiteral("/tmp/shared.desktop"))});
+  model.setEntries({
+      makeEntry(QStringLiteral("First"), QStringLiteral("first"), QStringLiteral("/tmp/shared.desktop")),
+      makeEntry(QStringLiteral("Second"), QStringLiteral("second"), QStringLiteral("/tmp/shared.desktop")),
+  });
 
   const DesktopEntry* entry = model.findEntryByDesktopFile(QStringLiteral("/tmp/shared.desktop"));
   ASSERT_NE(entry, nullptr);
@@ -1041,7 +1045,8 @@ TEST(LauncherModel, IndexConsistencyAfterSetEntries) {
 }
 
 TEST(LauncherService, AppIconsUseInventoryAndExactMatchesBeforeCaseInsensitive) {
-  QTemporaryDir dir, cache;
+  QTemporaryDir dir;
+  QTemporaryDir cache;
   ASSERT_TRUE(dir.isValid());
   ASSERT_TRUE(writeFile(
       dir.path() + "/Example.desktop",

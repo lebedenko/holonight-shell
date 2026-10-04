@@ -16,13 +16,13 @@ class WindowSurface final : public TransientSurfaceHost {
   Q_PROPERTY(QStringList choices READ choices NOTIFY changed)
  public:
   explicit WindowSurface(QObject* parent = nullptr) : TransientSurfaceHost("WindowSurface", parent) {}
-  bool visible() const { return hasSurface(); }
-  QString screenName() const { return screen_name_; }
-  int mode() const { return mode_; }
-  QString target() const { return target_; }
-  QStringList choices() const { return choices_; }
+  [[nodiscard]] bool visible() const { return hasSurface(); }
+  [[nodiscard]] QString screenName() const { return screen_name_; }
+  [[nodiscard]] int mode() const { return mode_; }
+  [[nodiscard]] QString target() const { return target_; }
+  [[nodiscard]] QStringList choices() const { return choices_; }
   Q_INVOKABLE void toggle(const QString& screen = {});
-  Q_INVOKABLE void menu(const QString& id, const QString& screen);
+  Q_INVOKABLE void menu(const QString& identifier, const QString& screen);
   Q_INVOKABLE void chooser(const QStringList& ids, const QString& screen);
   Q_INVOKABLE void desktopMenu(const QString& screen);
   Q_INVOKABLE void hide();
@@ -32,7 +32,7 @@ class WindowSurface final : public TransientSurfaceHost {
   void dismissed();
 
  private:
-  void show(const QString& screen);
+  void show(const QString& name);
   void onSurfaceTerminated() override;
   int mode_{0};
   QString target_;

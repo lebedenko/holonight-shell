@@ -333,18 +333,24 @@ TEST(WifiNetworkModel, SortsConnectedFirstAndExposesRoles) {
   WifiNetworkModel model;
   model.setNetworks({
       WifiNetwork{
-          .ssid = QStringLiteral("Cafe"), .strength = 45, .secured = false, .status_text = QStringLiteral("Open")},
-      WifiNetwork{.ssid = QStringLiteral("Home"),
-                  .strength = 80,
-                  .secured = true,
-                  .known = true,
-                  .connected = true,
-                  .active = true,
-                  .access_point_path = QStringLiteral("/ap/home"),
-                  .device_path = QStringLiteral("/dev/wlan0"),
-                  .connection_path = QStringLiteral("/settings/home"),
-                  .frequency = 5200,
-                  .status_text = QStringLiteral("Connected")},
+          .ssid = QStringLiteral("Cafe"),
+          .strength = 45,
+          .secured = false,
+          .status_text = QStringLiteral("Open"),
+      },
+      WifiNetwork{
+          .ssid = QStringLiteral("Home"),
+          .strength = 80,
+          .secured = true,
+          .known = true,
+          .connected = true,
+          .active = true,
+          .access_point_path = QStringLiteral("/ap/home"),
+          .device_path = QStringLiteral("/dev/wlan0"),
+          .connection_path = QStringLiteral("/settings/home"),
+          .frequency = 5200,
+          .status_text = QStringLiteral("Connected"),
+      },
   });
 
   ASSERT_EQ(model.rowCount(), 2);
@@ -360,27 +366,31 @@ TEST(WifiNetworkModel, SortsConnectedFirstAndExposesRoles) {
 TEST(WifiNetworkModel, UpdatesStableRowsWithoutResettingModel) {
   WifiNetworkModel model;
   model.setNetworks({
-      WifiNetwork{.ssid = QStringLiteral("Home"),
-                  .strength = 80,
-                  .secured = true,
-                  .known = true,
-                  .access_point_path = QStringLiteral("/ap/home"),
-                  .device_path = QStringLiteral("/dev/wlan0"),
-                  .connection_path = QStringLiteral("/settings/home"),
-                  .status_text = QStringLiteral("Known")},
+      WifiNetwork{
+          .ssid = QStringLiteral("Home"),
+          .strength = 80,
+          .secured = true,
+          .known = true,
+          .access_point_path = QStringLiteral("/ap/home"),
+          .device_path = QStringLiteral("/dev/wlan0"),
+          .connection_path = QStringLiteral("/settings/home"),
+          .status_text = QStringLiteral("Known"),
+      },
   });
   QSignalSpy reset_spy(&model, &WifiNetworkModel::modelReset);
   QSignalSpy data_changed_spy(&model, &WifiNetworkModel::dataChanged);
 
   model.setNetworks({
-      WifiNetwork{.ssid = QStringLiteral("Home"),
-                  .strength = 72,
-                  .secured = true,
-                  .known = true,
-                  .access_point_path = QStringLiteral("/ap/home"),
-                  .device_path = QStringLiteral("/dev/wlan0"),
-                  .connection_path = QStringLiteral("/settings/home"),
-                  .status_text = QStringLiteral("Known")},
+      WifiNetwork{
+          .ssid = QStringLiteral("Home"),
+          .strength = 72,
+          .secured = true,
+          .known = true,
+          .access_point_path = QStringLiteral("/ap/home"),
+          .device_path = QStringLiteral("/dev/wlan0"),
+          .connection_path = QStringLiteral("/settings/home"),
+          .status_text = QStringLiteral("Known"),
+      },
   });
 
   EXPECT_EQ(reset_spy.count(), 0);
@@ -461,19 +471,25 @@ TEST(NetworkService, RoutesPopupActionsToBackend) {
       .active_connection_path = QStringLiteral("/active/1"),
       .networks =
           {
-              WifiNetwork{.ssid = QStringLiteral("Known"),
-                          .known = true,
-                          .access_point_path = QStringLiteral("/ap/known"),
-                          .device_path = QStringLiteral("/dev/wlan0"),
-                          .connection_path = QStringLiteral("/settings/known")},
-              WifiNetwork{.ssid = QStringLiteral("Open"),
-                          .secured = false,
-                          .access_point_path = QStringLiteral("/ap/open"),
-                          .device_path = QStringLiteral("/dev/wlan0")},
-              WifiNetwork{.ssid = QStringLiteral("Secured"),
-                          .secured = true,
-                          .access_point_path = QStringLiteral("/ap/secured"),
-                          .device_path = QStringLiteral("/dev/wlan0")},
+              WifiNetwork{
+                  .ssid = QStringLiteral("Known"),
+                  .known = true,
+                  .access_point_path = QStringLiteral("/ap/known"),
+                  .device_path = QStringLiteral("/dev/wlan0"),
+                  .connection_path = QStringLiteral("/settings/known"),
+              },
+              WifiNetwork{
+                  .ssid = QStringLiteral("Open"),
+                  .secured = false,
+                  .access_point_path = QStringLiteral("/ap/open"),
+                  .device_path = QStringLiteral("/dev/wlan0"),
+              },
+              WifiNetwork{
+                  .ssid = QStringLiteral("Secured"),
+                  .secured = true,
+                  .access_point_path = QStringLiteral("/ap/secured"),
+                  .device_path = QStringLiteral("/dev/wlan0"),
+              },
           },
   };
   NetworkService service(std::make_unique<FakeNetworkDbusClient>(), std::move(backend));
@@ -612,11 +628,11 @@ class FakeNmSettingsConnection : public QObject {
     QVariantMap connection;
     connection["id"] = connection_id;
     connection["type"] = "802-11-wireless";
-    settings["connection"] = connection;
+    settings["connection"] = std::move(connection);
 
     QVariantMap wifi;
     wifi["ssid"] = QByteArray("FakeWiFi");
-    settings["802-11-wireless"] = wifi;
+    settings["802-11-wireless"] = std::move(wifi);
     return settings;
   }
 

@@ -143,35 +143,41 @@ int main(int argc, char* argv[]) {
   bool finished = false;
   int result = 1;
   const QString prompt = argc == 2 ? QString::fromLocal8Bit(arguments[1]) : QString{};
-  model.beginRequest({.token = QStringLiteral("askpass"),
-                      .message = prompt,
-                      .input_mode = mode,
-                      .frontend_kind = Holonight::Authentication::askpassFrontendKind(basename)},
-                     [&](AuthenticationPromptModel::ResponseKind kind, const QString& value) {
-                       if (finished) {
-                         return;
-                       }
-                       if (kind == AuthenticationPromptModel::ResponseKind::Text) {
-                         const auto validated = Holonight::Authentication::validateSecret(value);
-                         if (!validated) {
-                           model.markRetryableError({{.severity = Holonight::Authentication::MessageSeverity::Error,
-                                                      .text = QStringLiteral("Invalid response")}});
-                           return;
-                         }
-                         result =
-                             Holonight::Authentication::writeProtocolSecret(STDOUT_FILENO, validated.bytes) ? 0 : 1;
-                       } else if (kind == AuthenticationPromptModel::ResponseKind::Confirmation) {
-                         result = value == QStringLiteral("accepted") ? 0 : 1;
-                       } else if (kind == AuthenticationPromptModel::ResponseKind::Retry) {
-                         model.presentPrompt({}, mode);
-                         return;
-                       } else {
-                         result = 1;
-                       }
-                       finished = true;
-                       model.complete();
-                       QGuiApplication::exit(result);
-                     });
+  model.beginRequest(
+      {
+          .token = QStringLiteral("askpass"),
+          .message = prompt,
+          .input_mode = mode,
+          .frontend_kind = Holonight::Authentication::askpassFrontendKind(basename),
+      },
+      [&](AuthenticationPromptModel::ResponseKind kind, const QString& value) {
+        if (finished) {
+          return;
+        }
+        if (kind == AuthenticationPromptModel::ResponseKind::Text) {
+          const auto validated = Holonight::Authentication::validateSecret(value);
+          if (!validated) {
+            model.markRetryableError({
+                {
+                    .severity = Holonight::Authentication::MessageSeverity::Error,
+                    .text = QStringLiteral("Invalid response"),
+                },
+            });
+            return;
+          }
+          result = Holonight::Authentication::writeProtocolSecret(STDOUT_FILENO, validated.bytes) ? 0 : 1;
+        } else if (kind == AuthenticationPromptModel::ResponseKind::Confirmation) {
+          result = value == QStringLiteral("accepted") ? 0 : 1;
+        } else if (kind == AuthenticationPromptModel::ResponseKind::Retry) {
+          model.presentPrompt({}, mode);
+          return;
+        } else {
+          result = 1;
+        }
+        finished = true;
+        model.complete();
+        QGuiApplication::exit(result);
+      });
 
   QQmlApplicationEngine engine;
   engine.setInitialProperties({{QStringLiteral("promptModel"), QVariant::fromValue(&model)}});

@@ -52,8 +52,12 @@ QString resolveActiveLogindSessionPath() {
     // QDBusArgument iterator or trigger a libdbus assertion on this Qt/libdbus build. Use loginctl
     // as a reliable out-of-process fallback; it is always co-installed with logind.
     QProcess loginctl;
-    loginctl.start(QStringLiteral("loginctl"), {QStringLiteral("show-seat"), QStringLiteral("--property=ActiveSession"),
-                                                QStringLiteral("--value"), QStringLiteral("seat0")});
+    loginctl.start(QStringLiteral("loginctl"), {
+                                                   QStringLiteral("show-seat"),
+                                                   QStringLiteral("--property=ActiveSession"),
+                                                   QStringLiteral("--value"),
+                                                   QStringLiteral("seat0"),
+                                               });
     if (loginctl.waitForFinished(kLoginctlTimeoutMs) && loginctl.exitCode() == 0) {
       return QString::fromLatin1(loginctl.readAllStandardOutput()).trimmed();
     }

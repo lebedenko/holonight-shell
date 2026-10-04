@@ -262,7 +262,7 @@ void NetworkService::connectToNm() {
 void NetworkService::queryAll() {
   NetworkQuerySnapshot snapshot;
 
-  const auto finish = [this, &snapshot]() {
+  const auto finish = [this, &snapshot] {
     snapshot.active_connection_types = queryActiveConnectionTypes();
     applyStateUpdate(buildNetworkStateUpdate(snapshot));
   };

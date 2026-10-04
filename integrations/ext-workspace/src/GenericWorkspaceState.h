@@ -8,8 +8,10 @@ struct GenericWorkspaceState {
     workspace.stable_order = order;
     workspace.can_activate = false;
   }
-  void setId(const QString& id) {
-    if (!id.isEmpty()) workspace.id = QStringLiteral("protocol:") + id;
+  void setId(const QString& identifier) {
+    if (!identifier.isEmpty()) {
+      workspace.id = QStringLiteral("protocol:") + identifier;
+    }
   }
   void setName(const QString& name) { workspace.display_name = name; }
   void setState(uint32_t state) {
