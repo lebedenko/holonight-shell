@@ -233,6 +233,47 @@ TestCase {
         tryCompare(list, "count", 0)
         verify(leading.visible)
     }
+    function test_titleUpdatesPreserveHoverTooltipAndClicks() {
+        WindowSurface.hide()
+        const taskbar = createTemporaryObject(taskbarComponent, this)
+        const list = findChild(taskbar, "windowTaskList")
+        tryVerify(() => list.itemAtIndex(0) !== null)
+        const task = list.itemAtIndex(0)
+        mouseMove(taskbar, 300, 60)
+        mouseMove(task, 20, 20)
+        tryCompare(task, "hovered", true)
+        for (let i = 0; i < 12; ++i) {
+            CompositorTestSeed.updateWindowTitle("first", "Title " + i)
+            wait(50)
+            compare(list.itemAtIndex(0), task)
+            verify(task.hovered)
+        }
+        tryCompare(TooltipSurface, "tooltipVisible", true)
+        for (const button of [Qt.LeftButton, Qt.RightButton]) {
+            mousePress(task, 20, 20, button)
+            CompositorTestSeed.updateWindowTitle("first", "Pressed " + button)
+            mouseRelease(task, 20, 20, button)
+            compare(WindowSurface.mode, 2)
+            verify(WindowSurface.visible)
+            WindowSurface.hide()
+        }
+        WindowPresentation.grouped = false
+        tryCompare(list, "count", 2)
+        const single = list.itemAtIndex(0)
+        const spy = Qt.createQmlObject('import QtTest; SignalSpy {}', this)
+        spy.target = single
+        spy.signalName = "clicked"
+        mousePress(single, 20, 20)
+        CompositorTestSeed.updateWindowTitle("first", "Single pressed")
+        mouseRelease(single, 20, 20)
+        compare(spy.count, 1)
+        spy.destroy()
+        mousePress(single, 20, 20, Qt.RightButton)
+        CompositorTestSeed.updateWindowTitle("first", "Menu pressed")
+        mouseRelease(single, 20, 20, Qt.RightButton)
+        compare(WindowSurface.mode, 1)
+        compare(WindowSurface.target, "first")
+    }
     function test_groupChooserAndRightClickMenu() {
         WindowSurface.hide()
         const taskbar = createTemporaryObject(taskbarComponent, this)

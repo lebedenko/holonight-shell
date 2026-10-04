@@ -68,10 +68,36 @@ void CompositorWorkspaceModel::replace(QList<CompositorWorkspace> workspaces) {
 
 void CompositorWorkspaceModel::replaceTransactional(QList<CompositorWorkspace> workspaces,
                                                     const std::function<void()>& commit) {
-  beginResetModel();
-  entries_ = std::move(workspaces);
+  if (entries_ == workspaces) {
+    commit();
+    return;
+  }
+  const bool same_structure =
+      entries_.size() == workspaces.size() &&
+      std::ranges::equal(entries_, workspaces, {}, &CompositorWorkspace::id, &CompositorWorkspace::id);
+  if (!same_structure) {
+    beginResetModel();
+    entries_ = std::move(workspaces);
+    commit();
+    endResetModel();
+    return;
+  }
+
+  CompositorWorkspaceModel next;
+  next.entries_ = std::move(workspaces);
+  QList<QList<int>> changed_roles;
+  for (int row = 0; row < rowCount(); ++row) {
+    QList<int> roles;
+    for (int role = WorkspaceIdRole; role <= VisualStateRole; ++role) {
+      if (data(index(row, 0), role) != next.data(next.index(row, 0), role)) roles.append(role);
+    }
+    changed_roles.append(roles);
+  }
+  entries_ = std::move(next.entries_);
   commit();
-  endResetModel();
+  for (int row = 0; row < changed_roles.size(); ++row) {
+    if (!changed_roles[row].isEmpty()) emit dataChanged(index(row, 0), index(row, 0), changed_roles[row]);
+  }
 }
 
 int CompositorWorkspaceModel::focusedRow() const {

@@ -128,6 +128,24 @@ TestCase {
         compare(section.item.firstRow, 0)
     }
 
+    function test_titleUpdateBetweenWorkspacePressAndRelease() {
+        NumberedTestProvider.eligible = false
+        CompositorTestSeed.setNamedWorkspaces(3)
+        const section = createTemporaryObject(sectionComponent, this)
+        const repeater = findChild(section, "namedRepeater")
+        const pill = repeater.itemAt(2).item
+        const spy = Qt.createQmlObject('import QtTest; SignalSpy {}', this)
+        spy.target = CompositorService
+        spy.signalName = "workspaceActivationRequested"
+        mousePress(pill, pill.width / 2, pill.height / 2)
+        CompositorTestSeed.updateWindowTitle("first", "Updated")
+        compare(repeater.itemAt(2).item, pill)
+        mouseRelease(pill, pill.width / 2, pill.height / 2)
+        compare(spy.count, 1)
+        compare(spy.signalArguments[0][0], "opaque-2")
+        spy.destroy()
+    }
+
     function test_contribution_shares_frame_and_collapses() {
         contributionModel.contentWidth = 0
         contributionModel.shown = true

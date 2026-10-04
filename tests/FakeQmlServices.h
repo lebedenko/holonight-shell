@@ -1190,6 +1190,14 @@ class CompositorTestSeed : public QObject {
   Q_OBJECT
  public:
   explicit CompositorTestSeed(CompositorService& service) : service_(service) {}
+  Q_INVOKABLE void updateWindowTitle(const QString& id, const QString& title) {
+    auto snapshot = service_.snapshot();
+    snapshot.active_windows[QStringLiteral("DP-1")].title = title;
+    for (auto& window : snapshot.windows) {
+      if (window.id == id) window.title = title;
+    }
+    service_.publishSnapshotForTest(snapshot);
+  }
   Q_INVOKABLE void setToplevels(bool first, bool second, bool second_active = true) {
     CompositorSnapshot snapshot{.connected = true, .capabilities = {.window_listing = true}};
     if (first)

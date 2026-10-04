@@ -1,6 +1,7 @@
 #include "CompositorBackend.h"
 #include "CompositorService.h"
 #include "SwayIpc.h"
+#include "WindowPresentation.h"
 #include "WorkspacePresentation.h"
 
 #include <QJsonArray>
@@ -216,4 +217,69 @@ TEST(WorkspacePresentation, VisibilityUsesActualRowsAndCapabilitiesRatherThanDis
   service.publishSnapshotForTest(snapshot);
   EXPECT_FALSE(presentation.sectionVisible());
   EXPECT_EQ(revisions.count(), 7);
+}
+
+TEST(CompositorService, TitleUpdatesPreserveModelsAndCommitBeforeRowNotifications) {
+  CompositorService service;
+  WindowPresentation presentation(&service, true);
+  CompositorSnapshot snapshot{.connected = true,
+                              .capabilities = {.window_listing = true, .workspace_activation = true},
+                              .workspaces = {{.id = "one"}, {.id = "two"}},
+                              .windows = {{.id = "first", .title = "Before", .app_id = "app"},
+                                          {.id = "second", .title = "Second", .app_id = "app"}}};
+  service.publishSnapshotForTest(snapshot);
+  auto* workspaces = service.workspaces();
+  auto* groups = presentation.applications();
+  QSignalSpy workspace_resets(workspaces, &QAbstractItemModel::modelReset);
+  QSignalSpy workspace_changes(workspaces, &QAbstractItemModel::dataChanged);
+  QSignalSpy group_resets(groups, &QAbstractItemModel::modelReset);
+  QSignalSpy group_changes(groups, &QAbstractItemModel::dataChanged);
+  QSignalSpy revisions(&service, &CompositorService::revisionChanged);
+  snapshot.windows[0].title = "After";
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_EQ(workspace_resets.count(), 0);
+  EXPECT_EQ(workspace_changes.count(), 0);
+  EXPECT_EQ(group_resets.count(), 0);
+  ASSERT_EQ(group_changes.count(), 1);
+  EXPECT_EQ(group_changes[0][2].value<QList<int>>(),
+            (QList<int>{GroupedApplicationModel::Title, GroupedApplicationModel::Windows}));
+  EXPECT_EQ(groups->data(groups->index(0, 0), GroupedApplicationModel::Title).toString(), "After");
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_EQ(group_changes.count(), 1);
+  EXPECT_EQ(revisions.count(), 2);
+  snapshot.windows[1].activated = true;
+  snapshot.windows[0].minimized = true;
+  snapshot.windows[1].minimized = true;
+  snapshot.workspaces[0].active = true;
+  bool committed = false;
+  QObject::connect(workspaces, &QAbstractItemModel::dataChanged, &service, [&] {
+    committed = service.snapshot().windows[1].activated && service.snapshot().workspaces[0].active;
+  });
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_TRUE(committed);
+  EXPECT_EQ(workspace_resets.count(), 0);
+  EXPECT_EQ(workspace_changes.count(), 1);
+  EXPECT_TRUE(groups->data(groups->index(0, 0), GroupedApplicationModel::Active).toBool());
+  EXPECT_TRUE(groups->data(groups->index(0, 0), GroupedApplicationModel::Minimized).toBool());
+  EXPECT_TRUE(
+      groups->data(groups->index(0, 0), GroupedApplicationModel::Windows).toList()[1].toMap()["activated"].toBool());
+  snapshot.windows.removeLast();
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_EQ(group_resets.count(), 0);
+  EXPECT_EQ(groups->data(groups->index(0, 0), GroupedApplicationModel::Windows).toList().size(), 1);
+  snapshot.windows.append({.id = "third", .app_id = "other"});
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_EQ(group_resets.count(), 1);
+  presentation.setGrouped(false);
+  EXPECT_EQ(group_resets.count(), 2);
+  std::swap(snapshot.windows[0], snapshot.windows[1]);
+  snapshot.workspaces[0].stable_order = 2;
+  service.publishSnapshotForTest(snapshot);
+  EXPECT_EQ(group_resets.count(), 3);
+  EXPECT_EQ(workspace_resets.count(), 1);
+  service.publishSnapshotForTest({});
+  EXPECT_EQ(groups->rowCount(), 0);
+  EXPECT_EQ(workspaces->rowCount(), 0);
+  EXPECT_EQ(group_resets.count(), 4);
+  EXPECT_EQ(workspace_resets.count(), 2);
 }
