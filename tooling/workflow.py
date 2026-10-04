@@ -194,7 +194,7 @@ def tidy(config, scope):
     clang_entries = []
     for entry in entries:
         args = entry.get('arguments') or shlex.split(entry['command'])
-        args = [a for a in args if a not in {'-mno-direct-extern-access', '-fno-keep-inline-dllexport'}]
+        args = [a for a in args if a not in {'-mno-direct-extern-access', '-fno-keep-inline-dllexport', '-Wno-template-id-cdtor'}]
         clang_entries.append(dict(directory=entry['directory'], file=entry['file'], arguments=args))
     target = ROOT / '.cache/tooling/clang'
     atomic_json(target / 'compile_commands.json', clang_entries)
@@ -207,7 +207,8 @@ def tidy(config, scope):
             continue
         tidy_config = ROOT / 'tests/.clang-tidy' if is_test and (ROOT / 'tests/.clang-tidy').exists() else ROOT / '.clang-tidy'
         run([os.environ.get('CLANG_TIDY', 'clang-tidy'), path, '-p', target,
-             f'--config-file={tidy_config}'])
+             f'--config-file={tidy_config}',
+             rf'--header-filter=^{ROOT}/(apps|libs|integrations|tests)/.*\.(h|hpp)$'])
     uncovered = sources - {Path(e['file']) for e in entries}
     if uncovered:
         raise RuntimeError('No compile command for: ' + ', '.join(str(p.relative_to(ROOT)) for p in sorted(uncovered)))

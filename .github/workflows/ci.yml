@@ -6,178 +6,35 @@ on:
   pull_request:
     branches: ["main"]
 
-env:
-  BUILD_TYPE: Debug
-
 jobs:
   licensing:
     name: REUSE licensing
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: pipx run --spec reuse==6.2.0 reuse lint
+      - run: python3 scripts/ci/run.py --lane licensing
 
   build-test:
     name: Build and test
     runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/lebedenko/holonight-shell-ci:latest
-      options: --privileged
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install isolated acceptance tools
-        run: pacman -Syu --noconfirm bubblewrap sway polkit polkit-qt6
-
-      - name: Checkout HoloNightConfig dependency
-        uses: actions/checkout@v4
-        with:
-          repository: lebedenko/holonight-config
-          ref: fe69a59e6b73167fd5349223a4d265d75386c139
-          path: holonight-config-dep
-
-      - name: Build and install HolonightConfig dependency
+      - name: Enable user namespaces on the disposable runner
         run: |
-          cmake -S holonight-config-dep -B holonight-config-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-          cmake --build holonight-config-dep/build --parallel
-          cmake --install holonight-config-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
-          rm -rf holonight-config-dep
-
-      - name: Checkout holonight-qt dependency
-        uses: actions/checkout@v4
-        with:
-          repository: lebedenko/holonight-qt
-          ref: 863af4183bdf09ce05199b37e8f5dfb46a311ba1
-          path: holonight-qt-dep
-
-      - name: Build and install holonight-qt dependency
-        run: |
-          cmake -S holonight-qt-dep -B holonight-qt-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR=$GITHUB_WORKSPACE/build-dependencies/prefix/lib/cmake/HoloNightConfig
-          cmake --build holonight-qt-dep/build --parallel
-          cmake --install holonight-qt-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
-          rm -rf holonight-qt-dep
-
-      - name: Checkout HoloNightSystemServices dependency
-        uses: actions/checkout@v4
-        with:
-          repository: lebedenko/holonight-system-services
-          ref: 3e2928eb55bbc3de2b1e877e29aa57d47077c05d
-          path: holonight-system-services-dep
-
-      - name: Build and install HoloNightSystemServices dependency
-        run: |
-          cmake -S holonight-system-services-dep -B holonight-system-services-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
-          cmake --build holonight-system-services-dep/build --parallel
-          cmake --install holonight-system-services-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
-          rm -rf holonight-system-services-dep
-
-      - name: Architecture checks
-        run: scripts/check-architecture-boundaries.sh
-
-      - name: Configure
-        run: >
-          cmake -B build -G Ninja -S .
-          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/build-dependencies/prefix
-          -DBUILD_TESTS=ON
-
-      - name: Build
-        run: cmake --build build --parallel
-
-      - name: QML type metadata check
-        run: scripts/check-qmltypes.sh build
-
-      - name: Test
-        run: |
-          # The Ubuntu host restricts user-namespace capabilities even in privileged
-          # containers. This setting is confined to the disposable CI runner.
           if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
-            sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
-          useradd -m uqc
-          runuser -u uqc -- bwrap --unshare-net --ro-bind / / -- true
-          chown -R uqc:uqc "$GITHUB_WORKSPACE"
-          runuser -u uqc -- python3 scripts/run-isolated-test.py --hide-host ctest --test-dir build --output-on-failure --no-tests=error
-
+      - run: python3 scripts/ci/run.py --lane build-test
       - name: Preserve Controls acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: controls-acceptance
-          path: build/uqc-launch-logs
-
-      - name: QML lint
-        run: cmake --build build --target qml-lint
+          path: build/ci/*/artifacts/build-test/uqc-launch-logs
 
   static-checks:
     name: Static checks
     runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/lebedenko/holonight-shell-ci:latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install authentication development dependencies
-        run: pacman -Syu --noconfirm polkit polkit-qt6
-
-      - name: Checkout HoloNightConfig dependency
-        uses: actions/checkout@v4
-        with:
-          repository: lebedenko/holonight-config
-          ref: fe69a59e6b73167fd5349223a4d265d75386c139
-          path: holonight-config-dep
-
-      - name: Build and install HolonightConfig dependency
-        run: |
-          cmake -S holonight-config-dep -B holonight-config-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-          cmake --build holonight-config-dep/build --parallel
-          cmake --install holonight-config-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
-          rm -rf holonight-config-dep
-
-      - name: Checkout holonight-qt dependency
-        uses: actions/checkout@v4
-        with:
-          repository: lebedenko/holonight-qt
-          ref: 863af4183bdf09ce05199b37e8f5dfb46a311ba1
-          path: holonight-qt-dep
-
-      - name: Build and install holonight-qt dependency
-        run: |
-          cmake -S holonight-qt-dep -B holonight-qt-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR=$GITHUB_WORKSPACE/build-dependencies/prefix/lib/cmake/HoloNightConfig
-          cmake --build holonight-qt-dep/build --parallel
-          cmake --install holonight-qt-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
-          rm -rf holonight-qt-dep
-
-      - name: Checkout HoloNightSystemServices dependency
-        uses: actions/checkout@v4
-        with:
-          repository: lebedenko/holonight-system-services
-          ref: 3e2928eb55bbc3de2b1e877e29aa57d47077c05d
-          path: holonight-system-services-dep
-
-      - name: Build and install HoloNightSystemServices dependency
-        run: |
-          cmake -S holonight-system-services-dep -B holonight-system-services-dep/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
-          cmake --build holonight-system-services-dep/build --parallel
-          cmake --install holonight-system-services-dep/build --prefix $GITHUB_WORKSPACE/build-dependencies/prefix
-          rm -rf holonight-system-services-dep
-
-      - name: Configure
-        run: >
-          cmake -B build -G Ninja -S .
-          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/build-dependencies/prefix
-          -DBUILD_TESTS=ON
-
-      - name: Build generated artifacts
-        run: cmake --build build --parallel
-
-      - name: Format check
-        run: cmake --build build --target format-check
-
-      - name: Clang tidy
-        run: cmake --build build --target tidy
+      - run: python3 scripts/ci/run.py --lane static-checks

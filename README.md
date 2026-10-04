@@ -558,3 +558,14 @@ The Storage topbar icon is hidden with zero devices attached, dimmed with device
 
 See [tooling/README.md](tooling/README.md) for presets, local dependency overrides, editor refresh,
 `task tooling:doctor`, and the independent Serena project.
+
+## Local CI rehearsal
+
+Run `task ci` with Python 3, Task and Docker (Podman fallback). Every push
+validation lane uses fresh isolated builds and the same pinned tools/providers
+as GitHub CI. Non-ignored new inputs are included and reported for adding before
+pushing. Build/test requires container user namespaces and runs privileged for
+its private bubblewrap/headless Sway checks. Complete logs and evidence are
+saved under ignored `build/ci/`; any required failure returns nonzero and prints
+its full log. Existing development tasks remain available. Publication and
+artifact uploads remain remote operations. See [local SDD](docs/sdd/local-ci/README.md).

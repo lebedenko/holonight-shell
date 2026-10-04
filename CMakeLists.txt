@@ -270,7 +270,11 @@ file(GLOB_RECURSE ALL_CXX_TEST_IMPL_FILES
     CONFIGURE_DEPENDS
     tests/*.cpp
 )
-list(REMOVE_ITEM ALL_CXX_TEST_IMPL_FILES "${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp")
+# The installed-package consumer has a separate compiler database and CI tidy check.
+list(REMOVE_ITEM ALL_CXX_TEST_IMPL_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/shell-config-package-consumer/main.cpp"
+)
 
 set(ALL_CXX_IMPL_FILES ${ALL_CXX_SRC_IMPL_FILES} ${ALL_CXX_TEST_IMPL_FILES})
 
@@ -298,11 +302,7 @@ if(CLANG_FORMAT)
 endif()
 
 if(CLANG_TIDY)
-  include(ProcessorCount)
-  ProcessorCount(TIDY_JOBS)
-  if(TIDY_JOBS EQUAL 0)
-    set(TIDY_JOBS 1)
-  endif()
+  set(TIDY_JOBS 2 CACHE STRING "Parallel clang-tidy jobs")
 
   # run-clang-tidy gained -hide-progress in LLVM 20. On older toolchains
   # (e.g. Debian's clang-tidy) the flag is unknown, and run-clang-tidy's
@@ -325,8 +325,10 @@ if(CLANG_TIDY)
   set(TIDY_DB_DIR ${CMAKE_BINARY_DIR}/tidy)
   set(STRIP_TIDY_FLAGS_SCRIPT ${CMAKE_BINARY_DIR}/strip_tidy_flags.cmake)
   set(TIDY_GENERATED_FILES
-      ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-ext-workspace-v1.h
-      ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/wayland-ext-workspace-v1-client-protocol.h
+      ${CMAKE_CURRENT_BINARY_DIR}/integrations/labwc/qwayland-wlr-foreign-toplevel-management-unstable-v1.h
+      ${CMAKE_CURRENT_BINARY_DIR}/integrations/labwc/wayland-wlr-foreign-toplevel-management-unstable-v1-client-protocol.h
+      ${CMAKE_CURRENT_BINARY_DIR}/integrations/ext-workspace/qwayland-ext-workspace-v1.h
+      ${CMAKE_CURRENT_BINARY_DIR}/integrations/ext-workspace/wayland-ext-workspace-v1-client-protocol.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-xdg-shell.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/wayland-xdg-shell-client-protocol.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-ext-idle-notify-v1.h
@@ -348,6 +350,7 @@ if(CLANG_TIDY)
   file(WRITE ${STRIP_TIDY_FLAGS_SCRIPT}
         "file(READ \"${CMAKE_BINARY_DIR}/compile_commands.json\" db)\n"
         "string(REPLACE \"-mno-direct-extern-access\" \"\" db \"\${db}\")\n"
+        "string(REPLACE \"-Wno-template-id-cdtor\" \"\" db \"\${db}\")\n"
         "file(WRITE \"${TIDY_DB_DIR}/compile_commands.json\" \"\${db}\")\n"
     )
 
@@ -359,6 +362,7 @@ if(CLANG_TIDY)
                 -quiet
                 ${TIDY_HIDE_PROGRESS_FLAG}
                 -j ${TIDY_JOBS}
+                -header-filter "^${CMAKE_CURRENT_SOURCE_DIR}/(apps|libs|integrations|tests)/.*\\.(h|hpp)$"
                 -p ${TIDY_DB_DIR}
                 ${${target_sources}}
             DEPENDS ${TIDY_GENERATED_FILES}
@@ -368,7 +372,7 @@ if(CLANG_TIDY)
     else()
       add_custom_target(${target_name}
             COMMAND ${CMAKE_COMMAND} -P ${STRIP_TIDY_FLAGS_SCRIPT}
-            COMMAND ${CLANG_TIDY} --quiet -p ${TIDY_DB_DIR} ${${target_sources}}
+            COMMAND ${CLANG_TIDY} --quiet -header-filter "^${CMAKE_CURRENT_SOURCE_DIR}/(apps|libs|integrations|tests)/.*\\.(h|hpp)$" -p ${TIDY_DB_DIR} ${${target_sources}}
             DEPENDS ${TIDY_GENERATED_FILES}
             COMMENT "Running ${target_name}"
             VERBATIM

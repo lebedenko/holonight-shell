@@ -1,0 +1,230 @@
+[
+  {
+    "name": "gdk-pixbuf2",
+    "version": "2.42.12-2",
+    "sha256": "63de2d2a476cd8985bf4962f5693fb46d59288828f2b461c289af4e3b2546138",
+    "url": "https://archive.archlinux.org/packages/g/gdk-pixbuf2/gdk-pixbuf2-2.42.12-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "pango",
+    "version": "1:1.58.0-1",
+    "sha256": "f74b7c015169be5d5520972e6411798c6b2f2bfdcaca90659d67e4b3ac09e2c3",
+    "url": "https://archive.archlinux.org/packages/p/pango/pango-1:1.58.0-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "cairo",
+    "version": "1.18.4-1",
+    "sha256": "280a524ba7dce88990aace1496abd742b000a7c98a5ec6abd054a4b19f2f4c96",
+    "url": "https://archive.archlinux.org/packages/c/cairo/cairo-1.18.4-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libthai",
+    "version": "0.1.30-1",
+    "sha256": "890798f30ac72d0ca3b59dc5fe8eebe8f923bf09bdb1bc2ec75bc200d7aa70a2",
+    "url": "https://archive.archlinux.org/packages/l/libthai/libthai-0.1.30-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libdatrie",
+    "version": "0.2.14-1",
+    "sha256": "f5ad651ed99afa29d44c662da4f2c6e93764e8a1d47487f41837be1c94ddd38e",
+    "url": "https://archive.archlinux.org/packages/l/libdatrie/libdatrie-0.2.14-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "pixman",
+    "version": "0.46.4-1",
+    "sha256": "e87e665d25a2230a178d8490202e1d677fde5908f68ebedf7d987308fc26fcb6",
+    "url": "https://archive.archlinux.org/packages/p/pixman/pixman-0.46.4-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "fribidi",
+    "version": "1.0.16-2",
+    "sha256": "7146e87f3f68db302ca0e8d507e80f1f9881a05bb00e54bc762c507883c05803",
+    "url": "https://archive.archlinux.org/packages/f/fribidi/fribidi-1.0.16-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libtiff",
+    "version": "4.7.1-2",
+    "sha256": "0ec04018553ff2a1133fd5c5b5e0360bc214cd0f9c598f5518ba84d133a08b00",
+    "url": "https://archive.archlinux.org/packages/l/libtiff/libtiff-4.7.1-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "jbigkit",
+    "version": "2.1-8",
+    "sha256": "ca53fa884681273162aadcf99c30514a7010d5e621eb0a5ae491500ae8dc52c9",
+    "url": "https://archive.archlinux.org/packages/j/jbigkit/jbigkit-2.1-8-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libdeflate",
+    "version": "1.25-1",
+    "sha256": "4e9b5d01558db0cddfbd2a6a48ed6baf92bbe65af4d0dd1ae390206fe76080ee",
+    "url": "https://archive.archlinux.org/packages/l/libdeflate/libdeflate-1.25-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libwebp",
+    "version": "1.6.0-2",
+    "sha256": "a80e7edd3ddd27c6fd8cd83d0bd98d46b3f0279b7ee01f5baeded0d6f26f8975",
+    "url": "https://archive.archlinux.org/packages/l/libwebp/libwebp-1.6.0-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libxfixes",
+    "version": "6.0.2-1",
+    "sha256": "d58ab2dbf326e36cf84792fe0dc12c34239ea04ac34159006a566103203db272",
+    "url": "https://archive.archlinux.org/packages/l/libxfixes/libxfixes-6.0.2-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libxcursor",
+    "version": "1.2.3-1",
+    "sha256": "2a90267877c2f5ffe6c41a8ef91e6def3b7720de7b4b2628b329373ce20c1b99",
+    "url": "https://archive.archlinux.org/packages/l/libxcursor/libxcursor-1.2.3-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "vulkan-icd-loader",
+    "version": "1.4.350.1-1",
+    "sha256": "e5a8c305ddb66582566d1974bae5f606478608cfe8986cc0ba1d46931d26d1f4",
+    "url": "https://archive.archlinux.org/packages/v/vulkan-icd-loader/vulkan-icd-loader-1.4.350.1-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "lzo",
+    "version": "2.10-5",
+    "sha256": "dd5ec871aea5ddfd38d4a25539e966dc05e75d6969ebc31917c8d25b97ccd69e",
+    "url": "https://archive.archlinux.org/packages/l/lzo/lzo-2.10-5-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libxml2-legacy",
+    "version": "2.13.9-2",
+    "sha256": "aac28a52e81422935e3bfa44044030640c5d525ad8f65a9672a3ab7139974652",
+    "url": "https://archive.archlinux.org/packages/l/libxml2-legacy/libxml2-legacy-2.13.9-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "nettle",
+    "version": "3.10.2-1",
+    "sha256": "fa1a132d0d9cd8c58d90605e2b64b63503e89f398912a653ed05abd0f2dd0a3e",
+    "url": "https://archive.archlinux.org/packages/n/nettle/nettle-3.10.2-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "ripgrep",
+    "version": "15.2.0-1",
+    "sha256": "4ab540861ee43dfe6974403dd3f03830615fd4b53971736f5c4fc7aa82133a21",
+    "url": "https://archive.archlinux.org/packages/r/ripgrep/ripgrep-15.2.0-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "bubblewrap",
+    "version": "0.12.0-1",
+    "sha256": "f01c85b27bfd1034858ded8848bc03089e6d9069030add87aaf2f2596749cb36",
+    "url": "https://archive.archlinux.org/packages/b/bubblewrap/bubblewrap-0.12.0-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "sway",
+    "version": "1:1.12-1",
+    "sha256": "dde4f9521f7f14cf1467404267a5dd9ca3988dc7af86dd485a6c0442b62f95b1",
+    "url": "https://archive.archlinux.org/packages/s/sway/sway-1%3A1.12-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "wlroots0.20",
+    "version": "0.20.1-1",
+    "sha256": "2b2e0c1376206057128a9908b7705ddd10002400dce1b6eefe493aab0ba9d928",
+    "url": "https://archive.archlinux.org/packages/w/wlroots0.20/wlroots0.20-0.20.1-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "polkit",
+    "version": "127-1",
+    "sha256": "c562b9e9f7436b379a02abbc6d4de9adff76203d1cb15ca752395af21464e38e",
+    "url": "https://archive.archlinux.org/packages/p/polkit/polkit-127-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "polkit-qt6",
+    "version": "0.201.1-1",
+    "sha256": "b9944cfed4aa4d3103c942c0210c984766c2defb6c1033a5df4479a2a53ba029",
+    "url": "https://archive.archlinux.org/packages/p/polkit-qt6/polkit-qt6-0.201.1-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "duktape",
+    "version": "2.7.0-7",
+    "sha256": "92452979e8cc6f34558ee4d9c3f34f8b7e0d7a8ebff94296b68c7926f00895cd",
+    "url": "https://archive.archlinux.org/packages/d/duktape/duktape-2.7.0-7-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libdisplay-info",
+    "version": "0.3.0-1",
+    "sha256": "07ab1479ec5e70aea174e2d0e340bd9364b507ed74f2df3bfd51b3c6f40e5787",
+    "url": "https://archive.archlinux.org/packages/l/libdisplay-info/libdisplay-info-0.3.0-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libliftoff",
+    "version": "0.5.0-1",
+    "sha256": "59cf08c21500673a14287b83b89b6db5389134cc24c97d9222c7cddefa639ccf",
+    "url": "https://archive.archlinux.org/packages/l/libliftoff/libliftoff-0.5.0-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libinput",
+    "version": "1.31.2-1",
+    "sha256": "12142255a91f3313e6fcc7f61898b910c0edbcd51e8d47e10c4392c4d7124c4d",
+    "url": "https://archive.archlinux.org/packages/l/libinput/libinput-1.31.2-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "seatd",
+    "version": "0.9.2-1",
+    "sha256": "192af2557d8a8500298dd3ef9d081542c6ef2036236298be1846cfda3ec932db",
+    "url": "https://archive.archlinux.org/packages/s/seatd/seatd-0.9.2-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "xcb-util-errors",
+    "version": "1.0.1-2",
+    "sha256": "5e0e83836ed96e39b7f9188199cb7fa5a1b085efe1e0cb74ddcc8d52d2d45574",
+    "url": "https://archive.archlinux.org/packages/x/xcb-util-errors/xcb-util-errors-1.0.1-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "xcb-util-wm",
+    "version": "0.4.2-2",
+    "sha256": "aa4becb215290dc33fcf2938b4e5604fceaf1189e4d2d5688861001413fc888c",
+    "url": "https://archive.archlinux.org/packages/x/xcb-util-wm/xcb-util-wm-0.4.2-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "xcb-util-renderutil",
+    "version": "0.3.10-2",
+    "sha256": "4855eaf033ec72f27cce311ebf4b7c9bd8518c73ee3a372bd9b1cf7baaafa4dd",
+    "url": "https://archive.archlinux.org/packages/x/xcb-util-renderutil/xcb-util-renderutil-0.3.10-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libevdev",
+    "version": "1.13.6-1",
+    "sha256": "47508ec2c1ca6bc21f692937d500d7f4b72b117d2bf15d7fe59adc6af4a98c2f",
+    "url": "https://archive.archlinux.org/packages/l/libevdev/libevdev-1.13.6-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "libwacom",
+    "version": "2.19.0-1",
+    "sha256": "d67d15837e2da23c864ef936b0949225bc9fe9725bb8a9ca08838529a22cc688",
+    "url": "https://archive.archlinux.org/packages/l/libwacom/libwacom-2.19.0-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "mtdev",
+    "version": "1.1.7-1",
+    "sha256": "f04b23715273930002a0133ebd0f48ad4374b9e3ec9484a500a33b6aee478443",
+    "url": "https://archive.archlinux.org/packages/m/mtdev/mtdev-1.1.7-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "json-c",
+    "version": "0.18-2",
+    "sha256": "5900c861de5cdacb14d040bf77db6e785708ba31fab5d4824e3a98983ccce790",
+    "url": "https://archive.archlinux.org/packages/j/json-c/json-c-0.18-2-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "ttf-dejavu",
+    "version": "2.37+18+g9b5d1b2f-8",
+    "sha256": "d46da489e776dd3d74def85d6d613509db408e9de7a7e3445c63832fd3798e65",
+    "url": "https://archive.archlinux.org/packages/t/ttf-dejavu/ttf-dejavu-2.37%2B18%2Bg9b5d1b2f-8-any.pkg.tar.zst"
+  },
+  {
+    "name": "libxrender",
+    "version": "0.9.12-1",
+    "sha256": "fed0389073d5b107074eaab48cefcc2716e607865142cde5b579c8ceeefea142",
+    "url": "https://archive.archlinux.org/packages/l/libxrender/libxrender-0.9.12-1-x86_64.pkg.tar.zst"
+  },
+  {
+    "name": "lcms2",
+    "version": "2.18-1",
+    "sha256": "a339ac558375212fcfd74fa669246b16c08b345c8b0a2e6f1d0d79416310cad0",
+    "url": "https://archive.archlinux.org/packages/l/lcms2/lcms2-2.18-1-x86_64.pkg.tar.zst"
+  }
+]
