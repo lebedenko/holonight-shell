@@ -1,3 +1,4 @@
+#include "ApplicationLaunchService.h"
 #include "NotificationRuleModel.h"
 #include "NotificationServer.h"
 #include "NotificationService.h"
@@ -13,6 +14,7 @@
 #include <QTest>
 
 #include <StorageBackend.h>
+#include <atomic>
 #include <gtest/gtest.h>
 #include <memory>
 #include <utility>
@@ -630,4 +632,34 @@ TEST(ShellStorage, MetadataClassifierKeepsIconsAndSubtitlesConsistent) {
   backend.drives = {drive};
   backend.publish();
   EXPECT_EQ(service.driveSubtitle(drive.id), "SATA");
+}
+
+TEST(ShellStorage, FilesStartupFailureRetainsVolumeContext) {
+  FakeStorage backend;
+  StorageController controller(&backend);
+  StorageService service(&controller);
+  backend.drives = {device()};
+  auto mounted = volume();
+  mounted.mountPoints = {"/run/media/volume with spaces"};
+  backend.volumes = {mounted};
+  backend.publish();
+  std::atomic<int> calls{0};
+  ApplicationLaunchService launcher(
+      nullptr,
+      [&](ApplicationLaunchService::Backend, const LauncherCommand& command, const DesktopEntry*, const QString&) {
+        ++calls;
+        EXPECT_EQ(command.program, "holonight-files");
+        EXPECT_EQ(command.arguments, QStringList{"/run/media/volume with spaces"});
+        return QString("Files startup rejected");
+      },
+      [] { return ApplicationLaunchService::Capabilities{}; });
+  service.setApplicationLaunchService(&launcher);
+  service.openVolume("volume");
+  EXPECT_TRUE(service.errorMessage().isEmpty());
+  ASSERT_TRUE(QTest::qWaitFor([&] { return service.errorMessage() == "Files startup rejected"; }));
+  EXPECT_EQ(service.data(service.index(0), static_cast<int>(StorageService::Role::ErrorText)).toString(),
+            "Files startup rejected");
+  service.retry("volume");
+  ASSERT_TRUE(QTest::qWaitFor([&] { return calls.load() == 2 && !service.errorMessage().isEmpty(); }));
+  EXPECT_TRUE(backend.calls.isEmpty());
 }

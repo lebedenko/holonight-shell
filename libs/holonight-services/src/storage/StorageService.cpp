@@ -1,5 +1,6 @@
 #include "StorageService.h"
 
+#include "ApplicationLaunchService.h"
 #include "NotificationTypes.h"
 #include "StorageFilter.h"
 
@@ -140,7 +141,7 @@ StorageService::StorageService(StorageController* controller, QObject* parent)
         sendSafeToRemoveNotification(removal_label.isEmpty() ? driveLabel(result.targetId) : removal_label);
       }
       if (result.operation == StorageOperation::Mount && pending_open_after_mount_.remove(result.targetId)) {
-        QProcess::startDetached(QStringLiteral("holonight-files"), {result.mountPath});
+        launchFiles({result.mountPath}, result.targetId);
       }
     } else {
       pending_open_after_mount_.remove(result.targetId);
@@ -351,6 +352,12 @@ void StorageService::retry(const QString& targetId) {
   if (iterator == last_errors_.constEnd()) {
     return;
   }
+  if (iterator->files_launch) {
+    const auto arguments = iterator->launch_arguments;
+    last_errors_.remove(targetId);
+    launchFiles(arguments, targetId);
+    return;
+  }
   switch (iterator->operation) {
     case StorageOperation::Mount:
       mount(targetId);
@@ -369,7 +376,7 @@ void StorageService::retry(const QString& targetId) {
 void StorageService::openVolume(const QString& targetId) {
   if (const auto volumeRecord = controller_->volumes()->find(targetId);
       volumeRecord && !volumeRecord->mountPoints.isEmpty()) {
-    QProcess::startDetached(QStringLiteral("holonight-files"), {volumeRecord->mountPoints.first()});
+    launchFiles({volumeRecord->mountPoints.first()}, targetId);
     return;
   }
   if (!visibleTarget(targetId, "canMount") || in_flight_ops_.contains(targetId)) {
@@ -379,8 +386,8 @@ void StorageService::openVolume(const QString& targetId) {
   mount(targetId);
 }
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static): QML method.
-void StorageService::openInFiles() const { QProcess::startDetached(QStringLiteral("holonight-files")); }
-void StorageService::showAllDevices() const {
+void StorageService::openInFiles() { launchFiles(); }
+void StorageService::showAllDevices() {
   for (const auto& row : rows_) {
     if (!row.value("mounted").toBool()) {
       continue;
@@ -388,11 +395,11 @@ void StorageService::showAllDevices() const {
     const auto targetId = row.value("targetId").toString();
     if (const auto volumeRecord = controller_->volumes()->find(targetId);
         volumeRecord && !volumeRecord->mountPoints.isEmpty()) {
-      QProcess::startDetached(QStringLiteral("holonight-files"), {volumeRecord->mountPoints.first()});
+      launchFiles({volumeRecord->mountPoints.first()}, targetId);
       return;
     }
   }
-  QProcess::startDetached(QStringLiteral("holonight-files"));
+  launchFiles();
 }
 
 QString StorageService::driveLabel(const QString& targetId) const {
@@ -517,4 +524,20 @@ void StorageService::appendOpticalDrives(QList<QVariantMap>& rows) const {
         {"errorText", errorTextFor(drive.id)},
     });
   }
+}
+
+void StorageService::launchFiles(const QStringList& arguments, const QString& target) {
+  ApplicationLaunchService service;
+  auto* launcher = application_launch_service_ ? application_launch_service_ : &service;
+  launcher->launch({.program = QStringLiteral("holonight-files"), .arguments = arguments}, this,
+                   [this, target, arguments](const QString&, const QString& error) {
+                     error_message_ = error;
+                     if (!target.isEmpty() && error.isEmpty()) last_errors_.remove(target);
+                     if (!target.isEmpty() && !error.isEmpty())
+                       last_errors_.insert(target, {.message = error,
+                                                    .generation = ++next_error_generation_,
+                                                    .files_launch = true,
+                                                    .launch_arguments = arguments});
+                     refresh();
+                   });
 }

@@ -10,6 +10,7 @@
 struct DesktopAction {
   QString name;
   QString exec;
+  QString id;
 };
 
 struct DesktopEntry {

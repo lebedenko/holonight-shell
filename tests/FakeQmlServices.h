@@ -834,6 +834,8 @@ class FakeSidebarManager : public QObject {
 
 class FakeLauncherService : public QObject {
   Q_OBJECT
+  Q_PROPERTY(bool launchPending READ launchPending CONSTANT)
+  Q_PROPERTY(QString launchError READ launchError CONSTANT)
   Q_PROPERTY(int lastLaunchedIndex READ lastLaunchedIndex NOTIFY launchRecorded)
   Q_PROPERTY(QString query READ query WRITE setQuery NOTIFY queryChanged)
   Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
@@ -848,6 +850,8 @@ class FakeLauncherService : public QObject {
   Q_PROPERTY(QVariantList selectedEntryActions READ selectedEntryActions CONSTANT)
 
  public:
+  bool launchPending() const { return false; }
+  QString launchError() const { return {}; }
   Q_INVOKABLE [[nodiscard]] QString iconForAppId(const QString& app) const { return icons_.value(app); }
   Q_INVOKABLE void setAppIcon(const QString& app, const QString& icon) {
     icons_.insert(app, icon);

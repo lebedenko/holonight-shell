@@ -1,5 +1,7 @@
 #include "NetworkService.h"
 
+#include "ApplicationLaunchService.h"
+
 #include <QDBusArgument>
 #include <QDBusObjectPath>
 #include <QLoggingCategory>
@@ -234,9 +236,10 @@ void NetworkService::disconnectActive() {
 
 void NetworkService::openNetworkSettings() {
   clearLastError();
-  if (!QProcess::startDetached(QStringLiteral("nm-connection-editor"))) {
-    setLastError(QStringLiteral("Could not launch nm-connection-editor"));
-  }
+  ApplicationLaunchService service;
+  auto* launcher = application_launch_service_ ? application_launch_service_ : &service;
+  launcher->launch({.program = QStringLiteral("nm-connection-editor")}, this,
+                   [this](const QString&, const QString& error) { setLastError(error); });
 }
 
 void NetworkService::clearLastError() { setLastError({}); }

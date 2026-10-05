@@ -112,6 +112,7 @@ bool handleDesktopSection(const QString& line, DesktopEntryParseState* state) {
   if (line.startsWith(kDesktopActionPrefix)) {
     state->in_action = true;
     state->current_action = {};
+    state->current_action.id = line.mid(kDesktopActionPrefix.size(), line.size() - kDesktopActionPrefix.size() - 1);
   }
   return false;
 }

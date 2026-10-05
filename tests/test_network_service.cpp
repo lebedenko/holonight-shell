@@ -1,3 +1,4 @@
+#include "ApplicationLaunchService.h"
 #include "NetworkManagerBackend.h"
 #include "NetworkService.h"
 #include "WifiNetworkModel.h"
@@ -11,6 +12,7 @@
 #include <QDBusReply>
 #include <QElapsedTimer>
 #include <QSignalSpy>
+#include <QTest>
 #include <QThread>
 
 #include <gtest/gtest.h>
@@ -975,3 +977,18 @@ TEST_F(QtNetworkManagerBackendTest, DisconnectActiveSendsDbusMessage) {
 }
 
 #include "test_network_service.moc"
+
+TEST(NetworkService, NetworkEditorStartupFailureIsReportedAsynchronously) {
+  ApplicationLaunchService launcher(
+      nullptr,
+      [](ApplicationLaunchService::Backend, const LauncherCommand& command, const DesktopEntry*, const QString&) {
+        EXPECT_EQ(command.program, "nm-connection-editor");
+        return QString("Editor startup rejected");
+      },
+      [] { return ApplicationLaunchService::Capabilities{}; });
+  NetworkService service(std::make_unique<FakeNetworkDbusClient>());
+  service.setApplicationLaunchService(&launcher);
+  service.openNetworkSettings();
+  EXPECT_TRUE(service.lastError().isEmpty());
+  ASSERT_TRUE(QTest::qWaitFor([&] { return service.lastError() == "Editor startup rejected"; }));
+}

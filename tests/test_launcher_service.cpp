@@ -28,14 +28,17 @@ bool writeFile(const QString& path, const QByteArray& content) {
 
 class FakeLauncherBackend final : public LauncherBackend {
  public:
-  [[nodiscard]] bool launch(const DesktopEntry& entry) override {
-    launched_entries.append(entry);
-    return launch_result;
-  }
-
-  [[nodiscard]] bool launchExec(const QString& exec, const QString& /*working_dir*/) override {
-    launched_execs.append(exec);
-    return launch_result;
+  void launchAsync(const DesktopEntry& entry, const QString& action, QObject*,
+                   ApplicationLaunchService::Completion completion) override {
+    if (action.isEmpty())
+      launched_entries.append(entry);
+    else
+      for (const auto& item : entry.actions)
+        if (item.id == action) {
+          launched_execs.append(item.exec);
+          break;
+        }
+    completion("fake-request", launch_result ? QString() : QString("Could not launch application"));
   }
 
   QVector<DesktopEntry> launched_entries;
@@ -79,7 +82,9 @@ DesktopEntry makeEntry(const QString& name, const QString& exec, const QString& 
       .desktop_file = desktop_file,
       .startup_wm_class = QStringLiteral("org.example.TestApp"),
       .terminal = false,
-      .actions = {{.name = QStringLiteral("New Window"), .exec = exec + QStringLiteral(" --new-window")}},
+      .actions = {{.name = QStringLiteral("New Window"),
+                   .exec = exec + QStringLiteral(" --new-window"),
+                   .id = QStringLiteral("NewWindow")}},
   };
 }
 
@@ -423,16 +428,10 @@ TEST(LauncherCommand, WrapsTerminalApplicationsWhenTerminalIsAvailable) {
   EXPECT_EQ(command.working_dir, QStringLiteral("/workdir"));
 }
 
-TEST(LauncherCommand, FallsBackToDirectLaunchWhenTerminalIsMissing) {
-  DesktopEntry entry =
-      makeEntry(QStringLiteral("Terminal App"), QStringLiteral("cli --flag"), QStringLiteral("/tmp/terminal.desktop"));
+TEST(LauncherCommand, RejectsLaunchWhenRequiredTerminalIsMissing) {
+  DesktopEntry entry = makeEntry("Terminal App", "cli --flag", "/tmp/terminal.desktop");
   entry.terminal = true;
-
-  const LauncherCommand command = commandForDesktopEntry(entry);
-
-  ASSERT_TRUE(command.isValid());
-  EXPECT_EQ(command.program, QStringLiteral("cli"));
-  EXPECT_EQ(command.arguments, QStringList{QStringLiteral("--flag")});
+  EXPECT_FALSE(commandForDesktopEntry(entry).isValid());
 }
 
 TEST(LauncherCommand, RejectsEmptyOrFieldCodeOnlyExecLines) {
@@ -1070,4 +1069,254 @@ TEST(LauncherService, AppIconsUseInventoryAndExactMatchesBeforeCaseInsensitive) 
   service.reload();
   QTRY_COMPARE_WITH_TIMEOUT(service.iconForAppId("legacyclass"), QString("other-icon"), 2000);
   EXPECT_EQ(service.iconForAppId("LegacyClass"), "example-icon");
+}
+
+TEST(ApplicationLaunchService, ConcurrentRequestsCompleteOnceWithDistinctIds) {
+  QObject context;
+  ApplicationLaunchService service(
+      nullptr,
+      [](ApplicationLaunchService::Backend, const LauncherCommand& command, const DesktopEntry*, const QString&) {
+        return command.arguments == QStringList{QStringLiteral("quoted argument with spaces")} &&
+                       command.working_dir == "/tmp"
+                   ? QString()
+                   : QString("Incorrect request");
+      },
+      [] { return ApplicationLaunchService::Capabilities{}; });
+  QStringList completions;
+  QStringList errors;
+  const auto done = [&](const QString& id, const QString& error) {
+    completions << id;
+    errors << error;
+  };
+  const auto first = service.launch(
+      {.program = "test", .arguments = {"quoted argument with spaces"}, .working_dir = "/tmp"}, &context, done);
+  const auto second = service.launch(
+      {.program = "test", .arguments = {"quoted argument with spaces"}, .working_dir = "/tmp"}, &context, done);
+  EXPECT_NE(first, second);
+  EXPECT_TRUE(completions.isEmpty());
+  ASSERT_TRUE(QTest::qWaitFor([&] { return completions.size() == 2; }));
+  EXPECT_TRUE(completions.contains(first));
+  EXPECT_TRUE(completions.contains(second));
+  EXPECT_EQ(errors, (QStringList{QString(), QString()}));
+  QTest::qWait(20);
+  EXPECT_EQ(completions.size(), 2);
+}
+
+TEST(ApplicationLaunchService, DesktopActionAndFailureArePreserved) {
+  QObject context;
+  ApplicationLaunchService service(
+      nullptr,
+      [](ApplicationLaunchService::Backend, const LauncherCommand&, const DesktopEntry* entry, const QString& action) {
+        return entry && entry->desktop_file == "/tmp/app with spaces.desktop" && action == "NewWindow"
+                   ? QString("Rejected startup")
+                   : QString("Incorrect request");
+      },
+      [] { return ApplicationLaunchService::Capabilities{}; });
+  int completions = 0;
+  QString error;
+  service.launchDesktop({.desktop_file = "/tmp/app with spaces.desktop"}, "NewWindow", &context,
+                        [&](const QString&, const QString& message) {
+                          ++completions;
+                          error = message;
+                        });
+  ASSERT_TRUE(QTest::qWaitFor([&] { return completions == 1; }));
+  EXPECT_EQ(error, "Rejected startup");
+  QTest::qWait(20);
+  EXPECT_EQ(completions, 1);
+}
+
+TEST(DesktopEntrySerializer, PreservesOriginalActionId) {
+  DesktopEntry entry{.name = "Test",
+                     .exec = "test",
+                     .desktop_file = "/tmp/test.desktop",
+                     .actions = {{.name = "New window", .exec = "test --new", .id = "NewWindow"}}};
+  const auto decoded = DesktopEntrySerializer::fromJson(DesktopEntrySerializer::toJson(entry));
+  ASSERT_TRUE(decoded.has_value());
+  ASSERT_EQ(decoded->actions.size(), 1);
+  EXPECT_EQ(decoded->actions.first().id, "NewWindow");
+}
+
+TEST(ApplicationLaunchService, BackendSelectionUsesActiveSessionAndManagerAccess) {
+  using Backend = ApplicationLaunchService::Backend;
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.managerAvailable = true, .uwsmActive = true}), Backend::Uwsm);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.managerAvailable = true}), Backend::Systemd);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({}), Backend::Detached);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.runningAsService = true}), Backend::Unavailable);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.managerAvailable = true, .error = "Access denied"}),
+            Backend::Unavailable);
+}
+
+TEST(ApplicationLaunchService, NativeEnvironmentPreservesSessionAndRemovesServiceControl) {
+  QProcessEnvironment environment;
+  environment.insert("PATH", "/custom/bin:/usr/bin");
+  environment.insert("WAYLAND_DISPLAY", "wayland-test");
+  environment.insert("APP_VALUE", "value with spaces");
+  environment.insert("NOTIFY_SOCKET", "/shell/notify");
+  environment.insert("INVOCATION_ID", "shell-unit");
+  environment.insert("LISTEN_FDS", "3");
+  environment.insert("LISTEN_PID", "42");
+  environment.insert("LISTEN_FDNAMES", "shell");
+  const auto sanitized = ApplicationLaunchService::nativeEnvironment(environment);
+  EXPECT_EQ(sanitized.value("PATH"), environment.value("PATH"));
+  EXPECT_EQ(sanitized.value("WAYLAND_DISPLAY"), "wayland-test");
+  EXPECT_EQ(sanitized.value("APP_VALUE"), "value with spaces");
+  EXPECT_FALSE(sanitized.contains("NOTIFY_SOCKET"));
+  EXPECT_FALSE(sanitized.contains("INVOCATION_ID"));
+  EXPECT_FALSE(sanitized.contains("LISTEN_FDS"));
+  EXPECT_FALSE(sanitized.contains("LISTEN_PID"));
+  EXPECT_FALSE(sanitized.contains("LISTEN_FDNAMES"));
+}
+
+TEST(ApplicationLaunchService, NativeUnitNamesAreUniqueAndSanitized) {
+  const auto first = ApplicationLaunchService::nativeUnitName("/tmp/application with spaces");
+  const auto second = ApplicationLaunchService::nativeUnitName("/tmp/application with spaces");
+  EXPECT_NE(first, second);
+  EXPECT_TRUE(first.startsWith("app-holonight-application-with-spaces-"));
+  EXPECT_TRUE(first.endsWith(".service"));
+}
+
+TEST(ApplicationLaunchService, MissingExecutableCompletesWithFailure) {
+  QObject context;
+  ApplicationLaunchService service(nullptr, {}, [] { return ApplicationLaunchService::Capabilities{}; });
+  QString error;
+  int count = 0;
+  service.launch({.program = "/nonexistent/holonight-test-executable"}, &context,
+                 [&](const QString&, const QString& message) {
+                   ++count;
+                   error = message;
+                 });
+  ASSERT_TRUE(QTest::qWaitFor([&] { return count == 1; }));
+  EXPECT_FALSE(error.isEmpty());
+}
+
+TEST(ApplicationLaunchService, ManagedFailureNeverRetriesTransport) {
+  QObject context;
+  std::atomic<int> calls{0};
+  ApplicationLaunchService service(
+      nullptr,
+      [&](ApplicationLaunchService::Backend backend, const LauncherCommand&, const DesktopEntry*, const QString&) {
+        ++calls;
+        EXPECT_EQ(backend, ApplicationLaunchService::Backend::Systemd);
+        return QString("Rejected D-Bus job");
+      },
+      [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true}; });
+  int completions = 0;
+  service.launch({.program = "test"}, &context, [&](const QString&, const QString& error) {
+    EXPECT_EQ(error, "Rejected D-Bus job");
+    ++completions;
+  });
+  ASSERT_TRUE(QTest::qWaitFor([&] { return completions == 1; }));
+  QTest::qWait(20);
+  EXPECT_EQ(calls.load(), 1);
+}
+
+TEST(LauncherService, PendingLaunchBlocksDuplicatesAndFailureDoesNotRecordRecentApp) {
+  class PendingBackend final : public LauncherBackend {
+   public:
+    void launchAsync(const DesktopEntry&, const QString&, QObject*,
+                     ApplicationLaunchService::Completion done) override {
+      completion = std::move(done);
+    }
+    ApplicationLaunchService::Completion completion;
+  };
+  QTemporaryDir apps;
+  QTemporaryDir cache;
+  ASSERT_TRUE(
+      writeFile(apps.filePath("pending.desktop"), "[Desktop Entry]\nType=Application\nName=Pending\nExec=pending\n"));
+  RecentAppsTracker tracker;
+  auto backend = std::make_unique<PendingBackend>();
+  auto* pending = backend.get();
+  LauncherService service(DesktopEntryScanner({apps.path()}), std::move(backend), launcherDbPath(cache), &tracker);
+  service.start();
+  QTRY_COMPARE_WITH_TIMEOUT(service.resultCount(), 1, 2000);
+  QSignalSpy launched(&service, &LauncherService::launched);
+  ASSERT_TRUE(service.launchSelected());
+  EXPECT_TRUE(service.launchPending());
+  EXPECT_FALSE(service.launchSelected());
+  EXPECT_TRUE(tracker.recentEntries(5).isEmpty());
+  pending->completion("request", "Startup rejected");
+  EXPECT_FALSE(service.launchPending());
+  EXPECT_EQ(service.launchError(), "Startup rejected");
+  EXPECT_TRUE(tracker.recentEntries(5).isEmpty());
+  EXPECT_EQ(launched.count(), 0);
+  ASSERT_TRUE(service.launchSelected());
+  pending->completion("second-request", {});
+  EXPECT_EQ(launched.count(), 1);
+  EXPECT_EQ(tracker.recentEntries(5).size(), 1);
+}
+
+TEST(DesktopEntryCache, RebuildsVersionTwoCacheToPreserveActionIds) {
+  QTemporaryDir dir;
+  const QString path = dir.filePath("launcher.db");
+  DesktopEntryCache cache;
+  ASSERT_TRUE(cache.open(path));
+  ASSERT_TRUE(cache.upsert(makeEntry("Old", "old", "/tmp/old.desktop"), 100, 10));
+  cache.close();
+  const QString connection = QUuid::createUuid().toString();
+  {
+    auto database = QSqlDatabase::addDatabase("QSQLITE", connection);
+    database.setDatabaseName(path);
+    ASSERT_TRUE(database.open());
+    QSqlQuery query(database);
+    ASSERT_TRUE(query.exec("PRAGMA user_version = 2"));
+    database.close();
+  }
+  QSqlDatabase::removeDatabase(connection);
+  ASSERT_TRUE(cache.open(path));
+  EXPECT_TRUE(cache.loadAll().isEmpty());
+  EXPECT_TRUE(cache.upsert(makeEntry("New", "new", "/tmp/new.desktop"), 200, 20));
+  const auto entries = cache.loadAll();
+  ASSERT_EQ(entries.size(), 1);
+  ASSERT_EQ(entries.first().actions.size(), 1);
+  EXPECT_EQ(entries.first().actions.first().id, "NewWindow");
+}
+
+TEST(ApplicationLaunchService, UwsmHelperReceivesDesktopActionAndReportsFailureWithoutRetry) {
+  QTemporaryDir directory;
+  EnvVarGuard pathGuard("PATH");
+  EnvVarGuard outputGuard("HOLONIGHT_TEST_UWSM_ARGS");
+  const QString helper = directory.filePath("uwsm");
+  const QString output = directory.filePath("arguments");
+  ASSERT_TRUE(writeFile(
+      helper,
+      "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$HOLONIGHT_TEST_UWSM_ARGS\"\nprintf 'helper rejected\\n' >&2\nexit 42\n"));
+  ASSERT_TRUE(QFile::setPermissions(helper, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+  qputenv("PATH", directory.path().toUtf8());
+  qputenv("HOLONIGHT_TEST_UWSM_ARGS", output.toUtf8());
+  ApplicationLaunchService service(
+      nullptr, {}, [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true, .uwsmActive = true}; });
+  QObject context;
+  int completions = 0;
+  QString error;
+  service.launchDesktop({.desktop_file = "/tmp/app with spaces.desktop"}, "NewWindow", &context,
+                        [&](const QString&, const QString& message) {
+                          ++completions;
+                          error = message;
+                        });
+  ASSERT_TRUE(QTest::qWaitFor([&] { return completions == 1; }));
+  EXPECT_EQ(error, "helper rejected");
+  QFile arguments(output);
+  ASSERT_TRUE(arguments.open(QIODevice::ReadOnly));
+  EXPECT_EQ(arguments.readAll(), "app\n-t\nservice\n--\n/tmp/app with spaces.desktop:NewWindow\n");
+  QTest::qWait(20);
+  EXPECT_EQ(completions, 1);
+}
+
+TEST(ApplicationLaunchService, DetachedApplicationRunsOutsideTheCallerProcess) {
+  QTemporaryDir directory;
+  const auto output = directory.filePath("started");
+  const auto helper = directory.filePath("application");
+  ASSERT_TRUE(writeFile(helper, "#!/bin/sh\nprintf 'started' > \"$1\"\n"));
+  ASSERT_TRUE(QFile::setPermissions(helper, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+  QObject context;
+  ApplicationLaunchService service(nullptr, {}, [] { return ApplicationLaunchService::Capabilities{}; });
+  int completions = 0;
+  QString error;
+  service.launch({.program = helper, .arguments = {output}, .working_dir = directory.path()}, &context,
+                 [&](const QString&, const QString& message) {
+                   ++completions;
+                   error = message;
+                 });
+  ASSERT_TRUE(QTest::qWaitFor([&] { return completions == 1 && QFileInfo::exists(output); }));
+  EXPECT_TRUE(error.isEmpty()) << error.toStdString();
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ApplicationLaunchService.h"
 #include "DesktopEntryScanner.h"
 #include "LauncherModel.h"
 
@@ -25,8 +26,8 @@ class LauncherBackend {
   LauncherBackend(LauncherBackend&&) = delete;
   LauncherBackend& operator=(LauncherBackend&&) = delete;
 
-  [[nodiscard]] virtual bool launch(const DesktopEntry& entry) = 0;
-  [[nodiscard]] virtual bool launchExec(const QString& exec, const QString& working_dir) = 0;
+  virtual void launchAsync(const DesktopEntry& entry, const QString& action, QObject* context,
+                           ApplicationLaunchService::Completion completion) = 0;
 
  protected:
   LauncherBackend() = default;
@@ -36,14 +37,20 @@ class RecentAppsTracker;
 
 class ProcessLauncherBackend : public LauncherBackend {
  public:
-  [[nodiscard]] bool launch(const DesktopEntry& entry) override;
-  [[nodiscard]] bool launchExec(const QString& exec, const QString& working_dir) override;
+  explicit ProcessLauncherBackend(ApplicationLaunchService* service = nullptr) : application_launch_service_(service) {}
+  void launchAsync(const DesktopEntry& entry, const QString& action, QObject* context,
+                   ApplicationLaunchService::Completion completion) override;
+
+ private:
+  ApplicationLaunchService* application_launch_service_;
 };
 
 class LauncherService : public QObject {
   Q_OBJECT
   QML_ELEMENT
   QML_SINGLETON
+  Q_PROPERTY(bool launchPending READ launchPending NOTIFY launchStateChanged)
+  Q_PROPERTY(QString launchError READ launchError NOTIFY launchStateChanged)
   Q_PROPERTY(QString query READ query WRITE setQuery NOTIFY queryChanged)
   Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
   Q_PROPERTY(int resultCount READ resultCount NOTIFY resultCountChanged)
@@ -70,6 +77,8 @@ class LauncherService : public QObject {
   LauncherService(LauncherService&&) = delete;
   LauncherService& operator=(LauncherService&&) = delete;
 
+  bool launchPending() const { return launch_pending_; }
+  QString launchError() const { return launch_error_; }
   void start();
   void runValidator();
   [[nodiscard]] QString query() const { return query_; }
@@ -112,6 +121,7 @@ class LauncherService : public QObject {
   void resultCountChanged();
   void activeCategoryChanged();
   void launched();
+  void launchStateChanged();
   void entriesUpdated();
 
  private:
@@ -131,6 +141,9 @@ class LauncherService : public QObject {
   [[nodiscard]] const QVector<DesktopEntry>& cachedDefaultApps() const;
   void recordRecentLaunch(const QString& desktop_file);
 
+  bool submitLaunch(const DesktopEntry& entry, const QString& action = {});
+  bool launch_pending_{false};
+  QString launch_error_;
   DesktopEntryScanner scanner_;
   LauncherModel model_;
   std::unique_ptr<LauncherBackend> backend_;

@@ -17,7 +17,7 @@ Q_LOGGING_CATEGORY(lcCache, "holonight.launcher.cache")
 
 // Bump this whenever the JSON blob schema changes in a way that requires re-parsing all .desktop
 // files. Old caches with a lower version are wiped and rebuilt on next startup.
-constexpr int kCurrentVersion = 2;  // v2: added startup_wm_class field
+constexpr int kCurrentVersion = 3;  // v3: preserve desktop action IDs
 
 constexpr QLatin1StringView kSchema{
     "CREATE TABLE IF NOT EXISTS desktop_entries ("

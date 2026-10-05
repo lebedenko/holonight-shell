@@ -188,6 +188,14 @@ Item {
                 onCloseRequested: root.startClose()
             }
 
+            HnLabel {
+                Layout.fillWidth: true
+                text: LauncherService.launchPending ? qsTr("Starting application…") : LauncherService.launchError
+                visible: text.length > 0
+                wrapMode: Text.Wrap
+                color: LauncherService.launchPending ? HoloniightPalette.textSecondary : HoloniightPalette.error
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true

@@ -2,13 +2,11 @@
 
 #include "CategoryMapper.h"
 #include "DesktopEntryCache.h"
-#include "LauncherCommand.h"
 #include "RecentAppsTracker.h"
 
 #include <QFile>
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QSet>
 #include <QStandardPaths>
 #include <QtConcurrent/QtConcurrentRun>
@@ -136,40 +134,13 @@ ScanResult validateAgainstCache(const DesktopEntryScanner& scanner, const QStrin
   return scan;
 }
 
-QString findTerminalEmulator() {
-  QString env_terminal = QString::fromLocal8Bit(qgetenv("TERMINAL")).trimmed();
-  if (!env_terminal.isEmpty() && !QStandardPaths::findExecutable(env_terminal).isEmpty()) {
-    return env_terminal;
-  }
-
-  static const QStringList candidates = {
-      QStringLiteral("foot"),           QStringLiteral("kitty"),   QStringLiteral("alacritty"),
-      QStringLiteral("wezterm"),        QStringLiteral("konsole"), QStringLiteral("gnome-terminal"),
-      QStringLiteral("xfce4-terminal"), QStringLiteral("xterm"),
-  };
-  for (const QString& term : candidates) {
-    if (!QStandardPaths::findExecutable(term).isEmpty()) {
-      return term;
-    }
-  }
-  return {};
-}
 }  // namespace
 
-bool ProcessLauncherBackend::launch(const DesktopEntry& entry) {
-  const LauncherCommand command = commandForDesktopEntry(entry, findTerminalEmulator());
-  if (!command.isValid()) {
-    return false;
-  }
-  return QProcess::startDetached(command.program, command.arguments, command.working_dir);
-}
-
-bool ProcessLauncherBackend::launchExec(const QString& exec, const QString& working_dir) {
-  const LauncherCommand command = commandForExec(exec, working_dir);
-  if (!command.isValid()) {
-    return false;
-  }
-  return QProcess::startDetached(command.program, command.arguments, command.working_dir);
+void ProcessLauncherBackend::launchAsync(const DesktopEntry& entry, const QString& action, QObject* context,
+                                         ApplicationLaunchService::Completion completion) {
+  ApplicationLaunchService service;
+  auto* launcher = application_launch_service_ ? application_launch_service_ : &service;
+  launcher->launchDesktop(entry, action, context, std::move(completion));
 }
 
 LauncherService::LauncherService(QObject* parent)
@@ -417,12 +388,7 @@ bool LauncherService::launch(int index) {
   if (entry == nullptr || backend_ == nullptr) {
     return false;
   }
-  const bool launched_ok = backend_->launch(*entry);
-  if (launched_ok) {
-    recordRecentLaunch(entry->desktop_file);
-    emit launched();
-  }
-  return launched_ok;
+  return submitLaunch(*entry);
 }
 
 bool LauncherService::launchDesktopFile(const QString& desktop_file) {
@@ -430,12 +396,7 @@ bool LauncherService::launchDesktopFile(const QString& desktop_file) {
   if (entry == nullptr || backend_ == nullptr) {
     return false;
   }
-  const bool launched_ok = backend_->launch(*entry);
-  if (launched_ok) {
-    recordRecentLaunch(entry->desktop_file);
-    emit launched();
-  }
-  return launched_ok;
+  return submitLaunch(*entry);
 }
 
 bool LauncherService::launchAction(int entry_index, int action_index) {
@@ -446,13 +407,25 @@ bool LauncherService::launchAction(int entry_index, int action_index) {
   if (action_index < 0 || action_index >= static_cast<int>(entry->actions.size())) {
     return false;
   }
-  const DesktopAction& action = entry->actions.at(action_index);
-  const bool launched_ok = backend_->launchExec(action.exec, entry->path);
-  if (launched_ok) {
-    recordRecentLaunch(entry->desktop_file);
-    emit launched();
-  }
-  return launched_ok;
+  return submitLaunch(*entry, entry->actions.at(action_index).id);
+}
+
+bool LauncherService::submitLaunch(const DesktopEntry& entry, const QString& action) {
+  if (launch_pending_) return false;
+  launch_pending_ = true;
+  launch_error_.clear();
+  emit launchStateChanged();
+  backend_->launchAsync(entry, action, this,
+                        [this, desktop = entry.desktop_file](const QString&, const QString& error) {
+                          launch_pending_ = false;
+                          launch_error_ = error;
+                          emit launchStateChanged();
+                          if (error.isEmpty()) {
+                            recordRecentLaunch(desktop);
+                            emit launched();
+                          }
+                        });
+  return true;
 }
 
 void LauncherService::reload() { runValidator(); }

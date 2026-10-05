@@ -8,6 +8,8 @@
 #include <StorageController.h>
 #include <cstdint>
 
+class ApplicationLaunchService;
+
 class StorageService : public QAbstractListModel {
   Q_OBJECT
   QML_ELEMENT
@@ -17,6 +19,7 @@ class StorageService : public QAbstractListModel {
   Q_PROPERTY(bool hasMounted READ hasMounted NOTIFY changed)
   Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY changed)
  public:
+  void setApplicationLaunchService(ApplicationLaunchService* service) { application_launch_service_ = service; }
   explicit StorageService(QObject* parent = nullptr);
   explicit StorageService(HoloNight::System::StorageController* controller, QObject* parent = nullptr);
   enum class Role : uint16_t {
@@ -59,8 +62,8 @@ class StorageService : public QAbstractListModel {
   Q_INVOKABLE void retry(const QString& targetId);
   Q_INVOKABLE void openVolume(const QString& targetId);
   // NOLINTNEXTLINE(readability-convert-member-functions-to-static): QML method.
-  Q_INVOKABLE void openInFiles() const;
-  Q_INVOKABLE void showAllDevices() const;
+  Q_INVOKABLE void openInFiles();
+  Q_INVOKABLE void showAllDevices();
  signals:
   void changed();
 
@@ -71,6 +74,8 @@ class StorageService : public QAbstractListModel {
     HoloNight::System::StorageOperation operation = HoloNight::System::StorageOperation::Mount;
     QString message;
     quint64 generation = 0;
+    bool files_launch = false;
+    QStringList launch_arguments;
   };
   void refresh();
   void appendOpticalDrives(QList<QVariantMap>& rows) const;
@@ -84,6 +89,7 @@ class StorageService : public QAbstractListModel {
   void sendDriveConnectedNotification(const QString& driveId) const;
   HoloNight::System::StorageController* controller_;
   QList<QVariantMap> rows_;
+  void launchFiles(const QStringList& arguments = {}, const QString& target = {});
   QString error_message_;
   QHash<QString, HoloNight::System::StorageOperation> in_flight_ops_;
   QHash<QString, QString> removal_labels_;
@@ -92,4 +98,5 @@ class StorageService : public QAbstractListModel {
   QSet<QString> known_drive_ids_;
   bool known_drive_ids_seeded_ = false;
   quint64 next_error_generation_ = 0;
+  ApplicationLaunchService* application_launch_service_{nullptr};
 };

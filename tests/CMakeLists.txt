@@ -135,6 +135,7 @@ holonight_add_test_exe(test_holonight_services
   test_ai_chat_service.cpp
   test_integration_theme_config.cpp
   test_launcher_service.cpp
+  test_application_launch_integration.cpp
   test_battery_service.cpp
   test_storage_service.cpp
   test_calendar_integration.cpp
@@ -465,3 +466,12 @@ add_dependencies(test_holonight_hyprland_qml holonight_backend_hyprland)
 add_executable(labwc_workspace_smoke labwc_workspace_smoke.cpp)
 target_link_libraries(labwc_workspace_smoke PRIVATE holonight_compositor Qt6::Gui)
 add_dependencies(labwc_workspace_smoke holonight_backend_labwc)
+
+find_program(DBUS_RUN_SESSION_EXECUTABLE dbus-run-session)
+if(DBUS_RUN_SESSION_EXECUTABLE)
+  add_test(NAME test_application_launch_private_bus
+    COMMAND ${DBUS_RUN_SESSION_EXECUTABLE} -- ${CMAKE_COMMAND} -E env
+      QT_QPA_PLATFORM=offscreen HOLONIGHT_LAUNCH_PRIVATE_BUS=1
+      $<TARGET_FILE:test_holonight_services> --gtest_filter=ApplicationLaunchPrivateBus.*)
+  set_tests_properties(test_application_launch_private_bus PROPERTIES TIMEOUT 40)
+endif()

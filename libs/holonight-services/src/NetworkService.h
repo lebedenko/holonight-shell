@@ -40,6 +40,8 @@ struct NetworkStateUpdate {
 
 [[nodiscard]] NetworkStateUpdate buildNetworkStateUpdate(const NetworkQuerySnapshot& snapshot);
 
+class ApplicationLaunchService;
+
 class NetworkService : public QObject {
   Q_OBJECT
   QML_ELEMENT
@@ -64,6 +66,7 @@ class NetworkService : public QObject {
   Q_PROPERTY(QAbstractItemModel* wifiNetworks READ wifiNetworks CONSTANT)
 
  public:
+  void setApplicationLaunchService(ApplicationLaunchService* service) { application_launch_service_ = service; }
   enum ConnectionType : uint8_t { None = 0, WiFi = 1, Wired = 2 };  // NOLINT(cppcoreguidelines-use-enum-class)
   Q_ENUM(ConnectionType)
 
@@ -184,4 +187,5 @@ class NetworkService : public QObject {
   QString connection_status_;
   QString active_connection_path_;
   QString last_error_;
+  ApplicationLaunchService* application_launch_service_{nullptr};
 };

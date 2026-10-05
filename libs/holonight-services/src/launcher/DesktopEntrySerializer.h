@@ -21,6 +21,7 @@ inline QJsonObject toJson(const DesktopEntry& entry) {
     QJsonObject action_obj;
     action_obj[QStringLiteral("name")] = action.name;
     action_obj[QStringLiteral("exec")] = action.exec;
+    action_obj[QStringLiteral("id")] = action.id;
     actions_array.append(action_obj);
   }
 
@@ -66,7 +67,8 @@ inline std::optional<DesktopEntry> fromJson(const QJsonObject& obj) {
     const QString action_name = action_obj[QStringLiteral("name")].toString();
     const QString action_exec = action_obj[QStringLiteral("exec")].toString();
     if (!action_name.isEmpty() && !action_exec.isEmpty()) {
-      entry.actions.append({.name = action_name, .exec = action_exec});
+      entry.actions.append(
+          {.name = action_name, .exec = action_exec, .id = action_obj[QStringLiteral("id")].toString()});
     }
   }
 
