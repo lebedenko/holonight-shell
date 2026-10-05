@@ -227,7 +227,7 @@ tasks:
     deps:
     - configure-tests
     cmds:
-    - cmake --build {{.TEST_BUILD_DIR}} --target holonight-shell labwc_workspace_smoke labwc_protocol_smoke -j{{.NPROC}}
+    - cmake --build {{.TEST_BUILD_DIR}} --target holonight-shell labwc_workspace_smoke -j{{.NPROC}}
     - python3 scripts/run-isolated-test.py --hide-host bash scripts/labwc-runtime-smoke.sh {{.TEST_BUILD_DIR}}/holonight-shell
       {{.TEST_BUILD_DIR}}/tests/labwc_workspace_smoke
   sway-runtime-smoke:

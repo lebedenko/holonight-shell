@@ -1,6 +1,6 @@
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS src/*.h src/*.cpp)
 add_library(holonight_integration SHARED ${sources})
-target_link_libraries(holonight_integration PUBLIC Qt6::Core Qt6::DBus)
+target_link_libraries(holonight_integration PUBLIC Qt6::Core Qt6::DBus HoloNightSystem::Compositor)
 target_include_directories(holonight_integration PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/session)
 target_compile_definitions(holonight_integration PUBLIC HOLONIGHT_INTEGRATION_VERSION="${PROJECT_VERSION}")
 target_compile_features(holonight_integration PUBLIC cxx_std_23)

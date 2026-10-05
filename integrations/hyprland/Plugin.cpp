@@ -1,6 +1,6 @@
-#include "HyprlandBackend.h"
 #include "HyprlandLayoutProvider.h"
 #include "HyprlandSessionBackend.h"
+#include "HyprlandShellAdapter.h"
 #include "IntegrationPlugin.h"
 
 class Plugin final : public QObject, public IntegrationPlugin {
@@ -8,7 +8,7 @@ class Plugin final : public QObject, public IntegrationPlugin {
   Q_PLUGIN_METADATA(IID HolonightIntegration_iid FILE "metadata.json")
   Q_INTERFACES(IntegrationPlugin)
  public:
-  std::unique_ptr<CompositorBackend> createCompositor() override { return std::make_unique<HyprlandBackend>(); }
+  std::unique_ptr<CompositorBackend> createCompositor() override { return std::make_unique<HyprlandShellAdapter>(); }
   std::unique_ptr<SessionBackend> createSession(const ProcessEnvironment* env, CommandRunner* runner) override {
     return std::make_unique<HyprlandSessionBackend>(env, runner);
   }

@@ -77,8 +77,6 @@ target_link_libraries(test_holonight_authentication PRIVATE
 # --- platform tests (links holonight_platform) ---
 holonight_add_test_exe(test_holonight_platform
   main.cpp
-  test_hyprland_ipc.cpp
-  test_hyprland_ipc_client.cpp
   test_dbus_property_client.cpp
 )
 target_link_libraries(test_holonight_platform PRIVATE
@@ -93,6 +91,7 @@ target_link_libraries(test_holonight_platform PRIVATE
 holonight_add_test_exe(test_holonight_core
   main.cpp
   test_config_service.cpp
+  test_keyboard_ipc.cpp
   test_keyboard_layout_service.cpp
   test_battery_state.cpp
   test_system_info.cpp
@@ -106,13 +105,9 @@ target_link_libraries(test_holonight_core PRIVATE
 
 holonight_add_test_exe(test_holonight_compositor
   main.cpp
-  test_compositor.cpp
-  test_generic_workspace.cpp
-  test_labwc_windows.cpp
   test_window_activation.cpp
-  test_hyprland_backend.cpp
-  test_sway_backend.cpp
-  test_sway_ipc.cpp
+  test_compositor.cpp
+  test_labwc_windows.cpp
 )
 target_link_libraries(test_holonight_compositor PRIVATE
   holonight_compositor
@@ -439,13 +434,13 @@ add_test(NAME uqc_launch COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scr
 set_tests_properties(uqc_launch PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
 
 foreach(target IN ITEMS test_holonight_platform test_holonight_core test_holonight_compositor test_holonight_services)
-  target_link_libraries(${target} PRIVATE holonight_hyprland_implementation holonight_sway_implementation holonight_labwc_implementation holonight_ext_workspace)
+  target_link_libraries(${target} PRIVATE holonight_hyprland_implementation holonight_sway_implementation holonight_labwc_implementation HoloNightSystem::Compositor)
 endforeach()
 foreach(target IN ITEMS test_holonight_qml_harness test_holonight_compiled_controls test_holonight_qml)
   target_link_libraries(${target} PRIVATE holonight_presentationplugin)
 endforeach()
 
-target_include_directories(test_holonight_compositor PRIVATE ${PROJECT_SOURCE_DIR}/integrations/ext-workspace/src)
+
 
 configure_file(integration-plugin/fake.json.in fake.json @ONLY)
 add_library(test_integration_plugin MODULE integration-plugin/FakePlugin.cpp)
@@ -470,6 +465,3 @@ add_dependencies(test_holonight_hyprland_qml holonight_backend_hyprland)
 add_executable(labwc_workspace_smoke labwc_workspace_smoke.cpp)
 target_link_libraries(labwc_workspace_smoke PRIVATE holonight_compositor Qt6::Gui)
 add_dependencies(labwc_workspace_smoke holonight_backend_labwc)
-
-add_executable(labwc_protocol_smoke labwc_protocol_smoke.cpp)
-target_link_libraries(labwc_protocol_smoke PRIVATE holonight_labwc_implementation holonight_ext_workspace Qt6::Gui)

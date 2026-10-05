@@ -1,6 +1,5 @@
 #include "CompositorBackend.h"
 #include "CompositorService.h"
-#include "SwayIpc.h"
 #include "WindowPresentation.h"
 #include "WorkspacePresentation.h"
 
@@ -188,25 +187,6 @@ TEST(CompositorService, PerWorkspaceCapabilitiesGateExistingIdentity) {
   service.activateWorkspace("opaque");
   EXPECT_EQ(requests.count(), 1);
 }
-TEST(SwayNumberedProvider, RejectsNoncanonicalNamesZeroAndDuplicateNumbers) {
-  for (const auto& name : {"dev", "2:web", "0", "02", "+2", "3"}) {
-    const QJsonArray workspaces{QJsonObject{{"name", name}, {"num", 2}}};
-    const auto refresh = parseSwayRefresh(QJsonDocument(workspaces).toJson(), "[]", "{}");
-    ASSERT_TRUE(refresh);
-    EXPECT_FALSE(refresh->numbered.eligible) << name;
-  }
-  const auto duplicate = parseSwayRefresh(R"([{"id":1,"name":"2","num":2},{"id":2,"name":"2","num":2}])", "[]", "{}");
-  ASSERT_TRUE(duplicate);
-  EXPECT_FALSE(duplicate->numbered.eligible);
-  const auto sparse = parseSwayRefresh(R"([{"id":1,"name":"1","num":1},{"id":2,"name":"8","num":8}])", "[]", "{}");
-  ASSERT_TRUE(sparse);
-  EXPECT_TRUE(sparse->numbered.eligible);
-  EXPECT_EQ(sparse->numbered.assignments.value("2"), 8);
-  const auto empty = parseSwayRefresh("[]", "[]", "{}");
-  ASSERT_TRUE(empty);
-  EXPECT_TRUE(empty->numbered.eligible);
-}
-
 TEST(WorkspacePresentation, VisibilityUsesActualRowsAndCapabilitiesRatherThanDisplayLimit) {
   CompositorService service;
   NumberedFake provider;

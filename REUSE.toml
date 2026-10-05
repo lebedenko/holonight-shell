@@ -11,15 +11,3 @@ path = "protocols/ext-idle-notify-v1.xml"
 precedence = "override"
 SPDX-FileCopyrightText = ["2015 Martin Gräßlin", "2022 Simon Ser"]
 SPDX-License-Identifier = "MIT"
-
-[[annotations]]
-path = "protocols/ext-workspace-v1.xml"
-precedence = "override"
-SPDX-FileCopyrightText = ["2019 Christopher Billington", "2020 Ilia Bozhinov", "2022 Victoria Brekenfeld"]
-SPDX-License-Identifier = "HPND-sell-variant"
-
-[[annotations]]
-path = "protocols/wlr-foreign-toplevel-management-unstable-v1.xml"
-precedence = "override"
-SPDX-FileCopyrightText = "2018 Ilia Bozhinov"
-SPDX-License-Identifier = "HPND-sell-variant"

@@ -3,7 +3,6 @@
 #include "BrightnessBackend.h"
 #include "BrightnessChannelSource.h"
 #include "BrightnessService.h"
-#include "HyprlandIpcClient.h"
 #include "HyprlandLayoutProvider.h"
 #include "KeyboardLayoutChannelSource.h"
 #include "KeyboardLayoutService.h"
@@ -11,6 +10,7 @@
 #include "OsdChannelSource.h"
 #include "OsdController.h"
 #include "OsdEvent.h"
+#include "ShellHyprlandIpcClient.h"
 
 #include <QMetaType>
 #include <QSignalSpy>
@@ -420,9 +420,9 @@ namespace {
 // KeyboardLayoutService has no direct setter -- layout state only enters through the Hyprland IPC
 // transport, so driving it in a test means faking that transport. Deliberately minimal compared to
 // the one in test_keyboard_layout_service.cpp: these tests only ever push event lines.
-class FakeLayoutTransport final : public HyprlandIpcTransport {
+class FakeLayoutTransport final : public ShellHyprlandIpcTransport {
  public:
-  explicit FakeLayoutTransport(QObject* parent = nullptr) : HyprlandIpcTransport(parent) {}
+  explicit FakeLayoutTransport(QObject* parent = nullptr) : ShellHyprlandIpcTransport(parent) {}
 
   void connectEventStream() override {}
   bool runCommand(const QByteArray& /*command*/, CommandCompletePredicate /*predicate*/ = {}) override { return true; }

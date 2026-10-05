@@ -15,7 +15,6 @@ option(ENABLE_COVERAGE "Instrument for gcov/gcovr coverage reporting" OFF)
 install(
   FILES LICENSE THIRD_PARTY_NOTICES.md
         LICENSES/GPL-3.0-or-later.txt
-        LICENSES/HPND-sell-variant.txt
         LICENSES/MIT.txt
   DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/${PROJECT_NAME}"
 )
@@ -29,7 +28,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/tooling/dependencies.cmake")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent Sql QuickControls2)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(HolonightQt REQUIRED COMPONENTS Wayland)
-find_package(HoloNightSystemServices REQUIRED COMPONENTS Audio Storage)
+find_package(HoloNightSystemServices REQUIRED COMPONENTS Audio Storage Compositor)
 include(cmake/QuickControlsRuntime.cmake)
 find_package(Qt6 COMPONENTS WaylandClient WaylandClientPrivate QUIET)
 find_package(Qt6WaylandScannerTools REQUIRED)

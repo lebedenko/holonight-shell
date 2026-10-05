@@ -1,5 +1,5 @@
 add_library(holonight_backend_wayland MODULE Plugin.cpp)
-target_link_libraries(holonight_backend_wayland PRIVATE holonight_ext_workspace)
+target_link_libraries(holonight_backend_wayland PRIVATE holonight_integration HoloNightSystem::Compositor)
 configure_file(metadata.json.in metadata.json @ONLY)
 target_include_directories(holonight_backend_wayland PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(holonight_backend_wayland PROPERTIES

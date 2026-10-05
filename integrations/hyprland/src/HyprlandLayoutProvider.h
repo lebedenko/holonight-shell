@@ -1,7 +1,7 @@
 #pragma once
 
-#include "HyprlandIpcClient.h"
 #include "KeyboardLayoutProvider.h"
+#include "ShellHyprlandIpcClient.h"
 
 #include <QByteArray>
 #include <QObject>
@@ -17,7 +17,7 @@ class HyprlandLayoutProvider : public KeyboardLayoutProvider {
 
  public:
   explicit HyprlandLayoutProvider(QObject* parent = nullptr);
-  explicit HyprlandLayoutProvider(HyprlandIpcTransportPtr ipc_client, QObject* parent = nullptr);
+  explicit HyprlandLayoutProvider(ShellHyprlandIpcTransportPtr ipc_client, QObject* parent = nullptr);
   ~HyprlandLayoutProvider() override = default;
 
   HyprlandLayoutProvider(const HyprlandLayoutProvider&) = delete;
@@ -42,7 +42,7 @@ class HyprlandLayoutProvider : public KeyboardLayoutProvider {
   void setLayoutName(const QString& value);
   void setLayoutCode(const QString& value);
 
-  HyprlandIpcTransportPtr ipc_client_;
+  ShellHyprlandIpcTransportPtr ipc_client_;
   QString layout_code_;
   QString layout_name_;
   bool started_{false};

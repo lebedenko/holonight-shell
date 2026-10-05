@@ -15,14 +15,14 @@
       "source_variable": "HOLONIGHT_CONFIG_SOURCE"
     },
     {
-      "module": "holonight-qt",
-      "package": "HolonightQt",
-      "source_variable": "HOLONIGHT_QT_SOURCE"
-    },
-    {
       "module": "holonight-system-services",
       "package": "HoloNightSystemServices",
       "source_variable": "HOLONIGHT_SYSTEM_SERVICES_SOURCE"
+    },
+    {
+      "module": "holonight-qt",
+      "package": "HolonightQt",
+      "source_variable": "HOLONIGHT_QT_SOURCE"
     }
   ],
   "qml_modules": [

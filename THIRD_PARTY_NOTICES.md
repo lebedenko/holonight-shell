@@ -5,7 +5,6 @@
 | Path | Source | Revision | Copyright | License | Modifications |
 |---|---|---|---|---|---|
 | `protocols/ext-idle-notify-v1.xml` | [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols) | Vendored protocol version 2 | Martin Gräßlin; Simon Ser | MIT | None to the embedded notice or protocol contract. |
-| `protocols/ext-workspace-v1.xml` | [wayland-protocols staging](https://gitlab.freedesktop.org/wayland/wayland-protocols) | Vendored protocol version 1 | Christopher Billington; Ilia Bozhinov; Victoria Brekenfeld | HPND-sell-variant | None to the embedded notice or protocol contract. |
 
 The full license texts are installed from `LICENSES/`.
 

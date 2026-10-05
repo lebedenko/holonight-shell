@@ -1,6 +1,6 @@
-#include "HyprlandIpcClient.h"
 #include "HyprlandLayoutProvider.h"
 #include "KeyboardLayoutService.h"
+#include "ShellHyprlandIpcClient.h"
 
 #include <QSignalSpy>
 
@@ -9,9 +9,9 @@
 // Fake transport: records connectEventStream/runCommand calls and lets
 // tests emit signals directly without a live Hyprland socket.
 namespace {
-class FakeHyprlandIpcTransport final : public HyprlandIpcTransport {
+class FakeShellHyprlandIpcTransport final : public ShellHyprlandIpcTransport {
  public:
-  explicit FakeHyprlandIpcTransport(QObject* parent = nullptr) : HyprlandIpcTransport(parent) {}
+  explicit FakeShellHyprlandIpcTransport(QObject* parent = nullptr) : ShellHyprlandIpcTransport(parent) {}
 
   void connectEventStream() override { connect_count++; }
 
@@ -35,8 +35,8 @@ class FakeHyprlandIpcTransport final : public HyprlandIpcTransport {
 }  // namespace
 
 TEST(KeyboardLayoutService, ProcessEventLineUpdatesLayoutCode) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -46,8 +46,8 @@ TEST(KeyboardLayoutService, ProcessEventLineUpdatesLayoutCode) {
 }
 
 TEST(KeyboardLayoutService, ProcessEventLineIgnoresUnrelatedEvent) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -57,8 +57,8 @@ TEST(KeyboardLayoutService, ProcessEventLineIgnoresUnrelatedEvent) {
 }
 
 TEST(KeyboardLayoutService, OnCommandFinishedUpdatesLayoutCode) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -69,8 +69,8 @@ TEST(KeyboardLayoutService, OnCommandFinishedUpdatesLayoutCode) {
 }
 
 TEST(KeyboardLayoutService, OnCommandFinishedIgnoresFailedResponse) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -81,8 +81,8 @@ TEST(KeyboardLayoutService, OnCommandFinishedIgnoresFailedResponse) {
 }
 
 TEST(KeyboardLayoutService, SetLayoutCodeDeduplicatesIdenticalValues) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -97,8 +97,8 @@ TEST(KeyboardLayoutService, SetLayoutCodeDeduplicatesIdenticalValues) {
 
 // REQ-C-014: the full layout name is retained alongside the derived code.
 TEST(KeyboardLayoutService, EventLineRetainsBothTheNameAndTheCode) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -109,8 +109,8 @@ TEST(KeyboardLayoutService, EventLineRetainsBothTheNameAndTheCode) {
 }
 
 TEST(KeyboardLayoutService, DevicesQueryResponseRetainsBothTheNameAndTheCode) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -122,8 +122,8 @@ TEST(KeyboardLayoutService, DevicesQueryResponseRetainsBothTheNameAndTheCode) {
 }
 
 TEST(KeyboardLayoutService, SetLayoutNameDeduplicatesIdenticalValues) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -138,8 +138,8 @@ TEST(KeyboardLayoutService, SetLayoutNameDeduplicatesIdenticalValues) {
 // Two distinct names can share a code. The name must still update, and the code must stay put --
 // this is the case that makes layoutName worth storing separately rather than deriving on demand.
 TEST(KeyboardLayoutService, NameChangeWithAnUnchangedCodeUpdatesOnlyTheName) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -159,8 +159,8 @@ TEST(KeyboardLayoutService, NameChangeWithAnUnchangedCodeUpdatesOnlyTheName) {
 // Pins the commit order relied on by consumers that read both properties from either signal: when
 // the code signal arrives, the name is already the matching one, never the previous layout's.
 TEST(KeyboardLayoutService, NameIsAlreadyCommittedWhenTheCodeSignalFires) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 
@@ -176,8 +176,8 @@ TEST(KeyboardLayoutService, NameIsAlreadyCommittedWhenTheCodeSignalFires) {
 }
 
 TEST(KeyboardLayoutService, StartIsIdempotent) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
 
   service.start();
@@ -187,8 +187,8 @@ TEST(KeyboardLayoutService, StartIsIdempotent) {
 }
 
 TEST(KeyboardLayoutService, EventSocketConnectedTriggersDevicesQuery) {
-  auto transport = std::make_unique<FakeHyprlandIpcTransport>();
-  FakeHyprlandIpcTransport* fake = transport.get();
+  auto transport = std::make_unique<FakeShellHyprlandIpcTransport>();
+  FakeShellHyprlandIpcTransport* fake = transport.get();
   KeyboardLayoutService service(std::make_unique<HyprlandLayoutProvider>(std::move(transport)));
   service.start();
 

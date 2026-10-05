@@ -1,14 +1,15 @@
 #include "HyprlandLayoutProvider.h"
 
-#include "HyprlandIpc.h"
+#include "ShellHyprlandIpc.h"
 
 #include <algorithm>
 #include <memory>
 
 HyprlandLayoutProvider::HyprlandLayoutProvider(QObject* parent)
-    : HyprlandLayoutProvider(std::make_unique<HyprlandIpcClient>(QStringLiteral("HyprlandLayoutProvider:")), parent) {}
+    : HyprlandLayoutProvider(std::make_unique<ShellHyprlandIpcClient>(QStringLiteral("HyprlandLayoutProvider:")),
+                             parent) {}
 
-HyprlandLayoutProvider::HyprlandLayoutProvider(HyprlandIpcTransportPtr ipc_client, QObject* parent)
+HyprlandLayoutProvider::HyprlandLayoutProvider(ShellHyprlandIpcTransportPtr ipc_client, QObject* parent)
     : KeyboardLayoutProvider(parent), ipc_client_(std::move(ipc_client)) {}
 
 void HyprlandLayoutProvider::start() {
@@ -20,13 +21,13 @@ void HyprlandLayoutProvider::start() {
 }
 
 void HyprlandLayoutProvider::connectSocket() {
-  connect(ipc_client_.get(), &HyprlandIpcTransport::eventStreamDisconnected, this, [this] { setLayoutName({}); });
-  connect(ipc_client_.get(), &HyprlandIpcTransport::eventStreamConnected, this,
+  connect(ipc_client_.get(), &ShellHyprlandIpcTransport::eventStreamDisconnected, this, [this] { setLayoutName({}); });
+  connect(ipc_client_.get(), &ShellHyprlandIpcTransport::eventStreamConnected, this,
           &HyprlandLayoutProvider::onEventSocketConnected, Qt::UniqueConnection);
-  connect(ipc_client_.get(), &HyprlandIpcTransport::eventLineReceived, this, &HyprlandLayoutProvider::processEventLine,
-          Qt::UniqueConnection);
-  connect(ipc_client_.get(), &HyprlandIpcTransport::commandFinished, this, &HyprlandLayoutProvider::onCommandFinished,
-          Qt::UniqueConnection);
+  connect(ipc_client_.get(), &ShellHyprlandIpcTransport::eventLineReceived, this,
+          &HyprlandLayoutProvider::processEventLine, Qt::UniqueConnection);
+  connect(ipc_client_.get(), &ShellHyprlandIpcTransport::commandFinished, this,
+          &HyprlandLayoutProvider::onCommandFinished, Qt::UniqueConnection);
   ipc_client_->connectEventStream();
 }
 
@@ -36,13 +37,13 @@ void HyprlandLayoutProvider::queryCurrentLayout() {
   }
 
   const bool started = ipc_client_->runCommand(QByteArrayLiteral("j/devices"), [](const QByteArray& response) {
-    return parseHyprlandKeyboardLayoutDevicesJson(response).has_value();
+    return parseShellHyprlandKeyboardLayoutDevicesJson(response).has_value();
   });
   Q_UNUSED(started)
 }
 
 void HyprlandLayoutProvider::processEventLine(const QByteArray& line) {
-  const std::optional<HyprlandKeyboardLayout> layout = parseHyprlandKeyboardLayoutEvent(line);
+  const std::optional<ShellHyprlandKeyboardLayout> layout = parseShellHyprlandKeyboardLayoutEvent(line);
   if (layout.has_value()) {
     setLayoutName(layout->layout_name);
   }
@@ -52,7 +53,7 @@ void HyprlandLayoutProvider::onEventSocketConnected() { queryCurrentLayout(); }
 
 void HyprlandLayoutProvider::onCommandFinished(const QByteArray& response, bool success) {
   if (success) {
-    const std::optional<QString> layout = parseHyprlandKeyboardLayoutDevicesJson(response);
+    const std::optional<QString> layout = parseShellHyprlandKeyboardLayoutDevicesJson(response);
     if (layout.has_value()) {
       setLayoutName(*layout);
     }
@@ -68,7 +69,7 @@ void HyprlandLayoutProvider::setLayoutName(const QString& value) {
     layout_name_ = value;
     emit layoutNameChanged();
   }
-  setLayoutCode(keyboardLayoutCode(value));
+  setLayoutCode(shellKeyboardLayoutCode(value));
 }
 
 void HyprlandLayoutProvider::setLayoutCode(const QString& value) {

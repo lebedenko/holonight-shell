@@ -1,24 +1,25 @@
-#include "HyprlandIpcClient.h"
+#include "ShellHyprlandIpcClient.h"
 
 #include <QLoggingCategory>
 
 #include <algorithm>
 #include <utility>
 
-Q_LOGGING_CATEGORY(lcHyprlandIpcClient, "holonight.hyprland.ipc")
+Q_LOGGING_CATEGORY(lcShellHyprlandIpcClient, "holonight.hyprland.ipc")
 
-HyprlandIpcClient::HyprlandIpcClient(QString service_name, QObject* parent)
-    : HyprlandIpcTransport(parent), service_name_(std::move(service_name)) {}
+ShellHyprlandIpcClient::ShellHyprlandIpcClient(QString service_name, QObject* parent)
+    : ShellHyprlandIpcTransport(parent), service_name_(std::move(service_name)) {}
 
-HyprlandIpcClient::HyprlandIpcClient(QString service_name, QString event_socket_path, QString command_socket_path,
-                                     bool use_abstract_namespace, QObject* parent)
-    : HyprlandIpcTransport(parent),
+ShellHyprlandIpcClient::ShellHyprlandIpcClient(QString service_name, QString event_socket_path,
+                                               QString command_socket_path, bool use_abstract_namespace,
+                                               QObject* parent)
+    : ShellHyprlandIpcTransport(parent),
       service_name_(std::move(service_name)),
       event_socket_path_(std::move(event_socket_path)),
       command_socket_path_(std::move(command_socket_path)),
       use_abstract_namespace_(use_abstract_namespace) {}
 
-void HyprlandIpcClient::connectEventStream() {
+void ShellHyprlandIpcClient::connectEventStream() {
   if (event_socket_ != nullptr) {
     event_socket_->disconnect(this);
     event_socket_->deleteLater();
@@ -28,7 +29,7 @@ void HyprlandIpcClient::connectEventStream() {
 
   const QString path = resolvedEventSocketPath();
   if (path.isEmpty()) {
-    qCWarning(lcHyprlandIpcClient) << service_name_ << "HYPRLAND_INSTANCE_SIGNATURE not set";
+    qCWarning(lcShellHyprlandIpcClient) << service_name_ << "HYPRLAND_INSTANCE_SIGNATURE not set";
     scheduleReconnect();
     return;
   }
@@ -37,10 +38,10 @@ void HyprlandIpcClient::connectEventStream() {
   if (use_abstract_namespace_) {
     event_socket_->setSocketOptions(QLocalSocket::AbstractNamespaceOption);
   }
-  connect(event_socket_, &QLocalSocket::connected, this, &HyprlandIpcClient::onEventSocketConnected);
-  connect(event_socket_, &QLocalSocket::readyRead, this, &HyprlandIpcClient::onEventSocketReadable);
-  connect(event_socket_, &QLocalSocket::disconnected, this, &HyprlandIpcClient::onEventSocketDisconnected);
-  connect(event_socket_, &QLocalSocket::errorOccurred, this, &HyprlandIpcClient::onEventSocketError);
+  connect(event_socket_, &QLocalSocket::connected, this, &ShellHyprlandIpcClient::onEventSocketConnected);
+  connect(event_socket_, &QLocalSocket::readyRead, this, &ShellHyprlandIpcClient::onEventSocketReadable);
+  connect(event_socket_, &QLocalSocket::disconnected, this, &ShellHyprlandIpcClient::onEventSocketDisconnected);
+  connect(event_socket_, &QLocalSocket::errorOccurred, this, &ShellHyprlandIpcClient::onEventSocketError);
   event_socket_->connectToServer(path, QIODeviceBase::ReadOnly);
 
   connect_timeout_ = new QTimer(event_socket_);
@@ -49,23 +50,23 @@ void HyprlandIpcClient::connectEventStream() {
     if (event_socket_ == nullptr || event_socket_->state() == QLocalSocket::ConnectedState) {
       return;
     }
-    qCWarning(lcHyprlandIpcClient) << service_name_
-                                   << "event socket connection timed out:" << event_socket_->errorString();
+    qCWarning(lcShellHyprlandIpcClient) << service_name_
+                                        << "event socket connection timed out:" << event_socket_->errorString();
     event_socket_->abort();
     scheduleReconnect();
   });
   connect_timeout_->start(kConnectTimeoutMs);
 }
 
-bool HyprlandIpcClient::runCommand(const QByteArray& command, CommandCompletePredicate is_complete) {
+bool ShellHyprlandIpcClient::runCommand(const QByteArray& command, CommandCompletePredicate is_complete) {
   if (command_socket_ != nullptr) {
     return false;
   }
 
   const QString path = resolvedCommandSocketPath();
   if (path.isEmpty()) {
-    qCWarning(lcHyprlandIpcClient) << service_name_ << "HYPRLAND_INSTANCE_SIGNATURE not set; dropping command"
-                                   << command;
+    qCWarning(lcShellHyprlandIpcClient) << service_name_ << "HYPRLAND_INSTANCE_SIGNATURE not set; dropping command"
+                                        << command;
     return false;
   }
 
@@ -76,23 +77,23 @@ bool HyprlandIpcClient::runCommand(const QByteArray& command, CommandCompletePre
   if (use_abstract_namespace_) {
     command_socket_->setSocketOptions(QLocalSocket::AbstractNamespaceOption);
   }
-  connect(command_socket_, &QLocalSocket::connected, this, &HyprlandIpcClient::onCommandSocketConnected);
-  connect(command_socket_, &QLocalSocket::readyRead, this, &HyprlandIpcClient::onCommandSocketReadable);
-  connect(command_socket_, &QLocalSocket::disconnected, this, &HyprlandIpcClient::onCommandSocketDisconnected);
-  connect(command_socket_, &QLocalSocket::errorOccurred, this, &HyprlandIpcClient::onCommandSocketError);
+  connect(command_socket_, &QLocalSocket::connected, this, &ShellHyprlandIpcClient::onCommandSocketConnected);
+  connect(command_socket_, &QLocalSocket::readyRead, this, &ShellHyprlandIpcClient::onCommandSocketReadable);
+  connect(command_socket_, &QLocalSocket::disconnected, this, &ShellHyprlandIpcClient::onCommandSocketDisconnected);
+  connect(command_socket_, &QLocalSocket::errorOccurred, this, &ShellHyprlandIpcClient::onCommandSocketError);
   command_socket_->connectToServer(path, QIODeviceBase::ReadWrite);
 
   command_timeout_ = new QTimer(command_socket_);
   command_timeout_->setSingleShot(true);
   connect(command_timeout_, &QTimer::timeout, this, [this] {
-    qCWarning(lcHyprlandIpcClient) << service_name_ << "command socket timed out";
+    qCWarning(lcShellHyprlandIpcClient) << service_name_ << "command socket timed out";
     finishCommand(false);
   });
   command_timeout_->start(command_timeout_ms_);
   return true;
 }
 
-QString HyprlandIpcClient::socketBasePath() {
+QString ShellHyprlandIpcClient::socketBasePath() {
   const QByteArray runtime_dir = qgetenv("XDG_RUNTIME_DIR");
   if (!runtime_dir.isEmpty()) {
     return QString::fromLocal8Bit(runtime_dir) + QStringLiteral("/hypr/");
@@ -100,7 +101,7 @@ QString HyprlandIpcClient::socketBasePath() {
   return QStringLiteral("/tmp/hypr/");
 }
 
-QString HyprlandIpcClient::eventSocketPath() {
+QString ShellHyprlandIpcClient::eventSocketPath() {
   const QByteArray sig = qgetenv("HYPRLAND_INSTANCE_SIGNATURE");
   if (sig.isEmpty()) {
     return {};
@@ -108,7 +109,7 @@ QString HyprlandIpcClient::eventSocketPath() {
   return socketBasePath() + QString::fromLocal8Bit(sig) + QStringLiteral("/.socket2.sock");
 }
 
-QString HyprlandIpcClient::commandSocketPath() {
+QString ShellHyprlandIpcClient::commandSocketPath() {
   const QByteArray sig = qgetenv("HYPRLAND_INSTANCE_SIGNATURE");
   if (sig.isEmpty()) {
     return {};
@@ -116,7 +117,7 @@ QString HyprlandIpcClient::commandSocketPath() {
   return socketBasePath() + QString::fromLocal8Bit(sig) + QStringLiteral("/.socket.sock");
 }
 
-void HyprlandIpcClient::onEventSocketReadable() {
+void ShellHyprlandIpcClient::onEventSocketReadable() {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != event_socket_) {
     return;
@@ -139,7 +140,7 @@ void HyprlandIpcClient::onEventSocketReadable() {
   }
 }
 
-void HyprlandIpcClient::onEventSocketConnected() {
+void ShellHyprlandIpcClient::onEventSocketConnected() {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != event_socket_) {
     return;
@@ -152,29 +153,29 @@ void HyprlandIpcClient::onEventSocketConnected() {
   emit eventStreamConnected();
 }
 
-void HyprlandIpcClient::onEventSocketDisconnected() {
+void ShellHyprlandIpcClient::onEventSocketDisconnected() {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != event_socket_) {
     return;
   }
 
-  qCWarning(lcHyprlandIpcClient) << service_name_ << "event socket disconnected";
+  qCWarning(lcShellHyprlandIpcClient) << service_name_ << "event socket disconnected";
   emit eventStreamDisconnected();
   scheduleReconnect();
 }
 
-void HyprlandIpcClient::onEventSocketError(QLocalSocket::LocalSocketError /*error*/) {
+void ShellHyprlandIpcClient::onEventSocketError(QLocalSocket::LocalSocketError /*error*/) {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != event_socket_) {
     return;
   }
-  qCWarning(lcHyprlandIpcClient) << service_name_ << "event socket error:" << active_socket->errorString();
+  qCWarning(lcShellHyprlandIpcClient) << service_name_ << "event socket error:" << active_socket->errorString();
   if (active_socket->state() != QLocalSocket::ConnectedState) {
     scheduleReconnect();
   }
 }
 
-void HyprlandIpcClient::onCommandSocketConnected() {
+void ShellHyprlandIpcClient::onCommandSocketConnected() {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != command_socket_) {
     return;
@@ -183,7 +184,7 @@ void HyprlandIpcClient::onCommandSocketConnected() {
   active_socket->flush();
 }
 
-void HyprlandIpcClient::onCommandSocketReadable() {
+void ShellHyprlandIpcClient::onCommandSocketReadable() {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != command_socket_) {
     return;
@@ -194,7 +195,7 @@ void HyprlandIpcClient::onCommandSocketReadable() {
   }
 }
 
-void HyprlandIpcClient::onCommandSocketDisconnected() {
+void ShellHyprlandIpcClient::onCommandSocketDisconnected() {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != command_socket_) {
     return;
@@ -204,7 +205,7 @@ void HyprlandIpcClient::onCommandSocketDisconnected() {
   finishCommand(true);
 }
 
-void HyprlandIpcClient::onCommandSocketError(QLocalSocket::LocalSocketError error) {
+void ShellHyprlandIpcClient::onCommandSocketError(QLocalSocket::LocalSocketError error) {
   auto* active_socket = qobject_cast<QLocalSocket*>(sender());
   if (active_socket == nullptr || active_socket != command_socket_) {
     return;
@@ -214,11 +215,11 @@ void HyprlandIpcClient::onCommandSocketError(QLocalSocket::LocalSocketError erro
     finishCommand(true);
     return;
   }
-  qCWarning(lcHyprlandIpcClient) << service_name_ << "command socket error:" << active_socket->errorString();
+  qCWarning(lcShellHyprlandIpcClient) << service_name_ << "command socket error:" << active_socket->errorString();
   finishCommand(false);
 }
 
-void HyprlandIpcClient::finishCommand(bool success) {
+void ShellHyprlandIpcClient::finishCommand(bool success) {
   if (command_timeout_ != nullptr) {
     command_timeout_->stop();
     command_timeout_ = nullptr;
@@ -236,21 +237,21 @@ void HyprlandIpcClient::finishCommand(bool success) {
   emit commandFinished(response, success);
 }
 
-QString HyprlandIpcClient::resolvedEventSocketPath() const {
+QString ShellHyprlandIpcClient::resolvedEventSocketPath() const {
   if (!event_socket_path_.isEmpty()) {
     return event_socket_path_;
   }
   return eventSocketPath();
 }
 
-QString HyprlandIpcClient::resolvedCommandSocketPath() const {
+QString ShellHyprlandIpcClient::resolvedCommandSocketPath() const {
   if (!command_socket_path_.isEmpty()) {
     return command_socket_path_;
   }
   return commandSocketPath();
 }
 
-void HyprlandIpcClient::scheduleReconnect() {
+void ShellHyprlandIpcClient::scheduleReconnect() {
   if (reconnect_scheduled_) {
     return;
   }
@@ -269,7 +270,7 @@ void HyprlandIpcClient::scheduleReconnect() {
   reconnect_delay_ms_ = std::min(reconnect_delay_ms_ * 2, kMaxReconnectDelayMs);
 }
 
-void HyprlandIpcClient::resetReconnectBackoff() {
+void ShellHyprlandIpcClient::resetReconnectBackoff() {
   reconnect_scheduled_ = false;
   reconnect_delay_ms_ = kInitialReconnectDelayMs;
   if (reconnect_timer_ != nullptr) {

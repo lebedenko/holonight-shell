@@ -55,7 +55,7 @@ for _ in {1..100}; do
 done
 [[ -n "${WAYLAND_DISPLAY:-}" ]]
 "${probe_binary}"
-protocol_probe="${probe_binary%/*}/labwc_protocol_smoke"
+protocol_probe="${HOLONIGHT_LABWC_PROTOCOL_PROBE:-${probe_binary%/*}/labwc_protocol_smoke}"
 for version in 1 2 3; do "${protocol_probe}" "${version}"; done
 "${probe_binary}" --hold >"${HOME}/holder.log" 2>&1 &
 holder_pid=$!
