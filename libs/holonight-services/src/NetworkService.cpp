@@ -237,7 +237,7 @@ void NetworkService::disconnectActive() {
 void NetworkService::openNetworkSettings() {
   clearLastError();
   ApplicationLaunchService service;
-  auto* launcher = application_launch_service_ ? application_launch_service_ : &service;
+  auto* launcher = application_launch_service_ != nullptr ? application_launch_service_ : &service;
   launcher->launch({.program = QStringLiteral("nm-connection-editor")}, this,
                    [this](const QString&, const QString& error) { setLastError(error); });
 }

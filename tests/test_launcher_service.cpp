@@ -28,16 +28,18 @@ bool writeFile(const QString& path, const QByteArray& content) {
 
 class FakeLauncherBackend final : public LauncherBackend {
  public:
-  void launchAsync(const DesktopEntry& entry, const QString& action, QObject*,
+  void launchAsync(const DesktopEntry& entry, const QString& action, QObject* /*unused*/,
                    ApplicationLaunchService::Completion completion) override {
-    if (action.isEmpty())
+    if (action.isEmpty()) {
       launched_entries.append(entry);
-    else
-      for (const auto& item : entry.actions)
+    } else {
+      for (const auto& item : entry.actions) {
         if (item.id == action) {
           launched_execs.append(item.exec);
           break;
         }
+      }
+    }
     completion("fake-request", launch_result ? QString() : QString("Could not launch application"));
   }
 
@@ -82,9 +84,14 @@ DesktopEntry makeEntry(const QString& name, const QString& exec, const QString& 
       .desktop_file = desktop_file,
       .startup_wm_class = QStringLiteral("org.example.TestApp"),
       .terminal = false,
-      .actions = {{.name = QStringLiteral("New Window"),
-                   .exec = exec + QStringLiteral(" --new-window"),
-                   .id = QStringLiteral("NewWindow")}},
+      .actions =
+          {
+              {
+                  .name = QStringLiteral("New Window"),
+                  .exec = exec + QStringLiteral(" --new-window"),
+                  .id = QStringLiteral("NewWindow"),
+              },
+          },
   };
 }
 
@@ -1084,8 +1091,8 @@ TEST(ApplicationLaunchService, ConcurrentRequestsCompleteOnceWithDistinctIds) {
       [] { return ApplicationLaunchService::Capabilities{}; });
   QStringList completions;
   QStringList errors;
-  const auto done = [&](const QString& id, const QString& error) {
-    completions << id;
+  const auto done = [&](const QString& request_id, const QString& error) {
+    completions << request_id;
     errors << error;
   };
   const auto first = service.launch(
@@ -1126,10 +1133,12 @@ TEST(ApplicationLaunchService, DesktopActionAndFailureArePreserved) {
 }
 
 TEST(DesktopEntrySerializer, PreservesOriginalActionId) {
-  DesktopEntry entry{.name = "Test",
-                     .exec = "test",
-                     .desktop_file = "/tmp/test.desktop",
-                     .actions = {{.name = "New window", .exec = "test --new", .id = "NewWindow"}}};
+  DesktopEntry entry{
+      .name = "Test",
+      .exec = "test",
+      .desktop_file = "/tmp/test.desktop",
+      .actions = {{.name = "New window", .exec = "test --new", .id = "NewWindow"}},
+  };
   const auto decoded = DesktopEntrySerializer::fromJson(DesktopEntrySerializer::toJson(entry));
   ASSERT_TRUE(decoded.has_value());
   ASSERT_EQ(decoded->actions.size(), 1);
@@ -1138,11 +1147,11 @@ TEST(DesktopEntrySerializer, PreservesOriginalActionId) {
 
 TEST(ApplicationLaunchService, BackendSelectionUsesActiveSessionAndManagerAccess) {
   using Backend = ApplicationLaunchService::Backend;
-  EXPECT_EQ(ApplicationLaunchService::backendFor({.managerAvailable = true, .uwsmActive = true}), Backend::Uwsm);
-  EXPECT_EQ(ApplicationLaunchService::backendFor({.managerAvailable = true}), Backend::Systemd);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.manager_available = true, .uwsm_active = true}), Backend::Uwsm);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.manager_available = true}), Backend::Systemd);
   EXPECT_EQ(ApplicationLaunchService::backendFor({}), Backend::Detached);
-  EXPECT_EQ(ApplicationLaunchService::backendFor({.runningAsService = true}), Backend::Unavailable);
-  EXPECT_EQ(ApplicationLaunchService::backendFor({.managerAvailable = true, .error = "Access denied"}),
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.running_as_service = true}), Backend::Unavailable);
+  EXPECT_EQ(ApplicationLaunchService::backendFor({.manager_available = true, .error = "Access denied"}),
             Backend::Unavailable);
 }
 
@@ -1199,7 +1208,7 @@ TEST(ApplicationLaunchService, ManagedFailureNeverRetriesTransport) {
         EXPECT_EQ(backend, ApplicationLaunchService::Backend::Systemd);
         return QString("Rejected D-Bus job");
       },
-      [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true}; });
+      [] { return ApplicationLaunchService::Capabilities{.manager_available = true}; });
   int completions = 0;
   service.launch({.program = "test"}, &context, [&](const QString&, const QString& error) {
     EXPECT_EQ(error, "Rejected D-Bus job");
@@ -1213,7 +1222,7 @@ TEST(ApplicationLaunchService, ManagedFailureNeverRetriesTransport) {
 TEST(LauncherService, PendingLaunchBlocksDuplicatesAndFailureDoesNotRecordRecentApp) {
   class PendingBackend final : public LauncherBackend {
    public:
-    void launchAsync(const DesktopEntry&, const QString&, QObject*,
+    void launchAsync(const DesktopEntry& /*entry*/, const QString& /*action*/, QObject* /*unused*/,
                      ApplicationLaunchService::Completion done) override {
       completion = std::move(done);
     }
@@ -1283,8 +1292,9 @@ TEST(ApplicationLaunchService, UwsmHelperReceivesDesktopActionAndReportsFailureW
   ASSERT_TRUE(QFile::setPermissions(helper, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
   qputenv("PATH", directory.path().toUtf8());
   qputenv("HOLONIGHT_TEST_UWSM_ARGS", output.toUtf8());
-  ApplicationLaunchService service(
-      nullptr, {}, [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true, .uwsmActive = true}; });
+  ApplicationLaunchService service(nullptr, {}, [] {
+    return ApplicationLaunchService::Capabilities{.manager_available = true, .uwsm_active = true};
+  });
   QObject context;
   int completions = 0;
   QString error;

@@ -139,7 +139,7 @@ ScanResult validateAgainstCache(const DesktopEntryScanner& scanner, const QStrin
 void ProcessLauncherBackend::launchAsync(const DesktopEntry& entry, const QString& action, QObject* context,
                                          ApplicationLaunchService::Completion completion) {
   ApplicationLaunchService service;
-  auto* launcher = application_launch_service_ ? application_launch_service_ : &service;
+  auto* launcher = application_launch_service_ != nullptr ? application_launch_service_ : &service;
   launcher->launchDesktop(entry, action, context, std::move(completion));
 }
 
@@ -411,7 +411,9 @@ bool LauncherService::launchAction(int entry_index, int action_index) {
 }
 
 bool LauncherService::submitLaunch(const DesktopEntry& entry, const QString& action) {
-  if (launch_pending_) return false;
+  if (launch_pending_) {
+    return false;
+  }
   launch_pending_ = true;
   launch_error_.clear();
   emit launchStateChanged();

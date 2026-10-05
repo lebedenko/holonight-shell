@@ -206,25 +206,29 @@ class FakeWeatherService : public QObject {
   [[nodiscard]] QVariantList hourly() const {
     QVariantList rows;
     for (int i = 0; i < 6; ++i) {
-      rows.append(QVariantMap{{"timestamp", 1791118800 + i * 3600},
-                              {"temperature", 18 - i},
-                              {"conditionId", 801},
-                              {"condition", "few clouds"},
-                              {"pop", 0.0},
-                              {"precipitation", 0.0}});
+      rows.append(QVariantMap{
+          {"timestamp", 1791118800 + (i * 3600)},
+          {"temperature", 18 - i},
+          {"conditionId", 801},
+          {"condition", "few clouds"},
+          {"pop", 0.0},
+          {"precipitation", 0.0},
+      });
     }
     return rows;
   }
   [[nodiscard]] QVariantList daily() const {
     QVariantList rows;
     for (int i = 0; i < 5; ++i) {
-      rows.append(QVariantMap{{"date", 1791118800 + i * 86400},
-                              {"tempMax", 18 + i},
-                              {"tempMin", 7 + i},
-                              {"conditionId", 801},
-                              {"condition", "few clouds"},
-                              {"pop", 0.0},
-                              {"moonPhase", 0.75}});
+      rows.append(QVariantMap{
+          {"date", 1791118800 + (i * 86400)},
+          {"tempMax", 18 + i},
+          {"tempMin", 7 + i},
+          {"conditionId", 801},
+          {"condition", "few clouds"},
+          {"pop", 0.0},
+          {"moonPhase", 0.75},
+      });
     }
     return rows;
   }
@@ -850,8 +854,8 @@ class FakeLauncherService : public QObject {
   Q_PROPERTY(QVariantList selectedEntryActions READ selectedEntryActions CONSTANT)
 
  public:
-  bool launchPending() const { return false; }
-  QString launchError() const { return {}; }
+  [[nodiscard]] bool launchPending() const { return false; }
+  [[nodiscard]] QString launchError() const { return {}; }
   Q_INVOKABLE [[nodiscard]] QString iconForAppId(const QString& app) const { return icons_.value(app); }
   Q_INVOKABLE void setAppIcon(const QString& app, const QString& icon) {
     icons_.insert(app, icon);

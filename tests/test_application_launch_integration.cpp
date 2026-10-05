@@ -16,7 +16,7 @@ struct TestSystemdUnit {
   QDBusObjectPath path;
   uint jobId{0};
   QString jobType;
-  QDBusObjectPath jobPath;
+  QDBusObjectPath job_path;
 };
 using TestSystemdUnits = QList<TestSystemdUnit>;
 Q_DECLARE_METATYPE(TestSystemdUnit)
@@ -24,14 +24,14 @@ Q_DECLARE_METATYPE(TestSystemdUnits)
 QDBusArgument& operator<<(QDBusArgument& argument, const TestSystemdUnit& unit) {
   argument.beginStructure();
   argument << unit.name << unit.description << unit.loadState << unit.activeState << unit.subState << unit.following
-           << unit.path << unit.jobId << unit.jobType << unit.jobPath;
+           << unit.path << unit.jobId << unit.jobType << unit.job_path;
   argument.endStructure();
   return argument;
 }
 const QDBusArgument& operator>>(const QDBusArgument& argument, TestSystemdUnit& unit) {
   argument.beginStructure();
   argument >> unit.name >> unit.description >> unit.loadState >> unit.activeState >> unit.subState >> unit.following >>
-      unit.path >> unit.jobId >> unit.jobType >> unit.jobPath;
+      unit.path >> unit.jobId >> unit.jobType >> unit.job_path;
   argument.endStructure();
   return argument;
 }
@@ -47,7 +47,7 @@ class SystemdManager final : public QDBusVirtualObject {
   int starts{0};
   int stops{0};
 
-  QString introspect(const QString&) const override {
+  [[nodiscard]] QString introspect(const QString& /*unused*/) const override {
     return QStringLiteral(R"xml(<interface name="org.freedesktop.systemd1.Manager">
       <method name="Subscribe"/>
       <method name="ListUnitsByPatterns"><arg type="as" direction="in"/><arg type="as" direction="in"/><arg type="a(ssssssouso)" direction="out"/></method>
@@ -90,13 +90,14 @@ class SystemdManager final : public QDBusVirtualObject {
       }
       const QDBusObjectPath job("/org/freedesktop/systemd1/job/1");
       bus.send(message.createReply(QVariant::fromValue(job)));
-      if (!withholdResult)
+      if (!withholdResult) {
         QTimer::singleShot(10, this, [bus, job, unit = name] {
           auto signal =
               QDBusMessage::createSignal("/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "JobRemoved");
-          signal.setArguments({QVariant::fromValue(uint(1)), QVariant::fromValue(job), unit, "done"});
+          signal.setArguments({QVariant::fromValue(static_cast<uint>(1)), QVariant::fromValue(job), unit, "done"});
           bus.send(signal);
         });
+      }
     } else if (message.member() == "StopUnit") {
       ++stops;
       bus.send(message.createReply(QVariant::fromValue(QDBusObjectPath("/org/freedesktop/systemd1/job/2"))));
@@ -110,25 +111,30 @@ class SystemdManager final : public QDBusVirtualObject {
 class ApplicationLaunchPrivateBus : public testing::Test {
  protected:
   void SetUp() override {
-    if (qEnvironmentVariable("HOLONIGHT_LAUNCH_PRIVATE_BUS") != "1")
+    if (qEnvironmentVariable("HOLONIGHT_LAUNCH_PRIVATE_BUS") != "1") {
       GTEST_SKIP() << "Requires disposable D-Bus session";
+    }
     qDBusRegisterMetaType<TestSystemdUnit>();
     qDBusRegisterMetaType<TestSystemdUnits>();
     ASSERT_TRUE(bus.registerService("org.freedesktop.systemd1"));
     ASSERT_TRUE(bus.registerVirtualObject("/org/freedesktop/systemd1", &manager, QDBusConnection::SubPath));
   }
   void TearDown() override {
-    if (qEnvironmentVariable("HOLONIGHT_LAUNCH_PRIVATE_BUS") != "1") return;
+    if (qEnvironmentVariable("HOLONIGHT_LAUNCH_PRIVATE_BUS") != "1") {
+      return;
+    }
     bus.unregisterObject("/org/freedesktop/systemd1", QDBusConnection::UnregisterTree);
     bus.unregisterService("org.freedesktop.systemd1");
   }
+
+ public:
   QDBusConnection bus{QDBusConnection::sessionBus()};
   SystemdManager manager;
 };
 
 TEST_F(ApplicationLaunchPrivateBus, NativeUnitPreservesArgumentsDirectoryAndLifecycle) {
   ApplicationLaunchService launcher(nullptr, {},
-                                    [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true}; });
+                                    [] { return ApplicationLaunchService::Capabilities{.manager_available = true}; });
   QObject context;
   int completions = 0;
   QString error;
@@ -176,7 +182,7 @@ TEST_F(ApplicationLaunchPrivateBus, NativeUnitPreservesArgumentsDirectoryAndLife
 TEST_F(ApplicationLaunchPrivateBus, RejectedJobDoesNotRetry) {
   manager.reject = true;
   ApplicationLaunchService launcher(nullptr, {},
-                                    [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true}; });
+                                    [] { return ApplicationLaunchService::Capabilities{.manager_available = true}; });
   QObject context;
   int completions = 0;
   QString error;
@@ -193,7 +199,7 @@ TEST_F(ApplicationLaunchPrivateBus, RejectedJobDoesNotRetry) {
 TEST_F(ApplicationLaunchPrivateBus, TimeoutStopsOnlyTheNewUnitAndCompletesOnce) {
   manager.withholdResult = true;
   ApplicationLaunchService launcher(nullptr, {},
-                                    [] { return ApplicationLaunchService::Capabilities{.managerAvailable = true}; });
+                                    [] { return ApplicationLaunchService::Capabilities{.manager_available = true}; });
   QObject context;
   int completions = 0;
   QString error;

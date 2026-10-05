@@ -11,11 +11,11 @@
 
 class ApplicationLaunchService : public QObject {
  public:
-  enum class Backend { Uwsm, Systemd, Detached, Unavailable };
+  enum class Backend : unsigned char { Uwsm, Systemd, Detached, Unavailable };
   struct Capabilities {
-    bool managerAvailable{false};
-    bool uwsmActive{false};
-    bool runningAsService{false};
+    bool manager_available{false};
+    bool uwsm_active{false};
+    bool running_as_service{false};
     QString error;
   };
   using Probe = std::function<Capabilities()>;
@@ -38,15 +38,15 @@ class ApplicationLaunchService : public QObject {
 class ApplicationLaunchJobObserver : public QObject {
   Q_OBJECT
  public:
-  QString jobPath;
+  QString job_path;
   QString result;
   QHash<QString, QString> results;
  signals:
   void finished();
  public slots:
-  void jobRemoved(uint, const QDBusObjectPath& path, const QString&, const QString& status) {
+  void jobRemoved(uint /*unused*/, const QDBusObjectPath& path, const QString& /*unused*/, const QString& status) {
     results.insert(path.path(), status);
-    if (path.path() == jobPath) {
+    if (path.path() == job_path) {
       result = status;
       emit finished();
     }

@@ -61,7 +61,9 @@ LauncherCommand commandFromExecString(const QString& exec, const QString& workin
 
 LauncherCommand commandForDesktopEntry(const DesktopEntry& entry, const QString& terminal_emulator) {
   LauncherCommand command = commandFromExecString(entry.exec, entry.path);
-  if (entry.terminal && terminal_emulator.isEmpty()) return {};
+  if (entry.terminal && terminal_emulator.isEmpty()) {
+    return {};
+  }
   if (!command.isValid() || !entry.terminal) {
     return command;
   }

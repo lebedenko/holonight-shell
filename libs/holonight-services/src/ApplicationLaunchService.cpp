@@ -29,7 +29,7 @@ using Properties = QList<Property>;
 struct Exec {
   QString path;
   QStringList argv;
-  bool ignore;
+  bool ignore{};
 };
 using Execs = QList<Exec>;
 struct Auxiliary {
@@ -37,52 +37,54 @@ struct Auxiliary {
   Properties properties;
 };
 using Auxiliaries = QList<Auxiliary>;
-QDBusArgument& operator<<(QDBusArgument& a, const Property& p) {
-  a.beginStructure();
-  a << p.name << p.value;
-  a.endStructure();
-  return a;
+QDBusArgument& operator<<(QDBusArgument& argument, const Property& value) {
+  argument.beginStructure();
+  argument << value.name << value.value;
+  argument.endStructure();
+  return argument;
 }
-const QDBusArgument& operator>>(const QDBusArgument& a, Property& p) {
-  a.beginStructure();
-  a >> p.name >> p.value;
-  a.endStructure();
-  return a;
+const QDBusArgument& operator>>(const QDBusArgument& argument, Property& value) {
+  argument.beginStructure();
+  argument >> value.name >> value.value;
+  argument.endStructure();
+  return argument;
 }
-QDBusArgument& operator<<(QDBusArgument& a, const Exec& p) {
-  a.beginStructure();
-  a << p.path << p.argv << p.ignore;
-  a.endStructure();
-  return a;
+QDBusArgument& operator<<(QDBusArgument& argument, const Exec& value) {
+  argument.beginStructure();
+  argument << value.path << value.argv << value.ignore;
+  argument.endStructure();
+  return argument;
 }
-const QDBusArgument& operator>>(const QDBusArgument& a, Exec& p) {
-  a.beginStructure();
-  a >> p.path >> p.argv >> p.ignore;
-  a.endStructure();
-  return a;
+const QDBusArgument& operator>>(const QDBusArgument& argument, Exec& value) {
+  argument.beginStructure();
+  argument >> value.path >> value.argv >> value.ignore;
+  argument.endStructure();
+  return argument;
 }
-QDBusArgument& operator<<(QDBusArgument& a, const Auxiliary& p) {
-  a.beginStructure();
-  a << p.name << p.properties;
-  a.endStructure();
-  return a;
+QDBusArgument& operator<<(QDBusArgument& argument, const Auxiliary& value) {
+  argument.beginStructure();
+  argument << value.name << value.properties;
+  argument.endStructure();
+  return argument;
 }
-const QDBusArgument& operator>>(const QDBusArgument& a, Auxiliary& p) {
-  a.beginStructure();
-  a >> p.name >> p.properties;
-  a.endStructure();
-  return a;
+const QDBusArgument& operator>>(const QDBusArgument& argument, Auxiliary& value) {
+  argument.beginStructure();
+  argument >> value.name >> value.properties;
+  argument.endStructure();
+  return argument;
 }
 ApplicationLaunchService::Capabilities probeCapabilities(const QDeadlineTimer& deadline) {
   ApplicationLaunchService::Capabilities capabilities;
-  capabilities.runningAsService =
+  capabilities.running_as_service =
       qEnvironmentVariableIsSet("INVOCATION_ID") || qEnvironmentVariableIsSet("SYSTEMD_EXEC_PID");
   auto bus = QDBusConnection::sessionBus();
   QDBusInterface manager("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
                          bus);
   manager.setTimeout(static_cast<int>(qMax<qint64>(1, deadline.remainingTime())));
-  capabilities.managerAvailable = manager.isValid();
-  if (!capabilities.managerAvailable) return capabilities;
+  capabilities.manager_available = manager.isValid();
+  if (!capabilities.manager_available) {
+    return capabilities;
+  }
   const auto units = manager.call("ListUnitsByPatterns", QStringList{"active"}, QStringList{"wayland-wm@*.service"});
   if (units.type() == QDBusMessage::ErrorMessage) {
     capabilities.error = units.errorMessage();
@@ -91,89 +93,88 @@ ApplicationLaunchService::Capabilities probeCapabilities(const QDeadlineTimer& d
   if (!units.arguments().isEmpty()) {
     const auto array = qvariant_cast<QDBusArgument>(units.arguments().first());
     array.beginArray();
-    capabilities.uwsmActive = !array.atEnd();
+    capabilities.uwsm_active = !array.atEnd();
     array.endArray();
   }
   return capabilities;
 }
-QString execute(ApplicationLaunchService::Backend backend, LauncherCommand command, const DesktopEntry* entry,
-                const QString& action, const QDeadlineTimer& deadline) {
-  if (deadline.hasExpired()) return "Application startup timed out; outcome uncertain";
-  if (backend == ApplicationLaunchService::Backend::Uwsm) {
-    QProcess helper;
-    helper.setWorkingDirectory(command.working_dir);
-    QStringList args{"app", "-t", "service", "--"};
-    if (entry)
-      args << (entry->desktop_file + (action.isEmpty() ? QString() : ":" + action));
-    else {
-      args << command.program;
-      args << command.arguments;
-    }
+QString executeUwsm(const LauncherCommand& command, const DesktopEntry* entry, const QString& action,
+                    const QDeadlineTimer& deadline) {
+  QProcess helper;
+  helper.setWorkingDirectory(command.working_dir);
+  QStringList args{"app", "-t", "service", "--"};
+  if (entry != nullptr) {
+    args << (entry->desktop_file + (action.isEmpty() ? QString() : ":" + action));
+  } else {
+    args << command.program;
+    args << command.arguments;
+  }
 
-    helper.start("uwsm", args);
-    if (!helper.waitForStarted(static_cast<int>(qMax<qint64>(0, deadline.remainingTime()))))
-      return helper.errorString();
-    if (!helper.waitForFinished(static_cast<int>(qMax<qint64>(0, deadline.remainingTime())))) {
-      helper.kill();
-      helper.waitForFinished(1000);
-      return "Application startup timed out; outcome uncertain";
-    }
-    const QString error = QString::fromLocal8Bit(helper.readAllStandardError()).trimmed();
-    return helper.exitStatus() == QProcess::NormalExit && helper.exitCode() == 0
-               ? QString()
-               : (error.isEmpty() ? QString("UWSM application launch failed") : error);
+  helper.start("uwsm", args);
+  if (!helper.waitForStarted(static_cast<int>(qMax<qint64>(0, deadline.remainingTime())))) {
+    return helper.errorString();
   }
-  if (entry) {
-    DesktopEntry selected = *entry;
-    if (!action.isEmpty()) {
-      bool found = false;
-      for (const auto& item : entry->actions) {
-        if (item.id == action) {
-          selected.exec = item.exec;
-          found = true;
-          break;
-        }
+  if (!helper.waitForFinished(static_cast<int>(qMax<qint64>(0, deadline.remainingTime())))) {
+    helper.kill();
+    helper.waitForFinished(1000);
+    return "Application startup timed out; outcome uncertain";
+  }
+  const QString error = QString::fromLocal8Bit(helper.readAllStandardError()).trimmed();
+  if (helper.exitStatus() == QProcess::NormalExit && helper.exitCode() == 0) {
+    return {};
+  }
+  return error.isEmpty() ? QString("UWSM application launch failed") : error;
+}
+QString prepareDesktopCommand(LauncherCommand& command, const DesktopEntry& desktop, const QString& action) {
+  DesktopEntry selected = desktop;
+  if (!action.isEmpty()) {
+    bool found = false;
+    for (const auto& item : desktop.actions) {
+      if (item.id == action) {
+        selected.exec = item.exec;
+        found = true;
+        break;
       }
-      if (!found) return "Desktop action was not found";
     }
-    QString terminal;
-    if (selected.terminal) {
-      QStringList candidates{QString::fromLocal8Bit(qgetenv("TERMINAL")).trimmed(),
-                             "foot",
-                             "kitty",
-                             "alacritty",
-                             "wezterm",
-                             "konsole",
-                             "gnome-terminal",
-                             "xfce4-terminal",
-                             "xterm"};
-      for (const auto& candidate : candidates)
-        if (!candidate.isEmpty() && !QStandardPaths::findExecutable(candidate).isEmpty()) {
-          terminal = candidate;
-          break;
-        }
-      if (terminal.isEmpty()) return "No terminal emulator is available";
+    if (!found) {
+      return "Desktop action was not found";
     }
-    const QString workingDirectory = command.working_dir;
-    command = commandForDesktopEntry(selected, terminal);
-    if (command.working_dir.isEmpty()) command.working_dir = workingDirectory;
   }
-  command.program = QStandardPaths::findExecutable(command.program);
-  if (command.program.isEmpty()) return "Application executable was not found";
-  if (deadline.hasExpired()) return "Application startup timed out; outcome uncertain";
-  if (backend == ApplicationLaunchService::Backend::Detached) {
-    return QProcess::startDetached(command.program, command.arguments, command.working_dir)
-               ? QString()
-               : QString("Could not start application");
+  QString terminal;
+  if (selected.terminal) {
+    QStringList candidates{
+        QString::fromLocal8Bit(qgetenv("TERMINAL")).trimmed(),
+        "foot",
+        "kitty",
+        "alacritty",
+        "wezterm",
+        "konsole",
+        "gnome-terminal",
+        "xfce4-terminal",
+        "xterm",
+    };
+    for (const auto& candidate : candidates) {
+      if (!candidate.isEmpty() && !QStandardPaths::findExecutable(candidate).isEmpty()) {
+        terminal = candidate;
+        break;
+      }
+    }
+    if (terminal.isEmpty()) {
+      return "No terminal emulator is available";
+    }
   }
-  auto bus = QDBusConnection::sessionBus();
-  QDBusInterface manager("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
-                         bus);
-  manager.setTimeout(static_cast<int>(qMax<qint64>(1, deadline.remainingTime())));
-  if (deadline.hasExpired()) return "Application startup timed out; outcome uncertain";
-  if (!manager.isValid()) return "Systemd user manager became inaccessible";
+  const QString workingDirectory = command.working_dir;
+  command = commandForDesktopEntry(selected, terminal);
+  if (command.working_dir.isEmpty()) {
+    command.working_dir = workingDirectory;
+  }
+  return {};
+}
+Properties systemdProperties(const LauncherCommand& command, QDBusInterface& manager, const QDBusConnection& bus) {
   Properties properties;
-  auto add = [&properties](QString name, QVariant value) { properties.append({name, QDBusVariant(value)}); };
+  auto add = [&properties](const QString& name, const QVariant& value) {
+    properties.append({.name = name, .value = QDBusVariant(value)});
+  };
   add("Type", "exec");
   add("Slice", "app.slice");
   add("CollectMode", "inactive-or-failed");
@@ -182,7 +183,9 @@ QString execute(ApplicationLaunchService::Backend backend, LauncherCommand comma
   add("StandardError", "journal");
   const auto environment = ApplicationLaunchService::nativeEnvironment(QProcessEnvironment::systemEnvironment());
   add("Environment", environment.toStringList());
-  if (!command.working_dir.isEmpty()) add("WorkingDirectory", command.working_dir);
+  if (!command.working_dir.isEmpty()) {
+    add("WorkingDirectory", command.working_dir);
+  }
   QDBusReply<QDBusObjectPath> target = manager.call("GetUnit", "graphical-session.target");
   if (target.isValid()) {
     QDBusInterface state("org.freedesktop.systemd1", target.value().path(), "org.freedesktop.systemd1.Unit", bus);
@@ -193,7 +196,21 @@ QString execute(ApplicationLaunchService::Backend backend, LauncherCommand comma
   }
   QStringList argv{command.program};
   argv << command.arguments;
-  add("ExecStart", QVariant::fromValue(Execs{{command.program, argv, false}}));
+  add("ExecStart", QVariant::fromValue(Execs{{.path = command.program, .argv = argv, .ignore = false}}));
+  return properties;
+}
+QString executeSystemd(const LauncherCommand& command, const QDeadlineTimer& deadline) {
+  auto bus = QDBusConnection::sessionBus();
+  QDBusInterface manager("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
+                         bus);
+  manager.setTimeout(static_cast<int>(qMax<qint64>(1, deadline.remainingTime())));
+  if (deadline.hasExpired()) {
+    return "Application startup timed out; outcome uncertain";
+  }
+  if (!manager.isValid()) {
+    return "Systemd user manager became inaccessible";
+  }
+  const auto properties = systemdProperties(command, manager, bus);
   const QString unit = ApplicationLaunchService::nativeUnitName(command.program);
   ApplicationLaunchJobObserver observer;
   QEventLoop loop;
@@ -202,12 +219,16 @@ QString execute(ApplicationLaunchService::Backend backend, LauncherCommand comma
   QObject::connect(&observer, &ApplicationLaunchJobObserver::finished, &loop, &QEventLoop::quit);
   QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
   if (!bus.connect("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
-                   "JobRemoved", &observer, SLOT(jobRemoved(uint, QDBusObjectPath, QString, QString))))
+                   "JobRemoved", &observer, SLOT(jobRemoved(uint, QDBusObjectPath, QString, QString)))) {
     return "Could not monitor application startup";
+  }
   const auto subscription = manager.call("Subscribe");
-  if (subscription.type() == QDBusMessage::ErrorMessage && !subscription.errorName().endsWith("AlreadySubscribed"))
+  if (subscription.type() == QDBusMessage::ErrorMessage && !subscription.errorName().endsWith("AlreadySubscribed")) {
     return subscription.errorMessage();
-  if (deadline.hasExpired()) return "Application startup timed out; outcome uncertain";
+  }
+  if (deadline.hasExpired()) {
+    return "Application startup timed out; outcome uncertain";
+  }
   timeout.setTimerType(Qt::PreciseTimer);
   timeout.start(static_cast<int>(deadline.remainingTime()));
   manager.setTimeout(static_cast<int>(qMax<qint64>(1, deadline.remainingTime())));
@@ -220,14 +241,47 @@ QString execute(ApplicationLaunchService::Backend backend, LauncherCommand comma
     }
     return reply.error().message();
   }
-  observer.jobPath = reply.value().path();
-  observer.result = observer.results.value(observer.jobPath);
-  if (observer.result.isEmpty() && timeout.isActive()) loop.exec();
-  if (observer.result == "done" && !deadline.hasExpired()) return {};
-  if (!observer.result.isEmpty() && observer.result != "done")
+  observer.job_path = reply.value().path();
+  observer.result = observer.results.value(observer.job_path);
+  if (observer.result.isEmpty() && timeout.isActive()) {
+    loop.exec();
+  }
+  if (observer.result == "done" && !deadline.hasExpired()) {
+    return {};
+  }
+  if (!observer.result.isEmpty() && observer.result != "done") {
     return "Application startup job failed: " + observer.result;
+  }
   manager.call("StopUnit", unit, "replace");
   return "Application startup timed out; outcome uncertain";
+}
+QString execute(ApplicationLaunchService::Backend backend, LauncherCommand command, const DesktopEntry* entry,
+                const QString& action, const QDeadlineTimer& deadline) {
+  if (deadline.hasExpired()) {
+    return "Application startup timed out; outcome uncertain";
+  }
+  if (backend == ApplicationLaunchService::Backend::Uwsm) {
+    return executeUwsm(command, entry, action, deadline);
+  }
+  if (entry != nullptr) {
+    const auto error = prepareDesktopCommand(command, *entry, action);
+    if (!error.isEmpty()) {
+      return error;
+    }
+  }
+  command.program = QStandardPaths::findExecutable(command.program);
+  if (command.program.isEmpty()) {
+    return "Application executable was not found";
+  }
+  if (deadline.hasExpired()) {
+    return "Application startup timed out; outcome uncertain";
+  }
+  if (backend == ApplicationLaunchService::Backend::Detached) {
+    return QProcess::startDetached(command.program, command.arguments, command.working_dir)
+               ? QString()
+               : QString("Could not start application");
+  }
+  return executeSystemd(command, deadline);
 }
 }  // namespace
 Q_DECLARE_METATYPE(Property)
@@ -246,16 +300,19 @@ ApplicationLaunchService::ApplicationLaunchService(QObject* parent, Transport tr
   qDBusRegisterMetaType<Auxiliaries>();
 }
 QString ApplicationLaunchService::launch(LauncherCommand command, QObject* context, Completion completion) {
-  return submit(command, {}, {}, context, std::move(completion));
+  return submit(std::move(command), {}, {}, context, std::move(completion));
 }
 QString ApplicationLaunchService::launchDesktop(DesktopEntry entry, QString action, QObject* context,
                                                 Completion completion) {
-  return submit({.working_dir = entry.path}, entry, action, context, std::move(completion));
+  const QString directory = entry.path;
+  return submit({.working_dir = directory}, std::move(entry), std::move(action), context, std::move(completion));
 }
 QString ApplicationLaunchService::submit(LauncherCommand command, DesktopEntry entry, QString action, QObject* context,
                                          Completion completion) {
-  if (command.working_dir.isEmpty()) command.working_dir = QDir::currentPath();
-  const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  if (command.working_dir.isEmpty()) {
+    command.working_dir = QDir::currentPath();
+  }
+  const QString request_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
   const QDeadlineTimer deadline(15000, Qt::PreciseTimer);
   auto* watcher = new QFutureWatcher<QString>(context);
   auto* timeout = new QTimer(watcher);
@@ -263,43 +320,57 @@ QString ApplicationLaunchService::submit(LauncherCommand command, DesktopEntry e
   timeout->setTimerType(Qt::PreciseTimer);
   auto completed = std::make_shared<bool>(false);
   auto callback = std::make_shared<Completion>(std::move(completion));
-  connect(timeout, &QTimer::timeout, context, [watcher, id, completed, callback] {
-    if (*completed) return;
+  connect(timeout, &QTimer::timeout, context, [watcher, request_id, completed, callback] {
+    if (*completed) {
+      return;
+    }
     *completed = true;
     // A completed future can precede delivery of its queued finished signal.
     const QString result =
         watcher->isFinished() ? watcher->result() : QString("Application startup timed out; outcome uncertain");
-    (*callback)(id, result);
+    (*callback)(request_id, result);
   });
-  connect(watcher, &QFutureWatcher<QString>::finished, context, [watcher, timeout, id, completed, callback] {
+  connect(watcher, &QFutureWatcher<QString>::finished, context, [watcher, timeout, request_id, completed, callback] {
     timeout->stop();
     const QString result = watcher->result();
     watcher->deleteLater();
-    if (*completed) return;
+    if (*completed) {
+      return;
+    }
     *completed = true;
-    (*callback)(id, result);
+    (*callback)(request_id, result);
   });
   timeout->start(15000);
-  watcher->setFuture(QtConcurrent::run([command, entry, action, transport = transport_, probe = probe_, deadline] {
-    if (deadline.hasExpired()) return QString("Application startup timed out; outcome uncertain");
+  watcher->setFuture(QtConcurrent::run([command = std::move(command), entry = std::move(entry),
+                                        action = std::move(action), transport = transport_, probe = probe_, deadline] {
+    if (deadline.hasExpired()) {
+      return QString("Application startup timed out; outcome uncertain");
+    }
     const auto* desktop = entry.desktop_file.isEmpty() ? nullptr : &entry;
     const auto capabilities = probe ? probe() : probeCapabilities(deadline);
-    if (deadline.hasExpired()) return QString("Application startup timed out; outcome uncertain");
+    if (deadline.hasExpired()) {
+      return QString("Application startup timed out; outcome uncertain");
+    }
     const auto backend = backendFor(capabilities);
-    if (backend == Backend::Unavailable)
+    if (backend == Backend::Unavailable) {
       return capabilities.error.isEmpty()
                  ? QString("Systemd user manager is inaccessible; refusing to launch in the shell service")
                  : capabilities.error;
+    }
     return transport ? transport(backend, command, desktop, action)
                      : execute(backend, command, desktop, action, deadline);
   }));
-  return id;
+  return request_id;
 }
 
 ApplicationLaunchService::Backend ApplicationLaunchService::backendFor(const Capabilities& capabilities) {
-  if (!capabilities.error.isEmpty()) return Backend::Unavailable;
-  if (capabilities.managerAvailable) return capabilities.uwsmActive ? Backend::Uwsm : Backend::Systemd;
-  return capabilities.runningAsService ? Backend::Unavailable : Backend::Detached;
+  if (!capabilities.error.isEmpty()) {
+    return Backend::Unavailable;
+  }
+  if (capabilities.manager_available) {
+    return capabilities.uwsm_active ? Backend::Uwsm : Backend::Systemd;
+  }
+  return capabilities.running_as_service ? Backend::Unavailable : Backend::Detached;
 }
 
 QString ApplicationLaunchService::nativeUnitName(const QString& executable) {
@@ -308,8 +379,10 @@ QString ApplicationLaunchService::nativeUnitName(const QString& executable) {
   return "app-holonight-" + app + "-" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".service";
 }
 QProcessEnvironment ApplicationLaunchService::nativeEnvironment(QProcessEnvironment environment) {
-  for (const auto& key : environment.keys())
-    if (key == "NOTIFY_SOCKET" || key == "INVOCATION_ID" || key == "SYSTEMD_EXEC_PID" || key.startsWith("LISTEN_"))
+  for (const auto& key : environment.keys()) {
+    if (key == "NOTIFY_SOCKET" || key == "INVOCATION_ID" || key == "SYSTEMD_EXEC_PID" || key.startsWith("LISTEN_")) {
       environment.remove(key);
+    }
+  }
   return environment;
 }

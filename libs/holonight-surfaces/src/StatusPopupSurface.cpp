@@ -108,7 +108,9 @@ void StatusPopupSurface::onPairOpened() {
   frame_connection_ =
       connect(contentView(), &QQuickWindow::afterAnimating, this, &StatusPopupSurface::updateSurfaceGeometry);
   const auto request_frame = [this] {
-    if (contentView() != nullptr) contentView()->update();
+    if (contentView() != nullptr) {
+      contentView()->update();
+    }
   };
   screen_connection_ = connect(current_screen_, &QScreen::geometryChanged, this, request_frame);
   available_connection_ = connect(current_screen_, &QScreen::availableGeometryChanged, this, request_frame);
@@ -117,18 +119,22 @@ void StatusPopupSurface::onPairOpened() {
 
 void StatusPopupSurface::updateSurfaceGeometry() {
   auto* root = qobject_cast<QQuickItem*>(contentRootObject());
-  if (root == nullptr || current_screen_ == nullptr || contentHost() == nullptr) return;
-  if (!std::isfinite(root->implicitWidth()) || !std::isfinite(root->implicitHeight()) || root->implicitWidth() <= 0 ||
-      root->implicitHeight() <= 0)
+  if (root == nullptr || current_screen_ == nullptr || contentHost() == nullptr) {
     return;
+  }
+  if (!std::isfinite(root->implicitWidth()) || !std::isfinite(root->implicitHeight()) || root->implicitWidth() <= 0 ||
+      root->implicitHeight() <= 0) {
+    return;
+  }
   const QSize requested{static_cast<int>(std::ceil(root->implicitWidth())),
                         static_cast<int>(std::ceil(root->implicitHeight()))};
   const auto geometry =
       statusPopupGeometry(requested, current_screen_->geometry(), current_screen_->availableGeometry(),
                           current_screen_->geometry().x() + anchor_local_x_, anchor_width_);
   if (geometry == applied_geometry_) {
-    if (contentView()->width() == geometry.surface_width && contentView()->height() == geometry.surface_height)
+    if (contentView()->width() == geometry.surface_width && contentView()->height() == geometry.surface_height) {
       root->setProperty("geometryReady", true);
+    }
     return;
   }
   applied_geometry_ = geometry;

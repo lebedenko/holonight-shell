@@ -528,16 +528,21 @@ void StorageService::appendOpticalDrives(QList<QVariantMap>& rows) const {
 
 void StorageService::launchFiles(const QStringList& arguments, const QString& target) {
   ApplicationLaunchService service;
-  auto* launcher = application_launch_service_ ? application_launch_service_ : &service;
+  auto* launcher = application_launch_service_ != nullptr ? application_launch_service_ : &service;
   launcher->launch({.program = QStringLiteral("holonight-files"), .arguments = arguments}, this,
                    [this, target, arguments](const QString&, const QString& error) {
                      error_message_ = error;
-                     if (!target.isEmpty() && error.isEmpty()) last_errors_.remove(target);
-                     if (!target.isEmpty() && !error.isEmpty())
-                       last_errors_.insert(target, {.message = error,
-                                                    .generation = ++next_error_generation_,
-                                                    .files_launch = true,
-                                                    .launch_arguments = arguments});
+                     if (!target.isEmpty() && error.isEmpty()) {
+                       last_errors_.remove(target);
+                     }
+                     if (!target.isEmpty() && !error.isEmpty()) {
+                       last_errors_.insert(target, {
+                                                       .message = error,
+                                                       .generation = ++next_error_generation_,
+                                                       .files_launch = true,
+                                                       .launch_arguments = arguments,
+                                                   });
+                     }
                      refresh();
                    });
 }
