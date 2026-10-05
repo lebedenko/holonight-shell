@@ -1,6 +1,7 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
+find_dependency(HoloNightConfig CONFIG REQUIRED)
 find_dependency(Qt6 REQUIRED COMPONENTS Core)
 find_dependency(PkgConfig REQUIRED)
 pkg_check_modules(TOMLPLUSPLUS REQUIRED IMPORTED_TARGET tomlplusplus)

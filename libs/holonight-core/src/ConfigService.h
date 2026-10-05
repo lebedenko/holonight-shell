@@ -1,11 +1,11 @@
 #pragma once
 
-#include <QFileSystemWatcher>
 #include <QObject>
 #include <QString>
 #include <QTimer>
 
-#include <holonight_shell_config/config_parsers.h>
+#include <holonight/document_watcher.h>
+#include <holonight_shell_config/config_schema.h>
 #include <holonight_shell_config/config_structs.h>
 
 class ConfigService : public QObject {
@@ -40,9 +40,12 @@ class ConfigService : public QObject {
   [[nodiscard]] const HoloNight::ShellConfig::LogoConfig& logo() const { return logo_; }
   [[nodiscard]] const HoloNight::ShellConfig::OsdConfig& osd() const { return osd_; }
 
+  [[nodiscard]] const std::vector<HoloNight::Config::Diagnostic>& diagnostics() const { return diagnostics_; }
+
   [[nodiscard]] QString configFilePath() const { return config_path_; }
 
  Q_SIGNALS:
+  void diagnosticsChanged();
   void taskbarChanged();
   void barWorkspacesChanged();
   void barSystemTrayChanged();
@@ -60,21 +63,15 @@ class ConfigService : public QObject {
 
  private Q_SLOTS:
   void parseFile();
-  void onFileChanged(const QString& path);
 
  private:
   void resolveConfigPath();
-  void ensureDirectoryExists();
-  void loadOrCreateConfig();
-  void writeConfig();
-  void startWatcher();
 
   void applyParsedConfig(const HoloNight::ShellConfig::ProductConfig& parsed);
 
   static ConfigService* s_instance_;
 
   QString config_path_;
-  QString config_dir_path_;
   HoloNight::ShellConfig::TaskbarConfig taskbar_;
   HoloNight::ShellConfig::BarWorkspacesConfig bar_workspaces_;
   HoloNight::ShellConfig::BarSystemTrayConfig bar_system_tray_;
@@ -87,9 +84,9 @@ class ConfigService : public QObject {
   HoloNight::ShellConfig::CalendarConfig calendar_config_;
   HoloNight::ShellConfig::LogoConfig logo_;
   HoloNight::ShellConfig::OsdConfig osd_;
-  QFileSystemWatcher watcher_;
+  std::unique_ptr<Holonight::DocumentWatcher> watcher_;
+  std::vector<HoloNight::Config::Diagnostic> diagnostics_;
   QTimer debounce_timer_;
-  bool watcher_active_{false};
 
   static constexpr int kDebounceMs{200};
 };

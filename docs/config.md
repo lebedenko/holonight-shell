@@ -43,12 +43,15 @@ scale = 1.0
 
 All displayed fields except the two shape base overrides are required in a persisted v1 appearance document.
 Unknown, missing, duplicate, incorrectly typed, and out-of-range fields reject the whole document.
+Sparse v2 documents are also supported: missing known values use defaults, unknown fields are preserved and
+reported as warnings, and invalid known values reject the document. Version metadata does not alter the effective
+appearance model. Unsupported versions remain read-only. Settings first-save upgrades are coordinated separately.
 
-Shell creates `config.toml` with product defaults on first run. Missing product keys use their defaults, allowing new
-settings to appear after upgrades. Invalid present product values are corrected in memory or clamped according to
-the field contract. Inconsistencies are logged through `holonight.config`; the shell keeps running.
+Shell uses sparse product overrides. Missing values use typed defaults without creating a file or writing keys.
+Invalid known values reject the whole document with diagnostics; the running Shell retains its last valid values.
+At startup, errors use defaults. Removing an assignment resets its override. Unknown fields remain inert.
 
-Changes are watched and reloaded after a 200 ms debounce. If the file contains invalid TOML, the previous valid
+Changes are watched and reloaded after a 200 ms debounce. If the file contains invalid TOML or known invalid values, the previous valid
 configuration remains active.
 
 ```toml
@@ -145,7 +148,7 @@ controls localized condition text. Fetched weather is cached on disk for offline
 
 Notifications are served by the in-process freedesktop notification daemon. `notifications.default_timeout_ms`
 sets the auto-dismiss delay for normal/low urgency notifications; critical notifications stay until dismissed.
-`notifications.max_visible` limits concurrent on-screen toasts per monitor and is clamped to the accepted range.
+`notifications.max_visible` limits concurrent on-screen toasts per monitor and must be in the accepted range.
 
 The on-screen display is a transient overlay that reports volume, brightness, and keyboard-layout changes. It is
 event-driven: no surface exists until the first displayable change, so nothing appears at login. `osd.enabled = false`
@@ -153,8 +156,8 @@ is a master switch — no surface is ever created. Each channel can be turned of
 `[osd.volume]`, `[osd.brightness]`, or `[osd.keyboard_layout]`; a disabled channel is not observed at all, and
 disabling one does not affect the others. `osd.timeout` is the delay after the *last* update, so a rapid series of
 changes keeps the OSD on screen and hides once, `osd.timeout` ms after the series ends. `osd.position` uses the same
-nine anchor names as desktop widgets; an unrecognized name is ignored with a warning and the default is used.
-Out-of-range `osd.timeout` values are clamped to the accepted range rather than rejected. All `[osd]` keys are
+nine anchor names as desktop widgets; an unrecognized name rejects the document.
+Out-of-range `osd.timeout` values reject the document. All `[osd]` keys are
 watched and applied live.
 
 The OSD opens on the focused monitor, resolved per event — moving focus between outputs routes the *next* event
@@ -174,8 +177,8 @@ transitions, so toggling is instant. `position` is one of nine anchors and is gl
 top-anchored positions are offset below the bar by `margin`. `enabled = false` (any widget type) keeps the
 definition but creates no surface, and such a widget does not block a position. If two widgets claim the same
 `(monitor, position)`, the one earlier in config order wins on that monitor and the other is dropped there
-(warned once). A widget is skipped (warned once) if its `type` is unknown, or — for `time-to-event` — its `title`
-is empty or its `deadline` is missing/unparseable.
+(warned once). The document is rejected if a widget type, position, field type or range is invalid. Enabled `time-to-event`
+widgets require a non-empty title and valid deadline; disabled countdowns may retain incomplete drafts.
 
 `time-to-event` deadlines parse as ISO 8601: a date-only value means `00:00:00`; the event-date label shows the
 time only when the deadline carried one. `clock` shows a 24-hour `HH:mm` with smaller inline seconds (omitted, and
@@ -202,17 +205,17 @@ requires Hyprland. Widget changes rebuild live; new monitors are picked up on ho
 | `weather.country` | unset | Optional display country |
 | `weather.units` | `"metric"` | `"metric"`, `"imperial"`, or `"standard"` |
 | `weather.lang` | `"en"` | OpenWeather language code |
-| `weather.refresh_interval` | `600` | Positive integer seconds |
+| `weather.refresh_interval` | `1800` | Positive integer seconds |
 | `notifications.default_timeout_ms` | `5000` | Positive integer milliseconds |
 | `notifications.max_visible` | `3` | Integer from `1` to `10` |
 | `osd.enabled` | `true` | Boolean; `false` = no OSD surface is ever created |
-| `osd.timeout` | `1500` | Integer milliseconds from `300` to `10000` (clamped) |
+| `osd.timeout` | `1500` | Integer milliseconds from `300` to `10000` (validated) |
 | `osd.position` | `"center-bottom"` | One of the nine anchor names |
 | `osd.volume.enabled` | `true` | Boolean; `false` = volume changes show no OSD |
 | `osd.brightness.enabled` | `true` | Boolean; `false` = brightness changes show no OSD |
 | `osd.keyboard_layout.enabled` | `true` | Boolean; `false` = layout changes show no OSD |
 | `widgets.margin` | `32` | Non-negative integer (logical px) |
-| `widget[].type` | required | `"time-to-event"` or `"clock"` |
+| `widget[].type` | required | `"time-to-event"`, `"clock"` or `"mpris"` |
 | `widget[].position` | `"center-center"` | One of the nine anchor names |
 | `widget[].monitors` | `[]` | Array of output names; empty = all monitors |
 | `widget[].enabled` | `true` | Boolean; `false` = defined but not shown |

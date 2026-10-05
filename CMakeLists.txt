@@ -324,10 +324,6 @@ if(CLANG_TIDY)
   set(TIDY_DB_DIR ${CMAKE_BINARY_DIR}/tidy)
   set(STRIP_TIDY_FLAGS_SCRIPT ${CMAKE_BINARY_DIR}/strip_tidy_flags.cmake)
   set(TIDY_GENERATED_FILES
-      ${CMAKE_CURRENT_BINARY_DIR}/integrations/labwc/qwayland-wlr-foreign-toplevel-management-unstable-v1.h
-      ${CMAKE_CURRENT_BINARY_DIR}/integrations/labwc/wayland-wlr-foreign-toplevel-management-unstable-v1-client-protocol.h
-      ${CMAKE_CURRENT_BINARY_DIR}/integrations/ext-workspace/qwayland-ext-workspace-v1.h
-      ${CMAKE_CURRENT_BINARY_DIR}/integrations/ext-workspace/wayland-ext-workspace-v1-client-protocol.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-xdg-shell.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/wayland-xdg-shell-client-protocol.h
       ${CMAKE_CURRENT_BINARY_DIR}/libs/holonight-platform/qwayland-ext-idle-notify-v1.h

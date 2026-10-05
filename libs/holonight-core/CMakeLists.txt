@@ -12,6 +12,7 @@ add_library(holonight_core STATIC
 )
 
 target_link_libraries(holonight_core PUBLIC
+    HolonightQt::Appearance
     HoloNightShellConfig::Config
     holonight_platform
     holonight_integration

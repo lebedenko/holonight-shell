@@ -1,12 +1,8 @@
 #include "ConfigService.h"
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
 #include <QLoggingCategory>
 
 #include <holonight_shell_config/config_path.h>
-#include <holonight_shell_config/config_writer.h>
 
 Q_LOGGING_CATEGORY(lcConfig, "holonight.config")
 
@@ -21,9 +17,10 @@ ConfigService::ConfigService(QObject* parent) : QObject(parent) {
   debounce_timer_.setSingleShot(true);
   connect(&debounce_timer_, &QTimer::timeout, this, &ConfigService::parseFile);
   resolveConfigPath();
-  ensureDirectoryExists();
-  loadOrCreateConfig();
-  startWatcher();
+  watcher_ = std::make_unique<Holonight::DocumentWatcher>(config_path_);
+  connect(watcher_.get(), &Holonight::DocumentWatcher::documentChanged, this,
+          [this] { debounce_timer_.start(kDebounceMs); });
+  parseFile();
 }
 
 ConfigService::~ConfigService() {
@@ -34,61 +31,24 @@ ConfigService::~ConfigService() {
 
 ConfigService* ConfigService::instance() { return s_instance_; }
 
-void ConfigService::resolveConfigPath() {
-  config_path_ = HoloNight::ShellConfig::resolveProductConfigPath();
-  config_dir_path_ = QFileInfo(config_path_).dir().path();
-}
-
-void ConfigService::ensureDirectoryExists() {
-  QDir dir = QFileInfo(config_path_).dir();
-  if (!dir.exists() && !dir.mkpath(QLatin1String("."))) {
-    qCWarning(lcConfig) << "Failed to create config directory:" << dir.absolutePath();
-  }
-}
-
-void ConfigService::loadOrCreateConfig() {
-  if (!QFile::exists(config_path_)) {
-    writeConfig();
-    qCInfo(lcConfig) << "Created default config:" << config_path_;
-  }
-  parseFile();
-}
-
-void ConfigService::writeConfig() {
-  if (!HoloNight::ShellConfig::ProductConfigWriter::write(HoloNight::ShellConfig::ProductConfig{}, config_path_)) {
-    qCWarning(lcConfig) << "Failed to write default config:" << config_path_;
-  }
-}
+void ConfigService::resolveConfigPath() { config_path_ = HoloNight::ShellConfig::resolveProductConfigPath(); }
 
 void ConfigService::parseFile() {
-  if (watcher_active_ && QFileInfo::exists(config_path_)) {
-    watcher_.addPath(config_path_);
+  const auto snapshot = watcher_->read();
+  const auto parsed =
+      snapshot ? HoloNight::ShellConfig::decodeDocument(*snapshot.value)
+               : HoloNight::Config::Result<HoloNight::ShellConfig::ProductConfig>::failure(snapshot.diagnostics);
+  watcher_->refresh();
+  if (diagnostics_ != parsed.diagnostics) {
+    diagnostics_ = parsed.diagnostics;
+    emit diagnosticsChanged();
+    for (const auto& diagnostic : diagnostics_) {
+      qCWarning(lcConfig) << QString::fromStdString(diagnostic.message);
+    }
   }
-  QFile file(config_path_);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qCWarning(lcConfig) << "Failed to open config file:" << config_path_;
-    return;
+  if (parsed) {
+    applyParsedConfig(*parsed.value);
   }
-  const std::string content = file.readAll().toStdString();
-  file.close();
-
-  toml::table table;
-  try {
-    table = toml::parse(content);
-  } catch (const toml::parse_error& err) {
-    qCWarning(lcConfig) << "Config parse error in" << config_path_ << ":" << err.description().data();
-    return;
-  }
-
-  HoloNight::ShellConfig::MissingDefaults missing;
-  const HoloNight::ShellConfig::ProductConfig parsed = HoloNight::ShellConfig::parseConfigTable(table, missing);
-
-  if (missing.any() && HoloNight::ShellConfig::writeMissingDefaults(config_path_, missing)) {
-    qCInfo(lcConfig) << "Wrote missing config keys back to:" << config_path_;
-  }
-
-  applyParsedConfig(parsed);
-  qCInfo(lcConfig) << "Config loaded from" << config_path_;
 }
 
 void ConfigService::applyParsedConfig(const HoloNight::ShellConfig::ProductConfig& parsed) {
@@ -137,27 +97,4 @@ void ConfigService::applyParsedConfig(const HoloNight::ShellConfig::ProductConfi
     emit osdConfigChanged();
   }
   logo_ = parsed.logo;
-}
-
-void ConfigService::startWatcher() {
-  if (QFileInfo::exists(config_dir_path_)) {
-    watcher_.addPath(config_dir_path_);
-  }
-  if (QFile::exists(config_path_)) {
-    watcher_.addPath(config_path_);
-  }
-  connect(&watcher_, &QFileSystemWatcher::fileChanged, this, &ConfigService::onFileChanged);
-  watcher_active_ = true;
-}
-
-void ConfigService::onFileChanged(const QString& path) {
-  if (path != config_path_ && path != config_dir_path_) {
-    return;
-  }
-  // Re-add immediately for in-place writes; parseFile() re-arms again after
-  // the debounce, by which point the new inode from an atomic rename is stable.
-  if (QFileInfo::exists(config_path_)) {
-    watcher_.addPath(config_path_);
-  }
-  debounce_timer_.start(kDebounceMs);
 }

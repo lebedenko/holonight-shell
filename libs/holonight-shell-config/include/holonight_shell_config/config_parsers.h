@@ -50,7 +50,9 @@ struct ProductConfig {
 };
 
 [[nodiscard]] QString tomlQuote(const QString& value);
+// Sparse reads use typed defaults. Throws std::invalid_argument for invalid known values.
 [[nodiscard]] ProductConfig parseConfigTable(const toml::table& table, MissingDefaults& missing);
+// Legacy explicit migration API; readers never call this or write defaults.
 bool writeMissingDefaults(const QString& path, const MissingDefaults& missing);
 
 }  // namespace HoloNight::ShellConfig

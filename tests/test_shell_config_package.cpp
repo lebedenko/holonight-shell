@@ -1,10 +1,13 @@
 #include <QFile>
 #include <QTemporaryDir>
 
+#include <algorithm>
 #include <gtest/gtest.h>
 #include <holonight_shell_config/config_parsers.h>
 #include <holonight_shell_config/config_path.h>
+#include <holonight_shell_config/config_schema.h>
 #include <holonight_shell_config/config_writer.h>
+#include <stdexcept>
 
 namespace {
 
@@ -79,4 +82,57 @@ TEST(ShellConfigPackageTest, TaskbarDefaultsAndRoundTrip) {
   const auto path = directory.filePath("config.toml");
   ASSERT_TRUE(ProductConfigWriter::write(config, path));
   EXPECT_EQ(parseConfigTable(toml::parse_file(path.toStdString()), missing).taskbar, config.taskbar);
+}
+
+TEST(ShellConfigPackageTest, SchemaRejectsKnownInvalidValuesAndCollections) {
+  const std::vector<std::string> invalid_documents{
+      "[bar.workspaces]\ncount = 99\n",
+      "[bar.taskbar]\nenabled = 1\n",
+      "weather = false\n",
+      "[weather]\nlatitude = 91.0\n",
+      "[weather]\nprovider = 'unknown'\n",
+      "[background]\nimages = ['one', 2]\n",
+      "[calendar.caldav.work]\nurl = 'https://example.com'\n",
+      "[tray.icon_overrides.app]\nicon = 'app'\n",
+      "[[widget]]\ntype = 'clock'\nshow_seconds = 1\n",
+      "[[widget]]\ntype = 'mpris'\npause_hide_minutes = 0\n",
+      "[osd]\nposition = 'unknown'\n",
+  };
+  for (const auto& bytes : invalid_documents) {
+    SCOPED_TRACE(bytes);
+    const auto snapshot = HoloNight::Config::parseDocument(bytes);
+    ASSERT_TRUE(snapshot);
+    EXPECT_FALSE(HoloNight::ShellConfig::decodeDocument(*snapshot.value));
+    EXPECT_FALSE(
+        HoloNight::Config::validateDocument(*snapshot.value, HoloNight::ShellConfig::documentSchema()).empty());
+    MissingDefaults missing;
+    EXPECT_THROW(static_cast<void>(parseConfigTable(toml::parse(bytes), missing)), std::invalid_argument);
+  }
+}
+
+TEST(ShellConfigPackageTest, SparseEditingPreservesUnknownContentAndResetUsesDefaults) {
+  using namespace HoloNight::Config;
+  const auto snapshot = parseDocument("# keep\n[bar.workspaces]\ncount = 7 # explicit\n[future]\nvalue = 'kept'\n");
+  ASSERT_TRUE(snapshot);
+  const auto reset = patchDocument(
+      *snapshot.value, {{.key = {"bar", "workspaces", "count"}, .baseline = std::int64_t{7}, .pending = std::nullopt}},
+      HoloNight::ShellConfig::documentSchema());
+  ASSERT_EQ(reset.status, SaveStatus::Success);
+  ASSERT_TRUE(reset.snapshot);
+  EXPECT_NE(reset.snapshot->revision.bytes.find("# explicit"), std::string::npos);
+  EXPECT_NE(reset.snapshot->revision.bytes.find("value = 'kept'"), std::string::npos);
+  const auto config = HoloNight::ShellConfig::decodeDocument(*reset.snapshot);
+  ASSERT_TRUE(config);
+  EXPECT_EQ(config.value->bar_workspaces.count, ProductConfig{}.bar_workspaces.count);
+}
+
+TEST(ShellConfigPackageTest, ExportedMetadataSharesDefaultAndRangeDeclarations) {
+  const auto& fields = HoloNight::ShellConfig::settingMetadata();
+  const auto field = std::ranges::find_if(
+      fields, [](const auto& item) { return item.key == HoloNight::Config::KeyPath{"bar", "workspaces", "count"}; });
+  ASSERT_NE(field, fields.end());
+  ASSERT_TRUE(field->default_value);
+  EXPECT_EQ(std::get<std::int64_t>(*field->default_value), ProductConfig{}.bar_workspaces.count);
+  EXPECT_EQ(field->minimum, HoloNight::ShellConfig::BarWorkspacesConfig::kMinCount);
+  EXPECT_EQ(field->maximum, HoloNight::ShellConfig::BarWorkspacesConfig::kMaxCount);
 }

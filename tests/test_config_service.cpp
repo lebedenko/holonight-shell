@@ -5,6 +5,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 
+#include <filesystem>
 #include <gtest/gtest.h>
 
 using namespace HoloNight::ShellConfig;
@@ -35,10 +36,12 @@ class ConfigServiceTest : public ::testing::Test {
   void TearDown() override { qunsetenv("XDG_CONFIG_HOME"); }
 };
 
-TEST_F(ConfigServiceTest, CreatesDefaultFileOnFirstRun) {
+TEST_F(ConfigServiceTest, MissingFileUsesDefaultsWithoutCreatingDirectories) {
   ASSERT_FALSE(QFile::exists(config_path));
   ConfigService svc;
-  EXPECT_TRUE(QFile::exists(config_path));
+  EXPECT_FALSE(QFile::exists(config_path));
+  EXPECT_FALSE(QFileInfo(config_path).dir().exists());
+  EXPECT_TRUE(svc.diagnostics().empty());
 }
 
 TEST_F(ConfigServiceTest, DefaultValuesMatchStructDefaults) {
@@ -76,7 +79,7 @@ TEST_F(ConfigServiceTest, LoadsCompleteConfigFile) {
   EXPECT_EQ(svc.barSystemTray().max_items, 4);
 }
 
-TEST_F(ConfigServiceTest, PartialFileGetsMissingKeysFilledIn) {
+TEST_F(ConfigServiceTest, PartialFileUsesDefaultsWithoutWriting) {
   writeTempConfig(config_path,
                   "[appearance]\n"
                   "ui_font = \"Fira Code\"\n"
@@ -85,18 +88,18 @@ TEST_F(ConfigServiceTest, PartialFileGetsMissingKeysFilledIn) {
   ConfigService svc;
   // Missing product values default.
   EXPECT_EQ(svc.barWorkspaces().count, 5);
-  // File should now contain all keys (written back).
+  // Reads preserve sparse files exactly.
   QFile written(config_path);
   ASSERT_TRUE(written.open(QIODevice::ReadOnly | QIODevice::Text));
   const QString content = QString::fromUtf8(written.readAll());
   EXPECT_FALSE(content.contains(QLatin1String("clock_font")));
   EXPECT_FALSE(content.contains(QLatin1String("[theme]")));
-  EXPECT_TRUE(content.contains(QLatin1String("[bar.workspaces]")));
-  EXPECT_TRUE(content.contains(QLatin1String("count = 5 # accepted: 3-10")));
-  EXPECT_TRUE(content.contains(QLatin1String("max_items = 3 # accepted: 2-5")));
+  EXPECT_FALSE(content.contains(QLatin1String("[bar.workspaces]")));
+  EXPECT_FALSE(content.contains(QLatin1String("count = 5 # accepted: 3-10")));
+  EXPECT_FALSE(content.contains(QLatin1String("max_items = 3 # accepted: 2-5")));
 }
 
-TEST_F(ConfigServiceTest, InvalidPresentValuesAreCorrectedInMemoryButNotRewritten) {
+TEST_F(ConfigServiceTest, InvalidKnownValuesRejectDocumentWithoutWriting) {
   writeTempConfig(config_path,
                   "[appearance]\n"
                   "ui_font = \"Fira Code\"\n"
@@ -116,8 +119,10 @@ TEST_F(ConfigServiceTest, InvalidPresentValuesAreCorrectedInMemoryButNotRewritte
 
   ConfigService svc;
 
-  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig::kMaxCount);
-  EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig::kMinMaxItems);
+  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig{}.count);
+  EXPECT_FALSE(svc.diagnostics().empty());
+  EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig{}.max_items);
+  EXPECT_FALSE(svc.diagnostics().empty());
 
   QFile written(config_path);
   ASSERT_TRUE(written.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -137,7 +142,7 @@ TEST_F(ConfigServiceTest, CorruptTomlUsesDefaults) {
 }
 
 TEST_F(ConfigServiceTest, MissingFileDoesNotCrash) {
-  // File does not exist; ConfigService must create it and proceed.
+  // File does not exist; defaults are available without creating it.
   ConfigService svc;
   EXPECT_EQ(svc.barWorkspaces().count, 5);
 }
@@ -175,7 +180,7 @@ TEST_F(ConfigServiceTest, ParsesTrayIconOverrides) {
   EXPECT_EQ(override.attention_icon, QStringLiteral("slack-indicator-attention"));
 }
 
-TEST_F(ConfigServiceTest, InvalidTrayIconOverrideEntriesAreSkipped) {
+TEST_F(ConfigServiceTest, InvalidTrayIconOverrideEntriesRejectDocument) {
   writeTempConfig(config_path,
                   "[tray.icon_overrides.no_icon]\n"
                   "id = \"app\"\n"
@@ -226,36 +231,40 @@ TEST_F(ConfigServiceTest, LegacyThemeSectionChangesDoNotEmitShellConfigSignals) 
   EXPECT_EQ(workspace_spy.count(), 0);
 }
 
-TEST_F(ConfigServiceTest, WorkspaceCountBelowMinClampsToMin) {
+TEST_F(ConfigServiceTest, WorkspaceCountBelowMinRejectsDocument) {
   writeTempConfig(config_path,
                   "[bar.workspaces]\n"
                   "count = 1\n");
   ConfigService svc;
-  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig::kMinCount);
+  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig{}.count);
+  EXPECT_FALSE(svc.diagnostics().empty());
 }
 
-TEST_F(ConfigServiceTest, WorkspaceCountAboveMaxClampsToMax) {
+TEST_F(ConfigServiceTest, WorkspaceCountAboveMaxRejectsDocument) {
   writeTempConfig(config_path,
                   "[bar.workspaces]\n"
                   "count = 99\n");
   ConfigService svc;
-  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig::kMaxCount);
+  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig{}.count);
+  EXPECT_FALSE(svc.diagnostics().empty());
 }
 
-TEST_F(ConfigServiceTest, SystemTrayItemsBelowMinClampsToMin) {
+TEST_F(ConfigServiceTest, SystemTrayItemsBelowMinRejectsDocument) {
   writeTempConfig(config_path,
                   "[bar.systemtray]\n"
                   "max_items = 0\n");
   ConfigService svc;
-  EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig::kMinMaxItems);
+  EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig{}.max_items);
+  EXPECT_FALSE(svc.diagnostics().empty());
 }
 
-TEST_F(ConfigServiceTest, SystemTrayItemsAboveMaxClampsToMax) {
+TEST_F(ConfigServiceTest, SystemTrayItemsAboveMaxRejectsDocument) {
   writeTempConfig(config_path,
                   "[bar.systemtray]\n"
                   "max_items = 99\n");
   ConfigService svc;
-  EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig::kMaxMaxItems);
+  EXPECT_EQ(svc.barSystemTray().max_items, BarSystemTrayConfig{}.max_items);
+  EXPECT_FALSE(svc.diagnostics().empty());
 }
 
 TEST_F(ConfigServiceTest, WorkspaceCountAtBoundaryIsNotClamped) {
@@ -427,31 +436,15 @@ TEST_F(ConfigServiceTest, ParsesClockWidgets) {
   EXPECT_EQ(clock.clock.locale, QStringLiteral("de_DE"));
 }
 
-TEST_F(ConfigServiceTest, DisabledWidgetsBypassTypeSpecificValidation) {
-  writeTempConfig(config_path,
-                  "[[widget]]\n"
-                  "type = \"time-to-event\"\n"
-                  "enabled = false\n"
-                  "position = \"not-a-position\"\n"
-                  "\n"
-                  "[[widget]]\n"
-                  "type = \"future-widget\"\n"
-                  "enabled = false\n"
-                  "\n"
-                  "[[widget]]\n"
-                  "type = \"clock\"\n"
-                  "enabled = true\n");
-
+TEST_F(ConfigServiceTest, DisabledCountdownCanRetainIncompleteDraft) {
+  writeTempConfig(config_path, "[[widget]]\ntype = \"time-to-event\"\nenabled = false\n");
   ConfigService svc;
-
-  ASSERT_EQ(svc.widgets().definitions.size(), 3);
-  EXPECT_FALSE(svc.widgets().definitions.at(0).enabled);
-  EXPECT_FALSE(svc.widgets().definitions.at(1).enabled);
-  EXPECT_TRUE(svc.widgets().definitions.at(2).enabled);
-  EXPECT_EQ(svc.widgets().definitions.at(2).type, WidgetType::Clock);
+  ASSERT_EQ(svc.widgets().definitions.size(), 1);
+  EXPECT_FALSE(svc.widgets().definitions.front().enabled);
+  EXPECT_TRUE(svc.diagnostics().empty());
 }
 
-TEST_F(ConfigServiceTest, InvalidWidgetEntriesAreSkipped) {
+TEST_F(ConfigServiceTest, InvalidWidgetEntriesRejectDocument) {
   writeTempConfig(config_path,
                   "[[widget]]\n"
                   "type = \"time-to-event\"\n"
@@ -484,8 +477,8 @@ TEST_F(ConfigServiceTest, InvalidWidgetEntriesAreSkipped) {
 
   ConfigService svc;
 
-  ASSERT_EQ(svc.widgets().definitions.size(), 1);
-  EXPECT_EQ(svc.widgets().definitions.at(0).time_to_event.title, QStringLiteral("Valid"));
+  EXPECT_TRUE(svc.widgets().definitions.isEmpty());
+  EXPECT_FALSE(svc.diagnostics().empty());
 }
 
 TEST_F(ConfigServiceTest, WidgetsConfigChangedEmittedWhenDefinitionsDiffer) {
@@ -541,7 +534,7 @@ TEST_F(ConfigServiceTest, EmptyBackgroundListGivesEmptyImages) {
   EXPECT_TRUE(svc.background().images.isEmpty());
 }
 
-TEST_F(ConfigServiceTest, AbsentBackgroundSectionWritesBackEmptyList) {
+TEST_F(ConfigServiceTest, AbsentBackgroundSectionStaysAbsent) {
   writeTempConfig(config_path,
                   "[appearance]\n"
                   "ui_font = \"Inter\"\n");
@@ -551,8 +544,8 @@ TEST_F(ConfigServiceTest, AbsentBackgroundSectionWritesBackEmptyList) {
   QFile written(config_path);
   ASSERT_TRUE(written.open(QIODevice::ReadOnly | QIODevice::Text));
   const QString content = QString::fromUtf8(written.readAll());
-  EXPECT_TRUE(content.contains(QLatin1String("[background]")));
-  EXPECT_TRUE(content.contains(QLatin1String("images = []")));
+  EXPECT_FALSE(content.contains(QLatin1String("[background]")));
+  EXPECT_FALSE(content.contains(QLatin1String("images = []")));
 }
 
 TEST_F(ConfigServiceTest, BackgroundChangedEmittedWhenImagesDiffer) {
@@ -743,4 +736,57 @@ TEST(BackgroundConfigTest, OperatorEqualsIsOrderSensitive) {
   const BackgroundConfig same{QStringList{QStringLiteral("/a.png"), QStringLiteral("/b.png")}};
   EXPECT_FALSE(lhs == reordered);
   EXPECT_TRUE(lhs == same);
+}
+
+TEST_F(ConfigServiceTest, InvalidKnownExternalValuesRetainLastValidConfiguration) {
+  writeTempConfig(config_path, "[bar.workspaces]\ncount = 7\n");
+  ConfigService svc;
+  QSignalSpy changes(&svc, &ConfigService::barWorkspacesChanged);
+  writeTempConfig(config_path, "[bar.workspaces]\ncount = 999\n");
+  QMetaObject::invokeMethod(&svc, "parseFile", Qt::DirectConnection);
+  EXPECT_EQ(svc.barWorkspaces().count, 7);
+  EXPECT_EQ(changes.count(), 0);
+  EXPECT_FALSE(svc.diagnostics().empty());
+  writeTempConfig(config_path, "[bar.workspaces]\ncount = 8\n");
+  QMetaObject::invokeMethod(&svc, "parseFile", Qt::DirectConnection);
+  EXPECT_EQ(svc.barWorkspaces().count, 8);
+  EXPECT_EQ(changes.count(), 1);
+  EXPECT_TRUE(svc.diagnostics().empty());
+}
+
+TEST_F(ConfigServiceTest, WatcherRecoversMissingParentDeletionAndRecreation) {
+  ConfigService svc;
+  QSignalSpy changes(&svc, &ConfigService::barWorkspacesChanged);
+  writeTempConfig(config_path, "[bar.workspaces]\ncount = 7\n");
+  ASSERT_TRUE(changes.wait(3000));
+  EXPECT_EQ(svc.barWorkspaces().count, 7);
+  changes.clear();
+  ASSERT_TRUE(QDir(QFileInfo(config_path).absolutePath()).removeRecursively());
+  ASSERT_TRUE(changes.wait(3000));
+  EXPECT_EQ(svc.barWorkspaces().count, BarWorkspacesConfig{}.count);
+  EXPECT_FALSE(QFile::exists(config_path));
+  EXPECT_TRUE(svc.diagnostics().empty());
+  changes.clear();
+  writeTempConfig(config_path, "[bar.workspaces]\ncount = 8\n");
+  ASSERT_TRUE(changes.wait(3000));
+  EXPECT_EQ(svc.barWorkspaces().count, 8);
+}
+
+TEST_F(ConfigServiceTest, WatcherRecoversARecreatedSymlinkTargetOutsideTheConfigDirectory) {
+  const auto target = tmp.filePath("external/config.toml");
+  writeTempConfig(target, "[bar.workspaces]\ncount = 7\n");
+  ASSERT_TRUE(QDir{}.mkpath(QFileInfo{config_path}.absolutePath()));
+  std::filesystem::create_symlink(target.toStdString(), config_path.toStdString());
+  ConfigService svc;
+  ASSERT_EQ(svc.barWorkspaces().count, 7);
+  QSignalSpy diagnostics(&svc, &ConfigService::diagnosticsChanged);
+  QSignalSpy changes(&svc, &ConfigService::barWorkspacesChanged);
+  ASSERT_TRUE(QFile::remove(target));
+  ASSERT_TRUE(diagnostics.wait(3000));
+  EXPECT_EQ(svc.barWorkspaces().count, 7);
+  EXPECT_EQ(changes.count(), 0);
+  writeTempConfig(target, "[bar.workspaces]\ncount = 8\n");
+  ASSERT_TRUE(changes.wait(3000));
+  EXPECT_EQ(svc.barWorkspaces().count, 8);
+  EXPECT_TRUE(svc.diagnostics().empty());
 }

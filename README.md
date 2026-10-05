@@ -414,7 +414,9 @@ Wayland client code is generated from XML files in `protocols/` plus the system 
 
 Shell product behavior lives in `$XDG_CONFIG_HOME/holonight/config.toml`; global appearance lives independently in
 `$XDG_CONFIG_HOME/holonight/appearance.toml`. Both fall back below `~/.config` when `XDG_CONFIG_HOME` is unset and
-reload live without coupling their failure or save domains. See [`docs/config.md`](docs/config.md) for both schemas.
+reload live without coupling their failure or save domains. Missing overrides use typed defaults; reads never create
+configuration files or insert defaults. Invalid known values reject the document and preserve the running values;
+startup errors use defaults with diagnostics. Remove an assignment to reset it. See [`docs/config.md`](docs/config.md) for both schemas.
 
 Abbreviated example:
 

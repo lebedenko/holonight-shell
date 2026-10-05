@@ -3,6 +3,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(HoloNightShellConfig VERSION 0.2.0 LANGUAGES CXX)
 
     include(GNUInstallDirs)
+    find_package(HoloNightConfig CONFIG REQUIRED)
     find_package(Qt6 REQUIRED COMPONENTS Core)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(TOMLPLUSPLUS REQUIRED IMPORTED_TARGET tomlplusplus)
@@ -12,6 +13,7 @@ add_library(holonight_shell_config STATIC
     src/ConfigPath.cpp
     src/ConfigParsers.cpp
     src/ConfigWriter.cpp
+    src/ConfigSchema.cpp
 )
 
 add_library(HoloNightShellConfig::Config ALIAS holonight_shell_config)
@@ -25,6 +27,7 @@ target_include_directories(holonight_shell_config
 
 target_link_libraries(holonight_shell_config PUBLIC
     Qt6::Core
+    HoloNight::Config
     PkgConfig::TOMLPLUSPLUS
 )
 target_compile_features(holonight_shell_config PUBLIC cxx_std_23)
