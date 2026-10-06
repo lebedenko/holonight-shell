@@ -136,3 +136,11 @@ TEST(ShellConfigPackageTest, ExportedMetadataSharesDefaultAndRangeDeclarations) 
   EXPECT_EQ(field->minimum, HoloNight::ShellConfig::BarWorkspacesConfig::kMinCount);
   EXPECT_EQ(field->maximum, HoloNight::ShellConfig::BarWorkspacesConfig::kMaxCount);
 }
+
+TEST(ShellConfigPackageTest, TemperatureMetadataRetainsTheSettingsKelvinChoice) {
+  const auto snapshot = HoloNight::Config::parseDocument("[weather]\ntemp_unit = 'kelvin'\n");
+  ASSERT_TRUE(snapshot);
+  const auto decoded = HoloNight::ShellConfig::decodeDocument(*snapshot.value);
+  ASSERT_TRUE(decoded);
+  EXPECT_EQ(decoded.value->weather.temp_unit, QStringLiteral("kelvin"));
+}

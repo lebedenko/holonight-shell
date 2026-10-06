@@ -68,7 +68,7 @@ std::vector<SettingMetadata> makeMetadata() {
   text({"weather", "city"}, defaults.weather.city, "Location city");
   text({"weather", "country"}, defaults.weather.country, "Location country");
   text({"weather", "units"}, defaults.weather.units, "Legacy weather units", {"metric", "imperial", "standard"});
-  text({"weather", "temp_unit"}, defaults.weather.temp_unit, "Temperature unit", {"celsius", "fahrenheit"});
+  text({"weather", "temp_unit"}, defaults.weather.temp_unit, "Temperature unit", {"celsius", "fahrenheit", "kelvin"});
   text({"weather", "wind_unit"}, defaults.weather.wind_unit, "Wind speed unit", {"kmh", "ms", "mph", "knots"});
   text({"weather", "pressure_unit"}, defaults.weather.pressure_unit, "Pressure unit", {"hpa", "mmhg", "inhg", "bar"});
   text({"weather", "lang"}, defaults.weather.lang, "Weather language");
