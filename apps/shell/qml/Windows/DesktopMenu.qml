@@ -21,7 +21,7 @@ Item {
     ]
     function clamp(value, maximum) { return Math.max(0, Math.min(value, maximum)) }
     function openPower() {
-        selectedIndex = 2
+        selectedIndex = 3
         submenuOpen = true
         powerIndex = powerActions.findIndex(action => action.available)
     }
@@ -32,6 +32,7 @@ Item {
         WindowSurface.hide()
         switch (action) {
         case "applications": LauncherSurface.show(screen); break
+        case "wallpaper": SettingsNavigationService.openWallpaper(screen); break
         case "settings": SettingsNavigationService.openPage("bar"); break
         case "lock": SessionService.lockScreen(); break
         case "sleep": SessionService.sleep(); break
@@ -43,11 +44,11 @@ Item {
     function activate() {
         if (submenuOpen) {
             if (powerActions[powerIndex].available) dispatch(powerActions[powerIndex].action)
-        } else if (selectedIndex === 2) openPower()
-        else dispatch(selectedIndex === 0 ? "applications" : "settings")
+        } else if (selectedIndex === 3) openPower()
+        else dispatch(["applications", "settings", "wallpaper"][selectedIndex])
     }
     function move(delta) {
-        if (!submenuOpen) selectedIndex = (selectedIndex + delta + 3) % 3
+        if (!submenuOpen) selectedIndex = (selectedIndex + delta + 4) % 4
         else {
             do { powerIndex = (powerIndex + delta + powerActions.length) % powerActions.length }
             while (!powerActions[powerIndex].available)
@@ -60,7 +61,7 @@ Item {
             else WindowSurface.hide()
             break
         case Qt.Key_Left: submenuOpen = false; break
-        case Qt.Key_Right: if (selectedIndex === 2 && !submenuOpen) openPower(); break
+        case Qt.Key_Right: if (selectedIndex === 3 && !submenuOpen) openPower(); break
         case Qt.Key_Down: move(1); break
         case Qt.Key_Up: move(-1); break
         case Qt.Key_Return:
@@ -73,7 +74,7 @@ Item {
         id: panel
         objectName: "desktopMenuPanel"
         width: Math.min(220, Math.max(0, root.width - root.edgeMargin))
-        height: 114
+        height: 146
         x: root.clamp(WindowSurface.menuPosition.x < 0 ? (root.width - width) / 2 : WindowSurface.menuPosition.x, root.width - width - root.edgeMargin)
         y: root.clamp(WindowSurface.menuPosition.y < 0 ? (root.height - height) / 2 : WindowSurface.menuPosition.y, root.height - height - root.edgeMargin)
         radius: 8
@@ -93,12 +94,17 @@ Item {
                 onHovered: { root.selectedIndex = 1; root.submenuOpen = false }
                 onTriggered: root.dispatch("settings")
             }
+            DesktopMenuRow {
+                label: qsTr("Change Wallpaper…"); iconName: "settings"; highlighted: root.selectedIndex === 2
+                onHovered: { root.selectedIndex = 2; root.submenuOpen = false }
+                onTriggered: root.dispatch("wallpaper")
+            }
             Item {
                 width: parent.width; height: 10
                 Rectangle { anchors.centerIn: parent; width: parent.width - 12; height: 1; color: HoloniightPalette.borderSubtle }
             }
             DesktopMenuRow {
-                label: "Power"; iconName: "system-shutdown-symbolic"; submenu: true; highlighted: root.selectedIndex === 2
+                label: "Power"; iconName: "system-shutdown-symbolic"; submenu: true; highlighted: root.selectedIndex === 3
                 onHovered: root.openPower()
                 onTriggered: root.openPower()
             }
@@ -111,7 +117,7 @@ Item {
         width: Math.min(220, Math.max(0, root.width - root.edgeMargin))
         height: 168
         x: root.clamp(panel.x + panel.width + width <= root.width - root.edgeMargin ? panel.x + panel.width : panel.x - width, root.width - width - root.edgeMargin)
-        y: root.clamp(panel.y + 78, root.height - height - root.edgeMargin)
+        y: root.clamp(panel.y + 110, root.height - height - root.edgeMargin)
         radius: 8
         color: HoloniightPalette.surface
         border.color: HoloniightPalette.borderSubtle

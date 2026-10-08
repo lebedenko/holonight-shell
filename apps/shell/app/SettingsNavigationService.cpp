@@ -43,3 +43,21 @@ QDBusMessage SettingsNavigationService::openPageMessage(const QString& page_key)
 QDBusPendingCall SettingsNavigationService::requestOpenPage(const QString& page_key) {
   return QDBusConnection::sessionBus().asyncCall(openPageMessage(page_key), kCallTimeoutMs);
 }
+
+QDBusMessage SettingsNavigationService::wallpaperMessage(const QString& connector) {
+  auto message = openPageMessage(QStringLiteral("wallpaper"));
+  message.setArguments({QStringLiteral("wallpaper"), QVariantList{connector}, QVariantMap{}});
+  return message;
+}
+
+void SettingsNavigationService::openWallpaper(const QString& connector) {
+  auto* watcher = new QDBusPendingCallWatcher(
+      QDBusConnection::sessionBus().asyncCall(wallpaperMessage(connector), kCallTimeoutMs), this);
+  connect(watcher, &QDBusPendingCallWatcher::finished, this, [watcher](QDBusPendingCallWatcher* completed) {
+    const QDBusPendingReply<> reply = *completed;
+    if (reply.isError()) {
+      qCWarning(lcSettingsNavigation) << "Failed to open wallpaper picker:" << reply.error().message();
+    }
+    watcher->deleteLater();
+  });
+}

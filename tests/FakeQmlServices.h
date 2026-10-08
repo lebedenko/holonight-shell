@@ -485,9 +485,15 @@ class FakeTrayMenuSurface : public QObject {
 class FakeSettingsNavigationService : public QObject {
   Q_OBJECT
   Q_PROPERTY(QString lastOpenedPage READ lastOpenedPage NOTIFY lastOpenedPageChanged)
+  Q_PROPERTY(QString lastConnector READ lastConnector NOTIFY lastOpenedPageChanged)
 
  public:
   [[nodiscard]] QString lastOpenedPage() const { return last_opened_page_; }
+  [[nodiscard]] QString lastConnector() const { return last_connector_; }
+  Q_INVOKABLE void openWallpaper(const QString& connector) {
+    last_connector_ = connector;
+    openPage(QStringLiteral("wallpaper"));
+  }
   Q_INVOKABLE void openPage(const QString& page_key) {
     last_opened_page_ = page_key;
     Q_EMIT lastOpenedPageChanged();
@@ -498,6 +504,7 @@ class FakeSettingsNavigationService : public QObject {
 
  private:
   QString last_opened_page_;
+  QString last_connector_;
 };
 
 class FakeTooltipSurface : public QObject {

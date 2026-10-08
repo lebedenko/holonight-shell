@@ -21,6 +21,8 @@ class SettingsNavigationService : public QObject {
   SettingsNavigationService(SettingsNavigationService&&) = delete;
   SettingsNavigationService& operator=(SettingsNavigationService&&) = delete;
 
+  Q_INVOKABLE void openWallpaper(const QString& connector);
+  [[nodiscard]] static QDBusMessage wallpaperMessage(const QString& connector);
   Q_INVOKABLE void openPage(const QString& page_key);
   [[nodiscard]] static QDBusMessage openPageMessage(const QString& page_key);
 

@@ -43,3 +43,11 @@ TEST(SettingsNavigationService, BuildsFreedesktopActivateActionCall) {
   EXPECT_TRUE(message.arguments().at(1).toList().isEmpty());
   EXPECT_TRUE(message.arguments().at(2).toMap().isEmpty());
 }
+
+TEST(SettingsNavigationService, WallpaperActionCarriesConnector) {
+  const auto message = SettingsNavigationService::wallpaperMessage(QStringLiteral("DP-2"));
+  EXPECT_EQ(message.member(), QStringLiteral("ActivateAction"));
+  ASSERT_EQ(message.arguments().size(), 3);
+  EXPECT_EQ(message.arguments()[0].toString(), QStringLiteral("wallpaper"));
+  EXPECT_EQ(message.arguments()[1].toList(), QVariantList{QStringLiteral("DP-2")});
+}

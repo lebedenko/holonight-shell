@@ -67,7 +67,7 @@ TestCase {
         compare(overlay.color.a, 0)
         const panel = findChild(menu, "desktopMenuPanel")
         compare(panel.x, Math.min(data.x, 672))
-        compare(panel.y, Math.min(data.y, 578))
+        compare(panel.y, Math.min(data.y, 546))
         menu.openPower()
         const power = findChild(menu, "desktopPowerPanel")
         verify(power.x >= 0 && power.x + power.width <= 892)
@@ -78,11 +78,11 @@ TestCase {
         WindowSurface.desktopMenu("TEST-1")
         overlay = createTemporaryObject(overlayComponent, this)
         const panel = findChild(overlay, "desktopMenuPanel")
-        compare(panel.x, 340); compare(panel.y, 293)
+        compare(panel.x, 340); compare(panel.y, 277)
     }
     function test_navigationCapabilitiesAndEscape() {
         const menu = makeMenu(100, 100)
-        keyClick(Qt.Key_Up); compare(menu.selectedIndex, 2)
+        keyClick(Qt.Key_Up); compare(menu.selectedIndex, 3)
         keyClick(Qt.Key_Right); verify(menu.submenuOpen)
         SessionService.lockerAvailable = false
         SessionService.logoutSupported = false
@@ -113,6 +113,15 @@ TestCase {
         menu = makeMenu(100, 100)
         keyClick(Qt.Key_Down); keyClick(Qt.Key_Enter)
         compare(SettingsNavigationService.lastOpenedPage, "bar")
+        compare(settingsSpy.count, 1)
+        verify(!visibleDuringDispatch)
+        verify(!WindowSurface.visible)
+    }
+    function test_wallpaperDispatchTargetsScreen() {
+        const menu = makeMenu(100, 100)
+        keyClick(Qt.Key_Down); keyClick(Qt.Key_Down); keyClick(Qt.Key_Enter)
+        compare(SettingsNavigationService.lastOpenedPage, "wallpaper")
+        compare(SettingsNavigationService.lastConnector, "TEST-2")
         compare(settingsSpy.count, 1)
         verify(!visibleDuringDispatch)
         verify(!WindowSurface.visible)
