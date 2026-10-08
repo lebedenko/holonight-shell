@@ -29,5 +29,5 @@ class IntegrationPlugin {
   [[nodiscard]] virtual QUrl topbarComponent() const { return {}; }
 };
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage): Qt plugin literal.
-#define HolonightIntegration_iid "org.holonight.Integration/2.0"
+#define HolonightIntegration_iid "org.holonight.Integration/3.0"
 Q_DECLARE_INTERFACE(IntegrationPlugin, HolonightIntegration_iid)

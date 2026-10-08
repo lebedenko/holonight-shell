@@ -149,3 +149,23 @@ TEST(IntegrationLoader, MissingFallbackLeavesServicesUnavailable) {
   EXPECT_EQ(service.workspaces()->rowCount(), 0);
   EXPECT_FALSE(loader.diagnostic().isEmpty());
 }
+
+TEST(IntegrationLoader, RejectsPreviousAbiInLibraryAndCatalog) {
+  QTemporaryDir isolated;
+  copy(OLD_PLUGIN, isolated.path());
+  QFile catalog(isolated.filePath("old.json"));
+  ASSERT_TRUE(catalog.open(QIODevice::WriteOnly));
+  catalog.write(QJsonDocument(QJsonObject{
+                                  {"iid", "org.holonight.Integration/2.0"},
+                                  {"id", "old"},
+                                  {"library", QFileInfo(OLD_PLUGIN).fileName()},
+                                  {"shellVersion", HOLONIGHT_INTEGRATION_VERSION},
+                              })
+                    .toJson());
+  catalog.close();
+  EXPECT_TRUE(IntegrationLoader::discover({isolated.path()}).isEmpty());
+  copy(WAYLAND_PLUGIN, isolated.path());
+  IntegrationLoader loader({isolated.path()}, {});
+  EXPECT_EQ(loader.backendName(), "wayland");
+  EXPECT_FALSE(mappings().contains(QFileInfo(OLD_PLUGIN).fileName().toUtf8()));
+}

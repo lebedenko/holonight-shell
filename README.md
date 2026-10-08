@@ -571,3 +571,5 @@ its private bubblewrap/headless Sway checks. Complete logs and evidence are
 saved under ignored `build/ci/`; any required failure returns nonzero and prints
 its full log. Existing development tasks remain available. Publication and
 artifact uploads remain remote operations. See [local SDD](docs/sdd/local-ci/README.md).
+
+Integration plugins use the private `org.holonight.Integration/3.0` ABI. Older plugin libraries and catalogs are rejected during metadata discovery before instantiation. Rebuild third-party plugins against the current compositor contracts.

@@ -447,15 +447,18 @@ configure_file(integration-plugin/fake.json.in fake.json @ONLY)
 add_library(test_integration_plugin MODULE integration-plugin/FakePlugin.cpp)
 target_include_directories(test_integration_plugin PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(test_integration_plugin PRIVATE holonight_integration)
+add_library(test_old_integration_plugin MODULE integration-plugin/OldPlugin.cpp)
+target_link_libraries(test_old_integration_plugin PRIVATE Qt6::Core)
 holonight_add_test_exe(test_holonight_integration main.cpp test_integration_loader.cpp)
 target_link_libraries(test_holonight_integration PRIVATE holonight_compositor GTest::gtest GTest::gmock Qt6::Gui)
 target_compile_definitions(test_holonight_integration PRIVATE
   PLUGIN_DIRECTORY="${PROJECT_BINARY_DIR}/holonight/backends"
+  OLD_PLUGIN="$<TARGET_FILE:test_old_integration_plugin>"
   FAKE_PLUGIN="$<TARGET_FILE:test_integration_plugin>"
   LABWC_PLUGIN="$<TARGET_FILE:holonight_backend_labwc>"
   SWAY_PLUGIN="$<TARGET_FILE:holonight_backend_sway>"
   WAYLAND_PLUGIN="$<TARGET_FILE:holonight_backend_wayland>")
-add_dependencies(test_holonight_integration test_integration_plugin holonight_backend_labwc holonight_backend_sway holonight_backend_wayland holonight_backend_hyprland)
+add_dependencies(test_holonight_integration test_old_integration_plugin test_integration_plugin holonight_backend_labwc holonight_backend_sway holonight_backend_wayland holonight_backend_hyprland)
 
 holonight_add_test_exe(test_holonight_hyprland_qml main.cpp test_hyprland_qml.cpp)
 target_link_libraries(test_holonight_hyprland_qml PRIVATE holonight_compositor holonight_presentationplugin Qt6::Quick Qt6::Test GTest::gtest GTest::gmock)

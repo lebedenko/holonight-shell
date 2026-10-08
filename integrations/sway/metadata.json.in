@@ -8,6 +8,6 @@
   ],
   "fallback": false,
   "shellVersion": "@PROJECT_VERSION@",
-  "iid": "org.holonight.Integration/1.0",
+  "iid": "org.holonight.Integration/3.0",
   "library": "@CMAKE_SHARED_MODULE_PREFIX@holonight_backend_sway@CMAKE_SHARED_MODULE_SUFFIX@"
 }

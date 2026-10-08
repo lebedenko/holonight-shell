@@ -16,7 +16,6 @@ class HyprlandShellAdapter final : public CompositorBackend, public NumberedWork
     });
   }
   void start() override { backend_->start(); }
-  void requestSnapshotRefresh() override { backend_->requestSnapshotRefresh(); }
   void activateWorkspace(const QString& identifier) override { backend_->activateWorkspace(identifier); }
   WindowActivationResult requestWindowActivation(const WindowActivationRequest& request) override {
     return backend_->requestWindowActivation(request);
