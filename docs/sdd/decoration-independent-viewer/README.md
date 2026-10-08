@@ -24,3 +24,7 @@ Single consistent stage: build/decoration-provider. Config baseline d6a392b41991
 - Logs: /tmp/decoration-shell-final-{build,tests,qml,qmltypes,architecture}.log, /tmp/decoration-shell-runtime-build.log, /tmp/decoration-shell-package-final.log and build/decoration-independent/uqc-launch-logs/.
 
 Existing user edits in SettingsNavigationService.cpp/.h, DesktopMenu.qml, FakeQmlServices.h, tst_DesktopMenu.qml and test_settings_navigation_service.cpp were preserved and excluded from this task's commit. Tests also compile those pre-existing edits in the shared working tree. Publication, deployment and pin updates remain separate.
+
+## Publication preparation
+
+CI provider fetches now match the exact provider revisions used for local acceptance above. Shell syntax and CI launcher regression checks passed before publication.
