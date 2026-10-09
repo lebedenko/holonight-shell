@@ -2,6 +2,9 @@ include(GoogleTest)
 add_test(NAME test_bounded_authentication_challenge
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_bounded_authentication_challenge.py
 )
+add_test(NAME test_portal_routing
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_portal_routing.py
+)
 add_test(NAME test_installation
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_installation.py
 )

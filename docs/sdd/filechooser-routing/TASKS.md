@@ -1,10 +1,10 @@
 # Tasks
 
-- [ ] Confirm I-002 canonical publication and umbrella pin; mark I-003 Ready.
-- [ ] Add FileChooser preference in the four existing desktop configurations.
-- [ ] Check staged routing and preserved Settings/default preferences.
-- [ ] Run focused installation checks and required local acceptance.
-- [ ] Review diff, commit Shell separately, publish the completed handoff.
+- [x] Confirm I-002 canonical publication and umbrella pin; mark I-003 Ready.
+- [x] Add FileChooser preference in the four existing desktop configurations.
+- [x] Check staged routing and preserved Settings/default preferences.
+- [x] Run focused installation checks and required local acceptance.
+- [x] Review diff, commit Shell separately, publish the completed handoff.
 
-Verification pending; this SDD prepares the assignment without starting downstream
-implementation before provider publication.
+Local verification passed; see [evidence](VERIFICATION.md). The completed Shell
+handoff is ready for a single publication push. Ecosystem acceptance remains I-004.
