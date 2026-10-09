@@ -1,10 +1,10 @@
 # FileChooser routing — I-003
 
-Status: Planned (awaiting published/pinned I-002)
+Status: Accepted
 
 Assigned repository: holonight-shell. Exact baseline:
-25e1556bc5ffc06015a757d48e468f7c0d9c9ccb. Backend handoff: af1e9a4
-(local; canonical publication must be confirmed before implementation).
+25e1556bc5ffc06015a757d48e468f7c0d9c9ccb. Backend handoff: af1e9a4806f1b74aaffe392588c81a76d1275b2f, confirmed
+on canonical origin/main and registered by umbrella checkpoint ae5ea86.
 
 Add org.freedesktop.impl.portal.FileChooser=holonight-filechooser;gtk to the
 HoloNight, Hyprland, Sway and labwc portal configurations. Preserve every existing
