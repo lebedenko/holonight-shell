@@ -1,94 +1,93 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 lane=$1
-mkdir /work/source
-cp -a /input/. /work/source/
-cd /work/source
+mkdir /work/shell
+cp -a /input/. /work/shell/
+cd /work/shell
 export HOME=/work/build/home LC_ALL=C.UTF-8 TZ=UTC
+export JOBS=${JOBS:-2} CMAKE_BUILD_PARALLEL_LEVEL=${JOBS:-2}
+export XDG_RUNTIME_DIR=/work/runtime QT_FORCE_STDERR_LOGGING=1
+export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QSG_RHI_BACKEND=software
+export QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=
 mkdir -p "$HOME"
+mkdir -m 700 "$XDG_RUNTIME_DIR"
 if [ "$lane" = licensing ]; then
   reuse --version
   reuse lint
   exit
 fi
-python3 --version
-cmake --version
-ninja --version
-c++ --version
-clang-format --version
-clang-tidy --version
-pkg-config --modversion Qt6Core Qt6Quick
-bwrap --version
-sway --version
-python3 scripts/ci/test_launcher.py
-python3 scripts/ci/test_tooling_tidy.py
-mkdir -p /work/providers
-fetch_provider() {
-  name=$1
-  revision=$2
-  git init -q "/work/providers/$name"
-  git -C "/work/providers/$name" fetch --depth 1 "https://github.com/lebedenko/$name.git" "$revision"
-  git -C "/work/providers/$name" checkout --detach FETCH_HEAD
-  [ "$(git -C "/work/providers/$name" rev-parse HEAD)" = "$revision" ]
+mkdir -p build/ci-provenance
+pacman -Q > build/ci-provenance/packages.txt
+c++ --version > build/ci-provenance/compiler.txt
+cmake --version > build/ci-provenance/cmake.txt
+{ python3 --version; task --version; ninja --version; clang-format --version; clang-tidy --version; qmake6 --version; wayland-scanner --version; } > build/ci-provenance/versions.txt 2>&1
+capture() {
+  status=$?
+  cp -a build/ci-provenance /output/
+  if [ -d build/test/uqc-launch-logs ]; then cp -a build/test/uqc-launch-logs /output/; fi
+  if [ -d build/test/Testing ]; then cp -a build/test/Testing /output/; fi
+  if [ -f build/test/compile_commands.json ]; then cp build/test/compile_commands.json /output/; fi
+  if [ -d .cache/tooling ]; then cp -a .cache/tooling /output/tooling; fi
+  exit "$status"
 }
-fetch_provider holonight-config d6a392b41991f70a004d58f7694c7b6115cb7280
-fetch_provider holonight-qt 6c7ac33004702e166b8c152dcde918296be54286
-fetch_provider holonight-system-services 39472e6dcafc93acea218a234213c346be256586
-prefix=/work/providers/prefix
-cmake -S /work/providers/holonight-config -B /work/providers/config-build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-cmake --build /work/providers/config-build --parallel 2
-cmake --install /work/providers/config-build --prefix "$prefix"
-cmake -S /work/providers/holonight-system-services -B /work/providers/services-build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
-cmake --build /work/providers/services-build --parallel 2
-cmake --install /work/providers/services-build --prefix "$prefix"
-cmake -S /work/providers/holonight-qt -B /work/providers/qt-build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$prefix" \
-  -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON
-cmake --build /work/providers/qt-build --parallel 2
-cmake --install /work/providers/qt-build --prefix "$prefix"
-# Match existing acceptance: provider source trees must be unavailable to consumers.
-python3 - <<'PY_CLEAN'
-from pathlib import Path
-import shutil
-for name in ('holonight-config', 'holonight-qt', 'holonight-system-services'):
-    shutil.rmtree(Path('/work/providers') / name)
-PY_CLEAN
-build=build/verification
-trap 'status=$?; for name in Testing uqc-launch-logs; do if [ -d "$build/$name" ]; then cp -a "$build/$name" /output/; fi; done; exit "$status"' 0
-scripts/check-architecture-boundaries.sh
-cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPython3_EXECUTABLE=/usr/bin/python3 -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH="$prefix"
-cmake --build "$build" --parallel 2
-export LD_LIBRARY_PATH="$prefix/lib"
-if [ "$lane" = static-checks ]; then
-  cmake --build "$build" --target format-check
-  cmake --build "$build" --target tidy
-  # Analyze the standalone installed-package consumer in its actual compiler context.
-  stage=/work/static-install
-  cmake --install "$build" --prefix "$stage"
-  consumer=build/tidy-package-consumer
-  cmake -S tests/shell-config-package-consumer -B "$consumer" -G Ninja \
-    -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH="$stage;$prefix"
-  cmake --build "$consumer" --parallel 2
-  python3 - "$consumer" <<'PY_DB'
-from pathlib import Path
-import json
-import sys
-build = Path(sys.argv[1])
-entries = json.loads((build / 'compile_commands.json').read_text())
-for entry in entries:
-    entry['command'] = entry['command'].replace('-mno-direct-extern-access', '').replace('-Wno-template-id-cdtor', '')
-(build / 'clang').mkdir()
-(build / 'clang/compile_commands.json').write_text(json.dumps(entries))
-PY_DB
-  run-clang-tidy -quiet -j 2 -p "$consumer/clang" \
-    -header-filter "^$PWD/(apps|libs|integrations|tests)/.*\\.(h|hpp)$" \
-    "$PWD/tests/shell-config-package-consumer/main.cpp"
-else
-  scripts/check-qmltypes.sh "$build"
-  bwrap --unshare-net --ro-bind / / -- true
-  python3 scripts/run-isolated-test.py --hide-host ctest --test-dir "$build" --output-on-failure --no-tests=error
-  cmake --build "$build" --target qml-lint
+trap capture 0
+if [ "$lane" = prepare ]; then
+  export HOLONIGHT_CONFIG_SOURCE=/prepared/sources/holonight-config
+  export HOLONIGHT_QT_SOURCE=/prepared/sources/holonight-qt
+  export HOLONIGHT_SYSTEM_SERVICES_SOURCE=/prepared/sources/holonight-system-services
+  if [ -d /prepared/deps ]; then cp -a /prepared/deps build/deps; fi
+  task deps PRESET=test
+  mkdir -p /prepared/deps
+  cp -a build/deps/. /prepared/deps/
+  cp -a build/ci-provenance /prepared/environment
+  exit
 fi
+cp -a /prepared/deps build/deps
+cp /prepared/provider-revisions.json build/ci-provenance/
+cp build/deps/provider-revisions.tsv build/ci-provenance/
+export LD_LIBRARY_PATH="$PWD/build/deps/prefix/lib"
+python3 scripts/ci/test_launcher.py
+python3 scripts/ci/test_dependencies.py
+python3 scripts/ci/test_tooling_tidy.py
+scripts/check-architecture-boundaries.sh
+package_acceptance() {
+  cmake -S libs/holonight-shell-config -B build/config-package -G Ninja \
+    -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DHOLONIGHT_DEPENDENCY_PREFIX="$PWD/build/deps/prefix" \
+    -DCMAKE_INSTALL_PREFIX=/work/config-prefix -DCMAKE_INSTALL_LIBDIR=lib
+  cmake --build build/config-package --parallel "$JOBS"
+  cmake --install build/config-package
+  cmake -S tests/shell-config-package-consumer -B build/package-consumer -G Ninja \
+    -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DCMAKE_PREFIX_PATH="/work/config-prefix;$PWD/build/deps/prefix"
+  cmake --build build/package-consumer --parallel "$JOBS"
+  build/package-consumer/holonight-shell-config-consumer
+}
+case "$lane" in
+  build-test)
+    bwrap --unshare-net --ro-bind / / -- true
+    task test
+    cat build/test/Testing/Temporary/LastTest.log
+    scripts/check-qmltypes.sh build/test
+    package_acceptance
+    ;;
+  release)
+    task build PRESET=release
+    DESTDIR=/work/stage cmake --install build/release
+    test -x /work/stage/usr/bin/holonight-shell
+    test -f /work/stage/usr/lib/cmake/HoloNightShellConfig/HoloNightShellConfigConfig.cmake
+    cp -a /work/stage /output/
+    ;;
+  static-checks)
+    task build PRESET=test
+    task format-check
+    package_acceptance
+    task tidy
+    cmake --build build/test --target qml-lint
+    python3 tooling/qml_policy.py
+    scripts/check-qmltypes.sh build/test
+    python3 scripts/ci/tidy-package-consumer.py
+    ;;
+  *) echo "Unknown lane: $lane" >&2; exit 2 ;;
+esac

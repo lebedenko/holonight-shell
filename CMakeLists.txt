@@ -9,7 +9,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 include(GNUInstallDirs)
-option(BUILD_TESTS "Build unit tests (requires network access at configure time)" OFF)
+option(BUILD_TESTS "Build unit tests using installed prerequisites" OFF)
 option(ENABLE_COVERAGE "Instrument for gcov/gcovr coverage reporting" OFF)
 
 install(
@@ -25,12 +25,12 @@ install(
 set(QT_SKIP_AUTO_QML_PLUGIN_INCLUSION ON)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/tooling/dependencies.cmake")
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent Sql QuickControls2)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Quick Qml DBus Network Concurrent Sql QuickControls2 WaylandClient)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(HolonightQt REQUIRED COMPONENTS Wayland)
 find_package(HoloNightSystemServices REQUIRED COMPONENTS Audio Storage Compositor)
 include(cmake/QuickControlsRuntime.cmake)
-find_package(Qt6 COMPONENTS WaylandClient WaylandClientPrivate QUIET)
+find_package(Qt6 ${Qt6_VERSION} EXACT REQUIRED COMPONENTS WaylandClientPrivate)
 find_package(Qt6WaylandScannerTools REQUIRED)
 if(NOT COMMAND qt6_generate_wayland_protocol_client_sources)
   include("${Qt6WaylandScannerTools_DIR}/Qt6WaylandClientMacros.cmake" OPTIONAL)
@@ -145,16 +145,11 @@ if(NOT COMMAND qt6_generate_wayland_protocol_client_sources)
 endif()
 
 add_library(holonight_qt_wayland_client INTERFACE)
-if(TARGET Qt6::WaylandClient)
-  target_link_libraries(holonight_qt_wayland_client INTERFACE Qt6::WaylandClient)
-else()
-  target_include_directories(holonight_qt_wayland_client INTERFACE ${QT6_WAYLAND_CLIENT_INCLUDE_DIRS})
-  target_compile_options(holonight_qt_wayland_client INTERFACE ${QT6_WAYLAND_CLIENT_CFLAGS_OTHER})
-  target_link_directories(holonight_qt_wayland_client INTERFACE ${QT6_WAYLAND_CLIENT_LIBRARY_DIRS})
-  target_link_libraries(holonight_qt_wayland_client INTERFACE ${QT6_WAYLAND_CLIENT_LIBRARIES})
-endif()
+target_link_libraries(holonight_qt_wayland_client INTERFACE Qt6::WaylandClient)
 
-pkg_get_variable(WAYLAND_PROTOCOLS_PKGDATADIR wayland-protocols pkgdatadir)
+# Preserve spaces in the pkg-config data directory.
+execute_process(COMMAND "${PKG_CONFIG_EXECUTABLE}" --variable=pkgdatadir wayland-protocols
+  OUTPUT_VARIABLE WAYLAND_PROTOCOLS_PKGDATADIR OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
 cmake_path(SET WAYLAND_PROTOCOLS_PKGDATADIR NORMALIZE "${WAYLAND_PROTOCOLS_PKGDATADIR}")
 set(XDG_SHELL_PROTOCOL "${WAYLAND_PROTOCOLS_PKGDATADIR}/stable/xdg-shell/xdg-shell.xml")
 if(NOT EXISTS "${XDG_SHELL_PROTOCOL}")
@@ -204,20 +199,14 @@ endif()
 if(BUILD_TESTS)
   enable_testing()
 
-  find_package(Qt6 REQUIRED COMPONENTS Test QuickTest)
+  find_package(Qt6 6.11 REQUIRED COMPONENTS Test QuickTest)
 
-  find_package(GTest CONFIG QUIET)
-  if(NOT GTest_FOUND OR NOT TARGET GTest::gtest OR NOT TARGET GTest::gmock)
-    include(FetchContent)
-    FetchContent_Declare(
-      googletest
-      URL      https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
-      URL_HASH SHA256=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
-    )
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-  endif()
+  find_package(GTest 1.14 CONFIG REQUIRED)
+  foreach(target GTest::gtest GTest::gmock)
+    if(NOT TARGET ${target})
+      message(FATAL_ERROR "Installed GTest must provide ${target}; install GTest >=1.14 with GMock. No sources are downloaded.")
+    endif()
+  endforeach()
 
   if(ENABLE_COVERAGE)
     find_program(GCOVR gcovr REQUIRED)

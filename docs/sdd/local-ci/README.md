@@ -1,5 +1,10 @@
 # Local CI rehearsal
 
+The current dependency/image/provider contract is recorded in
+[EDM-012](../external-dependency-management/SPEC.md). The records below retain the earlier local-CI
+implementation and acceptance history; immutable Arch preparation and offline Release gating supersede
+the old supplement/provider acquisition path.
+
 Baseline ad351ab06cf58b9eb81ff932634180a94c460f9b. Umbrella CI-014.
 
 Preserve independent build/test, static and REUSE results and push/PR triggers.

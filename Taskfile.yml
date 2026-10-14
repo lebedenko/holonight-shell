@@ -19,6 +19,10 @@ vars:
     sh: nproc
   PRESET: '{{default "debug" .PRESET}}'
 tasks:
+  ci:prepare:
+    desc: Explicitly acquire exact providers and prepare the qualified acceptance environment
+    cmds:
+    - python3 scripts/ci/run.py --prepare {{.CLI_ARGS}}
   ci:
     desc: Rehearse every push validation lane in isolated pinned containers
     cmds:
@@ -137,15 +141,17 @@ tasks:
     cmds:
     - python3 tooling/workflow.py test --preset {{.PRESET}}
   test:shell-config-package:
-    desc: Build, install, and consume the standalone Shell product-config package
+    desc: Build, install, and consume the standalone Shell product-config package using prepared providers
     cmds:
-    - cmake -S libs/holonight-shell-config -B /tmp/holonight-shell-config-build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/tmp/holonight-shell-config-prefix
-    - cmake --build /tmp/holonight-shell-config-build -j{{.NPROC}}
-    - cmake --install /tmp/holonight-shell-config-build
-    - cmake -S tests/shell-config-package-consumer -B /tmp/holonight-shell-config-consumer-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-      -DCMAKE_PREFIX_PATH=/tmp/holonight-shell-config-prefix
-    - cmake --build /tmp/holonight-shell-config-consumer-build -j{{.NPROC}}
-    - /tmp/holonight-shell-config-consumer-build/holonight-shell-config-consumer
+    - cmake -S libs/holonight-shell-config -B build/config-package -G Ninja -DCMAKE_BUILD_TYPE=Debug
+      -DCMAKE_INSTALL_PREFIX="{{.TASKFILE_DIR}}/build/config-prefix" -DCMAKE_INSTALL_LIBDIR=lib
+      -DHOLONIGHT_DEPENDENCY_PREFIX="{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}"
+    - cmake --build build/config-package -j{{.NPROC}}
+    - cmake --install build/config-package
+    - cmake -S tests/shell-config-package-consumer -B build/package-consumer -G Ninja -DCMAKE_BUILD_TYPE=Debug
+      -DCMAKE_PREFIX_PATH="{{.TASKFILE_DIR}}/build/config-prefix;{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}"
+    - cmake --build build/package-consumer -j{{.NPROC}}
+    - build/package-consumer/holonight-shell-config-consumer
   coverage:
     desc: Build coverage report
     cmds:
@@ -172,35 +178,13 @@ tasks:
     cmds:
     - python3 tooling/workflow.py tidy --scope tests
   tidy-container:
-    desc: Run static checks inside the CI container (Docker/Podman) for predictable results
+    desc: Run offline static checks against the explicitly prepared qualified environment
     cmds:
-    - test "$(git -C ../holonight-config rev-parse HEAD)" = 03fa635cedc506e101a148fc54f7eb46d17c6de5
-    - test "$(git -C ../holonight-qt rev-parse HEAD)" = d51194ea03c41881fb1099d313c806f869dc9051
-    - test "$(git -C ../holonight-system-services rev-parse HEAD)" = 3e2928eb55bbc3de2b1e877e29aa57d47077c05d
-    - "if command -v docker >/dev/null 2>&1; then\n  CONTAINER_RUNNER=\"docker\"\nelif command -v podman >/dev/null 2>&1;\
-      \ then\n  CONTAINER_RUNNER=\"podman\"\nelse\n  echo \"ERROR: Neither docker nor podman is available.\" >&2\n  exit 1\n\
-      fi\n$CONTAINER_RUNNER run --rm \\\n  -v \"$(pwd):/workspace\" \\\n  -v \"{{.TASKFILE_DIR}}/../holonight-config:/deps/config:ro\"\
-      \ \\\n  -v \"{{.TASKFILE_DIR}}/../holonight-qt:/deps/qt:ro\" \\\n  -v \"{{.TASKFILE_DIR}}/../holonight-system-services:/deps/system-services:ro\"\
-      \ \\\n  -w /workspace ghcr.io/lebedenko/holonight-shell-ci:latest bash -ec '\n    if ! pkg-config --exists polkit-qt6-agent-1\
-      \ polkit-qt6-core-1; then\n      echo \"CI image lacks polkit-qt6 development packages required by the shell\" >&2\n\
-      \      exit 1\n    fi\n    prefix=/workspace/build-ci-dependencies/prefix\n    cmake --fresh -S /deps/config -B build-ci-dependencies/config\
-      \ -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=\"$prefix\"\n    cmake --build build-ci-dependencies/config\n\
-      \    cmake --install build-ci-dependencies/config\n    cmake --fresh -S /deps/qt -B build-ci-dependencies/qt -G Ninja\
-      \ -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DBUILD_DEMO=OFF -DBUILD_CONTROLS_GALLERY=OFF -DBUILD_WAYLAND=ON -DHoloNightConfig_DIR=\"\
-      $prefix/lib/cmake/HoloNightConfig\" -DCMAKE_INSTALL_PREFIX=\"$prefix\"\n    cmake --build build-ci-dependencies/qt\n\
-      \    cmake --install build-ci-dependencies/qt\n    cmake --fresh -S /deps/system-services -B build-ci-dependencies/system-services\
-      \ -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=\"$prefix\"\n    cmake --build build-ci-dependencies/system-services\n\
-      \    cmake --install build-ci-dependencies/system-services\n    cmake --fresh -S . -B build-ci-check -G Ninja -DCMAKE_BUILD_TYPE=Debug\
-      \ -DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DCMAKE_PREFIX_PATH=\"$prefix\"\
-      \ -DHoloNightConfig_DIR=\"$prefix/lib/cmake/HoloNightConfig\" -DHolonightQt_DIR=\"$prefix/lib/cmake/HolonightQt\" -DHoloNightSystemServices_DIR=\"\
-      $prefix/lib/cmake/HoloNightSystemServices\"\n    cmake --build build-ci-check --target format-check\n    cmake --build\
-      \ build-ci-check --target tidy\n  '\n"
+    - python3 scripts/ci/run.py --lane static-checks
   build-ci-image:
-    desc: Build the CI container image locally
+    desc: Explicitly pull and prepare the qualified CI environment
     cmds:
-    - "if command -v docker >/dev/null 2>&1; then\n  CONTAINER_RUNNER=\"docker\"\nelif command -v podman >/dev/null 2>&1;\
-      \ then\n  CONTAINER_RUNNER=\"podman\"\nelse\n  echo \"ERROR: Neither docker nor podman is available.\" >&2\n  exit 1\n\
-      fi\n$CONTAINER_RUNNER build -t ghcr.io/lebedenko/holonight-shell-ci:latest -f Dockerfile.ci .\n"
+    - task: ci:prepare
   qml-lint:
     desc: Build and check QML with configured Qt installation
     cmds:

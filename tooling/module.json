@@ -33,5 +33,175 @@
     "python3",
     "scripts/run-isolated-test.py",
     "--hide-host"
-  ]
+  ],
+  "external_dependencies": [
+    {
+      "id": "qt",
+      "scope": [
+        "build"
+      ],
+      "components": [
+        "Core",
+        "Gui",
+        "Quick",
+        "Qml",
+        "DBus",
+        "Network",
+        "Concurrent",
+        "Sql",
+        "QuickControls2",
+        "WaylandClient",
+        "WaylandClientPrivate"
+      ]
+    },
+    {
+      "id": "qt-wayland",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "wayland",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "wayland-protocols",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "wayland-scanner",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "toml",
+      "scope": [
+        "build"
+      ],
+      "discovery": "pkg-config",
+      "package": "tomlplusplus"
+    },
+    {
+      "id": "secret",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "polkit",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "polkit-qt-agent",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "polkit-qt-core",
+      "scope": [
+        "build"
+      ]
+    },
+    {
+      "id": "udisks",
+      "scope": [
+        "runtime"
+      ]
+    },
+    {
+      "id": "bwrap",
+      "scope": [
+        "test"
+      ]
+    },
+    {
+      "id": "sway",
+      "scope": [
+        "test"
+      ]
+    },
+    {
+      "id": "dbus",
+      "scope": [
+        "test"
+      ]
+    },
+    {
+      "id": "compiler",
+      "scope": [
+        "tool"
+      ]
+    },
+    {
+      "id": "cmake",
+      "scope": [
+        "tool"
+      ]
+    },
+    {
+      "id": "ninja",
+      "scope": [
+        "tool"
+      ]
+    },
+    {
+      "id": "pkgconf",
+      "scope": [
+        "tool"
+      ]
+    },
+    {
+      "id": "git",
+      "scope": [
+        "tool"
+      ]
+    },
+    {
+      "id": "python",
+      "scope": [
+        "tool"
+      ]
+    },
+    {
+      "id": "gtest",
+      "scope": [
+        "test"
+      ],
+      "targets": [
+        "GTest::gmock",
+        "GTest::gtest"
+      ]
+    },
+    {
+      "id": "qt",
+      "scope": [
+        "test"
+      ],
+      "components": [
+        "Test",
+        "QuickTest"
+      ]
+    },
+    {
+      "id": "fonts",
+      "scope": [
+        "runtime"
+      ]
+    },
+    {
+      "id": "mime",
+      "scope": [
+        "runtime"
+      ]
+    }
+  ],
+  "external_features": {}
 }

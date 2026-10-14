@@ -2,32 +2,19 @@
 
 This project is developed against a Linux Wayland/Hyprland environment with C++23, Qt 6, CMake, Ninja, and Task.
 
-## Ubuntu 24.04 CI Baseline
+## Qualified Arch CI environment
 
-GitHub Actions uses `ubuntu-24.04` and installs these packages:
+CI runs in the full Arch image pinned in `scripts/ci/images.json`; the Ubuntu host only launches containers.
+The qualified image supplies Qt ≥6.11 (public/private versions must match), installed GTest ≥1.14 with
+GMock, Qt QuickTest, Wayland/scanner/protocols, libsecret, tomlplusplus, polkit/polkit-qt6, PulseAudio,
+CMake/Ninja, Task, compiler, clang-format/tidy, bubblewrap, D-Bus and Sway.
+Debian package mappings remain reference data; Debian is not a qualified release gate.
 
-```bash
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends \
-  clang-format \
-  clang-tidy \
-  cmake \
-  g++ \
-  libgl1-mesa-dev \
-  libgtest-dev \
-  libpulse-dev \
-  libtomlplusplus-dev \
-  libwayland-bin \
-  libwayland-dev \
-  ninja-build \
-  pkg-config \
-  wayland-protocols
-```
-
-CI installs Qt 6.8.3 with `jurplel/install-qt-action`, including the `qtwayland` module, because the project uses
-`Qt6::WaylandClientPrivate` and `QtQuick.Effects`.
-
-Install [Task](https://taskfile.dev) separately for the local workflow documented in `README.md`.
+Run `task deps PRESET=test` explicitly before local configure/build/test. Provider source overrides accept
+paths with spaces. Internal providers use `HOLONIGHT_DEPENDENCY_PREFIX`; external packages use
+`HOLONIGHT_EXTERNAL_PREFIX` or normal system discovery. Missing prerequisites fail without downloading.
+Run `task ci:prepare` before `task ci` for offline acceptance and Release staged installation.
+See `tooling/README.md` for provider identities, separate prefixes and incompatible cache archival.
 
 ## Configure Presets
 

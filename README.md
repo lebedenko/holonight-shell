@@ -109,7 +109,7 @@ Requires **hypridle ≥ 0.2.0** (or swayidle) to track idle time via `ext-idle-n
 
 ## Requirements
 
-- Qt 6 (`Core`, `Gui`, `Quick`, `WaylandClient`, `DBus`, `Network`, `Concurrent`, `Sql`)
+- Qt ≥6.11 (`Core`, `Gui`, `Quick`, `Qml`, `QuickControls2`, `WaylandClient`, matching `WaylandClientPrivate`, `DBus`, `Network`, `Concurrent`, `Sql`)
 - CMake 3.25+
 - **hypridle ≥ 0.2.0** or swayidle — recommended; shell runs without them but idle detection and Teams/Zoom "Away" status are disabled
 - Ninja
@@ -118,17 +118,18 @@ Requires **hypridle ≥ 0.2.0** (or swayidle) to track idle time via `ext-idle-n
 - `libpulse`
 - `libsecret-1` (for CalDAV password lookup from the system keyring)
 - Polkit agent development files and polkit-qt6 0.200.0+
-- GTest (optional, for tests — fetched automatically if not installed)
+- Installed GTest ≥1.14 with GMock and Qt Test/QuickTest (for tests)
 - Python 3, bubblewrap, D-Bus and Sway for isolated test acceptance (no live session required)
 
-See [`docs/dev-setup.md`](docs/dev-setup.md) for the Ubuntu package baseline used by CI.
+See [`docs/dev-setup.md`](docs/dev-setup.md) for the qualified Arch CI environment.
 
 ## Building
 
 All workflows go through [`task`](https://taskfile.dev):
 
 ```bash
-task configure    # configure CMake
+task deps         # explicitly prepare supplied local providers and check external prerequisites
+task configure    # validate installed dependencies and configure CMake
 task build        # build the binary
 task run          # build and launch (requires a live Wayland/Hyprland session)
 task test         # build and run isolated unit and launch acceptance tests
@@ -142,18 +143,20 @@ task clean        # remove build/
 
 Install the HoloNight dependencies first: `holonight-config`, `holonight-qt`
 (including its Wayland component, QML modules and Qt plugins), and
-`holonight-system-services`. Install them into the destination prefix or a
-standard system location. Development tasks verify the pinned provider/config revisions and build sibling dependencies under
-`build/deps/`, with a private `build/deps/prefix` installation. Production
-installation builds use installed dependencies. `task test` needs permission to create
-Linux namespaces for bubblewrap; it uses a private headless compositor and disposable services.
+`holonight-system-services`. Install them into the destination prefix or an
+approved internal prefix. `task deps` explicitly builds supplied sibling/local sources under
+`build/deps/` into `build/deps/prefix`. Set `HOLONIGHT_DEPENDENCY_PREFIX` to consume existing
+providers and `HOLONIGHT_EXTERNAL_PREFIX` for external libraries in a separate prefix.
+Configure, build and test only validate installed prerequisites; they never acquire or prepare dependencies.
+Qt ≥6.11 and matching private components are required. `task test` needs Linux namespaces for bubblewrap;
+it uses a private headless compositor and disposable services.
 
 ```bash
 task install:system  # Release build, install to /usr using sudo
 task install:local   # Release build, install to ~/.local; task install is an alias
 ```
 
-These tasks use separate `build-install-system/` and `build-install-local/`
+These tasks use separate `build/system-install/` and `build/local-install/`
 directories, with tests and coverage disabled. They reload the current user's
 systemd unit files after installation. Existing services are not restarted.
 
@@ -563,13 +566,16 @@ See [tooling/README.md](tooling/README.md) for presets, local dependency overrid
 
 ## Local CI rehearsal
 
-Run `task ci` with Python 3, Task and Docker (Podman fallback). Every push
-validation lane uses fresh isolated builds and the same pinned tools/providers
-as GitHub CI. Non-ignored new inputs are included and reported for adding before
-pushing. Build/test requires container user namespaces and runs privileged for
-its private bubblewrap/headless Sway checks. Complete logs and evidence are
-saved under ignored `build/ci/`; any required failure returns nonzero and prints
-its full log. Existing development tasks remain available. Publication and
-artifact uploads remain remote operations. See [local SDD](docs/sdd/local-ci/README.md).
+Run `task ci:prepare` explicitly, then `task ci` with Python 3, Task and Docker (Podman fallback).
+Preparation acquires the exact published Config, System Services and Qt revisions and builds providers
+in the qualified immutable full Arch image. `task ci:prepare -- --provider-source-root ..` can clone
+those commits from local repositories. Acceptance validates the prepared manifest, uses `--pull=never`
+and `--network=none`, and hides provider sources/build trees from consumers.
+
+Build/test, Release staging, strict static checks and REUSE use fresh isolated working-tree snapshots.
+Build/test retains its privileged container for bubblewrap namespaces and the private headless compositor. Complete logs,
+toolchain identities and provenance are saved under ignored `build/ci/`; every required failure returns
+nonzero. Incompatible preparation and consumer caches are archived before replacement.
+See [dependency SDD](docs/sdd/external-dependency-management/SPEC.md).
 
 Integration plugins use the private `org.holonight.Integration/3.0` ABI. Older plugin libraries and catalogs are rejected during metadata discovery before instantiation. Rebuild third-party plugins against the current compositor contracts.
