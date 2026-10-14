@@ -11,8 +11,6 @@
 #include <QSet>
 #include <QString>
 
-#include <cstdint>
-
 class NotificationRuleStore;
 
 // Per-app notification rules, exposed as a QML singleton.
@@ -23,7 +21,7 @@ class NotificationRuleModel : public QAbstractListModel {
   QML_SINGLETON
 
  public:
-  enum Roles : std::uint16_t {  // NOLINT(cppcoreguidelines-use-enum-class): Qt model roles are int-compatible.
+  enum Roles : quint16 {  // NOLINT(cppcoreguidelines-use-enum-class): Qt model roles are int-compatible.
     AppNameRole = Qt::UserRole + 1,
     DisplayNameRole,
     DisplayIconRole,

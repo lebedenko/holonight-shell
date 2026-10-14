@@ -11,8 +11,6 @@
 #include <QString>
 #include <QVariant>
 
-#include <cstdint>
-
 class CompositorService;
 class NotificationRuleModel;
 class NotificationStore;
@@ -37,7 +35,7 @@ class NotificationService : public QAbstractListModel {
   Q_PROPERTY(QString daemonConflictOwner READ daemonConflictOwner CONSTANT FINAL)
 
  public:
-  enum Roles : std::uint16_t {  // NOLINT(cppcoreguidelines-use-enum-class): Qt model roles are int-compatible.
+  enum Roles : quint16 {  // NOLINT(cppcoreguidelines-use-enum-class): Qt model roles are int-compatible.
     NotifIdRole = Qt::UserRole + 1,
     SummaryRole,
     BodyRole,

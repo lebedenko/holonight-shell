@@ -56,7 +56,7 @@ target_link_libraries(holonight-shell PRIVATE
     holonight_presentationplugin
 )
 
-set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES
+set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces holonight_app PROPERTY INTERFACE_SOURCES
                                                                                               "")
 
 # Provider metadata is absent from the installed static Audio target. Extract only
@@ -93,7 +93,7 @@ qt6_extract_metatypes(holonight_surfaces OUTPUT_FILES _HOLONIGHT_SURFACES_METATY
 qt6_extract_metatypes(holonight_app OUTPUT_FILES _HOLONIGHT_APP_METATYPES)
 # The shell registrar uses the merged library metatypes as its primary input.
 # Do not also feed those linked libraries back through --foreign-types.
-set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces PROPERTY INTERFACE_SOURCES
+set_property(TARGET holonight_compositor holonight_core holonight_services holonight_surfaces holonight_app PROPERTY INTERFACE_SOURCES
                                                                                               "")
 set(_HOLONIGHT_LIBRARY_METATYPE_DEPS
     ${_HOLONIGHT_COMPOSITOR_METATYPES}

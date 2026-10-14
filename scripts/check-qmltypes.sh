@@ -123,6 +123,13 @@ fi
 for component in AuthenticationDialog AuthenticationPrompt IdentitySelector MessageList; do
   grep -Fqx "${component} 1.0 ${component}.qml" "${authentication_module_dir}/qmldir"
 done
+# A foreign-type name alone can survive missing model metadata. Require its public properties too.
+for property in frontendKind requestMessage currentPrompt; do
+  if ! grep -Fq "name: \"${property}\"" "${authentication_module_dir}/holonight_authentication_qml.qmltypes"; then
+    echo "Authentication QML metadata is missing model property ${property}" >&2
+    exit 1
+  fi
+done
 echo "Authentication QML metadata check passed."
 
 if grep -Eq 'HyprlandBackend|SwayBackend|SpecialWorkspace' "${qmltypes_file}" "${qmldir_file}" "${raw_qml_qrc}"; then
