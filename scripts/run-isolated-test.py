@@ -10,6 +10,8 @@ import tempfile
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--hide-host', action='store_true')
+    parser.add_argument('--build-dir', type=Path,
+                        help='Keep this external build directory writable when hiding the host')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command
@@ -17,6 +19,9 @@ def main():
         command = command[1:]
     if not command:
         parser.error('a command is required')
+    build = args.build_dir.resolve() if args.build_dir else None
+    if build is not None and not build.is_dir():
+        parser.error(f'build directory does not exist: {build}')
     with tempfile.TemporaryDirectory(prefix='uqc102-tests-') as directory:
         root = Path(directory)
         env = dict(PATH=os.defpath, LANG='C.UTF-8', HOME=str(root),
@@ -50,6 +55,8 @@ def main():
                             '--bind', str(root), str(root), '--ro-bind', str(project.parent), str(project.parent),
                             '--bind', str(project), str(project),
                             '--chdir', str(project)]
+                if build is not None:
+                    isolated += ['--bind', str(build), str(build)]
                 for path in (Path('/usr/lib/qt6/qml/Holonight'), Path('/usr/local/lib/qt6/qml/Holonight')):
                     if path.is_dir():
                         isolated += ['--tmpfs', str(path)]
