@@ -171,9 +171,14 @@ overlay.
 Desktop widgets are declared as a TOML array of tables — one `[[widget]]` entry each — plus the shared
 `[widgets]` table. Each widget is targeted by monitor *output name* (`monitors = ["DP-1"]`); an empty or omitted
 list means all monitors, and a configured name that is not currently connected is honored on hotplug (warned once).
-A widget renders only while its monitor's visible workspace has no windows; when a window occupies it the widget is
-hidden and its update timer freezes, then resyncs to the wall clock on reveal. The surface is cached across these
-transitions, so toggling is instant. `position` is one of nine anchors and is global across a widget's monitors;
+With a connected compositor that supports occupancy (including Hyprland and Sway), widget content renders only
+while its monitor's visible workspace has no windows. Its presentation timer stops when occupancy hides all of
+that widget's surfaces, and content refreshes before reveal. On labwc and other backends without occupancy, or
+when compositor integration is disconnected or absent, content stays visible on the bottom layer and application
+windows naturally cover it. Unknown occupancy is not treated as an empty workspace; capability recovery restores
+occupancy-based visibility. Covered widgets may continue updating, since window coverage does not suspend timers.
+The surface is cached across these transitions, so toggling is instant. `position` is one of nine anchors and is
+global across a widget's monitors;
 top-anchored positions are offset below the bar by `margin`. `enabled = false` (any widget type) keeps the
 definition but creates no surface, and such a widget does not block a position. If two widgets claim the same
 `(monitor, position)`, the one earlier in config order wins on that monitor and the other is dropped there
@@ -184,8 +189,10 @@ widgets require a non-empty title and valid deadline; disabled countdowns may re
 time only when the deadline carried one. `clock` shows a 24-hour `HH:mm` with smaller inline seconds (omitted, and
 ticking per minute, when `show_seconds = false`) over a date row; `date_format` is a Qt date pattern (empty =
 `dddd, d MMMM yyyy`) and `locale` is a BCP-47 tag (empty = system locale). An unrecognized `locale` or an empty
-`date_format` result falls back (system locale / default pattern) with a one-time warning. The occupancy gate
-requires Hyprland. Widget changes rebuild live; new monitors are picked up on hotplug.
+`date_format` result falls back (system locale / default pattern) with a one-time warning. Widget changes rebuild
+live; new monitors are picked up on hotplug.
+On labwc, use the existing native `ToggleShowDesktop` action (Super+D) to reveal widgets; no shortcut or session
+configuration changes are needed. Countdown completion and media player availability/pause-timeout rules still apply.
 
 | Key | Default | Accepted values |
 |---|---:|---|

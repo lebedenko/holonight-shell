@@ -119,8 +119,9 @@ void MprisWidgetManager::applyVisibility(const QString& monitor_name) {
   if (view == nullptr) {
     return;
   }
-  const bool visible = compositor_ != nullptr && compositor_->connected() && compositor_->hasOccupancy() &&
-                       compositor_->isOutputEmpty(monitor_name);
+  const bool occupancy_available = compositor_ != nullptr && compositor_->connected() && compositor_->hasOccupancy();
+  const bool visible =
+      shouldShowWidgetContent(occupancy_available, occupancy_available && compositor_->isOutputEmpty(monitor_name));
   content_visible_.insert(monitor_name, visible);
 
   if (visible) {

@@ -157,11 +157,21 @@ Notifications:
   6. Run several sticky notifications and verify queue overflow respects notifications.max_visible.
   7. Click the notification bell and verify the sidebar history reflects unread notifications.
 
-Widgets:
+Widgets (connected Hyprland or Sway with occupancy support):
   1. Move to an empty workspace and verify desktop widgets appear above the wallpaper and below normal windows.
   2. Open a normal window on that workspace and verify widgets hide.
   3. Close the window and verify widgets reappear without a visible rebuild flash.
   4. Edit ~/.config/holonight/config.toml widget entries and verify live rebuild behavior.
+
+Widgets (labwc or another backend without occupancy support):
+  1. Enable a clock and verify it appears after startup and live configuration reload.
+  2. Cover it with ordinary, maximized, and fullscreen windows; uncovered portions should remain visible.
+  3. Minimize windows or use labwc's native Super+D (ToggleShowDesktop); verify the revealed clock is current
+     and advances, then restore windows and verify they cover it again.
+  4. Switch between empty and occupied workspaces; widget content should not disappear due to occupancy.
+  5. Verify countdowns reach Now and media widgets retain their player availability and pause-timeout rules.
+  6. Check monitor targeting and hotplug; verify widgets capture neither clicks nor keyboard focus.
+  7. Covered widgets may continue updating; this fallback does not detect coverage or suspend timers.
 
 On-screen display:
   1. Change the volume (pactl set-sink-volume @DEFAULT_SINK@ +5%) and verify an OSD appears with icon, bar, and percentage.

@@ -11,6 +11,27 @@ using enum Holonight::Wayland::Anchor;
 
 }  // namespace
 
+TEST(WidgetSurfacePolicy, ShowsContentWhenOccupancyIsUnavailable) {
+  // Missing/disconnected integration and backends without occupancy use the same fallback.
+  // Ignore even a stale occupancy value; unavailable does not mean the output is empty.
+  EXPECT_TRUE(shouldShowWidgetContent(false, false));
+  EXPECT_TRUE(shouldShowWidgetContent(false, true));
+}
+
+TEST(WidgetSurfacePolicy, ShowsOnlyEmptyOutputsWhenOccupancyIsAvailable) {
+  EXPECT_TRUE(shouldShowWidgetContent(true, true));
+  EXPECT_FALSE(shouldShowWidgetContent(true, false));
+}
+
+TEST(WidgetSurfacePolicy, ReevaluatesVisibilityOnOccupancyLossAndRecovery) {
+  for (const bool output_empty : {false, true}) {
+    SCOPED_TRACE(output_empty);
+    EXPECT_EQ(shouldShowWidgetContent(true, output_empty), output_empty);
+    EXPECT_TRUE(shouldShowWidgetContent(false, output_empty));
+    EXPECT_EQ(shouldShowWidgetContent(true, output_empty), output_empty);
+  }
+}
+
 TEST(WidgetSurfacePolicy, PlacesTopAnchoredWidgetBelowBar) {
   const WidgetSurfacePlacement placement = widgetSurfacePlacement(WidgetPosition::RightTop, 32);
 

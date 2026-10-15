@@ -35,3 +35,7 @@ inline constexpr int kMprisWidgetHeight = 456;
 [[nodiscard]] bool widgetBlockedOnMonitor(const QList<QStringList>& position_blockers, const QString& monitor_name);
 [[nodiscard]] bool shouldCreateWidgetSurface(const QStringList& configured_monitors,
                                              const QList<QStringList>& position_blockers, const QString& monitor_name);
+
+// Unavailable occupancy is unknown, not an empty workspace. Keep bottom-layer content visible
+// in that case and let application windows cover it; this does not detect coverage or stop updates.
+[[nodiscard]] bool shouldShowWidgetContent(bool occupancy_available, bool output_empty);

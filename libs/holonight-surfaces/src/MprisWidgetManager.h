@@ -28,7 +28,8 @@ class QScreen;
 // QML property contract pushed into MprisWidgetSurface.qml's root (§4.5, plus two presentation-
 // state booleans DESIGN.md's prose names but its interface table omits — pinned down here):
 //   title / artist / album / identity / desktopEntry / playbackStatus / lengthUs / canSeek / positionUs / artworkPath
-//   contentVisible   — occupancy-driven; QML alone owns the root visible binding
+//   contentVisible   — occupancy-driven when available, otherwise true behind application windows;
+//                       covered widgets may continue updating. QML alone owns the root visible binding
 //   pausedTimedOut   — true once activePauseElapsedMs() crosses this instance's pause_hide_minutes
 //                       threshold while Paused (§3.2's "Paused-and-hidden-by-timeout" state);
 //                       distinct from contentVisible, which the surface stays occupancy-visible
@@ -75,7 +76,7 @@ class MprisWidgetManager : public PerMonitorLayerManager {
   void onActivePositionChanged();
 
  private:
-  // Show/hide the surface for one monitor to match current occupancy; on reveal, resyncs first
+  // Apply occupancy visibility or the visible fallback for one monitor; on reveal, resyncs first
   // (REQ-F-062) so the surface never flashes stale content before disappearing again next tick.
   void applyVisibility(const QString& monitor_name);
   // REQ-F-062: pulls every fresh MPRIS field (metadata, status, position, length, canSeek) from

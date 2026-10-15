@@ -69,8 +69,8 @@ void WidgetManager::configureSurface(Holonight::Wayland::LayerSurfaceSpec& spec,
   spec.margin_bottom = placement.bottom_margin;
   spec.margin_left = placement.left_margin;
   spec.input_region_policy = Holonight::Wayland::InputRegionPolicy::Empty;
-  // Apply occupancy-driven visibility once the compositor has configured (and first-time auto-shown)
-  // the surface, so an initially-occupied workspace's widget ends up hidden.
+  // Apply the visibility policy after initial configuration: hide occupied outputs only when
+  // occupancy is available; otherwise leave bottom-layer content visible behind windows.
 }
 
 void WidgetManager::onHostConfigured(const QString& monitor_name) { applyVisibility(monitor_name); }
@@ -131,8 +131,9 @@ void WidgetManager::applyVisibility(const QString& monitor_name) {
   if (view == nullptr) {
     return;
   }
-  const bool visible = compositor_ != nullptr && compositor_->connected() && compositor_->hasOccupancy() &&
-                       compositor_->isOutputEmpty(monitor_name);
+  const bool occupancy_available = compositor_ != nullptr && compositor_->connected() && compositor_->hasOccupancy();
+  const bool visible =
+      shouldShowWidgetContent(occupancy_available, occupancy_available && compositor_->isOutputEmpty(monitor_name));
   content_visible_.insert(monitor_name, visible);
   // Toggle the QML root rather than the QWindow: the layer surface stays mapped (its role survives),
   // while an invisible root renders nothing. Pushing the latest strings first avoids a stale frame
@@ -143,6 +144,7 @@ void WidgetManager::applyVisibility(const QString& monitor_name) {
         recomputeClockStrings();
         pushClockStrings(root);
       } else {
+        remaining_text_ = currentCountdownText();
         root->setProperty("remainingText", remaining_text_);
       }
     }

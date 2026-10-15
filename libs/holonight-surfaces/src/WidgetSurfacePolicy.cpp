@@ -68,3 +68,7 @@ bool shouldCreateWidgetSurface(const QStringList& configured_monitors, const QLi
   return widgetTargetsMonitor(configured_monitors, monitor_name) &&
          !widgetBlockedOnMonitor(position_blockers, monitor_name);
 }
+
+bool shouldShowWidgetContent(bool occupancy_available, bool output_empty) {
+  return !occupancy_available || output_empty;
+}

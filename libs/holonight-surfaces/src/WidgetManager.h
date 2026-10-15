@@ -16,11 +16,11 @@ class QQuickView;
 class QScreen;
 
 // Manages one desktop widget definition across the monitors it targets: a wlr-layer-shell surface on
-// the `bottom` layer per (monitor, widget), shown only while that monitor's visible workspace is empty
-// (gated by compositor occupancy) and hidden — but kept alive — otherwise. One WidgetManager is
+// the `bottom` layer per (monitor, widget). When compositor occupancy is available, content is shown
+// only on empty workspaces; otherwise it stays visible behind application windows. One WidgetManager is
 // created per WidgetDefinition; the set of managers is rebuilt on config reload. A single shared
 // QTimer drives the countdown for all of this widget's surfaces; it is frozen while every surface is
-// hidden so occluded widgets do no work.
+// hidden by occupancy. Without occupancy, covered widgets may continue updating.
 class WidgetManager : public PerMonitorLayerManager {
   Q_OBJECT
 
