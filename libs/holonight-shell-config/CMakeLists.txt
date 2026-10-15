@@ -3,8 +3,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(HoloNightShellConfig VERSION 0.2.0 LANGUAGES CXX)
 
     include(GNUInstallDirs)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../../tooling/providers.cmake")
-    holonight_require_provider(HoloNightConfig)
     find_package(HoloNightConfig CONFIG REQUIRED)
     find_package(Qt6 6.11 REQUIRED COMPONENTS Core)
     find_package(PkgConfig REQUIRED)

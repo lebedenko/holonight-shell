@@ -1,91 +1,34 @@
 version: '3'
 vars:
-  BUILD_DIR: build/debug
-  TEST_BUILD_DIR: build/test
-  COVERAGE_BUILD_DIR: build/coverage
-  RELEASE_BUILD_DIR: build/release
+  PRESET: '{{default "dev" .PRESET}}'
+  BUILD_DIR: build/{{.PRESET}}
+  TEST_BUILD_DIR: build/dev
   LOCAL_INSTALL_BUILD_DIR: build/local-install
   SYSTEM_INSTALL_BUILD_DIR: build/system-install
   STAGE_BUILD_DIR: build/stage
   STAGE_DIR: '{{.TASKFILE_DIR}}/build-stage'
   LOCAL_INSTALL_PREFIX: '{{.HOME}}/.local'
   SYSTEM_INSTALL_PREFIX: /usr
-  HOLONIGHT_QT_PREFIX: '{{default (printf "%s/build/deps/prefix" .TASKFILE_DIR) .HOLONIGHT_DEPENDENCY_PREFIX}}'
-  HOLONIGHT_QT_DIR: '{{.TASKFILE_DIR}}/build/deps/prefix/lib/cmake/HolonightQt'
-  HOLONIGHT_APPEARANCE_CONFIG_PREFIX: '{{default (printf "%s/build/deps/prefix" .TASKFILE_DIR) .HOLONIGHT_DEPENDENCY_PREFIX}}'
-  HOLONIGHT_APPEARANCE_CONFIG_DIR: '{{.TASKFILE_DIR}}/build/deps/prefix/lib/cmake/HoloNightConfig'
-  HOLONIGHT_SYSTEM_SERVICES_PREFIX: '{{default (printf "%s/build/deps/prefix" .TASKFILE_DIR) .HOLONIGHT_DEPENDENCY_PREFIX}}'
   NPROC:
     sh: nproc
-  PRESET: '{{default "debug" .PRESET}}'
+  CMAKE_PREFIX_PATH: '{{default "" .CMAKE_PREFIX_PATH}}'
 tasks:
-  ci:prepare:
-    desc: Explicitly acquire exact providers and prepare the qualified acceptance environment
-    cmds:
-    - python3 scripts/ci/run.py --prepare {{.CLI_ARGS}}
-  ci:
-    desc: Rehearse every push validation lane in isolated pinned containers
-    cmds:
-    - python3 scripts/ci/run.py
   license-check:
     desc: Validate REUSE licensing and provenance metadata
     cmds:
     - reuse lint
-  configure:
-    desc: configure using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py configure --preset {{.PRESET}}
-  configure:release:
-    desc: configure using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py configure --preset release
-  configure-tests:
-    desc: configure using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py configure --preset test
-  configure-coverage:
-    desc: Configure coverage preset
-    cmds:
-    - python3 tooling/workflow.py configure --preset coverage
-  build:dependencies:
-    desc: Prepare local providers
-    cmds:
-    - python3 tooling/workflow.py deps
-  build:system-services-dependency:
-    desc: deps using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py deps
-  build:appearance-config-dependency:
-    desc: deps using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py deps
-  build:qt-dependency:
-    desc: deps using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py deps
-  build:
-    desc: build using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py build --preset {{.PRESET}}
-  build:release:
-    desc: build using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py build --preset release
   run:
     desc: Build and run holonight-shell
     deps:
     - build
-    env:
-      QML_IMPORT_PATH: '{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml'
-      QML2_IMPORT_PATH: '{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml'
     cmds:
     - ./{{.BUILD_DIR}}/holonight-shell
   install:build:
     internal: true
     desc: Build installable binaries against installed dependencies
     cmds:
-    - cmake -S . -B "{{.INSTALL_BUILD_DIR}}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF -DCMAKE_INSTALL_PREFIX="{{.INSTALL_PREFIX}}"
-      -DCMAKE_PREFIX_PATH="{{.INSTALL_PREFIX}}"
+    - cmake -S . -B "{{.INSTALL_BUILD_DIR}}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DENABLE_COVERAGE=OFF
+      -DCMAKE_INSTALL_PREFIX="{{.INSTALL_PREFIX}}" -DCMAKE_PREFIX_PATH="{{.INSTALL_PREFIX}};{{.CMAKE_PREFIX_PATH}}"
     - cmake --build "{{.INSTALL_BUILD_DIR}}" -j{{.NPROC}}
   install:local:
     desc: Build and install to ~/.local (installed HoloNight dependencies required)
@@ -120,8 +63,8 @@ tasks:
   install:reload:
     internal: true
     cmds:
-    - "if command -v systemctl >/dev/null && [ -z \"${DESTDIR:-}\" ]; then\n  systemctl --user daemon-reload || echo \"User\
-      \ systemd manager unavailable; units will be loaded at login.\"\nfi\n"
+    - "if command -v systemctl >/dev/null && [ -z \"${DESTDIR:-}\" ]; then\n  systemctl --user daemon-reload ||\
+      \ echo \"User systemd manager unavailable; units will be loaded at login.\"\nfi\n"
   uninstall:
     desc: Remove files from the dedicated local install manifest
     prompt: Remove the HoloNight Shell files installed under {{.LOCAL_INSTALL_PREFIX}}?
@@ -133,65 +76,28 @@ tasks:
     desc: Remove files from the dedicated system install manifest
     prompt: Remove the HoloNight Shell files installed under {{.SYSTEM_INSTALL_PREFIX}}?
     cmds:
-    - sudo python3 scripts/uninstall.py --manifest "{{.SYSTEM_INSTALL_BUILD_DIR}}/install_manifest.txt" --prefix "{{.SYSTEM_INSTALL_PREFIX}}"
-      --delete
+    - sudo python3 scripts/uninstall.py --manifest "{{.SYSTEM_INSTALL_BUILD_DIR}}/install_manifest.txt" --prefix
+      "{{.SYSTEM_INSTALL_PREFIX}}" --delete
     - task: install:reload
-  test:
-    desc: test using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py test --preset {{.PRESET}}
   test:shell-config-package:
-    desc: Build, install, and consume the standalone Shell product-config package using prepared providers
+    desc: Build, install, and consume the standalone Shell product-config package using installed providers
     cmds:
-    - cmake -S libs/holonight-shell-config -B build/config-package -G Ninja -DCMAKE_BUILD_TYPE=Debug
-      -DCMAKE_INSTALL_PREFIX="{{.TASKFILE_DIR}}/build/config-prefix" -DCMAKE_INSTALL_LIBDIR=lib
-      -DHOLONIGHT_DEPENDENCY_PREFIX="{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}"
+    - cmake -S libs/holonight-shell-config -B build/config-package -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="{{.TASKFILE_DIR}}/build/config-prefix"
+      -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_PREFIX_PATH="{{.CMAKE_PREFIX_PATH}}"
     - cmake --build build/config-package -j{{.NPROC}}
     - cmake --install build/config-package
-    - cmake -S tests/shell-config-package-consumer -B build/package-consumer -G Ninja -DCMAKE_BUILD_TYPE=Debug
-      -DCMAKE_PREFIX_PATH="{{.TASKFILE_DIR}}/build/config-prefix;{{.HOLONIGHT_APPEARANCE_CONFIG_PREFIX}}"
+    - cmake -S tests/shell-config-package-consumer -B build/package-consumer -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="{{.TASKFILE_DIR}}/build/config-prefix;{{.CMAKE_PREFIX_PATH}}"
     - cmake --build build/package-consumer -j{{.NPROC}}
     - build/package-consumer/holonight-shell-config-consumer
   coverage:
     desc: Build coverage report
     cmds:
-    - task: configure-coverage
+    - cmake --preset dev -B build/coverage -DENABLE_COVERAGE=ON
     - cmake --build build/coverage --target coverage
-  format:
-    desc: format using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py format
-  format-check:
-    desc: format-check using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py format-check
-  tidy:
-    desc: tidy using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py tidy --scope all
-  tidy-src:
-    desc: tidy using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py tidy --scope src
-  tidy-tests:
-    desc: tidy using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py tidy --scope tests
-  tidy-container:
-    desc: Run offline static checks against the explicitly prepared qualified environment
-    cmds:
-    - python3 scripts/ci/run.py --lane static-checks
-  build-ci-image:
-    desc: Explicitly pull and prepare the qualified CI environment
-    cmds:
-    - task: ci:prepare
   qml-lint:
-    desc: Build and check QML with configured Qt installation
+    desc: qml-lint
     cmds:
-    - task: build
-      vars:
-        PRESET: test
-    - cmake --build build/test --target qml-lint
+    - cmake --build build/{{.PRESET}} --target qml-lint
   qmltypes-check:
     desc: Verify generated HolonightShell QML type metadata
     deps:
@@ -209,7 +115,7 @@ tasks:
   labwc-runtime-smoke:
     desc: Verify workspace and window management, overview input, and shell restart in isolated labwc
     deps:
-    - configure-tests
+    - configure
     cmds:
     - cmake --build {{.TEST_BUILD_DIR}} --target holonight-shell labwc_workspace_smoke -j{{.NPROC}}
     - python3 scripts/run-isolated-test.py --hide-host bash scripts/labwc-runtime-smoke.sh {{.TEST_BUILD_DIR}}/holonight-shell
@@ -234,45 +140,52 @@ tasks:
     desc: Take a screenshot after a configurable delay (default 5s)
     cmds:
     - scripts/delayed-screenshot.sh {{.CLI_ARGS}}
-  tooling:doctor:
-    desc: doctor using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py doctor
-  tooling:refresh:
-    desc: refresh using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py refresh --preset {{default "test" .EDITOR_PRESET}}
-  serena:serve:
-    desc: Start independent Serena server in codex context
-    cmds:
-    - serena start-mcp-server --project "{{.TASKFILE_DIR}}" --context codex
-  serena:index:
-    desc: Explicitly index this module
-    cmds:
-    - serena project index "{{.TASKFILE_DIR}}"
-  deps:
-    desc: deps using standalone tooling
-    cmds:
-    - python3 tooling/workflow.py deps --preset {{.PRESET}}
   qml-import-check:
     desc: Check QML runtime import contracts
     cmds:
     - python3 scripts/check-qml-import-policy.py
-  tooling:qmlls:
-    desc: Start configured Qt language server with resolved import paths
-    cmds:
-    - python3 tooling/workflow.py qmlls
-  lint:
-    desc: Run C++ and QML lint
-    cmds:
-    - task: tidy
-    - task: qml-lint
   check:
-    desc: Run build, tests and static checks
+    desc: Authoritative container acceptance
+    cmds:
+    - python3 scripts/ci/container.py check {{.CLI_ARGS}}
+  configure:
+    desc: configure
+    cmds:
+    - cmake --preset {{.PRESET}} {{.CLI_ARGS}}
+  build:
+    desc: build
+    cmds:
+    - cmake --preset {{.PRESET}}
+    - cmake --build --preset {{.PRESET}}
+  test:
+    desc: test
     cmds:
     - task: build
-    - task: test
-    - task: format-check
-    - task: lint
-    - task: qml-import-check
-    - task: qmltypes-check
+      vars:
+        PRESET: dev
+    - python3 scripts/run-isolated-test.py --hide-host ctest --preset dev {{.CLI_ARGS}}
+  configure:release:
+    desc: configure:release
+    cmds:
+    - cmake --preset release {{.CLI_ARGS}}
+  build:release:
+    desc: build:release
+    cmds:
+    - cmake --preset release
+    - cmake --build --preset release
+  format:
+    desc: Format with the pinned container tools
+    cmds:
+    - python3 scripts/ci/container.py format
+  format-check:
+    desc: format-check
+    cmds:
+    - python3 scripts/quality.py format-check
+  tidy:
+    desc: tidy
+    cmds:
+    - python3 scripts/quality.py tidy --build build/{{.PRESET}}
+  check:integration:
+    desc: Container acceptance plus Release staging and runtime checks
+    cmds:
+    - python3 scripts/ci/container.py integration {{.CLI_ARGS}}

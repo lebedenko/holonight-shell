@@ -24,7 +24,7 @@ target_link_libraries(holonight_services PUBLIC
     Qt6::Sql
 )
 
-target_link_libraries(holonight_services PRIVATE ${LIBSECRET_LIBRARIES})
+target_link_libraries(holonight_services PRIVATE PkgConfig::LIBSECRET)
 
 target_include_directories(holonight_services PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -45,7 +45,5 @@ target_include_directories(holonight_services PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/notifications
     ${CMAKE_CURRENT_SOURCE_DIR}/src/osd
 )
-
-target_include_directories(holonight_services PRIVATE ${LIBSECRET_INCLUDE_DIRS})
 
 target_compile_features(holonight_services PUBLIC cxx_std_23)

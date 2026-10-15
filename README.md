@@ -1,5 +1,7 @@
 # HoloNight Shell
 
+For current build, test, container acceptance and provider workflows, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
 A dark, holographic Wayland shell for Hyprland. Built with C++23 and Qt6/QML.
 
 HoloNight is designed around TokyoNight Storm colors, thin HUD geometry, and restrained neon. Dark structure first — glow communicates state, not decoration.
@@ -127,29 +129,11 @@ See [`docs/dev-setup.md`](docs/dev-setup.md) for the qualified Arch CI environme
 
 All workflows go through [`task`](https://taskfile.dev):
 
-```bash
-task deps         # explicitly prepare supplied local providers and check external prerequisites
-task configure    # validate installed dependencies and configure CMake
-task build        # build the binary
-task run          # build and launch (requires a live Wayland/Hyprland session)
-task test         # build and run isolated unit and launch acceptance tests
-task format       # auto-format with clang-format
-task tidy         # run clang-tidy
-task qml-lint     # lint QML files
-task clean        # remove build/
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) for current native and container commands.
 
 **Without `task`:**
 
-Install the HoloNight dependencies first: `holonight-config`, `holonight-qt`
-(including its Wayland component, QML modules and Qt plugins), and
-`holonight-system-services`. Install them into the destination prefix or an
-approved internal prefix. `task deps` explicitly builds supplied sibling/local sources under
-`build/deps/` into `build/deps/prefix`. Set `HOLONIGHT_DEPENDENCY_PREFIX` to consume existing
-providers and `HOLONIGHT_EXTERNAL_PREFIX` for external libraries in a separate prefix.
-Configure, build and test only validate installed prerequisites; they never acquire or prepare dependencies.
-Qt ≥6.11 and matching private components are required. `task test` needs Linux namespaces for bubblewrap;
-it uses a private headless compositor and disposable services.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for current native and container commands.
 
 ```bash
 task install:system  # Release build, install to /usr using sudo
@@ -382,7 +366,6 @@ The Polkit template is started by the HoloNight session launcher in UWSM mode;
 it has no global `enable` step. Direct compositor sessions must start their
 session's instance from their own startup configuration.
 
-
 ## Releases
 
 Versions follow [Semantic Versioning](https://semver.org/); the version is the
@@ -558,24 +541,3 @@ sibling drives sharing the same physical device. Busy devices and authorization 
 forced unmounts or automatic retries.
 
 The Storage topbar icon is hidden with zero devices attached, dimmed with devices attached but none mounted, and shows the system accent color plus a device-count badge once at least one volume is mounted. The popup opens with a "Removable Storage" header (device count, plus a currently-inert settings affordance) followed by one collapsible card per physical drive — icon (optical/SSD/HDD/flash-media/generic, by connection bus and media type), name, connection/media subtitle, total capacity, and Eject/Power Off — expanding to a row per volume with a used/free capacity bar (accent above 10% free, amber 5–10%, red below 5%) and Mount/Unmount. Clicking a volume row's body opens it in `holonight-files`, mounting first if needed; footer buttons open Files directly or at the first mounted volume. In-flight operations show inline "Mounting…"/"Ejecting…"/etc. text with conflicting actions disabled; failures show an inline error with a "Try Again" retry. A drive newly connecting posts a "connected" desktop notification (suppressed for devices already attached at shell startup); a successful eject or power-off posts a "safe to remove" notification — both standalone, outside the shell's own notification history. Mount/unmount do not notify. If the last device disappears while the popup is open, it shows an empty state instead of closing. Empty readers and fixed volumes are hidden.
-
-## Standalone developer tooling
-
-See [tooling/README.md](tooling/README.md) for presets, local dependency overrides, editor refresh,
-`task tooling:doctor`, and the independent Serena project.
-
-## Local CI rehearsal
-
-Run `task ci:prepare` explicitly, then `task ci` with Python 3, Task and Docker (Podman fallback).
-Preparation acquires the exact published Config, System Services and Qt revisions and builds providers
-in the qualified immutable full Arch image. `task ci:prepare -- --provider-source-root ..` can clone
-those commits from local repositories. Acceptance validates the prepared manifest, uses `--pull=never`
-and `--network=none`, and hides provider sources/build trees from consumers.
-
-Build/test, Release staging, strict static checks and REUSE use fresh isolated working-tree snapshots.
-Build/test retains its privileged container for bubblewrap namespaces and the private headless compositor. Complete logs,
-toolchain identities and provenance are saved under ignored `build/ci/`; every required failure returns
-nonzero. Incompatible preparation and consumer caches are archived before replacement.
-See [dependency SDD](docs/sdd/external-dependency-management/SPEC.md).
-
-Integration plugins use the private `org.holonight.Integration/3.0` ABI. Older plugin libraries and catalogs are rejected during metadata discovery before instantiation. Rebuild third-party plugins against the current compositor contracts.

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-build_dir="${1:-${BUILD_DIR:-build/test}}"
+build_dir="${1:-${BUILD_DIR:-build/dev}}"
 if [[ "${build_dir}" = /* ]]; then
   build_root="${build_dir}"
 else
@@ -13,7 +13,6 @@ shell_module_dir="${build_root}/apps/shell/HolonightShell"
 qmltypes_file="${shell_module_dir}/holonight-shell.qmltypes"
 qmldir_file="${shell_module_dir}/qmldir"
 raw_qml_qrc="${build_root}/apps/shell/.qt/rcc/holonight-shell_raw_qml_0.qrc"
-taskfile="${repo_root}/Taskfile.yml"
 
 required_types=(
   "AppearanceService"
@@ -99,12 +98,6 @@ fi
 
 if grep -Fq '/src/qml/' "${raw_qml_qrc}"; then
   echo "Shell QML resource map contains legacy src/qml paths: ${raw_qml_qrc}" >&2
-  exit 1
-fi
-
-if ! grep -Fq 'QML_IMPORT_PATH: "{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml"' "${taskfile}" && \
-   ! grep -Fq "QML_IMPORT_PATH: '{{.HOLONIGHT_QT_PREFIX}}/lib/qt6/qml'" "${taskfile}"; then
-  echo "Development run task does not select the staged Holonight Qt QML module: ${taskfile}" >&2
   exit 1
 fi
 

@@ -12,7 +12,7 @@ class AuthenticationWindowGeometry : public QObject {
 
  public:
   explicit AuthenticationWindowGeometry(QObject* parent = nullptr) : QObject(parent) {}
-  QQuickWindow* window() const { return window_; }
+  [[nodiscard]] QQuickWindow* window() const { return window_; }
   void setWindow(QQuickWindow* window);
   Q_INVOKABLE void resetSize(int preferred_width, int preferred_height);
 

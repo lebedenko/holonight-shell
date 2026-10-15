@@ -9,21 +9,14 @@ permissions:
 
 jobs:
   # Build gate: the tag must compile, test, and lint cleanly before anything
-  # is published. Mirrors the CI `build-test` job (same container and steps).
+  # is published. Uses the same integration command as the Acceptance workflow.
   build-gate:
     name: Build gate
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Enable user namespaces on the disposable runner
-        run: |
-          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          fi
-      - name: Prepare exact providers and qualified images
-        run: python3 scripts/ci/run.py --prepare
-      - name: Offline tests, quality checks, licensing and Release staging
-        run: python3 scripts/ci/run.py
+      - name: Container acceptance and Release integration
+        run: python3 scripts/ci/container.py integration
 
   # Publish: only runs if the build gate passed. Packages a source tarball
   # from the tag and creates the GitHub Release. Runs on the bare host runner

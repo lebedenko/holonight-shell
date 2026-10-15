@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-shell_binary="${1:-build/debug/holonight-shell}"
+shell_binary="${1:-build/dev/holonight-shell}"
 runtime_dir="$(mktemp -d /tmp/holonight-sway-smoke.XXXXXX)"
 session_runtime="${runtime_dir}/runtime"
 wayland_display=""

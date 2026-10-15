@@ -15,7 +15,7 @@ target_link_libraries(holonight_platform PUBLIC
     Qt6::Network
     Qt6::DBus
     holonight_qt_wayland_client
-    ${WAYLAND_CLIENT_LIBRARIES}
+    PkgConfig::WAYLAND_CLIENT
 )
 
 target_compile_features(holonight_platform PUBLIC cxx_std_23)

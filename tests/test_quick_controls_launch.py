@@ -55,6 +55,11 @@ def main():
     args.logs.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='uqc102-launch-') as directory:
         root = Path(directory)
+        # Headless Sway needs no capabilities. Copy only its bytes so Arch's
+        # cap_sys_nice file attribute cannot prevent exec in an ordinary container.
+        sway = root / 'sway'
+        shutil.copyfile(shutil.which('sway'), sway)
+        sway.chmod(0o755)
         stage = root / 'installed'
         shutil.copytree(prefix, stage)
         subprocess.run(['cmake', '--install', str(build), '--prefix', str(stage)], check=True, stdout=subprocess.DEVNULL)
@@ -112,7 +117,7 @@ def main():
                             compositor_log = (args.logs / f'{name}-sway.log').open('w')
                             sway_env = dict(env, XDG_RUNTIME_DIR=str(runtime), WLR_BACKENDS='headless',
                                             WLR_RENDERER='pixman', WLR_LIBINPUT_NO_DEVICES='1')
-                            compositor = subprocess.Popen(['sway', '--unsupported-gpu', '--config', str(config)],
+                            compositor = subprocess.Popen([str(sway), '--unsupported-gpu', '--config', str(config)],
                                                           env=sway_env, stdout=compositor_log, stderr=subprocess.STDOUT)
                             deadline = time.monotonic() + 10
                             while not list(runtime.glob('wayland-*')) and time.monotonic() < deadline:
