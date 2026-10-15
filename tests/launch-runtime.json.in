@@ -1,0 +1,7 @@
+{
+  "qml_source": "@HOLONIGHT_RUNTIME_QML_PATH@/Holonight",
+  "qml_destination": "@CMAKE_INSTALL_LIBDIR@/qt6/qml/Holonight",
+  "config_source": "$<TARGET_FILE:HoloNight::Config>",
+  "config_soname": "$<TARGET_SONAME_FILE_NAME:HoloNight::Config>",
+  "lib_destination": "@CMAKE_INSTALL_LIBDIR@"
+}

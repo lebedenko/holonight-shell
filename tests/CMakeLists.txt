@@ -1,18 +1,20 @@
+include(${PROJECT_SOURCE_DIR}/cmake/TestPython.cmake)
+
 include(GoogleTest)
 add_test(NAME test_bounded_authentication_challenge
-  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_bounded_authentication_challenge.py
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_bounded_authentication_challenge.py
 )
 add_test(NAME test_portal_routing
-  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_portal_routing.py
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_portal_routing.py
 )
 add_test(NAME test_installation
-  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_installation.py
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_installation.py
 )
 add_test(NAME test_uninstall
-  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_uninstall.py
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_uninstall.py
 )
 add_test(NAME test_wayland_session_environment
-  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_wayland_session_environment.py
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_wayland_session_environment.py
 )
 
 add_test(NAME test_session_scripts
@@ -326,7 +328,7 @@ if(ENABLE_COVERAGE)
     COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcda" -delete
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/coverage
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage
-    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/run-isolated-test.py
+    COMMAND ${HOLONIGHT_TEST_PYTHON} ${PROJECT_SOURCE_DIR}/scripts/run-isolated-test.py
             --hide-host ${CMAKE_CTEST_COMMAND} --test-dir ${CMAKE_BINARY_DIR} --output-on-failure
     COMMAND ${GCOVR}
         --root ${CMAKE_SOURCE_DIR}
@@ -365,8 +367,8 @@ if(ENABLE_COVERAGE)
   )
 endif()
 
-add_test(NAME uqc_policy COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-qml-import-policy.py)
-add_test(NAME uqc_policy_fixtures COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_qml_import_policy.py)
+add_test(NAME uqc_policy COMMAND ${HOLONIGHT_TEST_PYTHON} ${PROJECT_SOURCE_DIR}/scripts/check-qml-import-policy.py)
+add_test(NAME uqc_policy_fixtures COMMAND ${HOLONIGHT_TEST_PYTHON} ${PROJECT_SOURCE_DIR}/tests/test_qml_import_policy.py)
 
 add_executable(test_holonight_compiled_controls test_qml_harness.cpp FakeQmlServices.h AuthenticationUiFixture.h)
 if(ENABLE_COVERAGE)
@@ -431,9 +433,15 @@ foreach(mode IN ITEMS default environment cli precedence)
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_QUICK_CONTROLS_STYLE=${runtime_style};QT_QUICK_CONTROLS_CONF=;UQC_EXPECTED_STYLE=${expected_style}")
 endforeach()
 
-add_test(NAME uqc_launch COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/run-isolated-test.py
-  --hide-host ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/test_quick_controls_launch.py
-  --build ${PROJECT_BINARY_DIR} --prefix ${HOLONIGHT_PROVIDER_PREFIX}
+configure_file(launch-runtime.json.in launch-runtime.json.in @ONLY)
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/launch-runtime-$<CONFIG>.json"
+  INPUT "${CMAKE_CURRENT_BINARY_DIR}/launch-runtime.json.in")
+add_test(NAME native_test_infrastructure
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_native_test_infrastructure.py)
+
+add_test(NAME uqc_launch COMMAND ${HOLONIGHT_TEST_PYTHON} ${PROJECT_SOURCE_DIR}/scripts/run-isolated-test.py
+  --hide-host --build-dir ${PROJECT_BINARY_DIR} ${HOLONIGHT_TEST_PYTHON} ${PROJECT_SOURCE_DIR}/tests/test_quick_controls_launch.py
+  --build ${PROJECT_BINARY_DIR} --runtime ${CMAKE_CURRENT_BINARY_DIR}/launch-runtime-$<CONFIG>.json
   --logs ${PROJECT_BINARY_DIR}/uqc-launch-logs)
 set_tests_properties(uqc_launch PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
 

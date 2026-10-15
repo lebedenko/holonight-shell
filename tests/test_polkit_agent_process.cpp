@@ -74,7 +74,7 @@ TEST(PolkitAgentProcess, SigtermExitsPersistentDialogAndUnregisters) {
   bus.start(QStringLiteral("dbus-daemon"),
             {QStringLiteral("--session"), QStringLiteral("--nofork"), QStringLiteral("--print-address=1")});
   ASSERT_TRUE(bus.waitForStarted());
-  ASSERT_TRUE(bus.waitForReadyRead());
+  ASSERT_TRUE(bus.waitForReadyRead()) << bus.readAllStandardError().constData();
   const QString address = QString::fromUtf8(bus.readLine()).trimmed();
   ASSERT_FALSE(address.isEmpty());
   QDBusConnection connection = QDBusConnection::connectToBus(address, connection_name);
@@ -90,6 +90,9 @@ TEST(PolkitAgentProcess, SigtermExitsPersistentDialogAndUnregisters) {
   environment.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
   environment.remove(QStringLiteral("QML_IMPORT_PATH"));
   environment.remove(QStringLiteral("QML2_IMPORT_PATH"));
+  // The relocated-launch test helper needs staged libraries, but the production
+  // agent must prove its own executable-relative library discovery.
+  environment.remove(QStringLiteral("LD_LIBRARY_PATH"));
   agent.setProcessEnvironment(environment);
   const QString executable = qEnvironmentVariable("UQC_POLKIT_EXECUTABLE", QStringLiteral(TEST_POLKIT_AGENT_PATH));
   QStringList arguments;

@@ -6,6 +6,23 @@ CMake reports missing packages and never downloads them. Use `cmake --preset dev
 The development preset enables tests; `release` stages optimized builds.
 clangd uses `build/dev/compile_commands.json`.
 
+Native tests support installed providers in `/usr` or an explicit development
+prefix. They require system Python 3 (`/usr/bin` or `/bin`), Bubblewrap, D-Bus and
+Sway. CTest uses system Python independently of the interpreter selected for build
+tools, including in existing CMake caches. Tests use disposable HOME/XDG directories,
+a private D-Bus without host activation, and hidden host sockets. Installed providers
+remain readable; sibling repositories and prefixes remain read-only, while the shell
+and an explicitly supplied external build directory remain writable.
+
+The launch test stages only the resolved Holonight QML tree and HoloNight Config
+shared library, installs the shell there, then relocates the stage. Native installed
+launches mask the original and system fallback providers in a separate namespace;
+build launches retain their configured providers. The fresh acceptance container
+uses its existing isolation and does not require nested Bubblewrap. Logs remain in
+`build/dev/uqc-launch-logs/`. For an external build, use
+`/usr/bin/python3 scripts/run-isolated-test.py --hide-host --build-dir /path/to/build
+ctest --test-dir /path/to/build --output-on-failure`.
+
 `task format` uses the pinned image. `task check` is the acceptance gate: fresh provider
 builds, build, tests, format, static analysis, applicable QML checks and REUSE.
 `task check:integration` adds Release staging and project runtime checks. GitHub invokes

@@ -29,7 +29,8 @@ def main():
                    QT_QPA_PLATFORMTHEME='', QT_FORCE_STDERR_LOGGING='1',
                    DBUS_SYSTEM_BUS_ADDRESS=f'unix:path={root}/no-system-bus',
                    PULSE_SERVER=f'unix:{root}/no-pulse', PIPEWIRE_REMOTE='no-pipewire')
-        for name in ('QT_QUICK_CONTROLS_STYLE', 'QT_SCALE_FACTOR', 'LD_LIBRARY_PATH',
+        for name in ('UQC_ISOLATED', 'UQC_NATIVE_ISOLATED',
+                     'QT_QUICK_CONTROLS_STYLE', 'QT_SCALE_FACTOR', 'LD_LIBRARY_PATH',
                      'QT_LOGGING_RULES', 'QML_IMPORT_TRACE', 'QT_DEBUG_PLUGINS'):
             if name in os.environ:
                 env[name] = os.environ[name]
@@ -47,7 +48,8 @@ def main():
         try:
             env['DBUS_SESSION_BUS_ADDRESS'] = bus.stdout.readline().strip()
             assert env['DBUS_SESSION_BUS_ADDRESS'], 'private bus did not start'
-            if args.hide_host and os.environ.get('UQC_ISOLATED') != '1':
+            if args.hide_host and not any(os.environ.get(name) == '1' for name in
+                                          ('UQC_ISOLATED', 'UQC_NATIVE_ISOLATED')):
                 project = Path(__file__).resolve().parents[1]
                 isolated = ['bwrap', '--die-with-parent', '--unshare-net', '--unshare-pid',
                             '--unshare-ipc', '--unshare-uts', '--ro-bind', '/', '/', '--dev', '/dev',
@@ -57,16 +59,10 @@ def main():
                             '--chdir', str(project)]
                 if build is not None:
                     isolated += ['--bind', str(build), str(build)]
-                for path in (Path('/usr/lib/qt6/qml/Holonight'), Path('/usr/local/lib/qt6/qml/Holonight')):
-                    if path.is_dir():
-                        isolated += ['--tmpfs', str(path)]
-                for pattern in ('*holonight*.so*', '*HoloNight*.so*'):
-                    for path in Path('/usr/lib').glob(pattern):
-                        if path.is_file() and not path.is_symlink():
-                            isolated += ['--ro-bind', '/dev/null', str(path)]
                 command = isolated + ['--'] + command
-            if args.hide_host or os.environ.get('UQC_ISOLATED') == '1':
-                env['UQC_ISOLATED'] = '1'
+                # Native service isolation retains installed providers. Only the
+                # relocated launch phase masks them in a second namespace.
+                env['UQC_NATIVE_ISOLATED'] = '1'
             return subprocess.run(command, env=env, timeout=1800).returncode
         finally:
             bus.terminate()
