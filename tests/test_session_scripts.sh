@@ -82,11 +82,11 @@ for compositor in hyprland sway; do
   compositor_line="$(grep -nF 'compositor=' "${log_file}" | head -1 | cut -d: -f1)"
   [[ "${import_line}" -lt "${apply_line}" && "${apply_line}" -lt "${compositor_line}" ]]
   if [[ "${compositor}" == hyprland ]]; then
-    assert_match "compositor=Hyprland desktop=HoloNight:Hyprland session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr=stale-hypr sway= i3="
+    assert_match "compositor=Hyprland desktop=HoloNight-Hyprland:HoloNight:Hyprland session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr=stale-hypr sway= i3="
     assert_match "dbus --systemd SWAYSOCK= I3SOCK="
     assert_match "systemctl --user unset-environment SWAYSOCK I3SOCK"
   else
-    assert_match "compositor=sway desktop=HoloNight:sway session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr= sway=stale-sway i3=stale-i3"
+    assert_match "compositor=sway desktop=HoloNight-Sway:HoloNight:sway session=UserDesktop type=custom menu=user- cursor=CanonicalCursor configdirs=${test_root}/installed/share/holonight/xdg:/user/xdg qt=UserQt quick=UserQuick style=UserWidgets hypr= sway=stale-sway i3=stale-i3"
     assert_match "dbus --systemd HYPRLAND_INSTANCE_SIGNATURE= HYPRLAND_CMD="
     assert_match "systemctl --user unset-environment HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD"
   fi
@@ -108,7 +108,7 @@ assert_line "adapter apply --appearance ${test_root}/xdg/holonight/appearance.to
 for mode in fail empty multiline control oversized; do
   : >"${log_file}"
   run_session hyprland direct ADAPTER_MODE="${mode}" XCURSOR_THEME=Inherited
-  assert_match "compositor=Hyprland desktop=HoloNight:Hyprland session=Hyprland type=wayland menu=hyprland- cursor=Inherited"
+  assert_match "compositor=Hyprland desktop=HoloNight-Hyprland:HoloNight:Hyprland session=Hyprland type=wayland menu=hyprland- cursor=Inherited"
 done
 
 : >"${log_file}"
@@ -120,46 +120,10 @@ mv "${fake_bin}/holonight-appearance-adapter" "${fake_bin}/adapter-away"
 : >"${log_file}"
 env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" XCURSOR_THEME=Inherited \
   HOLONIGHT_SESSION_MODE=direct /usr/bin/bash "${source_dir}/scripts/holonight-session" sway
-assert_match "compositor=sway desktop=HoloNight:sway session=sway type=wayland menu=sway- cursor=Inherited"
+assert_match "compositor=sway desktop=HoloNight-Sway:HoloNight:sway session=sway type=wayland menu=sway- cursor=Inherited"
 mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 
-for compositor in hyprland sway labwc; do
-  for mode in auto uwsm; do
-    : >"${log_file}"
-    run_session "${compositor}" "${mode}"
-    assert_match "systemctl --user daemon-reload"
-    assert_match "systemctl --user start holonight-shell.service"
-    if [[ "${compositor}" == hyprland ]]; then
-      assert_match "uwsm start -e -D Hyprland hyprland.desktop"
-    else
-      assert_match "uwsm start -e -D ${compositor} ${compositor}.desktop"
-    fi
-  done
-done
-
-mv "${fake_bin}/uwsm" "${fake_bin}/uwsm-away"
-: >"${log_file}"
-env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=auto \
-  /usr/bin/bash "${source_dir}/scripts/holonight-session" sway
-assert_match "compositor=sway"
-if grep -Fq 'start holonight-shell.service' "${log_file}"; then
-  printf 'direct auto fallback must not start the shell service\n' >&2
-  exit 1
-fi
-if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=uwsm \
-  /usr/bin/bash "${source_dir}/scripts/holonight-session" sway >"${test_root}/stdout" 2>"${test_root}/stderr"; then
-  printf 'uwsm mode unexpectedly succeeded without uwsm\n' >&2
-  exit 1
-fi
-grep -Fq 'HOLONIGHT_SESSION_MODE=uwsm was requested' "${test_root}/stderr"
-if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=auto \
-  /usr/bin/bash "${source_dir}/scripts/holonight-session" labwc >"${test_root}/stdout" 2>"${test_root}/stderr"; then
-  echo 'labwc auto unexpectedly succeeded without UWSM' >&2
-  exit 1
-fi
-grep -Fq 'labwc auto mode requires uwsm' "${test_root}/stderr"
-mv "${fake_bin}/uwsm-away" "${fake_bin}/uwsm"
-
+# Managed startup is covered by test_managed_sessions.py with isolated services.
 for args in '' 'river' 'hyprland extra'; do
   read -r -a argv <<<"${args}"
   if env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
@@ -184,14 +148,14 @@ fi
 grep -Fq 'sway was not found in PATH' "${test_root}/stderr"
 mv "${fake_bin}/sway-away" "${fake_bin}/sway"
 
-for desktop in 'HoloNight:Hyprland' 'HoloNight:sway'; do
+for desktop in 'HoloNight-Hyprland:HoloNight:Hyprland' 'HoloNight-Sway:HoloNight:sway'; do
   : >"${log_file}"
   if [[ "${desktop}" == *Hyprland ]]; then
     marker_env=$'HYPRLAND_INSTANCE_SIGNATURE=sig\nHYPRLAND_CMD=hyprctl\nSWAYSOCK=stale-sway\nI3SOCK=stale-i3'
-    expected='shell desktop=HoloNight:Hyprland hypr=sig hyprcmd=hyprctl sway= i3= style='
+    expected='shell desktop=HoloNight-Hyprland:HoloNight:Hyprland hypr=sig hyprcmd=hyprctl sway= i3= style='
   else
     marker_env=$'HYPRLAND_INSTANCE_SIGNATURE=stale-hypr\nHYPRLAND_CMD=stale-command\nSWAYSOCK=/run/sway.sock\nI3SOCK=/run/i3.sock'
-    expected='shell desktop=HoloNight:sway hypr= hyprcmd= sway=/run/sway.sock i3=/run/i3.sock style='
+    expected='shell desktop=HoloNight-Sway:HoloNight:sway hypr= hyprcmd= sway=/run/sway.sock i3=/run/i3.sock style='
   fi
   FAKE_SYSTEMD_ENV="WAYLAND_DISPLAY=wayland-9
 XDG_CURRENT_DESKTOP=${desktop}
@@ -203,7 +167,7 @@ done
 
 # A stale marker from the non-selected compositor is insufficient.
 : >"${log_file}"
-FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nXDG_CURRENT_DESKTOP=HoloNight:sway\nHYPRLAND_INSTANCE_SIGNATURE=stale' \
+FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nXDG_CURRENT_DESKTOP=HoloNight-Sway:HoloNight:sway\nHYPRLAND_INSTANCE_SIGNATURE=stale' \
   env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
   "${source_dir}/scripts/holonight-shell-systemd" >/dev/null 2>&1 || true
 if grep -Fq 'shell ' "${log_file}"; then
@@ -214,7 +178,7 @@ fi
 # labwc direct startup preserves user configuration and clears foreign markers.
 : >"${log_file}"
 run_session labwc direct HYPRLAND_INSTANCE_SIGNATURE=stale SWAYSOCK=stale I3SOCK=stale
-assert_match 'compositor=labwc desktop=HoloNight:labwc session=labwc type=wayland menu=labwc-'
+assert_match 'compositor=labwc desktop=HoloNight-Labwc:HoloNight:labwc session=labwc type=wayland menu=labwc-'
 assert_match 'hypr= sway= i3='
 assert_match 'systemctl --user unset-environment HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK'
 assert_match 'dbus --systemd HYPRLAND_INSTANCE_SIGNATURE= HYPRLAND_CMD= SWAYSOCK= I3SOCK='
@@ -228,7 +192,7 @@ make_fake holonight-shell 'printf "labwc=%s hypr=%s sway=%s i3=%s\n" "${LABWC_PI
 for marker in '' 'abc' '-42' '1234'; do
   : >"${log_file}"
   if FAKE_SYSTEMD_ENV="WAYLAND_DISPLAY=wayland-9
-XDG_CURRENT_DESKTOP=HoloNight:labwc
+XDG_CURRENT_DESKTOP=HoloNight-Labwc:HoloNight:labwc
 LABWC_PID=${marker}
 HYPRLAND_INSTANCE_SIGNATURE=stale
 SWAYSOCK=stale
@@ -253,7 +217,7 @@ if FAKE_SYSTEMD_ENV=$'XDG_CURRENT_DESKTOP=labwc\nLABWC_PID=1234' \
 fi
 [[ ! -s "${log_file}" ]]
 mv "${fake_bin}/labwc" "${fake_bin}/labwc-away"
-if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOLONIGHT_SESSION_MODE=direct \
+if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=direct \
   /usr/bin/bash "${source_dir}/scripts/holonight-session" labwc >"${test_root}/stdout" 2>"${test_root}/stderr"; then
   exit 1
 fi

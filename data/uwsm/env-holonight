@@ -1,0 +1,14 @@
+# Installed defaults precede administrator and user UWSM environment files.
+. "@CMAKE_INSTALL_FULL_DATADIR@/holonight/session/holonight-session-defaults"
+case " ${UWSM_WAIT_VARNAMES-} " in
+  *' HOLONIGHT_SESSION_READY '*) ;;
+  *) export UWSM_WAIT_VARNAMES="${UWSM_WAIT_VARNAMES:+$UWSM_WAIT_VARNAMES }HOLONIGHT_SESSION_READY" ;;
+esac
+unset HOLONIGHT_SESSION_READY
+# UWSM alone owns activation imports, readiness and session target lifecycle.
+case ":${XDG_CURRENT_DESKTOP}:" in
+  *:HoloNight-Hyprland:*)
+    export HYPRLAND_NO_SD_VARS=1 HYPRLAND_NO_SD_NOTIFY=1 HYPRLAND_NO_SD_TARGET=1
+    ;;
+  *:HoloNight-Labwc:*) export LABWC_UPDATE_ACTIVATION_ENV=0 ;;
+esac

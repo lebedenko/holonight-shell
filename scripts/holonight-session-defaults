@@ -1,0 +1,66 @@
+# Sourceable by POSIX sh (including UWSM environment preparation).
+warn() { printf 'holonight-session: warning: %s\n' "$*" >&2; }
+have_command() { command -v "$1" >/dev/null 2>&1; }
+resolve_appearance_file() {
+  if [ -n "${HOLONIGHT_APPEARANCE_FILE:-}" ]; then
+    printf '%s\n' "${HOLONIGHT_APPEARANCE_FILE}"
+  elif [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    printf '%s/holonight/appearance.toml\n' "${XDG_CONFIG_HOME}"
+  elif [ -n "${HOME:-}" ]; then
+    printf '%s/.config/holonight/appearance.toml\n' "${HOME}"
+  else
+    return 1
+  fi
+}
+
+load_cursor_theme() {
+
+  if ! have_command holonight-appearance-adapter; then
+    warn "holonight-appearance-adapter is not installed; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  if ! appearance_file="$(resolve_appearance_file)"; then
+    warn "canonical appearance path is unavailable; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  if ! output="$(holonight-appearance-adapter query --appearance "${appearance_file}" --field cursor-theme)"; then
+    warn "cursor theme query failed; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  case "$output" in *'
+'*) warn "cursor theme query returned invalid output"; return ;; esac
+  if [ -z "${output}" ] || [ "${#output}" -gt 4096 ] || printf '%s' "$output" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+    warn "cursor theme query returned invalid output; preserving inherited XCURSOR_THEME"
+    return
+  fi
+  export XCURSOR_THEME="${output}"
+}
+
+
+case ":${PATH-}:" in
+  *:"${HOME}/.local/bin":*) ;;
+  *) PATH="${HOME}/.local/bin${PATH:+:${PATH}}" ;;
+esac
+export PATH
+installation_datadir="@CMAKE_INSTALL_FULL_DATADIR@"
+installation_libdir="@CMAKE_INSTALL_FULL_LIBDIR@"
+installation_bindir="@CMAKE_INSTALL_FULL_BINDIR@"
+case "$installation_datadir" in @*) installation_datadir="${script_directory}/../data"; installation_bindir="$script_directory" ;; esac
+case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
+  *:"$installation_datadir":*) ;;
+  *) XDG_DATA_DIRS="$installation_datadir:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
+esac
+export XDG_DATA_DIRS
+case "$installation_libdir" in @*) ;; *)
+  case ":${QML_IMPORT_PATH-}:" in *:"$installation_libdir/qt6/qml":*) ;; *) QML_IMPORT_PATH="$installation_libdir/qt6/qml${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}" ;; esac
+  case ":${QT_PLUGIN_PATH-}:" in *:"$installation_libdir/qt6/plugins":*) ;; *) QT_PLUGIN_PATH="$installation_libdir/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}" ;; esac
+  export QML_IMPORT_PATH QT_PLUGIN_PATH ;;
+esac
+export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
+export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
+case "${HOLONIGHT_ASKPASS_BINDIR:-$installation_bindir}" in
+  /*) ;; *) warn "askpass installation directory must be absolute"; return 1 ;;
+esac
+export SUDO_ASKPASS="${SUDO_ASKPASS:-${HOLONIGHT_ASKPASS_BINDIR:-$installation_bindir}/holonight-sudo-askpass}"
+export SSH_ASKPASS="${SSH_ASKPASS:-${HOLONIGHT_ASKPASS_BINDIR:-$installation_bindir}/holonight-ssh-askpass}"
+load_cursor_theme

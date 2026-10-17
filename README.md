@@ -214,79 +214,68 @@ Installing also provides `HoloNight (Hyprland)`, `HoloNight (Sway)`, and `HoloNi
 login entries. Use `task install:system` to make them available to the display
 manager; display managers generally do not discover entries under `~/.local`.
 
-Select the matching entry in the display manager. All run the canonical
-`holonight-session` launcher with `hyprland`, `sway`, or `labwc`. The launcher
-exports the HoloNight/compositor desktop environment, resolves the canonical
-cursor theme, removes stale markers from the other compositor, and imports the
-environment into D-Bus activation and the systemd user manager. With UWSM
-installed, it queues `holonight-shell.service` before starting the selected
-distribution desktop entry:
+Select the matching entry in the display manager. `holonight-session` requires
+UWSM and a working systemd user manager in both `auto` (default) and `uwsm` mode.
+There is no automatic fallback to unmanaged startup. Install the chosen compositor
+(Hyprland with `start-hyprland`, Sway, or labwc) and UWSM before logging in.
+One graphical session per user manager is supported.
 
-```bash
-uwsm start -e -D Hyprland hyprland.desktop
-uwsm start -e -D sway sway.desktop
-uwsm start -e -D labwc labwc.desktop
-```
+Managed identities are `HoloNight-Hyprland:HoloNight:Hyprland`,
+`HoloNight-Sway:HoloNight:sway`, and `HoloNight-Labwc:HoloNight:labwc`.
+The installed `share/uwsm/env-holonight` hook prepares Qt, cursor, askpass and
+installation paths. It prepends `~/.local/bin` if absent, even before that directory
+exists; existing PATH entries retain their order. Interactive shell configuration
+is not sourced. Put environment overrides in `~/.config/uwsm/env` or
+`~/.config/uwsm/env-holonight` (or the equivalent under `$XDG_CONFIG_HOME`). User
+files run after installed defaults. UWSM propagates and cleans up activation
+environments; the shell service inherits its manager's PATH.
 
-The script defaults missing values to:
+Managed compositor defaults live in `share/holonight/session`. Each login composes
+a private configuration under `$XDG_RUNTIME_DIR/holonight/`. Optional overrides:
 
-```bash
-XDG_CURRENT_DESKTOP=HoloNight:Hyprland # or HoloNight:sway
-XDG_SESSION_DESKTOP=Hyprland           # or sway
-XDG_SESSION_TYPE=wayland
-XDG_MENU_PREFIX=hyprland-              # or sway-
-```
+- `$XDG_CONFIG_HOME/holonight/session/hyprland.lua`
+- `$XDG_CONFIG_HOME/holonight/session/sway.conf`
+- `$XDG_CONFIG_HOME/holonight/session/labwc/rc.xml`, `menu.xml`, and `themerc-override`
 
-Startup mode is controlled with `HOLONIGHT_SESSION_MODE`:
+`XDG_CONFIG_HOME` defaults to `~/.config`. Overrides follow defaults, and HoloNight's
+readiness hook remains installed. Native compositor configurations are not imported.
+Defaults provide native input/output behavior, basic focus/close/workspace bindings,
+and Super+E to launch HoloNight Files through `uwsm app`. labwc retains native
+keyboard/mouse defaults. Configure your preferred terminal and styling explicitly.
 
-- `auto` (default) uses UWSM when `uwsm` is installed, otherwise runs the
-  selected compositor directly for Hyprland/Sway. labwc requires UWSM in `auto`
-  mode and reports an error if it is unavailable.
-- `uwsm` requires UWSM and starts the selected compositor desktop entry.
-- `direct` runs the compositor directly after importing the environment. Direct mode
-  does not automatically start `holonight-shell`; use the manual compositor
-  fallback below when running without UWSM.
+The compositor calls `holonight-session-finalize` with its display and compositor
+marker. UWSM waits for `HOLONIGHT_SESSION_READY` before graphical-session activation;
+its bounded timeout handles incomplete startup. Finalization then queues the shell
+and session-specific Polkit agent. Both stop with the graphical session. Restarting
+the shell leaves applications running; logging out through UWSM stops managed apps.
+No services are globally enabled at login.
 
-The installed systemd user unit is intentionally not enabled globally during
-installation. Each HoloNight login entry starts it for that UWSM session.
-Users who keep their own Hyprland session can opt in with either:
+Portal defaults live in `share/xdg-desktop-portal/holonight-<compositor>-portals.conf`.
+Settings prefers HoloNight, then GTK; FileChooser prefers holonight-filechooser,
+then GTK. Hyprland or wlr supplies compositor capabilities. Install
+`xdg-desktop-portal`, `xdg-desktop-portal-gtk`, and the selected compositor backend
+(`xdg-desktop-portal-hyprland` or `xdg-desktop-portal-wlr`); missing components warn
+without blocking login. User and administrator portal overrides retain standard
+[search precedence](https://flatpak.github.io/xdg-desktop-portal/docs/portals.conf.html).
+Managed mode does not inject the legacy portal directory into `XDG_CONFIG_DIRS`.
+Legacy configuration files remain installed for direct integration.
 
-```ini
-exec-once = uwsm app -- holonight-shell
-```
+For manual integration, set `HOLONIGHT_SESSION_MODE=direct`. This explicitly imports
+PATH and the desktop environment, uses the compositor's native configuration, and
+leaves shell startup to you. Standalone `holonight-shell` inherits its host session.
 
-Without UWSM, use the binary directly:
-
-```ini
-exec-once = holonight-shell
-```
-
-or:
-
-```bash
-systemctl --user enable --now holonight-shell.service
-```
-
-If you installed from source into an already-running user manager and the unit
-is not found, reload user units first:
-
-```bash
-systemctl --user daemon-reload
-```
-
-For a one-off direct launch without UWSM:
-
-```bash
-HOLONIGHT_SESSION_MODE=direct holonight-session hyprland
-HOLONIGHT_SESSION_MODE=direct holonight-session sway
-HOLONIGHT_SESSION_MODE=direct holonight-session labwc
-```
+Migration: move desired compositor settings into the optional HoloNight overrides,
+and remove duplicate shell/finalization startup commands from those overrides.
+Existing native configuration files are not edited or imported automatically.
+Install changes, then log out and choose a HoloNight entry on the next login. Do not
+restart the current desktop to apply this change. See the
+[managed session design](docs/sdd/managed-wayland-sessions.md) for acceptance steps.
 
 #### Developing in labwc
 
 Install with `task install:system`, then log out yourself and select **HoloNight
 (labwc)** in the display manager. The managed session requires `labwc` and `uwsm`
-(including the distribution's `labwc.desktop` and UWSM labwc plugin). labwc 0.20.2
+(including the UWSM labwc plugin). labwc 0.20.2
 exports `WAYLAND_DISPLAY` and `LABWC_PID` on DRM startup; the UWSM plugin waits
 for that marker before declaring the graphical session ready. The shell wrapper
 also waits for both variables. No user labwc configuration or autostart file is
@@ -305,7 +294,7 @@ startup and restart the installed shell with:
 
 ```bash
 journalctl --user -u holonight-shell.service -b
-journalctl --user -u wayland-wm@labwc.desktop.service -b
+journalctl --user -u wayland-wm@labwc.service -b
 systemctl --user restart holonight-shell.service
 ```
 
@@ -337,14 +326,17 @@ and automated checks do not log out your current session.
 After login, verify desktop integration:
 
 ```bash
-scripts/check-desktop-integration.sh
+holonight-session-doctor --check-executable hn-files
 task compositor-smoke-check
 ```
 
-The integration check reports all installed login entries and the canonical
-launcher, identifies Hyprland, Sway, or labwc from colon-separated desktop tokens,
-checks the matching compositor portal routing, and reports whether
-`org.freedesktop.impl.portal.desktop.holonight` is owned on the session bus.
+The doctor compares selected caller, manager, shell, compositor, and portal broker
+environments, executable resolution, readiness, effective portal preferences, and
+running providers. It never imports variables, restarts services, or activates
+providers. Exit codes are 0 for healthy checks, 1 for problems or incomplete checks,
+and 2 for invalid arguments. Restricted process access is reported explicitly.
+The source-tree `scripts/check-desktop-integration.sh` includes these checks alongside
+its broader MIME, menu and cache audit.
 
 The session-keyed Polkit startup wrapper supports UWSM compositors outside their
 logind session scope. It verifies the Wayland socket's peer process against the

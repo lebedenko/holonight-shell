@@ -5,41 +5,6 @@ die() { printf 'holonight-session: error: %s\n' "$*" >&2; exit 1; }
 warn() { printf 'holonight-session: warning: %s\n' "$*" >&2; }
 have_command() { command -v "$1" >/dev/null 2>&1; }
 
-resolve_appearance_file() {
-  if [[ -n "${HOLONIGHT_APPEARANCE_FILE:-}" ]]; then
-    printf '%s\n' "${HOLONIGHT_APPEARANCE_FILE}"
-  elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
-    printf '%s/holonight/appearance.toml\n' "${XDG_CONFIG_HOME}"
-  elif [[ -n "${HOME:-}" ]]; then
-    printf '%s/.config/holonight/appearance.toml\n' "${HOME}"
-  else
-    return 1
-  fi
-}
-
-load_cursor_theme() {
-  local appearance_file
-  local output
-
-  if ! have_command holonight-appearance-adapter; then
-    warn "holonight-appearance-adapter is not installed; preserving inherited XCURSOR_THEME"
-    return
-  fi
-  if ! appearance_file="$(resolve_appearance_file)"; then
-    warn "canonical appearance path is unavailable; preserving inherited XCURSOR_THEME"
-    return
-  fi
-  if ! output="$(holonight-appearance-adapter query --appearance "${appearance_file}" --field cursor-theme)"; then
-    warn "cursor theme query failed; preserving inherited XCURSOR_THEME"
-    return
-  fi
-  if [[ -z "${output}" || ${#output} -gt 4096 || "${output}" == *$'\n'* || "${output}" =~ [[:cntrl:]] ]]; then
-    warn "cursor theme query returned invalid output; preserving inherited XCURSOR_THEME"
-    return
-  fi
-  export XCURSOR_THEME="${output}"
-}
-
 reconcile_appearance() {
   local appearance_file
   if ! have_command holonight-appearance-adapter; then
@@ -58,21 +23,6 @@ reconcile_appearance() {
   fi
 }
 
-start_shell_service() {
-  if have_command systemctl; then
-    systemctl --user daemon-reload || warn "failed to reload systemd user units"
-    systemctl --user start holonight-shell.service || warn "failed to queue holonight-shell.service"
-    if [[ -n "${XDG_SESSION_ID:-}" && "${XDG_SESSION_ID}" != *[!A-Za-z0-9_.-]* ]]; then
-      systemctl --user start "holonight-polkit-agent@${XDG_SESSION_ID}.service" || \
-        warn "failed to queue the session Polkit agent"
-    else
-      warn "XDG_SESSION_ID is unavailable; the session Polkit agent was not started"
-    fi
-  else
-    warn "systemctl is not installed; holonight-shell.service cannot be started automatically"
-  fi
-}
-
 [[ $# -eq 1 ]] || die "expected compositor hyprland, sway, or labwc"
 compositor="$1"
 case "${compositor}" in hyprland|sway|labwc) ;; *) die "expected compositor hyprland, sway, or labwc" ;; esac
@@ -80,64 +30,89 @@ case "${compositor}" in hyprland|sway|labwc) ;; *) die "expected compositor hypr
 if [[ "${compositor}" == hyprland ]]; then
   executable=Hyprland
   desktop=Hyprland
-  uwsm_desktop=hyprland.desktop
   menu_prefix=hyprland-
   stale_vars=(SWAYSOCK I3SOCK LABWC_PID)
 elif [[ "${compositor}" == sway ]]; then
   executable=sway
   desktop=sway
-  uwsm_desktop=sway.desktop
   menu_prefix=sway-
   stale_vars=(HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD LABWC_PID)
 else
   executable=labwc
   desktop=labwc
-  uwsm_desktop=labwc.desktop
   menu_prefix=labwc-
   stale_vars=(HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK)
 fi
 
+script_directory="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)"
+defaults="@CMAKE_INSTALL_FULL_DATADIR@/holonight/session/holonight-session-defaults"
+[[ "$defaults" != '@'* ]] || defaults="$script_directory/holonight-session-defaults"
+. "$defaults"
 have_command "${executable}" || die "${executable} was not found in PATH"
 unset "${stale_vars[@]}"
-export XDG_CURRENT_DESKTOP="HoloNight:${desktop}"
+case "$compositor" in
+  hyprland) identity=HoloNight-Hyprland:HoloNight:Hyprland ;;
+  sway) identity=HoloNight-Sway:HoloNight:sway ;;
+  labwc) identity=HoloNight-Labwc:HoloNight:labwc ;;
+esac
+export XDG_CURRENT_DESKTOP="$identity"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-${desktop}}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export XDG_MENU_PREFIX="${XDG_MENU_PREFIX:-${menu_prefix}}"
-script_directory="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)"
-installation_datadir="@CMAKE_INSTALL_FULL_DATADIR@"
-installation_libdir="@CMAKE_INSTALL_FULL_LIBDIR@"
+mode="${HOLONIGHT_SESSION_MODE:-auto}"
+case "$mode" in
+  auto|uwsm)
+    have_command uwsm || die "managed sessions require UWSM; install uwsm or explicitly select HOLONIGHT_SESSION_MODE=direct"
+    have_command systemctl || die "managed sessions require systemd"
+    [[ "${XDG_SESSION_ID:-}" =~ ^[A-Za-z0-9_.-]+$ ]] || die "a valid logind XDG_SESSION_ID is required"
+    systemctl --user show-environment >/dev/null || die "systemd user manager is unavailable"
+    for unit in holonight-shell.service holonight-polkit-agent@.service; do
+      systemctl --user cat "$unit" >/dev/null 2>&1 || die "missing user unit $unit; reinstall holonight-shell and reload user units"
+    done
+    uwsm check may-start -i -g 0 0 || die "a new graphical session cannot start; log out of the existing session first"
+    for helper in flock python3 holonight-shell holonight-shell-systemd holonight-session-finalize holonight-session-config; do
+      have_command "$helper" || die "missing $helper; reinstall holonight-shell"
+    done
+    [[ "$compositor" != hyprland ]] || have_command start-hyprland || die "install start-hyprland"
+    [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]] || die "a user-owned XDG_RUNTIME_DIR is required"
+    for backend in holonight holonight-filechooser gtk "$([[ "$compositor" == hyprland ]] && echo hyprland || echo wlr)"; do
+      found=false
+      IFS=: read -r -a data_dirs <<<"$XDG_DATA_DIRS"
+      for directory in "${data_dirs[@]}"; do
+        [[ ! -f "$directory/xdg-desktop-portal/portals/$backend.portal" ]] || found=true
+      done
+      "$found" || warn "portal backend $backend is missing; install its xdg-desktop-portal package for full desktop capabilities"
+    done
+    systemctl --user cat xdg-desktop-portal.service >/dev/null 2>&1 || warn "install xdg-desktop-portal for desktop portals"
+    config="$(holonight-session-config "$compositor")" || die "could not prepare managed configuration"
+    if [[ "$compositor" == labwc ]]; then
+      export HOLONIGHT_SESSION_RUN_DIR="$config"
+    else
+      export HOLONIGHT_SESSION_RUN_DIR="${config%/*}"
+    fi
+    export UWSM_WAIT_VARNAMES="${UWSM_WAIT_VARNAMES:+$UWSM_WAIT_VARNAMES }HOLONIGHT_SESSION_READY"
+    unset HOLONIGHT_SESSION_READY
+    reconcile_appearance
+    case "$compositor" in
+      hyprland) exec uwsm start -e -D "$identity" -- start-hyprland -- --config "$config" ;;
+      sway) exec uwsm start -e -D "$identity" -- sway --config "$config" ;;
+      labwc) exec uwsm start -e -D "$identity" -- labwc --config-dir "$config" --startup 'holonight-session-finalize labwc' ;;
+    esac
+    ;;
+  direct) ;;
+  *) die "unknown HOLONIGHT_SESSION_MODE=${mode}; expected auto, uwsm, or direct" ;;
+esac
+# Direct integration retains the legacy portal layer and explicit activation import.
 default_portal_dir="${installation_datadir}/holonight/xdg"
-if [[ "${installation_datadir}" == '@'* ]]; then
-  installation_datadir="${script_directory}/../data"
-  default_portal_dir="${installation_datadir}/xdg"
-fi
+[[ "$defaults" != "$script_directory/holonight-session-defaults" ]] || default_portal_dir="${installation_datadir}/xdg"
 portal_config_dir="${HOLONIGHT_PORTAL_CONFIG_DIR:-${default_portal_dir}}"
-[[ "${portal_config_dir}" == /* ]] || die "portal configuration directory must be absolute"
+[[ "$portal_config_dir" == /* ]] || die "portal configuration directory must be absolute"
 case ":${XDG_CONFIG_DIRS:-/etc/xdg}:" in
-  *:"${portal_config_dir}":*) ;;
-  *) export XDG_CONFIG_DIRS="${portal_config_dir}:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
+  *:"$portal_config_dir":*) ;; *) export XDG_CONFIG_DIRS="$portal_config_dir:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
 esac
-case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
-  *:"${installation_datadir}":*) ;;
-  *) export XDG_DATA_DIRS="${installation_datadir}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
-esac
-if [[ "${installation_libdir}" != '@'* ]]; then
-  export QML_IMPORT_PATH="${installation_libdir}/qt6/qml${QML_IMPORT_PATH:+:${QML_IMPORT_PATH}}"
-  export QT_PLUGIN_PATH="${installation_libdir}/qt6/plugins${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}"
-fi
-export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-holonight}"
-export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-Holonight}"
-
-load_cursor_theme
-
-askpass_bindir="${HOLONIGHT_ASKPASS_BINDIR:-${script_directory}}"
-[[ "${askpass_bindir}" == /* ]] || die "askpass installation directory must be absolute"
-export SUDO_ASKPASS="${askpass_bindir}/holonight-sudo-askpass"
-export SSH_ASKPASS="${askpass_bindir}/holonight-ssh-askpass"
-
 vars=(WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX
   XDG_DATA_DIRS XDG_CONFIG_DIRS QML_IMPORT_PATH QT_PLUGIN_PATH QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME
-  XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE SUDO_ASKPASS SSH_ASKPASS)
+  XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE SUDO_ASKPASS SSH_ASKPASS PATH)
 if have_command dbus-update-activation-environment; then
   dbus_update_args=()
   for stale_var in "${stale_vars[@]}"; do
@@ -154,21 +129,4 @@ fi
 
 reconcile_appearance
 
-mode="${HOLONIGHT_SESSION_MODE:-auto}"
-case "${mode}" in
-  auto)
-    if have_command uwsm; then
-      start_shell_service
-      exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"
-    fi
-    [[ "${compositor}" != labwc ]] || die "labwc auto mode requires uwsm; install UWSM or use HOLONIGHT_SESSION_MODE=direct for manual startup"
-    exec "${executable}"
-    ;;
-  uwsm)
-    have_command uwsm || die "HOLONIGHT_SESSION_MODE=uwsm was requested, but uwsm was not found in PATH"
-    start_shell_service
-    exec uwsm start -e -D "${desktop}" "${uwsm_desktop}"
-    ;;
-  direct) exec "${executable}" ;;
-  *) die "unknown HOLONIGHT_SESSION_MODE=${mode}; expected auto, uwsm, or direct" ;;
-esac
+exec "${executable}"

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+fail() { printf 'holonight-session-finalize: %s\n' "$*" >&2; exit 1; }
+[[ $# == 1 && -n "${WAYLAND_DISPLAY:-}" ]] || fail 'expected compositor and WAYLAND_DISPLAY'
+case "$1" in
+  hyprland) marker=HYPRLAND_INSTANCE_SIGNATURE ;;
+  sway) marker=SWAYSOCK ;;
+  labwc) marker=LABWC_PID ;;
+  *) fail 'unknown compositor' ;;
+esac
+[[ -n "${!marker:-}" ]] || fail "missing $marker"
+if [[ "$1" == labwc ]]; then
+  [[ "$LABWC_PID" =~ ^[1-9][0-9]*$ ]] || fail 'invalid LABWC_PID'
+fi
+[[ "${XDG_SESSION_ID:-}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail 'missing or invalid XDG_SESSION_ID'
+[[ -n "${HOLONIGHT_SESSION_RUN_DIR:-}" && -d "$HOLONIGHT_SESSION_RUN_DIR" && -O "$HOLONIGHT_SESSION_RUN_DIR" ]] || fail 'missing private session runtime directory'
+exec 9>"$HOLONIGHT_SESSION_RUN_DIR/finalize.lock"
+flock 9
+[[ ! -f "$HOLONIGHT_SESSION_RUN_DIR/finalized" ]] || exit 0
+# UWSM owns timeout and cleanup. No second supervisor or persistent readiness file.
+export HOLONIGHT_SESSION_READY=1
+uwsm finalize WAYLAND_DISPLAY "$marker" HOLONIGHT_SESSION_READY
+systemctl --user start --no-block holonight-shell.service "holonight-polkit-agent@${XDG_SESSION_ID}.service"
+: >"$HOLONIGHT_SESSION_RUN_DIR/finalized"

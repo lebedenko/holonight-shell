@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Keep the broader desktop audit while sharing the installed session diagnostics.
+here="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)"
+session_status=0
+"$here/holonight-session-doctor" "$@" || session_status=$?
+[[ "$session_status" != 2 ]] || exit 2
+
 status() {
   printf '[%s] %s\n' "$1" "$2"
 }
@@ -222,15 +228,6 @@ print_bus_owner org.freedesktop.impl.portal.desktop.wlr
 print_bus_owner org.freedesktop.impl.portal.desktop.gtk
 print_bus_owner org.freedesktop.impl.portal.desktop.kde
 
-if have_command busctl && busctl --user status org.freedesktop.impl.portal.desktop.holonight >/dev/null 2>&1; then
-  portal_scheme="$(busctl --user call org.freedesktop.impl.portal.desktop.holonight /org/freedesktop/portal/desktop \
-    org.freedesktop.impl.portal.Settings Read ss org.freedesktop.appearance color-scheme 2>/dev/null || true)"
-  portal_accent="$(busctl --user call org.freedesktop.impl.portal.desktop.holonight /org/freedesktop/portal/desktop \
-    org.freedesktop.impl.portal.Settings Read ss org.freedesktop.appearance accent-color 2>/dev/null || true)"
-  status INFO "HoloNight portal color-scheme: ${portal_scheme:-unavailable}"
-  status INFO "HoloNight portal accent-color: ${portal_accent:-unavailable}"
-fi
-
 selected_compositor=""
 IFS=':' read -r -a current_desktops <<<"${XDG_CURRENT_DESKTOP:-}"
 for desktop in "${current_desktops[@]}"; do
@@ -243,20 +240,6 @@ if [[ -n "${selected_compositor}" ]]; then
   status OK "XDG_CURRENT_DESKTOP identifies ${selected_compositor}"
 else
   status WARN "XDG_CURRENT_DESKTOP does not identify Hyprland, Sway, or labwc"
-fi
-
-routing_layer_found=false
-IFS=':' read -r -a routing_dirs <<<"${XDG_CONFIG_DIRS:-/etc/xdg}"
-for directory in "${routing_dirs[@]}"; do
-  if [[ -f "${directory}/xdg-desktop-portal/hyprland-portals.conf" &&
-        -f "${directory}/xdg-desktop-portal/sway-portals.conf" ]]; then
-    status OK "Compositor portal routing layer is active: ${directory}"
-    routing_layer_found=true
-    break
-  fi
-done
-if [[ "${routing_layer_found}" != true ]]; then
-  status WARN "Compositor portal routing layer is absent from XDG_CONFIG_DIRS"
 fi
 
 holonight_portal_file=""
@@ -423,3 +406,5 @@ status INFO "force direct mode: HOLONIGHT_SESSION_MODE=direct holonight-session 
 status INFO "force UWSM mode: HOLONIGHT_SESSION_MODE=uwsm holonight-session hyprland"
 status INFO "manual Hyprland config fallback: exec-once = uwsm app -- holonight-shell"
 status INFO "manual systemd fallback: systemctl --user enable --now holonight-shell.service"
+
+exit "$session_status"

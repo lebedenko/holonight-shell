@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Compose private per-login configurations without importing native configs."""
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ('hyprland', 'sway', 'labwc'):
+        return 2
+    compositor = sys.argv[1]
+    data = Path('@CMAKE_INSTALL_FULL_DATADIR@/holonight/session')
+    if str(data).startswith('@'):
+        data = Path(__file__).resolve().parent.parent / 'data/session'
+    runtime = Path(os.environ['XDG_RUNTIME_DIR']) / 'holonight'
+    runtime.mkdir(mode=0o700, exist_ok=True)
+    if runtime.is_symlink() or runtime.stat().st_uid != os.getuid():
+        raise ValueError('runtime directory must be owned by the current user and not a symlink')
+    destination = Path(tempfile.mkdtemp(prefix='session-', dir=runtime))
+    overrides = Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'holonight/session'
+    if compositor == 'hyprland':
+        config = destination / 'hyprland.lua'
+        text = (data / 'hyprland.lua').read_text()
+        override = overrides / 'hyprland.lua'
+        if override.is_file():
+            text += '\ndofile(' + json.dumps(str(override), ensure_ascii=False) + ')\n'
+        text += '\nhl.on("hyprland.start", function() hl.exec_cmd("holonight-session-finalize hyprland") end)\n'
+        config.write_text(text)
+    elif compositor == 'sway':
+        config = destination / 'sway.conf'
+        text = (data / 'sway.conf').read_text()
+        for i in range(1, 11):
+            text += f'bindsym $mod+{i % 10} workspace number {i}\n'
+            text += f'bindsym $mod+Shift+{i % 10} move container to workspace number {i}\n'
+        override = overrides / 'sway.conf'
+        if override.is_file():
+            # Sway's include parser accepts double quoted paths, without shell expansion.
+            text += 'include ' + json.dumps(str(override), ensure_ascii=False) + '\n'
+        text += 'exec holonight-session-finalize sway\n'
+        config.write_text(text)
+    else:
+        config = destination
+        tree = ET.parse(data / 'labwc.xml')
+        override = overrides / 'labwc/rc.xml'
+        if override.is_file():
+            # labwc merges repeated sections; later settings override earlier ones.
+            tree.getroot().extend(ET.parse(override).getroot())
+        tree.write(config / 'rc.xml', encoding='unicode')
+        # Only HoloNight-specific assets are visible; no native autostart/environment.
+        for name in ('menu.xml', 'themerc-override'):
+            source = overrides / 'labwc' / name
+            if source.is_file():
+                (config / name).write_bytes(source.read_bytes())
+    print(config)
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, KeyError, ET.ParseError) as error:
+        print(f'holonight-session-config: {error}', file=sys.stderr)
+        sys.exit(1)

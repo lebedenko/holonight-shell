@@ -17,6 +17,10 @@ add_test(NAME test_wayland_session_environment
   COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_wayland_session_environment.py
 )
 
+add_test(NAME test_managed_sessions
+  COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_managed_sessions.py
+)
+
 add_test(NAME test_session_scripts
   COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_session_scripts.sh ${CMAKE_SOURCE_DIR}
 )

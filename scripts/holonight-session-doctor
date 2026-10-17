@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Read-only session diagnostics. Never activate providers or change environments."""
+import argparse
+import configparser
+import os
+from pathlib import Path
+import shlex
+import shutil
+import subprocess
+
+KEYS = ('PATH', 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_DESKTOP', 'XDG_SESSION_TYPE',
+        'XDG_DATA_DIRS', 'XDG_CONFIG_DIRS', 'QT_QPA_PLATFORMTHEME',
+        'QT_QUICK_CONTROLS_STYLE', 'XCURSOR_THEME', 'WAYLAND_DISPLAY',
+        'HYPRLAND_INSTANCE_SIGNATURE', 'SWAYSOCK', 'LABWC_PID', 'HOLONIGHT_SESSION_READY')
+COMPOSITOR_RUNTIME_KEYS = ('WAYLAND_DISPLAY', 'HYPRLAND_INSTANCE_SIGNATURE',
+                           'SWAYSOCK', 'LABWC_PID', 'HOLONIGHT_SESSION_READY')
+
+
+def command(*args):
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=5)
+        if result.returncode:
+            raise OSError(result.stderr.strip() or f'exit {result.returncode}')
+        return result.stdout
+    except subprocess.TimeoutExpired as error:
+        raise OSError('timed out') from error
+
+
+def process_environment(pid, proc=Path('/proc')):
+    entries = (proc / str(pid) / 'environ').read_bytes().split(b'\0')
+    return {os.fsdecode(k): os.fsdecode(v) for k, v in
+            (entry.split(b'=', 1) for entry in entries if b'=' in entry)}
+
+
+def portal_config(environment):
+    home = environment.get('HOME', str(Path.home()))
+    roots = [environment.get('XDG_CONFIG_HOME', home + '/.config')]
+    roots += environment.get('XDG_CONFIG_DIRS', '/etc/xdg').split(':')
+    roots += ['/etc', environment.get('XDG_DATA_HOME', home + '/.local/share')]
+    roots += environment.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share').split(':')
+    roots += ['/usr/share']
+    names = [name.lower() + '-portals.conf' for name in environment.get('XDG_CURRENT_DESKTOP', '').split(':') if name]
+    names += ['portals.conf']
+    for root in filter(None, roots):
+        for name in names:
+            path = Path(root) / 'xdg-desktop-portal' / name
+            if path.is_file():
+                return path
+    return None
+
+
+def resolve(name, path):
+    # Do not execute the program, and do not substitute the doctor's PATH.
+    return shutil.which(name, path=path) if path is not None else None
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check-executable', metavar='NAME')
+    args = parser.parse_args()
+    if args.check_executable is not None and (not args.check_executable or '/' in args.check_executable):
+        parser.error('--check-executable requires an executable name without slashes')
+    problems = []
+
+    def warn(message):
+        problems.append(message)
+        print('[WARN] ' + message)
+
+    environments = {'caller': dict(os.environ)}
+    try:
+        output = command('systemctl', '--user', 'show-environment')
+        # systemctl quotes values using shell syntax; never evaluate it as shell code.
+        environments['manager'] = dict(token.split('=', 1) for token in shlex.split(output) if '=' in token)
+    except (OSError, ValueError) as error:
+        warn(f'user manager environment unavailable: {error}')
+    for label, unit in [('shell', 'holonight-shell.service'), ('portal broker', 'xdg-desktop-portal.service')]:
+        try:
+            pid = int(command('systemctl', '--user', 'show', '--property=MainPID', '--value', unit).strip())
+            if pid <= 0:
+                raise OSError('not running')
+            environments[label] = process_environment(pid)
+        except (OSError, ValueError) as error:
+            warn(f'{label} process environment inaccessible: {error}')
+    try:
+        units = command('systemctl', '--user', 'list-units', '--state=running', '--plain', '--no-legend', 'wayland-wm@*.service')
+        unit_names = [line.split()[0] for line in units.splitlines() if line.strip()]
+        if len(unit_names) != 1:
+            raise OSError('expected one running UWSM compositor')
+        pid = int(command('systemctl', '--user', 'show', '--property=MainPID', '--value', unit_names[0]).strip())
+        environments['compositor'] = process_environment(pid)
+        print('[INFO] UWSM compositor: ' + unit_names[0])
+    except (OSError, ValueError) as error:
+        warn(f'compositor process environment inaccessible: {error}')
+    reference = environments.get('manager', environments['caller'])
+    resolutions = {}
+    for label, environment in environments.items():
+        print('[INFO] ' + label)
+        for key in KEYS:
+            print(f'  {key}={environment.get(key, "<unset>")!r}')
+        local = str(Path.home() / '.local/bin')
+        if local not in environment.get('PATH', '').split(':'):
+            warn(f'{label}: PATH is missing {local}')
+        # Compositor-set values and readiness are absent from its original /proc environment.
+        compared = (key for key in KEYS if label != 'compositor' or key not in COMPOSITOR_RUNTIME_KEYS)
+        differing = [key for key in compared if environment.get(key) != reference.get(key)]
+        if differing:
+            warn(f'{label}: differs from manager ({", ".join(differing)}); may retain an older environment')
+        if args.check_executable:
+            resolutions[label] = resolve(args.check_executable, environment.get('PATH'))
+            print(f'  resolution={resolutions[label]!r}')
+            if not resolutions[label]:
+                warn(f'{label}: {args.check_executable} was not found')
+    if len(set(resolutions.values())) > 1:
+        warn('executable resolution differs between environments')
+    if reference.get('HOLONIGHT_SESSION_READY') != '1':
+        warn('HoloNight readiness marker is absent from the manager')
+    portal_environment = environments.get('portal broker', reference)
+    path = portal_config(portal_environment)
+    print(f'[INFO] effective portal configuration: {path or "not found"}')
+    if 'portal broker' not in environments:
+        warn('portal configuration is inferred; broker environment unavailable')
+    if path:
+        config = configparser.ConfigParser(interpolation=None)
+        try:
+            config.read(path)
+            data_roots = [portal_environment.get('XDG_DATA_HOME', str(Path.home() / '.local/share'))]
+            data_roots += portal_environment.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share').split(':')
+            checked = set()
+            for interface, providers in config['preferred'].items():
+                print(f'[INFO] configured {interface}: {providers}')
+                for provider in filter(None, providers.split(';')):
+                    if provider in ('*', 'none') or provider in checked:
+                        continue
+                    checked.add(provider)
+                    if not any((Path(root) / 'xdg-desktop-portal/portals' / (provider + '.portal')).is_file()
+                               for root in data_roots if root):
+                        warn(f'configured portal backend {provider} is not installed')
+        except (OSError, configparser.Error, KeyError) as error:
+            warn(f'cannot read portal preferences: {error}')
+    else:
+        warn('portal configuration unavailable')
+    try:
+        # ListNames is observational; unlike backend method calls it cannot activate a provider.
+        names = command('busctl', '--user', '--no-pager', '--no-legend', 'list')
+        for line in names.splitlines():
+            fields = line.split()
+            if fields and fields[0].startswith('org.freedesktop.impl.portal.desktop.') and len(fields) > 1 and fields[1].isdigit():
+                print('[INFO] running provider: ' + fields[0])
+    except OSError as error:
+        warn(f'running portal providers unavailable: {error}')
+    return 1 if problems else 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

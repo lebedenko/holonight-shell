@@ -23,18 +23,18 @@ require_executable "${stage}/libexec/holonight-wayland-session-environment"
 unit="${stage}/share/systemd/user/holonight-polkit-agent@.service"
 [[ -f "${unit}" ]]
 grep -Fqx "ExecStart=\"${stage}/libexec/holonight-polkit-agent-session\" %i" "${unit}" || { echo "installed unit points outside its prefix" >&2; exit 1; }
-for directive in 'After=graphical-session.target' 'Restart=on-failure' 'RestartSec=2s' \
+for directive in 'After=graphical-session.target' 'PartOf=graphical-session.target' 'Restart=on-failure' 'RestartSec=2s' \
   'StartLimitIntervalSec=30s' 'StartLimitBurst=3' 'RestartPreventExitStatus=78' 'LimitCORE=0'; do
   grep -Fqx "${directive}" "${unit}" || { printf 'missing unit directive: %s\n' "${directive}" >&2; exit 1; }
 done
-if grep -Eq '(holonight-shell|^(Requires|PartOf|BindsTo|WantedBy)=)' "${unit}"; then
+if grep -Eq '(holonight-shell|^(Requires|BindsTo|WantedBy)=)' "${unit}"; then
   printf 'Polkit unit is coupled to the shell or globally enabled\n' >&2
   exit 1
 fi
 
 session_launcher="${stage}/bin/holonight-session"
-grep -Fqx "installation_datadir=\"${stage}/share\"" "${session_launcher}"
-grep -Fq 'askpass_bindir="${HOLONIGHT_ASKPASS_BINDIR:-${script_directory}}"' "${session_launcher}"
+session_defaults="${stage}/share/holonight/session/holonight-session-defaults"
+grep -Fqx "installation_datadir=\"${stage}/share\"" "${session_defaults}"
 for alias in holonight-sudo-askpass holonight-ssh-askpass holonight-askpass; do
   [[ -L "${stage}/bin/${alias}" ]]
   [[ "$(readlink -f "${stage}/bin/${alias}")" == "${stage}/libexec/holonight-askpass" ]]
@@ -45,8 +45,8 @@ done
 bash -n "${stage}/libexec/holonight-polkit-agent-session"
 ! grep -Fq '@CMAKE_INSTALL_' "${session_launcher}" "${unit}"
 grep -Fqx "ExecStart=\"${stage}/bin/holonight-shell-systemd\"" "${stage}/share/systemd/user/holonight-shell.service"
-grep -Fq 'SUDO_ASKPASS="${askpass_bindir}/holonight-sudo-askpass"' "${session_launcher}"
-grep -Fq 'SSH_ASKPASS="${askpass_bindir}/holonight-ssh-askpass"' "${session_launcher}"
+grep -Fq 'export SUDO_ASKPASS=' "${session_defaults}"
+grep -Fq 'export SSH_ASKPASS=' "${session_defaults}"
 ! grep -Fq 'export SSH_ASKPASS_PROMPT' "${session_launcher}"
 
 qml_dir="${stage}/lib/qt6/qml/Holonight/Authentication"

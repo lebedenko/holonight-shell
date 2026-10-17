@@ -70,8 +70,20 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
             desktop = self.staged(datadir / f"wayland-sessions/holonight-{compositor}.desktop").read_text()
             self.assertIn(f'Exec="{bindir}/holonight-session" {compositor}', desktop)
         launcher = self.staged(bindir / "holonight-session").read_text()
-        self.assertIn(f'installation_datadir="{datadir}"', launcher)
-        self.assertNotIn(str(self.stage), launcher + unit + shell_unit)
+        defaults = self.staged(datadir / "holonight/session/holonight-session-defaults").read_text()
+        self.assertIn(f'installation_datadir="{datadir}"', defaults)
+        for relative in ("uwsm/env-holonight", "holonight/session/hyprland.lua",
+                         "holonight/session/sway.conf", "holonight/session/labwc.xml",
+                         *(f"xdg-desktop-portal/holonight-{c}-portals.conf" for c in ("hyprland", "sway", "labwc"))):
+            self.assertTrue(self.staged(datadir / relative).is_file())
+        for helper in ("holonight-session-config", "holonight-session-finalize", "holonight-session-doctor"):
+            installed = self.staged(bindir / helper)
+            self.assertTrue(os.access(installed, os.X_OK))
+            if self.stage != Path("/"):
+                self.assertNotIn(str(self.stage), installed.read_text())
+        self.assertNotIn("Environment=PATH=", shell_unit)
+        if self.stage != Path("/"):
+            self.assertNotIn(str(self.stage), launcher + unit + shell_unit)
         self.assertNotIn("/original-prefix", launcher + unit + shell_unit)
         for name in ("holonight-askpass", "holonight-sudo-askpass", "holonight-ssh-askpass"):
             alias = self.staged(bindir / name)
@@ -83,7 +95,13 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
                       libexecdir / "holonight-polkit-agent-session",
                       datadir / "systemd/user/holonight-polkit-agent@.service"):
             self.assertIn(str(entry), manifest)
-        self.assertTrue(all(not entry.startswith(str(self.stage)) for entry in manifest))
+        for entry in (datadir / "uwsm/env-holonight", datadir / "holonight/session/holonight-session-defaults",
+                      *(datadir / f"holonight/session/{name}" for name in ("hyprland.lua", "sway.conf", "labwc.xml")),
+                      *(datadir / f"xdg-desktop-portal/holonight-{c}-portals.conf" for c in ("hyprland", "sway", "labwc")),
+                      *(bindir / name for name in ("holonight-session-config", "holonight-session-finalize", "holonight-session-doctor"))):
+            self.assertIn(str(entry), manifest)
+        if self.stage != Path("/"):
+            self.assertTrue(all(not entry.startswith(str(self.stage)) for entry in manifest))
         return bindir, datadir
 
     def test_usr_usr_local_and_local_prefix_with_spaces(self):
@@ -114,7 +132,9 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
 
     def test_installed_wrappers_use_their_own_binaries_and_portal_paths(self):
         self.configure()
-        bindir, datadir = self.check_layout("/home/test/.local")
+        self.stage = Path("/")
+        prefix = self.root / "real prefix"
+        bindir, datadir = self.check_layout(prefix)
         fake_bin = self.root / "fake-bin"
         fake_bin.mkdir()
         commands = {
@@ -137,8 +157,8 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
         self.assertIn(str(self.staged(bindir / "holonight-ssh-askpass")), output)
         self.assertIn(f"{datadir}/holonight/xdg:/etc/xdg", output)
         self.assertIn(f"{datadir}:/usr/local/share:/usr/share", output)
-        self.assertIn("/home/test/.local/lib/qt6/qml", output)
-        self.assertIn("/home/test/.local/lib/qt6/plugins", output)
+        self.assertIn(f"{prefix}/lib/qt6/qml", output)
+        self.assertIn(f"{prefix}/lib/qt6/plugins", output)
 
     @unittest.skipUnless(shutil.which("task"), "Task is not installed")
     def test_install_tasks_use_separate_production_builds_and_matching_prefixes(self):

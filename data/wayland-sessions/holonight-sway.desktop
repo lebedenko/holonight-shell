@@ -3,5 +3,5 @@ Name=HoloNight (Sway)
 Comment=Sway session with HoloNight desktop integration
 Exec="@HOLONIGHT_EXEC_BINDIR@/holonight-session" sway
 TryExec=sway
-DesktopNames=sway
+DesktopNames=HoloNight-Sway;HoloNight;sway
 Type=Application

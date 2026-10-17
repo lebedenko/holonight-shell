@@ -45,3 +45,16 @@ foreach(name IN ITEMS holonight-askpass holonight-sudo-askpass holonight-ssh-ask
   file(CREATE_LINK "${askpass_target}" "$ENV{DESTDIR}${alias}" SYMBOLIC)
   list(APPEND CMAKE_INSTALL_MANIFEST_FILES "${alias}")
 endforeach()
+
+holonight_install_integration(scripts/holonight-session-defaults "${CMAKE_INSTALL_FULL_DATADIR}/holonight/session" FILE)
+holonight_install_integration(data/uwsm/env-holonight "${CMAKE_INSTALL_FULL_DATADIR}/uwsm" FILE)
+foreach(helper IN ITEMS holonight-session-config holonight-session-finalize holonight-session-doctor)
+  holonight_install_integration("scripts/${helper}" "${CMAKE_INSTALL_FULL_BINDIR}" PROGRAM)
+endforeach()
+foreach(asset IN ITEMS hyprland.lua sway.conf labwc.xml)
+  holonight_install_integration("data/session/${asset}" "${CMAKE_INSTALL_FULL_DATADIR}/holonight/session" FILE)
+endforeach()
+foreach(compositor IN ITEMS hyprland sway labwc)
+  holonight_install_integration("data/xdg-desktop-portal/holonight-${compositor}-portals.conf"
+    "${CMAKE_INSTALL_FULL_DATADIR}/xdg-desktop-portal" FILE)
+endforeach()

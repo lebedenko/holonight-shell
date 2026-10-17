@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<labwc_config>
+  <keyboard><default/><keybind key="W-e"><action name="Execute" command="uwsm app -- hn-files"/></keybind></keyboard>
+  <mouse><default/></mouse>
+</labwc_config>

@@ -1,6 +1,7 @@
 [Unit]
 Description=HoloNight Polkit authentication agent for session %i
 After=graphical-session.target
+PartOf=graphical-session.target
 StartLimitIntervalSec=30s
 StartLimitBurst=3
 
