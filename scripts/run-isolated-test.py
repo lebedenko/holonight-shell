@@ -57,6 +57,13 @@ def main():
                             '--bind', str(root), str(root), '--ro-bind', str(project.parent), str(project.parent),
                             '--bind', str(project), str(project),
                             '--chdir', str(project)]
+                # Explicit development providers may live below a hidden host path
+                # such as /tmp. Retain installed packages read-only, like /usr.
+                for value in os.environ.get('CMAKE_PREFIX_PATH', '').replace(';', os.pathsep).split(os.pathsep):
+                    if value:
+                        prefix = Path(value).resolve()
+                        if prefix.is_dir():
+                            isolated += ['--ro-bind', str(prefix), str(prefix)]
                 if build is not None:
                     isolated += ['--bind', str(build), str(build)]
                 command = isolated + ['--'] + command
