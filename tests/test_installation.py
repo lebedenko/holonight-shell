@@ -81,6 +81,12 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
             self.assertTrue(os.access(installed, os.X_OK))
             if self.stage != Path("/"):
                 self.assertNotIn(str(self.stage), installed.read_text())
+        personal = self.root / 'personal/sway'
+        personal.mkdir(parents=True, exist_ok=True)
+        (personal / 'config').write_text('set $menu /usr/bin/true --toggle-launcher\nbindsym Mod4+r exec $menu\n')
+        self.run_command(str(self.staged(bindir / 'holonight-session-config')), '--check', 'sway',
+                         env={**os.environ, 'HOME': str(self.root / 'home'),
+                              'XDG_CONFIG_HOME': str(personal.parent)})
         for directory in (bindir, libexecdir):
             module = self.staged(directory / "holonight_session_state.py")
             self.assertTrue(module.is_file())

@@ -544,3 +544,30 @@ sibling drives sharing the same physical device. Busy devices and authorization 
 forced unmounts or automatic retries.
 
 The Storage topbar icon is hidden with zero devices attached, dimmed with devices attached but none mounted, and shows the system accent color plus a device-count badge once at least one volume is mounted. The popup opens with a "Removable Storage" header (device count, plus a currently-inert settings affordance) followed by one collapsible card per physical drive — icon (optical/SSD/HDD/flash-media/generic, by connection bus and media type), name, connection/media subtitle, total capacity, and Eject/Power Off — expanding to a row per volume with a used/free capacity bar (accent above 10% free, amber 5–10%, red below 5%) and Mount/Unmount. Clicking a volume row's body opens it in `holonight-files`, mounting first if needed; footer buttons open Files directly or at the first mounted volume. In-flight operations show inline "Mounting…"/"Ejecting…"/etc. text with conflicting actions disabled; failures show an inline error with a "Try Again" retry. A drive newly connecting posts a "connected" desktop notification (suppressed for devices already attached at shell startup); a successful eject or power-off posts a "safe to remove" notification — both standalone, outside the shell's own notification history. Mount/unmount do not notify. If the last device disappears while the popup is open, it shows an empty state instead of closing. Empty readers and fixed volumes are hidden.
+
+### Sharing Sway finalization with regular UWSM sessions
+
+If the same native Sway configuration serves regular UWSM and HoloNight sessions,
+replace its unconditional `exec uwsm finalize` with
+`exec sh ~/.config/sway/finalize-regular.sh`. Save this exact helper recipe there:
+
+```sh
+#!/bin/sh
+case ":${XDG_CURRENT_DESKTOP:-}:" in
+    *:HoloNight:*) exit 0 ;;
+esac
+exec uwsm finalize
+```
+
+Preflight recognizes this complete helper (blank lines and comments are allowed).
+The colon-delimited identity must contain the exact `HoloNight` component. Other
+helper bodies are inspected normally; merely mentioning HoloNight is not an exemption.
+HoloNight supplies its own finalization after including the native configuration.
+
+Preflight inspects literal commands, environment assignments, native includes, and
+identifiable shell scripts in command position without executing personal code.
+Shell launcher/overview control commands, window rules, socket arguments, and
+command-valued settings are not service startup. Native executables and referenced
+assets are not decoded as configuration. Dynamic constructs are reported as unchecked;
+a successful check is not a guarantee about arbitrary Lua or shell code. Inspection
+is limited to 128 referenced files, 1 MiB per file, and 16 nested command wrappers.

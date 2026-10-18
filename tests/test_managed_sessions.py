@@ -179,7 +179,7 @@ class Sessions(unittest.TestCase):
         config.mkdir(parents=True)
         (config / 'rc.xml').write_text('<labwc_config/>')
         startup = config / 'startup'
-        (config / 'autostart').write_text('./startup\n')
+        (config / 'autostart').write_text('sh ./startup\n')
         startup.write_text('uwsm app -- foot\n')
         environment = config / 'environment'
         environment.write_text('LABWC_UPDATE_ACTIVATION_ENV="0"\n')
@@ -195,6 +195,75 @@ class Sessions(unittest.TestCase):
         result = self.run_script('holonight-session-config', '--check', 'labwc')
         self.assertEqual(result.returncode, 1)
         self.assertIn(str(environment) + ':1', result.stderr)
+
+    def test_command_contexts_and_binary_assets(self):
+        config = Path(self.env['XDG_CONFIG_HOME'])
+        cases = {
+            'hyprland': ('hypr/hyprland.lua', '''
+hl.dsp.exec_cmd("holonight-shell --toggle-launcher")
+hl.dsp.exec_cmd("holonight-shell --toggle-window-overview")
+hl.window_rule({ match = { class = "^holonight-polkit-agent$" } })
+hl.exec_cmd("nc -U /run/holonight-shell/control.sock")
+'''),
+            'sway': ('sway/config', 'set $menu /usr/bin/true --toggle-launcher\nbindsym Mod4+r exec $menu\n'),
+            'labwc': ('labwc/rc.xml', '<command>holonight-shell --toggle-launcher</command>'),
+        }
+        for compositor, (relative, content) in cases.items():
+            native = config / relative
+            native.parent.mkdir(parents=True)
+            native.write_text(content)
+            result = self.run_script('holonight-session-config', '--check', compositor)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        (config / 'labwc/environment').write_text('MENU="holonight-shell"\nSOCKET=/run/holonight-shell/control.sock\n')
+        result = self.run_script('holonight-session-config', '--check', 'labwc')
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_guarded_finalize_recipe_and_ineffective_guards(self):
+        native = Path(self.env['XDG_CONFIG_HOME']) / 'sway/config'
+        native.parent.mkdir(parents=True)
+        helper = native.parent / 'finalize.sh'
+        recipe = '''#!/bin/sh
+case ":${XDG_CURRENT_DESKTOP:-}:" in
+    *:HoloNight:*) exit 0 ;;
+esac
+exec uwsm finalize
+'''
+        native.write_text('exec sh ' + shlex.quote(str(helper)) + '\n')
+        helper.write_text(recipe)
+        result = self.run_script('holonight-session-config', '--check', 'sway')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for desktop, calls in [('HoloNight-Sway:HoloNight:sway', 0), ('HoloNight', 0),
+                               ('sway', 1), ('AlmostHoloNight', 1), ('', 1)]:
+            self.log.write_text('')
+            result = subprocess.run(['/bin/sh', str(helper)],
+                                    env={**self.env, 'XDG_CURRENT_DESKTOP': desktop})
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(self.log.read_text().count('finalize'), calls)
+        for broken in [recipe.replace('exit 0', ':'), recipe.replace('*:HoloNight:*', '*HoloNight*'),
+                       recipe.replace('esac', 'esac\nholonight-shell'),
+                       '# HoloNight\nuwsm finalize\n']:
+            helper.write_text(broken)
+            result = self.run_script('holonight-session-config', '--check', 'sway')
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn(str(helper) + ':', result.stderr)
+
+    def test_nested_commands_assignments_and_dynamic_reporting(self):
+        native = Path(self.env['XDG_CONFIG_HOME']) / 'sway/config'
+        native.parent.mkdir(parents=True)
+        helper = native.parent / 'nested.sh'
+        helper.write_text('#!/bin/sh\nexec holonight-polkit-agent\n')
+        for command in ['holonight-shell', 'holonight-shell --toggle-launcher; holonight-shell',
+                        'sh -c "uwsm finalize"', 'export XDG_CURRENT_DESKTOP=sway',
+                        'env PATH=/tmp true', 'systemctl --user start holonight-shell.service',
+                        'uwsm app -- holonight-shell', 'sh ' + shlex.quote(str(helper))]:
+            native.write_text('exec ' + command + '\n')
+            result = self.run_script('holonight-session-config', '--check', 'sway')
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn('startup', result.stderr)
+        native.write_text('exec $unknown\n')
+        result = self.run_script('holonight-session-config', '--check', 'sway')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('unchecked dynamic startup', result.stderr)
 
     @unittest.skipUnless(shutil.which('lua'), 'Lua interpreter unavailable')
     def test_hyprland_native_settings_imports_and_override_order(self):
