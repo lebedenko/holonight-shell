@@ -115,6 +115,36 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
         self.configure(**directories)
         self.check_layout("/opt/holonight", *directories.values())
 
+    def test_installed_defaults_initialize_and_export_data_dirs(self):
+        self.configure()
+        home = self.root / "home"
+        home.mkdir()
+        fake_bin = self.root / "fake-bin"
+        fake_bin.mkdir()
+        adapter = fake_bin / "holonight-appearance-adapter"
+        adapter.write_text("#!/bin/sh\nprintf 'TestCursor\\n'\n")
+        adapter.chmod(0o755)
+        default_dirs = "/usr/local/share:/usr/share"
+        for prefix in ("/usr", "/usr/local", "/home/test user/.local"):
+            self.install(prefix)
+            datadir = f"{prefix}/share"
+            defaults = self.staged(f"{datadir}/holonight/session/holonight-session-defaults")
+            for value in (None, "", "/custom/first:/custom/last",
+                          f"/custom/first:{datadir}:/custom/last"):
+                initial = value or default_dirs
+                expected = initial if datadir in initial.split(":") else f"{datadir}:{initial}"
+                for shell in ("sh", "bash"):
+                    with self.subTest(prefix=prefix, value=value, shell=shell):
+                        environment = {"HOME": str(home), "PATH": f"{fake_bin}:/usr/bin:/bin"}
+                        if value is not None:
+                            environment["XDG_DATA_DIRS"] = value
+                        output = self.run_command(
+                            shell, "-eu", "-c",
+                            '. "$1"\nsh -eu -c \'printf "%s\\n" "$XDG_DATA_DIRS"\'\n'
+                            '. "$1"\nsh -eu -c \'printf "%s\\n" "$XDG_DATA_DIRS"\'\n',
+                            "defaults-test", str(defaults), env=environment)
+                        self.assertEqual(output.splitlines(), [expected, expected])
+
     def test_absolute_gnu_install_directory(self):
         self.configure(LIBEXECDIR="/opt/holonight-helpers")
         self.check_layout("/usr", libexecdir="/opt/holonight-helpers")

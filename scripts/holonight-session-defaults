@@ -46,9 +46,10 @@ installation_datadir="@CMAKE_INSTALL_FULL_DATADIR@"
 installation_libdir="@CMAKE_INSTALL_FULL_LIBDIR@"
 installation_bindir="@CMAKE_INSTALL_FULL_BINDIR@"
 case "$installation_datadir" in @*) installation_datadir="${script_directory}/../data"; installation_bindir="$script_directory" ;; esac
-case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
+XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+case ":${XDG_DATA_DIRS}:" in
   *:"$installation_datadir":*) ;;
-  *) XDG_DATA_DIRS="$installation_datadir:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
+  *) XDG_DATA_DIRS="$installation_datadir:${XDG_DATA_DIRS}" ;;
 esac
 export XDG_DATA_DIRS
 case "$installation_libdir" in @*) ;; *)

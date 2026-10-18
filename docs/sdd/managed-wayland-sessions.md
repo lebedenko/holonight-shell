@@ -14,8 +14,13 @@ labwc uses a private directory and explicit startup command.
 
 A POSIX-sourceable defaults file is shared by the launcher and `uwsm/env-holonight`.
 It adds local-bin idempotently, sets overridable Qt/askpass defaults, resolves the
-canonical cursor and extends installation search paths. UWSM user environment files
-have final precedence. No interactive terminal files are sourced. The managed hook disables Hyprland's
+canonical cursor and extends installation search paths. Unset or empty
+`XDG_DATA_DIRS` is initialized to `/usr/local/share:/usr/share` before checking for
+the installation data directory.
+Explicit nonempty values retain their ordering; the installation directory is
+prepended only when absent, and the result is exported even when already present.
+UWSM user environment files have final precedence. No interactive terminal files
+are sourced. The managed hook disables Hyprland's
 native systemd variable/notification/target management and labwc's native activation
 imports, so those paths cannot race UWSM finalization or cleanup. The shell unit
 has no fixed PATH. Managed mode leaves propagation and cleanup to UWSM; direct
@@ -56,12 +61,16 @@ portal precedence and diagnostic failures. The actual installed UWSM preloader i
 exercised when available, including its compositor plugins and user env precedence.
 Installation tests stage assets with DESTDIR and execute from a disposable real
 prefix; uninstall retains the existing manifest and modified-file protections.
+Installed defaults are tested under POSIX sh and Bash with unset-variable checks
+for `/usr`, `/usr/local` and a prefix containing spaces. Unset, empty and explicit
+data paths cover child-process exports, ordering and idempotence on repeated sourcing.
 
 Run `task test` and shell/umbrella `task check:integration`. Containers are acceptance
 only; deployed binaries must use host dependencies. In a disposable VM or dedicated
 test user with systemd, for each compositor:
 
-1. Log in cleanly, check the full identity and doctor output, and resolve a local
+1. Log in cleanly with `XDG_DATA_DIRS` initially unset, confirm UWSM starts and the
+   shell appears, check the full identity and doctor output, and resolve a local
    executable through launcher, shortcut and D-Bus activation.
 2. Delay finalization and confirm graphical-session activation waits. Omit the
    compositor marker and confirm UWSM timeout cleans up without starting the shell.
