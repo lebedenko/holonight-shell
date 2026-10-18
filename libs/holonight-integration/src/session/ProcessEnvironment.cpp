@@ -46,3 +46,20 @@ bool SystemProcessEnvironment::isUserServiceActive(const QString& service_name) 
   }
   return systemctl.exitStatus() == QProcess::NormalExit && systemctl.exitCode() == 0;
 }
+
+ProcessEnvironment::ManagedSession SystemProcessEnvironment::managedSession() const {
+  QProcess helper;
+  helper.start(QStringLiteral("holonight-session-state"), {QStringLiteral("probe")});
+  if (!helper.waitForFinished(15000)) {
+    helper.kill();
+    helper.waitForFinished();
+    return ManagedSession::Unverifiable;
+  }
+  if (helper.exitStatus() != QProcess::NormalExit || helper.exitCode() != 0) {
+    return ManagedSession::Unverifiable;
+  }
+  const auto result = helper.readAllStandardOutput().trimmed();
+  if (result == "managed") return ManagedSession::Managed;
+  if (result == "unmanaged") return ManagedSession::Unmanaged;
+  return ManagedSession::Unverifiable;
+}

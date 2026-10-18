@@ -73,7 +73,7 @@ class Sessions(unittest.TestCase):
                 self.assertIn(f'start -e -D HoloNight-{title}:HoloNight:{native}', log)
                 self.assertNotIn('import-environment', log)
                 self.assertNotIn('start holonight-shell', log)
-                self.assertIn('session-', log)
+                self.assertIn('--config', log)
 
     def test_auto_without_uwsm_fails_without_starting_compositor(self):
         (self.bin / 'uwsm').unlink()
@@ -139,24 +139,62 @@ class Sessions(unittest.TestCase):
             self.assertEqual(self.run_script('holonight-session-finalize', 'sway', **environment).returncode, 0)
         self.assertEqual(self.log.read_text().count('finalize WAYLAND_DISPLAY'), 1)
 
-    def test_configuration_overrides_keep_readiness_and_spaces(self):
+    def test_migration_rejected_without_modifying_personal_files(self):
         override = Path(self.env['XDG_CONFIG_HOME']) / 'holonight/session'
         override.mkdir(parents=True)
-        (override / 'sway.conf').write_text('focus_follows_mouse no\n')
-        (override / 'hyprland.lua').write_text('-- user override\n')
+        legacy = override / 'sway.conf'
+        legacy.write_text('focus_follows_mouse no\n')
         for compositor in ('sway', 'hyprland', 'labwc'):
             result = self.run_script('holonight-session-config', compositor)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            path = Path(result.stdout.strip())
-            if compositor != 'labwc':
-                text = path.read_text()
-                self.assertIn('uwsm app -- hn-files', text)
-                self.assertIn(str(override), text)
-                self.assertIn('holonight-session-finalize ' + compositor, text)
-                self.assertLess(text.index(str(override)), text.index('holonight-session-finalize'))
-            else:
-                self.assertIn('<default', (path / 'rc.xml').read_text())
-                self.assertIn('uwsm app -- hn-files', (path / 'rc.xml').read_text())
+            self.assertEqual(result.returncode, 1)
+            self.assertIn(str(legacy), result.stderr)
+            self.assertIn('merge desired settings', result.stderr)
+        self.assertEqual(legacy.read_text(), 'focus_follows_mouse no\n')
+
+    def test_native_configuration_and_relative_conflicting_include(self):
+        config = Path(self.env['XDG_CONFIG_HOME'])
+        (config / 'sway/parts').mkdir(parents=True)
+        native = config / 'sway/config'
+        native.write_text('include parts/*.conf\ninput * xkb_layout ua\n')
+        part = config / 'sway/parts/start.conf'
+        part.write_text('exec uwsm app -- foot\n')
+        result = self.run_script('holonight-session-config', 'sway')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = Path(result.stdout.strip()).read_text()
+        self.assertIn(str(native), text)
+        self.assertNotIn('bindsym', text)
+        self.assertNotIn('exec_always', text)
+        part.write_text('exec holonight-shell\n')
+        result = self.run_script('holonight-session-config', 'sway')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(str(part) + ':1', result.stderr)
+        (config / 'labwc').mkdir()
+        (config / 'labwc/rc.xml').write_text('<labwc_config/>')
+        result = self.run_script('holonight-session-config', 'labwc')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(config / 'labwc'))
+
+    def test_startup_script_conflicts_and_protection_assignments(self):
+        config = Path(self.env['XDG_CONFIG_HOME']) / 'labwc'
+        config.mkdir(parents=True)
+        (config / 'rc.xml').write_text('<labwc_config/>')
+        startup = config / 'startup'
+        (config / 'autostart').write_text('./startup\n')
+        startup.write_text('uwsm app -- foot\n')
+        environment = config / 'environment'
+        environment.write_text('LABWC_UPDATE_ACTIVATION_ENV="0"\n')
+        result = self.run_script('holonight-session-config', '--check', 'labwc')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ['holonight-polkit-agent', 'uwsm finalize', 'dbus-update-activation-environment --systemd WAYLAND_DISPLAY']:
+            startup.write_text(command + '\n')
+            result = self.run_script('holonight-session-config', '--check', 'labwc')
+            self.assertEqual(result.returncode, 1)
+            self.assertIn(str(startup) + ':1', result.stderr)
+        startup.write_text('uwsm app -- foot\n')
+        environment.write_text('LABWC_UPDATE_ACTIVATION_ENV=1\n')
+        result = self.run_script('holonight-session-config', '--check', 'labwc')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(str(environment) + ':1', result.stderr)
 
     @unittest.skipUnless(shutil.which('lua'), 'Lua interpreter unavailable')
     def test_hyprland_native_settings_imports_and_override_order(self):
@@ -173,12 +211,6 @@ assert(settings.misc.disable_xdg_env_checks)
 require("monitors")
 require("nested")
 hl.on("hyprland.start", function() hl.exec_cmd("native startup") end)
-''')
-        override = config_home / 'holonight/session'
-        override.mkdir(parents=True)
-        (override / 'hyprland.lua').write_text('''
-assert(#monitors == 2 and #bindings == 1 and #callbacks == 1)
-hl.config({ misc = { disable_xdg_env_checks = false } })
 ''')
         result = self.run_script('holonight-session-config', 'hyprland', XDG_CONFIG_HOME=str(config_home))
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -200,7 +232,7 @@ hl = {
 dofile(arg[1])
 assert(monitors[1].scale == 1.25 and monitors[2].scale == 1.5)
 assert(#bindings == 1 and bindings[1] == "SUPER + T")
-assert(not settings.misc.disable_xdg_env_checks)
+assert(settings.misc.disable_xdg_env_checks)
 assert(#callbacks == 2)
 for _, callback in ipairs(callbacks) do callback() end
 assert(commands[1] == "native startup")
@@ -316,7 +348,7 @@ hl.monitor({ output = "DP-3", mode = "preferred", position = "auto", scale = 1.5
                 return '123\n'
             return ''
         old = {**stable, 'PATH': '/no-longer-installed'}
-        with patch.dict(os.environ, stable, clear=True), patch.object(DOCTOR, 'command', side_effect=command), \
+        with patch.dict(os.environ, stable, clear=True), patch.object(DOCTOR, 'command', side_effect=command), patch.object(DOCTOR, 'manager_environment', return_value=stable), patch.object(DOCTOR, 'managed_environment', return_value=stable), \
                 patch.object(DOCTOR, 'process_environment', return_value=old), \
                 patch('sys.argv', ['doctor', '--check-executable', 'local-program']), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
@@ -346,7 +378,7 @@ hl.monitor({ output = "DP-3", mode = "preferred", position = "auto", scale = 1.5
             client = {**stable, 'WAYLAND_DISPLAY': 'wayland-old'} if stale_client else stable
             with self.subTest(stale_client=stale_client), \
                     patch.dict(os.environ, stable, clear=True), \
-                    patch.object(DOCTOR, 'command', side_effect=command), \
+                    patch.object(DOCTOR, 'command', side_effect=command), patch.object(DOCTOR, 'manager_environment', return_value=stable), patch.object(DOCTOR, 'managed_environment', return_value=stable), \
                     patch.object(DOCTOR, 'process_environment', side_effect=lambda pid: startup if pid == 2 else client), \
                     patch.object(DOCTOR, 'portal_config', return_value=portal), \
                     patch('sys.argv', ['doctor']), contextlib.redirect_stdout(io.StringIO()) as output:

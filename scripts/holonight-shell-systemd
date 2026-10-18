@@ -5,62 +5,31 @@ warn() {
   printf 'holonight-shell-systemd: warning: %s\n' "$*" >&2
 }
 
-have_command() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-systemd_environment() {
-  systemctl --user show-environment 2>/dev/null || true
-}
-
-environment_value() {
-  local name="$1"
-  local output="$2"
-
-  printf '%s\n' "${output}" | sed -n "s/^${name}=//p" | head -n 1
-}
-
-import_runtime_environment() {
-  local output="$1"
-  local compositor="$2"
-  local name
-  local value
-  local allowed=(
-    WAYLAND_DISPLAY
-    DISPLAY
-    XDG_CURRENT_DESKTOP
-    XDG_SESSION_DESKTOP
-    XDG_SESSION_TYPE
-    XDG_MENU_PREFIX
-    XDG_DATA_DIRS
-    XDG_CONFIG_DIRS
-    DBUS_SESSION_BUS_ADDRESS
-    HYPRLAND_INSTANCE_SIGNATURE
-    HYPRLAND_CMD
-    SWAYSOCK
-    LABWC_PID
-    I3SOCK
-    QT_QPA_PLATFORM
-    QT_QPA_PLATFORMTHEME
-    QT_QUICK_CONTROLS_STYLE
-    XCURSOR_THEME
-    XDG_CONFIG_HOME
-    HOLONIGHT_APPEARANCE_FILE
-  )
-
-  for name in "${allowed[@]}"; do
-    value="$(environment_value "${name}" "${output}")"
-    if [[ -n "${value}" ]]; then
-      export "${name}=${value}"
-    fi
+shell_directory="$(cd -- "${BASH_SOURCE[0]%/*}" && pwd)"
+state_helper="${HOLONIGHT_SESSION_STATE_HELPER:-${shell_directory}/holonight-session-state}"
+declare -A manager=()
+read_manager() {
+  local entry
+  local -a entries=()
+  mapfile -d '' -t entries < <("$state_helper" environment && printf '%s\0' complete)
+  (( ${#entries[@]} > 0 )) || return 1
+  [[ "${entries[-1]}" == complete ]] || return 1
+  manager=()
+  for entry in "${entries[@]:0:${#entries[@]}-1}"; do
+    manager["${entry%%=*}"]="${entry#*=}"
   done
-  if [[ "${compositor}" == sway ]]; then
-    unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD LABWC_PID
-  elif [[ "${compositor}" == labwc ]]; then
-    unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK
-  else
-    unset SWAYSOCK I3SOCK LABWC_PID
-  fi
+}
+import_runtime_environment() {
+  local name
+  for name in WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE XDG_MENU_PREFIX XDG_DATA_DIRS XDG_CONFIG_DIRS DBUS_SESSION_BUS_ADDRESS HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK LABWC_PID I3SOCK QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME XDG_CONFIG_HOME HOLONIGHT_APPEARANCE_FILE HOLONIGHT_LABWC_CONFIG_DIR; do
+    unset "$name"
+    [[ ! -v manager[$name] ]] || export "$name=${manager[$name]}"
+  done
+  case "$1" in
+    sway) unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD LABWC_PID ;;
+    labwc) unset HYPRLAND_INSTANCE_SIGNATURE HYPRLAND_CMD SWAYSOCK I3SOCK ;;
+    *) unset SWAYSOCK I3SOCK LABWC_PID ;;
+  esac
 }
 
 selected_compositor() {
@@ -81,30 +50,27 @@ selected_compositor() {
 wait_for_compositor_environment() {
   local timeout="${HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT:-60}"
   local deadline=$((SECONDS + timeout))
-  local output
   local wayland_display
   local hyprland_signature
   local labwc_pid
   local sway_socket
   local compositor
 
-  if ! have_command systemctl; then
-    warn "systemctl is not installed; starting with inherited environment"
-    return 0
-  fi
-
   while (( SECONDS <= deadline )); do
-    output="$(systemd_environment)"
-    wayland_display="$(environment_value WAYLAND_DISPLAY "${output}")"
-    hyprland_signature="$(environment_value HYPRLAND_INSTANCE_SIGNATURE "${output}")"
-    labwc_pid="$(environment_value LABWC_PID "${output}")"
-    sway_socket="$(environment_value SWAYSOCK "${output}")"
-    compositor="$(selected_compositor "$(environment_value XDG_CURRENT_DESKTOP "${output}")" || true)"
+    if ! read_manager; then
+      warn "cannot verify manager environment"
+      return 1
+    fi
+    wayland_display="${manager[WAYLAND_DISPLAY]-}"
+    hyprland_signature="${manager[HYPRLAND_INSTANCE_SIGNATURE]-}"
+    labwc_pid="${manager[LABWC_PID]-}"
+    sway_socket="${manager[SWAYSOCK]-}"
+    compositor="$(selected_compositor "${manager[XDG_CURRENT_DESKTOP]-}" || true)"
 
     if [[ -n "${wayland_display}" ]] && { [[ "${compositor}" == sway && -n "${sway_socket}" ]] ||
          [[ "${compositor}" == hyprland && -n "${hyprland_signature}" ]] ||
          [[ "${compositor}" == labwc && "${labwc_pid}" =~ ^([2-9]|[1-9][0-9]+)$ ]]; }; then
-      import_runtime_environment "${output}" "${compositor}"
+      import_runtime_environment "${compositor}"
       return 0
     fi
 

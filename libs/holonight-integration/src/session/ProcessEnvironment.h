@@ -8,6 +8,9 @@
 // (SystemProcessEnvironment) reads /proc and consults QStandardPaths.
 class ProcessEnvironment {
  public:
+  enum class ManagedSession { Managed, Unmanaged, Unverifiable };
+  [[nodiscard]] virtual ManagedSession managedSession() const { return ManagedSession::Unverifiable; }
+
   virtual ~ProcessEnvironment() = default;
 
   ProcessEnvironment(const ProcessEnvironment&) = delete;
@@ -32,6 +35,7 @@ class ProcessEnvironment {
 // and findExecutable delegates to QStandardPaths::findExecutable so no executable paths are ever hardcoded.
 class SystemProcessEnvironment final : public ProcessEnvironment {
  public:
+  [[nodiscard]] ManagedSession managedSession() const override;
   [[nodiscard]] bool isRunning(const QString& process_name) const override;
   [[nodiscard]] QString findExecutable(const QString& name) const override;
   [[nodiscard]] bool isUserServiceActive(const QString& service_name) const override;

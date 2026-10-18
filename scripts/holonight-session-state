@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""Private session-state protocol: environment emits NUL records; probe emits one state."""
+import os
+import sys
+sys.dont_write_bytecode = True
+from holonight_session_state import manager_environment, managed_environment
+
+try:
+    if sys.argv[1:] == ['environment']:
+        environment = manager_environment()
+        for key, value in environment.items():
+            sys.stdout.buffer.write(os.fsencode(key + '=' + value) + b'\0')
+    elif sys.argv[1:] == ['probe']:
+        environment = managed_environment(os.environ.get('XDG_SESSION_ID', ''), os.environ.get('XDG_RUNTIME_DIR', ''))
+        if environment is None and (os.environ.get('HOLONIGHT_SESSION_READY') == '1' or
+                                    os.environ.get('HOLONIGHT_SESSION_MODE') == 'uwsm'):
+            raise ValueError('managed caller has no active UWSM compositor')
+        print('managed' if environment is not None else 'unmanaged')
+    else:
+        raise ValueError('expected environment or probe')
+except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+    print('holonight-session-state: ' + str(error), file=sys.stderr)
+    sys.exit(1)

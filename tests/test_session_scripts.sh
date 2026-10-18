@@ -25,6 +25,10 @@ make_compositor sway
 make_compositor labwc
 make_fake uwsm 'printf "uwsm %s desktop=%s cursor=%s\n" "$*" "${XDG_CURRENT_DESKTOP-}" "${XCURSOR_THEME-}" >>"${TEST_LOG}"'
 make_fake dbus-update-activation-environment 'printf "dbus %s\n" "$*" >>"${TEST_LOG}"'
+make_fake holonight-session-state '
+if [[ "$1" == probe ]]; then printf "unmanaged\n"; else
+  while IFS= read -r entry; do [[ -z "$entry" ]] || printf "%s\0" "$entry"; done <<<"${FAKE_SYSTEMD_ENV-}"
+fi'
 make_fake systemctl '
 if [[ "$*" == "--user show-environment" ]]; then
   printf "%s\n" "${FAKE_SYSTEMD_ENV-}"
@@ -60,7 +64,7 @@ run_session() {
   local compositor="$1"
   local mode="$2"
   shift 2
-  env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
+  env -i HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOME="${test_root}/home" \
     HOLONIGHT_PORTAL_CONFIG_DIR="${test_root}/installed/share/holonight/xdg" \
     HOLONIGHT_SESSION_MODE="${mode}" HOLONIGHT_ASKPASS_BINDIR="${test_root}/installed/bin" \
     "$@" "${source_dir}/scripts/holonight-session" "${compositor}"
@@ -118,7 +122,7 @@ grep -Fq 'appearance reconciliation failed; session startup will continue' "${te
 
 mv "${fake_bin}/holonight-appearance-adapter" "${fake_bin}/adapter-away"
 : >"${log_file}"
-env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" XCURSOR_THEME=Inherited \
+env -i HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" XCURSOR_THEME=Inherited \
   HOLONIGHT_SESSION_MODE=direct /usr/bin/bash "${source_dir}/scripts/holonight-session" sway
 assert_match "compositor=sway desktop=HoloNight-Sway:HoloNight:sway session=sway type=wayland menu=sway- cursor=Inherited"
 mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
@@ -126,7 +130,7 @@ mv "${fake_bin}/adapter-away" "${fake_bin}/holonight-appearance-adapter"
 # Managed startup is covered by test_managed_sessions.py with isolated services.
 for args in '' 'river' 'hyprland extra'; do
   read -r -a argv <<<"${args}"
-  if env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
+  if env -i HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
     "${source_dir}/scripts/holonight-session" "${argv[@]}" >"${test_root}/stdout" 2>"${test_root}/stderr"; then
     printf 'invalid compositor arguments unexpectedly succeeded: %s\n' "${args}" >&2
     exit 1
@@ -140,7 +144,7 @@ fi
 grep -Fq 'unknown HOLONIGHT_SESSION_MODE=invalid' "${test_root}/stderr"
 
 mv "${fake_bin}/sway" "${fake_bin}/sway-away"
-if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=direct \
+if env -i HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=direct \
   /usr/bin/bash "${source_dir}/scripts/holonight-session" sway >"${test_root}/stdout" 2>"${test_root}/stderr"; then
   printf 'missing compositor unexpectedly succeeded\n' >&2
   exit 1
@@ -160,7 +164,7 @@ for desktop in 'HoloNight-Hyprland:HoloNight:Hyprland' 'HoloNight-Sway:HoloNight
   FAKE_SYSTEMD_ENV="WAYLAND_DISPLAY=wayland-9
 XDG_CURRENT_DESKTOP=${desktop}
 ${marker_env}
-QT_STYLE_OVERRIDE=Unsupported" env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
+QT_STYLE_OVERRIDE=Unsupported" env HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
     HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 "${source_dir}/scripts/holonight-shell-systemd"
   assert_line "${expected}"
 done
@@ -168,7 +172,7 @@ done
 # A stale marker from the non-selected compositor is insufficient.
 : >"${log_file}"
 FAKE_SYSTEMD_ENV=$'WAYLAND_DISPLAY=wayland-9\nXDG_CURRENT_DESKTOP=HoloNight-Sway:HoloNight:sway\nHYPRLAND_INSTANCE_SIGNATURE=stale' \
-  env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
+  env HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
   "${source_dir}/scripts/holonight-shell-systemd" >/dev/null 2>&1 || true
 if grep -Fq 'shell ' "${log_file}"; then
   printf 'wrapper accepted the wrong compositor marker\n' >&2
@@ -196,7 +200,7 @@ XDG_CURRENT_DESKTOP=HoloNight-Labwc:HoloNight:labwc
 LABWC_PID=${marker}
 HYPRLAND_INSTANCE_SIGNATURE=stale
 SWAYSOCK=stale
-I3SOCK=stale" env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
+I3SOCK=stale" env HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
     HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
     "${source_dir}/scripts/holonight-shell-systemd" >"${test_root}/stdout" 2>"${test_root}/stderr"; then
     [[ "${marker}" == 1234 ]]
@@ -209,7 +213,7 @@ done
 # A PID without a Wayland display is not ready either.
 : >"${log_file}"
 if FAKE_SYSTEMD_ENV=$'XDG_CURRENT_DESKTOP=labwc\nLABWC_PID=1234' \
-  env PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
+  env HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" \
   HOLONIGHT_SHELL_EXECUTABLE="${fake_bin}/holonight-shell" HOLONIGHT_SHELL_SYSTEMD_ENV_TIMEOUT=0 \
   "${source_dir}/scripts/holonight-shell-systemd" >/dev/null 2>&1; then
   echo 'wrapper accepted labwc without WAYLAND_DISPLAY' >&2
@@ -217,7 +221,7 @@ if FAKE_SYSTEMD_ENV=$'XDG_CURRENT_DESKTOP=labwc\nLABWC_PID=1234' \
 fi
 [[ ! -s "${log_file}" ]]
 mv "${fake_bin}/labwc" "${fake_bin}/labwc-away"
-if env -i PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=direct \
+if env -i HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}" TEST_LOG="${log_file}" HOME="${test_root}/home" HOLONIGHT_SESSION_MODE=direct \
   /usr/bin/bash "${source_dir}/scripts/holonight-session" labwc >"${test_root}/stdout" 2>"${test_root}/stderr"; then
   exit 1
 fi

@@ -70,7 +70,7 @@ case "$mode" in
       systemctl --user cat "$unit" >/dev/null 2>&1 || die "missing user unit $unit; reinstall holonight-shell and reload user units"
     done
     uwsm check may-start -i -g 0 0 || die "a new graphical session cannot start; log out of the existing session first"
-    for helper in flock python3 holonight-shell holonight-shell-systemd holonight-session-finalize holonight-session-config; do
+    for helper in flock python3 busctl holonight-session-state holonight-shell holonight-shell-systemd holonight-session-finalize holonight-session-config; do
       have_command "$helper" || die "missing $helper; reinstall holonight-shell"
     done
     [[ "$compositor" != hyprland ]] || have_command start-hyprland || die "install start-hyprland"
@@ -86,7 +86,9 @@ case "$mode" in
     systemctl --user cat xdg-desktop-portal.service >/dev/null 2>&1 || warn "install xdg-desktop-portal for desktop portals"
     config="$(holonight-session-config "$compositor")" || die "could not prepare managed configuration"
     if [[ "$compositor" == labwc ]]; then
-      export HOLONIGHT_SESSION_RUN_DIR="$config"
+      export HOLONIGHT_LABWC_CONFIG_DIR="$config"
+      export HOLONIGHT_SESSION_RUN_DIR="$(mktemp -d "$XDG_RUNTIME_DIR/holonight-session-XXXXXX")"
+      export LABWC_UPDATE_ACTIVATION_ENV=0
     else
       export HOLONIGHT_SESSION_RUN_DIR="${config%/*}"
     fi

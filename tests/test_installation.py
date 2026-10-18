@@ -73,14 +73,17 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
         defaults = self.staged(datadir / "holonight/session/holonight-session-defaults").read_text()
         self.assertIn(f'installation_datadir="{datadir}"', defaults)
         for relative in ("uwsm/env-holonight", "holonight/session/hyprland.lua",
-                         "holonight/session/sway.conf", "holonight/session/labwc.xml",
+                         "holonight/session/sway.conf", "holonight/session/labwc/rc.xml",
                          *(f"xdg-desktop-portal/holonight-{c}-portals.conf" for c in ("hyprland", "sway", "labwc"))):
             self.assertTrue(self.staged(datadir / relative).is_file())
-        for helper in ("holonight-session-config", "holonight-session-finalize", "holonight-session-doctor"):
+        for helper in ("holonight-session-state", "holonight-session-config", "holonight-session-finalize", "holonight-session-doctor"):
             installed = self.staged(bindir / helper)
             self.assertTrue(os.access(installed, os.X_OK))
             if self.stage != Path("/"):
                 self.assertNotIn(str(self.stage), installed.read_text())
+        for directory in (bindir, libexecdir):
+            module = self.staged(directory / "holonight_session_state.py")
+            self.assertTrue(module.is_file())
         self.assertNotIn("Environment=PATH=", shell_unit)
         if self.stage != Path("/"):
             self.assertNotIn(str(self.stage), launcher + unit + shell_unit)
@@ -96,9 +99,9 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
                       datadir / "systemd/user/holonight-polkit-agent@.service"):
             self.assertIn(str(entry), manifest)
         for entry in (datadir / "uwsm/env-holonight", datadir / "holonight/session/holonight-session-defaults",
-                      *(datadir / f"holonight/session/{name}" for name in ("hyprland.lua", "sway.conf", "labwc.xml")),
+                      *(datadir / f"holonight/session/{name}" for name in ("hyprland.lua", "sway.conf", "labwc/rc.xml")),
                       *(datadir / f"xdg-desktop-portal/holonight-{c}-portals.conf" for c in ("hyprland", "sway", "labwc")),
-                      *(bindir / name for name in ("holonight-session-config", "holonight-session-finalize", "holonight-session-doctor"))):
+                      *(bindir / name for name in ("holonight-session-state", "holonight-session-config", "holonight-session-finalize", "holonight-session-doctor"))):
             self.assertIn(str(entry), manifest)
         if self.stage != Path("/"):
             self.assertTrue(all(not entry.startswith(str(self.stage)) for entry in manifest))
@@ -168,6 +171,7 @@ install(SCRIPT "${PROJECT_BINARY_DIR}/InstallIntegration.cmake")
         fake_bin = self.root / "fake-bin"
         fake_bin.mkdir()
         commands = {
+            "busctl": "printf '%s\\n' '{\"type\":\"as\",\"data\":[\"WAYLAND_DISPLAY=wayland-test\",\"XDG_CURRENT_DESKTOP=HoloNight:Hyprland\",\"HYPRLAND_INSTANCE_SIGNATURE=test\"]}'",
             "systemctl": "printf 'WAYLAND_DISPLAY=wayland-test\\nXDG_CURRENT_DESKTOP=HoloNight:Hyprland\\nHYPRLAND_INSTANCE_SIGNATURE=test\\n'",
             "dbus-update-activation-environment": ":",
             "holonight-appearance-adapter": "printf 'TestCursor\\n'",

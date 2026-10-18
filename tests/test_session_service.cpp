@@ -21,6 +21,8 @@ namespace {
 // on PATH, so every lock branch is reachable without a live session.
 class FakeProcessEnvironment final : public ProcessEnvironment {
  public:
+  ManagedSession state{ManagedSession::Unmanaged};
+  [[nodiscard]] ManagedSession managedSession() const override { return state; }
   void setRunning(const QString& name, bool running) { running_[name] = running; }
   void setExecutable(const QString& name, const QString& path) { paths_[name] = path; }
   void setUserServiceActive(const QString& name, bool active) { services_[name] = active; }
@@ -187,13 +189,13 @@ TEST(SessionServiceTest, HyprlandDelegatesLogoutToHyprctl) {
   service.logout();
 
   EXPECT_EQ(runner.lastProgram(), QStringLiteral("hyprctl"));
-  EXPECT_EQ(runner.lastArgs(), (QStringList{QStringLiteral("dispatch"), QStringLiteral("exit")}));
+  EXPECT_EQ(runner.lastArgs(), (QStringList{QStringLiteral("dispatch"), QStringLiteral("hl.dsp.exit()")}));
 }
 
 TEST(SessionServiceTest, UwsmManagedHyprlandDelegatesLogoutToUwsm) {
   FakeProcessEnvironment env;
   env.setExecutable(QStringLiteral("uwsm"), QStringLiteral("/usr/bin/uwsm"));
-  env.setUserServiceActive(QStringLiteral("wayland-wm@hyprland.desktop.service"), true);
+  env.state = ProcessEnvironment::ManagedSession::Managed;
   SpyCommandRunner runner;
   SessionService service(std::make_unique<HyprlandSessionBackend>(&env, &runner));
 
@@ -203,16 +205,15 @@ TEST(SessionServiceTest, UwsmManagedHyprlandDelegatesLogoutToUwsm) {
   EXPECT_EQ(runner.lastArgs(), QStringList{QStringLiteral("stop")});
 }
 
-TEST(SessionServiceTest, UwsmUnavailableFallsBackToHyprctl) {
+TEST(SessionServiceTest, UwsmUnavailableRejectsLogout) {
   FakeProcessEnvironment env;
-  env.setUserServiceActive(QStringLiteral("wayland-wm@hyprland.desktop.service"), true);
+  env.state = ProcessEnvironment::ManagedSession::Managed;
   SpyCommandRunner runner;
   SessionService service(std::make_unique<HyprlandSessionBackend>(&env, &runner));
 
   service.logout();
 
-  EXPECT_EQ(runner.lastProgram(), QStringLiteral("hyprctl"));
-  EXPECT_EQ(runner.lastArgs(), (QStringList{QStringLiteral("dispatch"), QStringLiteral("exit")}));
+  EXPECT_EQ(runner.callCount(), 0);
 }
 
 TEST(SessionServiceTest, SwayDelegatesDirectLogoutToSwaymsg) {
@@ -229,7 +230,7 @@ TEST(SessionServiceTest, SwayDelegatesDirectLogoutToSwaymsg) {
 TEST(SessionServiceTest, UwsmManagedSwayDelegatesLogoutToUwsm) {
   FakeProcessEnvironment env;
   env.setExecutable(QStringLiteral("uwsm"), QStringLiteral("/usr/bin/uwsm"));
-  env.setUserServiceActive(QStringLiteral("wayland-wm@sway.desktop.service"), true);
+  env.state = ProcessEnvironment::ManagedSession::Managed;
   SpyCommandRunner runner;
   SessionService service(std::make_unique<SwaySessionBackend>(&env, &runner));
 
@@ -425,7 +426,7 @@ TEST(SessionServiceTest, LabwcLogoutUsesUwsmOrValidatedInheritedPid) {
   EXPECT_TRUE(backend.logout().ok);
   EXPECT_EQ(runner.lastProgram(), "labwc");
   EXPECT_EQ(runner.lastArgs(), QStringList{"--exit"});
-  env.setUserServiceActive("wayland-wm@labwc.desktop.service", true);
+  env.state = ProcessEnvironment::ManagedSession::Managed;
   EXPECT_FALSE(backend.logout().ok);
   EXPECT_EQ(runner.callCount(), 1);
   env.setExecutable("uwsm", "/usr/bin/uwsm");
@@ -440,4 +441,14 @@ TEST(SessionServiceTest, LabwcLogoutUsesUwsmOrValidatedInheritedPid) {
   } else {
     qunsetenv("LABWC_PID");
   }
+}
+
+TEST(SessionServiceTest, UnverifiableStateBlocksEveryLogoutBackend) {
+  FakeProcessEnvironment env;
+  env.state = ProcessEnvironment::ManagedSession::Unverifiable;
+  SpyCommandRunner runner;
+  EXPECT_FALSE(HyprlandSessionBackend(&env, &runner).logout().ok);
+  EXPECT_FALSE(SwaySessionBackend(&env, &runner).logout().ok);
+  EXPECT_FALSE(LabwcSessionBackend(&env, &runner).logout().ok);
+  EXPECT_EQ(runner.callCount(), 0);
 }

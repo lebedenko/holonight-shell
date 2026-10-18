@@ -4,7 +4,10 @@ import argparse
 import configparser
 import os
 from pathlib import Path
-import shlex
+import sys
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from holonight_session_state import manager_environment, managed_environment
 import shutil
 import subprocess
 
@@ -21,6 +24,8 @@ def command(*args):
         result = subprocess.run(args, capture_output=True, text=True, timeout=5)
         if result.returncode:
             raise OSError(result.stderr.strip() or f'exit {result.returncode}')
+        if args[0].endswith('holonight-session-config'):
+            return result.stdout + result.stderr
         return result.stdout
     except subprocess.TimeoutExpired as error:
         raise OSError('timed out') from error
@@ -68,9 +73,7 @@ def main():
 
     environments = {'caller': dict(os.environ)}
     try:
-        output = command('systemctl', '--user', 'show-environment')
-        # systemctl quotes values using shell syntax; never evaluate it as shell code.
-        environments['manager'] = dict(token.split('=', 1) for token in shlex.split(output) if '=' in token)
+        environments['manager'] = manager_environment()
     except (OSError, ValueError) as error:
         warn(f'user manager environment unavailable: {error}')
     for label, unit in [('shell', 'holonight-shell.service'), ('portal broker', 'xdg-desktop-portal.service')]:
@@ -91,6 +94,17 @@ def main():
         print('[INFO] UWSM compositor: ' + unit_names[0])
     except (OSError, ValueError) as error:
         warn(f'compositor process environment inaccessible: {error}')
+    try:
+        state = managed_environment(os.environ.get('XDG_SESSION_ID', ''), os.environ.get('XDG_RUNTIME_DIR', ''))
+        print('[INFO] session state: ' + ('managed' if state is not None else 'unmanaged'))
+    except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+        warn(f'session verification failed: {error}')
+    for compositor in ('hyprland', 'sway', 'labwc'):
+        try:
+            selected = command(str(Path(__file__).with_name('holonight-session-config')), '--check', compositor)
+            print(f'[INFO] {compositor} configuration: {selected.strip()}')
+        except OSError as error:
+            warn(f'{compositor} preflight: {error}')
     reference = environments.get('manager', environments['caller'])
     resolutions = {}
     for label, environment in environments.items():

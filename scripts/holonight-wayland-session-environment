@@ -7,6 +7,10 @@ import socket
 import stat
 import struct
 import sys
+sys.dont_write_bytecode = True
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from holonight_session_state import managed_environment
 
 QT_SETTINGS = (b'QT_QPA_PLATFORMTHEME', b'QT_QUICK_CONTROLS_STYLE', b'XCURSOR_THEME')
 
@@ -55,6 +59,15 @@ def main(arguments):
         uid = os.getuid()
         if runtime.stat().st_uid != uid or not runtime.is_dir():
             return 1
+        managed = managed_environment(session, runtime)
+        if managed is not None:
+            keys = ('XDG_SESSION_ID', 'XDG_RUNTIME_DIR', 'WAYLAND_DISPLAY',
+                    'QT_QPA_PLATFORMTHEME', 'QT_QUICK_CONTROLS_STYLE', 'XCURSOR_THEME')
+            result = {os.fsencode(k): os.fsencode(managed[k]) for k in keys if k in managed}
+            result[b'QT_QPA_PLATFORM'] = b'wayland'
+            for key, value in result.items():
+                sys.stdout.buffer.write(key + b'=' + value + b'\0')
+            return 0
         candidates = []
         for path in sorted(runtime.glob('wayland-*')):
             if not re.fullmatch(r'wayland-[A-Za-z0-9_.-]+', path.name):
@@ -68,7 +81,8 @@ def main(arguments):
         for key, value in candidates[0].items():
             sys.stdout.buffer.write(key + b'=' + value + b'\0')
         return 0
-    except OSError:
+    except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+        print(f"session verification failed: {error}", file=sys.stderr)
         return 1
 
 

@@ -493,3 +493,5 @@ if(DBUS_RUN_SESSION_EXECUTABLE)
       $<TARGET_FILE:test_holonight_services> --gtest_filter=ApplicationLaunchPrivateBus.*)
   set_tests_properties(test_application_launch_private_bus PROPERTIES TIMEOUT 40)
 endif()
+
+add_test(NAME test_session_state COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_session_state.py)

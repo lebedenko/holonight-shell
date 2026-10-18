@@ -1,68 +1,175 @@
 #!/usr/bin/env python3
-"""Compose private per-login configurations and preserve native Hyprland settings."""
+"""Select native configuration and check known managed-session startup conflicts."""
+import glob
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 
 
-def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ('hyprland', 'sway', 'labwc'):
-        return 2
-    compositor = sys.argv[1]
+def selection(compositor):
+    home = Path.home()
+    config_home = Path(os.environ.get('XDG_CONFIG_HOME') or home / '.config')
     data = Path('@CMAKE_INSTALL_FULL_DATADIR@/holonight/session')
     if str(data).startswith('@'):
         data = Path(__file__).resolve().parent.parent / 'data/session'
+    candidates = {'hyprland': [config_home / 'hypr/hyprland.lua'],
+                  'sway': [home / '.sway/config', config_home / 'sway/config',
+                           home / '.i3/config', config_home / 'i3/config'],
+                  'labwc': [config_home / 'labwc/rc.xml']}[compositor]
+    fallback = data / {'hyprland': 'hyprland.lua', 'sway': 'sway.conf', 'labwc': 'labwc/rc.xml'}[compositor]
+    return next((p for p in candidates if p.is_file()), fallback), config_home, data
+
+
+# Deliberately bounded static inspection; these expressions never execute input.
+CONFLICTS = [
+    (r'\bholonight-(?:shell(?:-systemd)?|polkit-agent(?:-session)?)\b', 'duplicate Shell/Polkit startup'),
+    (r'\b(?:polkit-\S*authentication-agent\S*|lxpolkit|lxqt-policykit-agent|mate-polkit|hyprpolkitagent)\b', 'competing Polkit agent'),
+    (r'\buwsm\s+(?:start|finalize)\b|\bholonight-session(?:-finalize)?\s', 'competing session startup/finalization'),
+    (r'\bdbus-update-activation-environment\b|\bsystemctl\b.*\b(?:import-environment|set-environment|unset-environment)\b', 'activation environment ownership'),
+    (r'\b(?:UWSM_WAIT_VARNAMES|HOLONIGHT_SESSION_READY|XDG_(?:CURRENT_DESKTOP|SESSION_DESKTOP|SESSION_TYPE|DATA_DIRS|CONFIG_DIRS)|QML_IMPORT_PATH|QT_PLUGIN_PATH|PATH)\s*(?:=|,)', 'managed environment assignment'),
+    (r'\bdisable_xdg_env_checks\s*=\s*false', 'disabled managed-session protection'),
+]
+
+
+def preflight(compositor, selected, config_home, data):
+    overrides = config_home / 'holonight/session'
+    legacy = [overrides / 'hyprland.lua', overrides / 'sway.conf', overrides / 'labwc']
+    errors = [f'{path}: merge desired settings into native compositor configuration, then move this legacy override out of holonight/session' for path in legacy if path.exists() or path.is_symlink()]
+    seen = set()
+    def inspect(path, kind):
+        path = path.resolve()
+        if path in seen or path.is_relative_to(data.resolve()):
+            return
+        seen.add(path)
+        try:
+            lines = path.read_text().splitlines()
+        except (OSError, UnicodeError) as error:
+            errors.append(f'{path}: cannot inspect referenced configuration: {error}')
+            return
+        variables = {}
+        for number, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith(('#', '--', '<!--')):
+                continue
+            for pattern, reason in CONFLICTS:
+                if re.search(pattern, stripped):
+                    errors.append(f'{path}:{number}: {reason}; remove this command/assignment from managed startup')
+            for assignment in re.finditer(r'\b(HYPRLAND_NO_SD_(?:VARS|NOTIFY|TARGET)|LABWC_UPDATE_ACTIVATION_ENV)\s*=\s*([^;\s]+)', stripped):
+                expected = '0' if assignment[1] == 'LABWC_UPDATE_ACTIVATION_ENV' else '1'
+                if assignment[2].strip('"\'') != expected:
+                    errors.append(f'{path}:{number}: disabled managed-session protection {assignment[1]}')
+            if kind == 'sway':
+                match = re.match(r'set\s+(\$\w+)\s+(.+)', stripped)
+                if match:
+                    variables[match[1]] = match[2]
+                match = re.match(r'include\s+(.+)', stripped)
+                if match:
+                    argument = match[1]
+                    for key, value in variables.items():
+                        argument = argument.replace(key, value)
+                    try:
+                        parts = shlex.split(argument)
+                    except ValueError:
+                        parts = []
+                    for part in parts:
+                        if '$' in part or '`' in part:
+                            print(f'{path}:{number}: unchecked dynamic include', file=sys.stderr)
+                            continue
+                        candidate = Path(os.path.expanduser(part))
+                        if not candidate.is_absolute():
+                            candidate = path.parent / candidate
+                        for included in sorted(glob.glob(str(candidate))):
+                            inspect(Path(included), 'sway')
+            if kind == 'hyprland':
+                for function, quoted, argument in re.findall(r'\b(require|dofile)\s*\(\s*(["\'])(.*?)\2\s*\)', stripped):
+                    if function == 'require':
+                        base = selected.parent / argument.replace('.', '/')
+                        candidates = [base.with_suffix('.lua'), base / 'init.lua']
+                    else:
+                        candidate = Path(argument)
+                        candidates = [candidate if candidate.is_absolute() else path.parent / candidate]
+                    for candidate in candidates:
+                        if candidate.is_file():
+                            inspect(candidate, 'hyprland')
+                if re.search(r'\b(?:function|exec_cmd|dofile|require)\b', stripped):
+                    print(f'{path}:{number}: dynamic Lua/startup code is unchecked beyond literal references', file=sys.stderr)
+            startup = re.match(r'(?:exec(?:_always)?(?: --no-startup-id)?|source|\.)\s+(.+)', stripped)
+            commands = [startup[1]] if startup else []
+            commands += [m[1] for m in re.findall(r'exec_cmd\(\s*(["\'])(.*?)\1\s*\)', stripped)]
+            if kind == 'shell':
+                commands.append(stripped)
+            for command in commands:
+                if '$(' in command or '`' in command or re.search(r'\b(?:eval|source)\s+\$', command):
+                    print(f'{path}:{number}: unchecked dynamic startup command', file=sys.stderr)
+                try:
+                    words = shlex.split(command)
+                except ValueError:
+                    words = []
+                if words and words[0] in ('sh', 'bash', 'dash', 'zsh'):
+                    words = words[1:]
+                if words and not words[0].startswith('-') and '$' not in words[0] and '`' not in words[0]:
+                    candidate = Path(os.path.expanduser(words[0]))
+                    if not candidate.is_absolute():
+                        candidate = path.parent / candidate
+                    if candidate.is_file():
+                        inspect(candidate, 'shell')
+            # Follow directly named scripts, including quoted absolute paths and ~/ paths.
+            for reference in re.findall(r'(?:["\']([^"\']+\.(?:sh|bash))["\']|((?:/|~/|\./)[^\s"\';<>]+))', stripped):
+                value = reference[0] or reference[1]
+                candidate = Path(os.path.expanduser(value))
+                if not candidate.is_absolute():
+                    candidate = path.parent / candidate
+                if candidate.is_file():
+                    inspect(candidate, 'shell')
+            if kind == 'shell' and re.search(r'\$\(|`|\beval\b|\bsource\b', stripped):
+                print(f'{path}:{number}: unchecked dynamic shell startup', file=sys.stderr)
+    inspect(selected, compositor)
+    if compositor == 'labwc' and selected.parent != data / 'labwc':
+        for name in ('autostart', 'environment'):
+            path = selected.parent / name
+            if path.is_file():
+                inspect(path, 'shell')
+    if errors:
+        raise ValueError('\n'.join(errors))
+
+
+def main():
+    arguments = sys.argv[1:]
+    check = '--check' in arguments
+    arguments = [a for a in arguments if a != '--check']
+    if len(arguments) != 1 or arguments[0] not in ('hyprland', 'sway', 'labwc'):
+        return 2
+    compositor = arguments[0]
+    native, config_home, data = selection(compositor)
+    print(f'holonight-session-config: selected {native}', file=sys.stderr)
+    preflight(compositor, native, config_home, data)
+    if check:
+        print(native)
+        return 0
+    if compositor == 'labwc':
+        print(native.parent)
+        return 0
     runtime = Path(os.environ['XDG_RUNTIME_DIR']) / 'holonight'
     runtime.mkdir(mode=0o700, exist_ok=True)
     if runtime.is_symlink() or runtime.stat().st_uid != os.getuid():
         raise ValueError('runtime directory must be owned by the current user and not a symlink')
     destination = Path(tempfile.mkdtemp(prefix='session-', dir=runtime))
-    config_home = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    overrides = config_home / 'holonight/session'
     if compositor == 'hyprland':
         config = destination / 'hyprland.lua'
         text = 'hl.config({ misc = { disable_xdg_env_checks = true } })\n'
-        native = config_home / 'hypr/hyprland.lua'
-        if native.is_file():
-            # Use Hyprland's tracked require so entrypoint and module edits reload.
-            patterns = f'{native.parent}/?.lua;{native.parent}/?/init.lua;'
-            text += 'package.path = ' + json.dumps(patterns, ensure_ascii=False) + ' .. package.path\n'
-            text += 'require("hyprland")\n'
-        else:
-            text += (data / 'hyprland.lua').read_text()
-        override = overrides / 'hyprland.lua'
-        if override.is_file():
-            text += '\ndofile(' + json.dumps(str(override), ensure_ascii=False) + ')\n'
-        text += '\nhl.on("hyprland.start", function() hl.exec_cmd("holonight-session-finalize hyprland") end)\n'
-        config.write_text(text)
-    elif compositor == 'sway':
-        config = destination / 'sway.conf'
-        text = (data / 'sway.conf').read_text()
-        for i in range(1, 11):
-            text += f'bindsym $mod+{i % 10} workspace number {i}\n'
-            text += f'bindsym $mod+Shift+{i % 10} move container to workspace number {i}\n'
-        override = overrides / 'sway.conf'
-        if override.is_file():
-            # Sway's include parser accepts double quoted paths, without shell expansion.
-            text += 'include ' + json.dumps(str(override), ensure_ascii=False) + '\n'
-        text += 'exec holonight-session-finalize sway\n'
-        config.write_text(text)
+        patterns = f'{native.parent}/?.lua;{native.parent}/?/init.lua;'
+        text += 'package.path = ' + json.dumps(patterns, ensure_ascii=False) + ' .. package.path\n'
+        text += 'require("hyprland")\n'
+        text += 'hl.on("hyprland.start", function() hl.exec_cmd("holonight-session-finalize hyprland") end)\n'
     else:
-        config = destination
-        tree = ET.parse(data / 'labwc.xml')
-        override = overrides / 'labwc/rc.xml'
-        if override.is_file():
-            # labwc merges repeated sections; later settings override earlier ones.
-            tree.getroot().extend(ET.parse(override).getroot())
-        tree.write(config / 'rc.xml', encoding='unicode')
-        # Only HoloNight-specific assets are visible; no native autostart/environment.
-        for name in ('menu.xml', 'themerc-override'):
-            source = overrides / 'labwc' / name
-            if source.is_file():
-                (config / name).write_bytes(source.read_bytes())
+        config = destination / 'sway.conf'
+        text = 'include ' + json.dumps(str(native), ensure_ascii=False) + '\n'
+        text += 'exec holonight-session-finalize sway\n'
+    config.write_text(text)
     print(config)
     return 0
 
@@ -70,6 +177,6 @@ def main():
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except (OSError, ValueError, KeyError, ET.ParseError) as error:
+    except (OSError, ValueError, KeyError) as error:
         print(f'holonight-session-config: {error}', file=sys.stderr)
         sys.exit(1)

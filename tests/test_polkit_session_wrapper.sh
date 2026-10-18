@@ -37,6 +37,10 @@ if [[ "${property}" == RuntimePath && "${operation}" != show-user ]]; then
   exit 0
 fi
 cat "${FAKE_META_DIR}/${property}" 2>/dev/null || true'
+make_fake holonight-session-state '
+if [[ "$1" == probe ]]; then printf "unmanaged\n"; else
+  while IFS= read -r entry; do [[ -z "$entry" ]] || printf "%s\0" "$entry"; done <<<"${FAKE_SYSTEMD_ENV-}"
+fi'
 make_fake systemctl '
 if [[ "$*" == "show session-a.scope -p ControlGroup --value" ]]; then
   printf "/user.slice/session-a.scope\n"
@@ -72,7 +76,7 @@ write_environment() {
 }
 
 run_wrapper() {
-  env -i PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" FAKE_META_DIR="${metadata}" \
+  env -i HOLONIGHT_SESSION_STATE_HELPER="${fake_bin}/holonight-session-state" PATH="${fake_bin}:/usr/bin:/bin" TEST_LOG="${log_file}" FAKE_META_DIR="${metadata}" \
     FAKE_SCOPE_COUNT="${test_root}/scope-count" HOLONIGHT_POLKIT_LOGINCTL="${fake_bin}/loginctl" \
     HOLONIGHT_POLKIT_SYSTEMCTL="${fake_bin}/systemctl" HOLONIGHT_POLKIT_SLEEP="${fake_bin}/sleep" \
     HOLONIGHT_POLKIT_STAT="${fake_bin}/stat" HOLONIGHT_POLKIT_SOCKET_CHECK="${fake_bin}/socket-check" \

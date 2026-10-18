@@ -72,6 +72,7 @@ capture_peer_environment() {
 capture_environment() {
   local cgroup="$1" runtime="$2" process environment_file candidate_session candidate_wayland entry processes_file
   local cgroup_directory="${cgroup_root}${cgroup}"
+  local selected_file="" selected_display=""
   [[ -d "${cgroup_directory}" ]] || return 1
 
   while IFS= read -r processes_file; do
@@ -85,30 +86,42 @@ capture_environment() {
       [[ "${candidate_session}" == "${required_session}" && -n "${candidate_wayland}" ]] || continue
       [[ "${candidate_wayland}" != */* ]] && socket_is_usable "${runtime}/${candidate_wayland}" || continue
 
-      clear_graphical_environment
-      while IFS= read -r entry; do
-        case "${entry}" in
-          XDG_SESSION_ID=*|XDG_RUNTIME_DIR=*|WAYLAND_DISPLAY=*|DISPLAY=*|QT_QPA_PLATFORM=*|QT_QPA_PLATFORMTHEME=*|QT_QUICK_CONTROLS_STYLE=*|XCURSOR_THEME=*)
-            export "${entry}"
-            ;;
-        esac
-      done < <(tr '\0' '\n' <"${environment_file}")
-      export XDG_SESSION_ID="${required_session}"
-      export XDG_RUNTIME_DIR="${runtime}"
-      return 0
+      [[ -z "$selected_display" || "$selected_display" == "$candidate_wayland" ]] || return 1
+      selected_file="$environment_file"
+      selected_display="$candidate_wayland"
     done <"${processes_file}"
   done < <(find "${cgroup_directory}" -type f -name cgroup.procs -print 2>/dev/null)
-  return 1
+  [[ -n "$selected_file" ]] || return 1
+  clear_graphical_environment
+  while IFS= read -r -d '' entry; do
+    case "${entry}" in
+      XDG_SESSION_ID=*|XDG_RUNTIME_DIR=*|WAYLAND_DISPLAY=*|DISPLAY=*|QT_QPA_PLATFORM=*|QT_QPA_PLATFORMTHEME=*|QT_QUICK_CONTROLS_STYLE=*|XCURSOR_THEME=*)
+        export "${entry}"
+        ;;
+    esac
+  done <"$selected_file"
+  export XDG_SESSION_ID="${required_session}"
+  export XDG_RUNTIME_DIR="${runtime}"
+  return 0
 }
 
 global_environment_matches() {
-  local global_environment="$1" name global_value
-  for name in XDG_SESSION_ID XDG_RUNTIME_DIR WAYLAND_DISPLAY DISPLAY QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QUICK_CONTROLS_STYLE XCURSOR_THEME; do
-    # The peer route is Wayland-only; Xwayland's DISPLAY is not present in the
-    # compositor's initial environment and is deliberately not inherited.
-    [[ "${peer_environment_used}" == true && "${name}" == DISPLAY ]] && continue
-    global_value="$(sed -n "s/^${name}=//p" <<<"${global_environment}" | head -n1)"
-    [[ -z "${global_value}" || "${global_value}" == "${!name-}" ]] || return 1
+  local entry name value
+  local -a entries=()
+  local helper="${HOLONIGHT_SESSION_STATE_HELPER:-${wrapper_directory}/holonight-session-state}"
+  # The installed Polkit wrapper lives in libexec; the shared protocol lives beside the shell.
+  [[ -x "$helper" ]] || helper="@CMAKE_INSTALL_FULL_BINDIR@/holonight-session-state"
+  mapfile -d '' -t entries < <("$helper" environment && printf '%s\0' complete)
+  (( ${#entries[@]} > 0 )) || return 1
+  [[ "${entries[-1]}" == complete ]] || return 1
+  for entry in "${entries[@]:0:${#entries[@]}-1}"; do
+    name="${entry%%=*}"; value="${entry#*=}"
+    case "$name" in
+      DISPLAY) [[ "$peer_environment_used" == true ]] && continue ;;
+      XDG_SESSION_ID|XDG_RUNTIME_DIR|WAYLAND_DISPLAY|QT_QPA_PLATFORM|QT_QPA_PLATFORMTHEME|QT_QUICK_CONTROLS_STYLE|XCURSOR_THEME) ;;
+      *) continue ;;
+    esac
+    [[ "$value" == "${!name-}" ]] || return 1
   done
 }
 
@@ -125,16 +138,15 @@ for ((attempt=0; attempt<=timeout; ++attempt)); do
         "$("${stat_command}" -c %u "${runtime}" 2>/dev/null || true)" == "${current_uid}" && -n "${scope}" ]]; then
     cgroup="$("${systemctl_command}" show "${scope}" -p ControlGroup --value 2>/dev/null || true)"
     captured=false
-    if [[ "${cgroup}" == /* && "${cgroup}" != *[!A-Za-z0-9_./:@-]* &&
+    if capture_peer_environment "${runtime}"; then
+      captured=true
+    elif [[ "$("${HOLONIGHT_SESSION_STATE_HELPER:-@CMAKE_INSTALL_FULL_BINDIR@/holonight-session-state}" probe 2>/dev/null)" == unmanaged ]] && [[ "${cgroup}" == /* && "${cgroup}" != *[!A-Za-z0-9_./:@-]* &&
           "${cgroup}" != *'/../'* && "${cgroup}" != */.. ]] && \
       capture_environment "${cgroup}" "${runtime}"; then
       captured=true
-    elif capture_peer_environment "${runtime}"; then
-      captured=true
     fi
     if [[ "${captured}" == true ]]; then
-      global_environment="$("${systemctl_command}" --user show-environment 2>/dev/null || true)"
-      global_environment_matches "${global_environment}" || fail conflicting-global-environment
+      global_environment_matches || fail conflicting-global-environment
       exec "${HOLONIGHT_POLKIT_AGENT_EXECUTABLE:-${wrapper_directory}/holonight-polkit-agent}"
     fi
   fi

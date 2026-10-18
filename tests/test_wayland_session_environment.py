@@ -3,6 +3,7 @@
 import importlib.machinery
 import importlib.util
 import os
+import json
 import struct
 from unittest.mock import patch, MagicMock
 from pathlib import Path
@@ -35,6 +36,11 @@ class SessionEnvironmentTest(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory(prefix='holonight-peer-test-')
         self.addCleanup(self.directory.cleanup)
         self.runtime = Path(self.directory.name)
+        self.bin = self.runtime / 'bin'
+        self.bin.mkdir()
+        bus = self.bin / 'busctl'
+        bus.write_text("#!/bin/sh\nprintf '%s\\n' '{\"type\":\"a(ssssssouso)\",\"data\":[[]]}'\n")
+        bus.chmod(0o755)
 
     def server(self, name, session, **overrides):
         environment = dict(os.environ, XDG_SESSION_ID=session,
@@ -57,7 +63,8 @@ class SessionEnvironmentTest(unittest.TestCase):
 
     def discover(self, session):
         return subprocess.run([sys.executable, str(HELPER), session, str(self.runtime)],
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5,
+                              env={**os.environ, 'PATH': str(self.bin) + ':' + os.environ['PATH']})
 
     def test_captures_peer_session_without_display_in_original_environment(self):
         self.server('wayland-1', 'session-a')
