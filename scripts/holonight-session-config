@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compose private per-login configurations without importing native configs."""
+"""Compose private per-login configurations and preserve native Hyprland settings."""
 import json
 import os
 from pathlib import Path
@@ -20,10 +20,19 @@ def main():
     if runtime.is_symlink() or runtime.stat().st_uid != os.getuid():
         raise ValueError('runtime directory must be owned by the current user and not a symlink')
     destination = Path(tempfile.mkdtemp(prefix='session-', dir=runtime))
-    overrides = Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'holonight/session'
+    config_home = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
+    overrides = config_home / 'holonight/session'
     if compositor == 'hyprland':
         config = destination / 'hyprland.lua'
-        text = (data / 'hyprland.lua').read_text()
+        text = 'hl.config({ misc = { disable_xdg_env_checks = true } })\n'
+        native = config_home / 'hypr/hyprland.lua'
+        if native.is_file():
+            # Use Hyprland's tracked require so entrypoint and module edits reload.
+            patterns = f'{native.parent}/?.lua;{native.parent}/?/init.lua;'
+            text += 'package.path = ' + json.dumps(patterns, ensure_ascii=False) + ' .. package.path\n'
+            text += 'require("hyprland")\n'
+        else:
+            text += (data / 'hyprland.lua').read_text()
         override = overrides / 'hyprland.lua'
         if override.is_file():
             text += '\ndofile(' + json.dumps(str(override), ensure_ascii=False) + ')\n'

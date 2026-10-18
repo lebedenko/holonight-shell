@@ -1,6 +1,6 @@
 # Managed Wayland sessions
 
-HoloNight login entries own a minimal compositor configuration and a predictable
+HoloNight login entries compose compositor configurations and a predictable
 application environment across Hyprland, Sway and labwc. `auto` and `uwsm` require
 UWSM; `direct` remains explicit manual integration. One graphical session per user
 manager is supported. UWSM 0.27.1 is the initial environment-preparation baseline.
@@ -33,7 +33,15 @@ Settings selects `holonight;gtk`, FileChooser `holonight-filechooser;gtk`, and
 compositor interfaces retain Hyprland/wlr. Legacy compositor-named files remain
 installed for compatibility without being injected into managed environments.
 
-Compositor overrides follow defaults under `$XDG_CONFIG_HOME/holonight/session`.
+Hyprland loads `$XDG_CONFIG_HOME/hypr/hyprland.lua` when present, otherwise shipped
+monitor and keybinding defaults. `XDG_CONFIG_HOME` defaults to `~/.config`.
+The native directory's `?.lua` and `?/init.lua` patterns precede the existing
+`package.path`; tracked `require` loads the entrypoint and its modules for automatic
+reload. Native startup callbacks remain registered and configuration errors remain
+visible through Hyprland diagnostics without fallback. Before user settings,
+`misc.disable_xdg_env_checks = true` acknowledges the managed desktop identity.
+Sway and labwc retain their shipped bases. Compositor overrides follow the base
+under `$XDG_CONFIG_HOME/holonight/session`.
 The readiness callback follows overrides and validates WAYLAND_DISPLAY plus
 HYPRLAND_INSTANCE_SIGNATURE, SWAYSOCK or LABWC_PID. It serializes finalization per
 runtime configuration, exports HOLONIGHT_SESSION_READY through `uwsm finalize`,

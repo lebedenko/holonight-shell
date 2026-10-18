@@ -7,6 +7,7 @@ import contextlib
 import io
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -156,6 +157,96 @@ class Sessions(unittest.TestCase):
             else:
                 self.assertIn('<default', (path / 'rc.xml').read_text())
                 self.assertIn('uwsm app -- hn-files', (path / 'rc.xml').read_text())
+
+    @unittest.skipUnless(shutil.which('lua'), 'Lua interpreter unavailable')
+    def test_hyprland_native_settings_imports_and_override_order(self):
+        config_home = self.root / 'config with "quotes" and apostrophe\'s'
+        native = config_home / 'hypr'
+        (native / 'nested').mkdir(parents=True)
+        (native / 'monitors.lua').write_text('''
+hl.monitor({ output = "eDP-1", scale = 1.25 })
+hl.monitor({ output = "DP-3", scale = 1.5 })
+''')
+        (native / 'nested/init.lua').write_text('hl.bind("SUPER + T", "personal")\n')
+        (native / 'hyprland.lua').write_text('''
+assert(settings.misc.disable_xdg_env_checks)
+require("monitors")
+require("nested")
+hl.on("hyprland.start", function() hl.exec_cmd("native startup") end)
+''')
+        override = config_home / 'holonight/session'
+        override.mkdir(parents=True)
+        (override / 'hyprland.lua').write_text('''
+assert(#monitors == 2 and #bindings == 1 and #callbacks == 1)
+hl.config({ misc = { disable_xdg_env_checks = false } })
+''')
+        result = self.run_script('holonight-session-config', 'hyprland', XDG_CONFIG_HOME=str(config_home))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        config = Path(result.stdout.strip())
+        self.assertNotIn('uwsm app -- hn-files', config.read_text())
+        harness = self.root / 'check.lua'
+        harness.write_text('''
+settings, monitors, bindings, callbacks, commands = {}, {}, {}, {}, {}
+hl = {
+    config = function(value) settings = value end,
+    monitor = function(value) table.insert(monitors, value) end,
+    bind = function(key, action) table.insert(bindings, key) end,
+    on = function(event, callback)
+        assert(event == "hyprland.start")
+        table.insert(callbacks, callback)
+    end,
+    exec_cmd = function(command) table.insert(commands, command) end,
+}
+dofile(arg[1])
+assert(monitors[1].scale == 1.25 and monitors[2].scale == 1.5)
+assert(#bindings == 1 and bindings[1] == "SUPER + T")
+assert(not settings.misc.disable_xdg_env_checks)
+assert(#callbacks == 2)
+for _, callback in ipairs(callbacks) do callback() end
+assert(commands[1] == "native startup")
+assert(commands[2] == "holonight-session-finalize hyprland")
+''')
+        checked = subprocess.run(['lua', str(harness), str(config)], capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+
+    def test_hyprland_uses_home_config_when_xdg_config_home_is_unset(self):
+        native = self.root / '.config/hypr'
+        native.mkdir(parents=True)
+        (native / 'hyprland.lua').write_text('error("broken personal config")\n')
+        environment = dict(self.env)
+        environment.pop('XDG_CONFIG_HOME')
+        result = subprocess.run([str(SCRIPTS / 'holonight-session-config'), 'hyprland'],
+                                env=environment, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = Path(result.stdout.strip()).read_text()
+        self.assertIn(str(native), text)
+        self.assertNotIn('hl.bind(', text)
+        if shutil.which('Hyprland'):
+            checked = subprocess.run([shutil.which('Hyprland'), '--verify-config', '-c', result.stdout.strip()],
+                                     env=environment, capture_output=True, text=True)
+            self.assertNotEqual(checked.returncode, 0)
+            self.assertIn('broken personal config', checked.stdout + checked.stderr)
+
+    @unittest.skipUnless(shutil.which('Hyprland'), 'Hyprland configuration verifier unavailable')
+    def test_hyprland_verifier_accepts_fallback_and_native_imports(self):
+        config_home = self.root / 'config with "quotes" and apostrophe\'s'
+        for use_native in (False, True):
+            with self.subTest(native=use_native):
+                if use_native:
+                    native = config_home / 'hypr'
+                    (native / 'nested').mkdir(parents=True)
+                    (native / 'hyprland.lua').write_text('require("monitors")\nrequire("nested")\n')
+                    (native / 'monitors.lua').write_text('''
+hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1.25 })
+hl.monitor({ output = "DP-3", mode = "preferred", position = "auto", scale = 1.5 })
+''')
+                    (native / 'nested/init.lua').write_text('hl.bind("SUPER + T", hl.dsp.exec_cmd("true"))\n')
+                result = self.run_script('holonight-session-config', 'hyprland', XDG_CONFIG_HOME=str(config_home))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                checked = subprocess.run([shutil.which('Hyprland'), '--verify-config', '-c', result.stdout.strip()],
+                                         env=self.env, capture_output=True, text=True)
+                self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+                self.assertIn('config ok', checked.stdout + checked.stderr)
 
     @unittest.skipUnless(Path('/usr/lib/uwsm/prepare-env.sh').is_file(), 'real UWSM environment preloader unavailable')
     def test_actual_uwsm_preparation_preserves_identity_and_user_precedence(self):

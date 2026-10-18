@@ -237,9 +237,19 @@ a private configuration under `$XDG_RUNTIME_DIR/holonight/`. Optional overrides:
 - `$XDG_CONFIG_HOME/holonight/session/sway.conf`
 - `$XDG_CONFIG_HOME/holonight/session/labwc/rc.xml`, `menu.xml`, and `themerc-override`
 
-`XDG_CONFIG_HOME` defaults to `~/.config`. Overrides follow defaults, and HoloNight's
-readiness hook remains installed. Native compositor configurations are not imported.
-Defaults provide native input/output behavior, basic focus/close/workspace bindings,
+`XDG_CONFIG_HOME` defaults to `~/.config`. Hyprland automatically loads
+`$XDG_CONFIG_HOME/hypr/hyprland.lua` as its base when present, preserving personal
+monitor scales, shortcuts and startup callbacks. Its directory is prepended to
+Lua's module search path (`?.lua` and `?/init.lua`); the entrypoint and required
+modules are tracked for automatic reload. Errors appear in Hyprland's diagnostics
+without replacing the personal configuration with defaults. When the entrypoint
+is absent, Hyprland uses the shipped monitor and keybinding defaults.
+Sway and labwc continue to use shipped defaults.
+
+The managed Hyprland default `misc.disable_xdg_env_checks = true` acknowledges
+HoloNight's desktop identity before user settings load. Overrides follow the base
+configuration, then HoloNight installs its readiness callback. Shipped
+defaults provide native input/output behavior, basic focus/close/workspace bindings,
 and Super+E to launch HoloNight Files through `uwsm app`. labwc retains native
 keyboard/mouse defaults. Configure your preferred terminal and styling explicitly.
 
@@ -264,9 +274,10 @@ For manual integration, set `HOLONIGHT_SESSION_MODE=direct`. This explicitly imp
 PATH and the desktop environment, uses the compositor's native configuration, and
 leaves shell startup to you. Standalone `holonight-shell` inherits its host session.
 
-Migration: move desired compositor settings into the optional HoloNight overrides,
-and remove duplicate shell/finalization startup commands from those overrides.
-Existing native configuration files are not edited or imported automatically.
+Hyprland uses your existing native Lua configuration automatically; personal files
+are never edited. For Sway and labwc, move desired settings into the optional
+HoloNight overrides. Remove duplicate shell/finalization startup commands from
+personal startup settings when using managed sessions.
 Install changes, then log out and choose a HoloNight entry on the next login. Do not
 restart the current desktop to apply this change. See the
 [managed session design](docs/sdd/managed-wayland-sessions.md) for acceptance steps.
