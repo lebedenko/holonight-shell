@@ -47,7 +47,6 @@ class SidebarManager;
 class StatusPopupSurface;
 class SessionService;
 class SystemInfoService;
-class ThemeService;
 class TooltipSurface;
 class TrayMenuSurface;
 class TrayModel;
@@ -139,7 +138,6 @@ class ShellApplication : public QObject {
   SessionService* session_ = nullptr;
   SystemInfoService* system_info_ = nullptr;
   AppearanceService* appearance_ = nullptr;
-  ThemeService* theme_ = nullptr;
   WeatherService* weather_ = nullptr;
   MprisService* mpris_ = nullptr;
   // Plain (non-QObject) class, shared by reference across every MprisWidgetManager instance

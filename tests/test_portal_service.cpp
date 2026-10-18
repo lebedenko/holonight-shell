@@ -1,6 +1,5 @@
 #include "PortalDbus.h"
 #include "PortalService.h"
-#include "SettingsPortalBackend.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -73,14 +72,6 @@ std::unique_ptr<NullPortalDBus> makeDbus(bool broker_present = true, const QStri
   dbus->setInterfaces(ifaces);
   dbus->setNameList(backends);
   return dbus;
-}
-
-Holonight::ResolvedAppearance makeAppearance(QString scheme, QString accent, Holonight::ColorMode color_mode) {
-  Holonight::ResolvedAppearance appearance;
-  appearance.scheme = std::move(scheme);
-  appearance.accent = std::move(accent);
-  appearance.color_mode = color_mode;
-  return appearance;
 }
 
 }  // namespace
@@ -305,135 +296,6 @@ TEST(PortalServiceTest, AccentColor_NotFound_RemainsInvalid) {
   PortalService service(std::move(dbus));
   drainEvents();
   EXPECT_FALSE(service.accentColor().isValid());
-}
-
-// ─── Settings portal backend ─────────────────────────────────────────────────
-
-TEST(SettingsPortalBackendTest, ReadPublishesResolvedColorScheme) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-day"), QStringLiteral("blue"), Holonight::ColorMode::Light), false);
-
-  EXPECT_EQ(
-      backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("color-scheme")).variant().toUInt(),
-      2U);
-}
-
-TEST(SettingsPortalBackendTest, ExportsReadMethodsOnSessionBus) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("blue"), Holonight::ColorMode::Dark), true);
-  if (!backend.registered()) {
-    GTEST_SKIP() << "HoloNight portal service is already owned on the test session bus";
-  }
-
-  QDBusInterface introspection(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"),
-                               QString::fromLatin1(kPortalPath), QStringLiteral("org.freedesktop.DBus.Introspectable"),
-                               QDBusConnection::sessionBus());
-  const QDBusReply<QString> reply = introspection.call(QStringLiteral("Introspect"));
-
-  ASSERT_TRUE(reply.isValid()) << reply.error().message().toStdString();
-  EXPECT_THAT(reply.value().toStdString(), testing::HasSubstr("<method name=\"Read\">"));
-  EXPECT_THAT(reply.value().toStdString(), testing::HasSubstr("<method name=\"ReadAll\">"));
-}
-
-TEST(SettingsPortalBackendTest, UnknownSettingReturnsNotFoundOnSessionBus) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("blue"), Holonight::ColorMode::Dark), true);
-  if (!backend.registered()) {
-    GTEST_SKIP() << "HoloNight portal service is already owned on the test session bus";
-  }
-
-  QDBusInterface settings(QStringLiteral("org.freedesktop.impl.portal.desktop.holonight"),
-                          QString::fromLatin1(kPortalPath), QStringLiteral("org.freedesktop.impl.portal.Settings"),
-                          QDBusConnection::sessionBus());
-  const QDBusReply<QDBusVariant> reply = settings.call(
-      QStringLiteral("Read"), QStringLiteral("org.freedesktop.appearance"), QStringLiteral("unsupported-setting"));
-
-  ASSERT_FALSE(reply.isValid());
-  EXPECT_EQ(reply.error().name(), QStringLiteral("org.freedesktop.portal.Error.NotFound"));
-}
-
-TEST(SettingsPortalBackendTest, PublishesStandardAccessibilityDefaults) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("blue"), Holonight::ColorMode::Dark), false);
-
-  EXPECT_EQ(backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("contrast")).variant().toUInt(),
-            0U);
-  EXPECT_EQ(
-      backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("reduced-motion")).variant().toUInt(),
-      0U);
-
-  const auto all = backend.ReadAll({QStringLiteral("org.freedesktop.appearance")});
-  EXPECT_EQ(all.value(QStringLiteral("org.freedesktop.appearance"))
-                .value(QStringLiteral("contrast"))
-                .value<QDBusVariant>()
-                .variant()
-                .toUInt(),
-            0U);
-  EXPECT_EQ(all.value(QStringLiteral("org.freedesktop.appearance"))
-                .value(QStringLiteral("reduced-motion"))
-                .value<QDBusVariant>()
-                .variant()
-                .toUInt(),
-            0U);
-}
-
-TEST(SettingsPortalBackendTest, ReadUsesInjectedResolvedColorMode) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("blue"), Holonight::ColorMode::Light), false);
-
-  EXPECT_EQ(
-      backend.Read(QStringLiteral("org.freedesktop.appearance"), QStringLiteral("color-scheme")).variant().toUInt(),
-      2U);
-}
-
-TEST(SettingsPortalBackendTest, ReadAllPublishesAppearanceValues) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("violet"), Holonight::ColorMode::Dark), false);
-  const QMap<QString, QVariantMap> all = backend.ReadAll({QStringLiteral("org.freedesktop.appearance")});
-  const QVariantMap appearance = all.value(QStringLiteral("org.freedesktop.appearance"));
-
-  EXPECT_EQ(appearance.value(QStringLiteral("color-scheme")).value<QDBusVariant>().variant().toUInt(), 1U);
-  const auto accent = appearance.value(QStringLiteral("accent-color"))
-                          .value<QDBusVariant>()
-                          .variant()
-                          .value<SettingsPortalAccentColor>();
-  EXPECT_NEAR(accent.red, 0x9a / 255.0, 0.001);
-  EXPECT_NEAR(accent.green, 0x8c / 255.0, 0.001);
-  EXPECT_NEAR(accent.blue, 0xff / 255.0, 0.001);
-}
-
-TEST(SettingsPortalBackendTest, DefaultAccentUsesSchemeNativeColor) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-latte"), QStringLiteral("default"), Holonight::ColorMode::Light), false);
-  const QMap<QString, QVariantMap> all = backend.ReadAll({QStringLiteral("org.freedesktop.appearance")});
-  const QVariantMap appearance = all.value(QStringLiteral("org.freedesktop.appearance"));
-  const auto accent = appearance.value(QStringLiteral("accent-color"))
-                          .value<QDBusVariant>()
-                          .variant()
-                          .value<SettingsPortalAccentColor>();
-
-  EXPECT_NEAR(accent.red, 0x1e / 255.0, 0.001);
-  EXPECT_NEAR(accent.green, 0x66 / 255.0, 0.001);
-  EXPECT_NEAR(accent.blue, 0xf5 / 255.0, 0.001);
-}
-
-TEST(SettingsPortalBackendTest, ApplyAppearanceEmitsOnlyChangedSystemFacingValues) {
-  SettingsPortalBackend backend(
-      makeAppearance(QStringLiteral("holonight-dark"), QStringLiteral("cyan"), Holonight::ColorMode::Dark), false);
-  QSignalSpy changed_spy(&backend, &SettingsPortalBackend::SettingChanged);
-
-  backend.applyAppearance(
-      makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("cyan"), Holonight::ColorMode::Light));
-
-  ASSERT_EQ(changed_spy.count(), 2);
-  EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("color-scheme"));
-  EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("accent-color"));
-
-  backend.applyAppearance(
-      makeAppearance(QStringLiteral("holonight-light"), QStringLiteral("yellow"), Holonight::ColorMode::Light));
-
-  ASSERT_EQ(changed_spy.count(), 1);
-  EXPECT_EQ(changed_spy.takeFirst().at(1).toString(), QStringLiteral("accent-color"));
 }
 
 // ─── Portal invokables ────────────────────────────────────────────────────────

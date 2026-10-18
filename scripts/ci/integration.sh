@@ -10,3 +10,5 @@ mkdir -p /work/output
     test -x /work/stage/usr/bin/holonight-shell
     test -f /work/stage/usr/lib/cmake/HoloNightShellConfig/HoloNightShellConfigConfig.cmake
     cp -a /work/stage /work/output/
+
+HOLONIGHT_PORTAL_STAGE=/work/stage/usr python3 tests/test_portal_routing.py

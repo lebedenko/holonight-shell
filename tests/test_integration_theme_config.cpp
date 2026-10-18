@@ -1,6 +1,4 @@
 #include "AppearanceService.h"
-#include "SettingsPortalBackend.h"
-#include "ThemeService.h"
 
 #include <QDir>
 #include <QFile>
@@ -136,26 +134,21 @@ TEST_F(AppearanceIntegrationTest, LiveReplacementEmitsPreciseSignalsBeforeRevisi
   EXPECT_EQ(signal_order, (QStringList{QStringLiteral("uiFont"), QStringLiteral("revision")}));
 }
 
-TEST_F(AppearanceIntegrationTest, PortalProjectionPrecedesRevisionNotification) {
+TEST_F(AppearanceIntegrationTest, ThemeReplacementUpdatesCanonicalAppearance) {
   writeAppearance(path, kCustomAppearance);
   AppearanceService appearance;
-  QStringList signal_order;
-  QObject::connect(&appearance, &AppearanceService::revisionChanged, [&signal_order] { signal_order << "revision"; });
-  ThemeService theme(&appearance);
-  auto* portal = theme.findChild<SettingsPortalBackend*>();
-  ASSERT_NE(portal, nullptr);
-  QSignalSpy portal_spy(portal, &SettingsPortalBackend::SettingChanged);
-  QObject::connect(portal, &SettingsPortalBackend::SettingChanged, [&signal_order] { signal_order << "portal"; });
-
+  QSignalSpy scheme_spy(&appearance, &AppearanceService::schemeChanged);
+  QSignalSpy accent_spy(&appearance, &AppearanceService::accentChanged);
+  QSignalSpy revision_spy(&appearance, &AppearanceService::revisionChanged);
   QByteArray edited(kCustomAppearance);
-  edited.replace("scheme = \"holonight-dark\"", "scheme = \"holonight-day\"");
-  edited.replace("accent = \"blue\"", "accent = \"violet\"");
-  writeAppearance(path, edited);
-
+  edited.replace("holonight-dark", "holonight-day");
+  edited.replace("blue", "violet");
+  replaceAppearanceAtomically(path, edited);
   QTRY_COMPARE_WITH_TIMEOUT(appearance.scheme(), QStringLiteral("holonight-day"), 2000);
-  ASSERT_GE(portal_spy.count(), 1);
-  EXPECT_EQ(signal_order.first(), QStringLiteral("portal"));
-  EXPECT_EQ(signal_order.last(), QStringLiteral("revision"));
+  EXPECT_EQ(appearance.accent(), QStringLiteral("violet"));
+  EXPECT_EQ(scheme_spy.count(), 1);
+  EXPECT_EQ(accent_spy.count(), 1);
+  EXPECT_EQ(revision_spy.count(), 1);
 }
 
 TEST_F(AppearanceIntegrationTest, SemanticallyUnchangedReplacementDoesNotAdvanceRevision) {

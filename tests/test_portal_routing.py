@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify FileChooser routing independently of Settings and compositor preferences."""
+"""Verify unified portal routing and the shell payload boundary."""
 
 import configparser
 import os
@@ -12,10 +12,8 @@ STAGE = os.environ.get("HOLONIGHT_PORTAL_STAGE")
 
 class PortalRouting(unittest.TestCase):
     def test_desktop_preferences(self):
-        for desktop, default, settings in (("holonight", "*", "holonight;*"),
-                                           ("hyprland", "hyprland;gtk", "gtk;holonight"),
-                                           ("sway", "wlr;gtk", "gtk;holonight"),
-                                           ("labwc", "wlr;gtk", "gtk;holonight")):
+        for desktop, default in (("holonight", "*"), ("hyprland", "hyprland;gtk"),
+                                 ("sway", "wlr;gtk"), ("labwc", "wlr;gtk")):
             with self.subTest(desktop=desktop):
                 if STAGE:
                     relative = "share/xdg-desktop-portal" if desktop == "holonight" else "share/holonight/xdg/xdg-desktop-portal"
@@ -28,17 +26,27 @@ class PortalRouting(unittest.TestCase):
                 preferred = config["preferred"]
                 self.assertEqual(dict(preferred), {
                     "default": default,
-                    "org.freedesktop.impl.portal.settings": settings,
-                    "org.freedesktop.impl.portal.filechooser": "holonight-filechooser;gtk",
+                    "org.freedesktop.impl.portal.settings": "holonight;gtk",
+                    "org.freedesktop.impl.portal.filechooser": "holonight;gtk",
                 })
 
-    def test_settings_descriptor_keeps_its_identity(self):
+    def test_managed_preferences(self):
+        for compositor, default in (("hyprland", "hyprland;gtk"), ("sway", "wlr;gtk"), ("labwc", "wlr;gtk")):
+            with self.subTest(compositor=compositor):
+                directory = Path(STAGE) / "share/xdg-desktop-portal" if STAGE else SOURCE / "data/xdg-desktop-portal"
+                path = directory / f"holonight-{compositor}-portals.conf"
+                config = configparser.ConfigParser(interpolation=None)
+                self.assertEqual(config.read(path), [str(path)])
+                self.assertEqual(dict(config["preferred"]), {
+                    "default": default,
+                    "org.freedesktop.impl.portal.settings": "holonight;gtk",
+                    "org.freedesktop.impl.portal.filechooser": "holonight;gtk",
+                })
+
+    def test_shell_does_not_install_backend_descriptor(self):
         path = (Path(STAGE) / "share/xdg-desktop-portal/portals/holonight.portal" if STAGE
                 else SOURCE / "data/xdg-desktop-portal/portals/holonight.portal")
-        config = configparser.ConfigParser(interpolation=None)
-        self.assertEqual(config.read(path), [str(path)])
-        self.assertEqual(config["portal"]["DBusName"], "org.freedesktop.impl.portal.desktop.holonight")
-        self.assertEqual(config["portal"]["Interfaces"], "org.freedesktop.impl.portal.Settings;")
+        self.assertFalse(path.exists())
 
 
 if __name__ == "__main__":

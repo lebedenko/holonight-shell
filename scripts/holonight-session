@@ -75,7 +75,7 @@ case "$mode" in
     done
     [[ "$compositor" != hyprland ]] || have_command start-hyprland || die "install start-hyprland"
     [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]] || die "a user-owned XDG_RUNTIME_DIR is required"
-    for backend in holonight holonight-filechooser gtk "$([[ "$compositor" == hyprland ]] && echo hyprland || echo wlr)"; do
+    for backend in holonight gtk "$([[ "$compositor" == hyprland ]] && echo hyprland || echo wlr)"; do
       found=false
       IFS=: read -r -a data_dirs <<<"$XDG_DATA_DIRS"
       for directory in "${data_dirs[@]}"; do

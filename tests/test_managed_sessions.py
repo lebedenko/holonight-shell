@@ -395,6 +395,7 @@ hl.monitor({ output = "DP-3", mode = "preferred", position = "auto", scale = 1.5
             path = DOCTOR.portal_config(env)
             self.assertEqual(path.name, f'holonight-{compositor}-portals.conf')
             self.assertIn('Settings=holonight;gtk', path.read_text())
+            self.assertIn('FileChooser=holonight;gtk', path.read_text())
             for directory in (self.root / 'etc', Path(self.env['XDG_CONFIG_HOME'])):
                 portal = directory / 'xdg-desktop-portal/portals.conf'
                 portal.parent.mkdir(parents=True, exist_ok=True)

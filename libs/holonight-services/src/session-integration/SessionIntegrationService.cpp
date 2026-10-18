@@ -548,10 +548,12 @@ QVariantList SessionIntegrationService::addPortalAndDesktopServiceDiagnostics() 
                       QStringLiteral("error"), QStringLiteral("session bus unavailable"),
                       QStringLiteral("session bus connected"),
                       QStringLiteral("Portal and desktop service ownership could not be queried.")),
-        addDiagnostic(QStringLiteral("holonight-settings-portal"), QStringLiteral("HoloNight Settings portal"),
-                      QStringLiteral("warning"), QStringLiteral("unavailable"),
-                      QStringLiteral("org.freedesktop.impl.portal.desktop.holonight is owned by HoloNight Shell"),
-                      QStringLiteral("Session bus is disconnected; native toolkit appearance remains available.")),
+        addDiagnostic(
+            QStringLiteral("holonight-settings-portal"), QStringLiteral("HoloNight Settings portal"),
+            QStringLiteral("warning"), QStringLiteral("unavailable"),
+            QStringLiteral(
+                "org.freedesktop.impl.portal.desktop.holonight is owned by the standalone HoloNight portal backend"),
+            QStringLiteral("Session bus is disconnected; native toolkit appearance remains available.")),
     };
   }
 
@@ -577,10 +579,12 @@ QVariantList SessionIntegrationService::addPortalAndDesktopServiceDiagnostics() 
   rows.append(addDiagnostic(
       QStringLiteral("holonight-settings-portal"), QStringLiteral("HoloNight Settings portal"),
       !holonight_portal_owner.isEmpty() ? QStringLiteral("ok") : QStringLiteral("warning"), holonight_portal_observed,
-      QStringLiteral("org.freedesktop.impl.portal.desktop.holonight is owned by HoloNight Shell"),
+      QStringLiteral(
+          "org.freedesktop.impl.portal.desktop.holonight is owned by the standalone HoloNight portal backend"),
       !holonight_portal_owner.isEmpty()
-          ? QStringLiteral("HoloNight Shell is publishing the Settings portal.")
-          : QStringLiteral("Start HoloNight Shell; native toolkit appearance remains available as fallback.")));
+          ? QStringLiteral("The independently activated HoloNight backend provides Settings and FileChooser.")
+          : QStringLiteral("Check the standalone xdg-desktop-portal-holonight installation and portal routing; the "
+                           "broker activates it on demand.")));
 
   QStringList portal_backends;
   for (const QString& name : names) {

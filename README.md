@@ -185,11 +185,10 @@ an older installation. Manifests are validated against the selected prefix
 before any file is removed; user configuration and dependency packages are
 outside the shell's install manifest.
 
-The install also writes the HoloNight Settings portal descriptor plus generic,
-Hyprland, and Sway routing configurations to the selected prefix:
+The standalone `xdg-desktop-portal-holonight` package owns the Settings and FileChooser
+descriptor and activation service. The shell installs routing configurations:
 
 ```text
-share/xdg-desktop-portal/portals/holonight.portal
 share/xdg-desktop-portal/holonight-portals.conf
 share/holonight/xdg/xdg-desktop-portal/hyprland-portals.conf
 share/holonight/xdg/xdg-desktop-portal/sway-portals.conf
@@ -261,8 +260,8 @@ the shell leaves applications running; logging out through UWSM stops managed ap
 No services are globally enabled at login.
 
 Portal defaults live in `share/xdg-desktop-portal/holonight-<compositor>-portals.conf`.
-Settings prefers HoloNight, then GTK; FileChooser prefers holonight-filechooser,
-then GTK. Hyprland or wlr supplies compositor capabilities. Install
+Settings and FileChooser prefer `holonight;gtk`. Both activate the standalone
+backend independently of the shell. Hyprland or wlr supplies compositor capabilities. Install
 `xdg-desktop-portal`, `xdg-desktop-portal-gtk`, and the selected compositor backend
 (`xdg-desktop-portal-hyprland` or `xdg-desktop-portal-wlr`); missing components warn
 without blocking login. User and administrator portal overrides retain standard

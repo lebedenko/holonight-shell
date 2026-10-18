@@ -652,6 +652,8 @@ TEST(SessionIntegrationServiceTest, ReportsMissingHoloNightSettingsPortal) {
   const QVariantMap row = findDiagnostic(service.diagnostics(), QStringLiteral("holonight-settings-portal"));
   EXPECT_EQ(row.value(QStringLiteral("status")).toString(), QStringLiteral("warning"));
   EXPECT_EQ(row.value(QStringLiteral("observed")).toString(), QStringLiteral("missing"));
+  EXPECT_TRUE(row.value(QStringLiteral("detail")).toString().contains(QStringLiteral("activates it on demand")));
+  EXPECT_TRUE(row.value(QStringLiteral("expected")).toString().contains(QStringLiteral("standalone")));
 }
 
 TEST(SessionIntegrationServiceTest, ReportsMatchingAndRestartRequiredCursorThemes) {

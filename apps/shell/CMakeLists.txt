@@ -131,10 +131,6 @@ file(RELATIVE_PATH HOLONIGHT_BIN_TO_LIB "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_
 set_target_properties(holonight-shell PROPERTIES INSTALL_RPATH "$ORIGIN/${HOLONIGHT_BIN_TO_LIB}")
 install(TARGETS holonight-shell DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(
-    FILES ${PROJECT_SOURCE_DIR}/data/xdg-desktop-portal/portals/holonight.portal
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/xdg-desktop-portal/portals
-)
-install(
     FILES ${PROJECT_SOURCE_DIR}/data/xdg-desktop-portal/holonight-portals.conf
     DESTINATION ${CMAKE_INSTALL_DATADIR}/xdg-desktop-portal
 )
