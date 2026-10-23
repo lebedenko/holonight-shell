@@ -124,6 +124,27 @@ TestCase {
         tryVerify(function() { return row.trailingItem === null })
     }
 
+    function test_result_hint_tracks_selection_and_keyboard_focus_outline() {
+        const row = createTemporaryObject(resultRowComponent, root, { "highlighted": true })
+        verify(row)
+        tryVerify(function() { return row.trailingItem !== null })
+        const outline = findChild(row, "hnSelectableDelegateOutline")
+        verify(outline)
+        compare(row.trailingItem.background.color.a, 0)
+        compare(row.trailingItem.borderColor, HoloniightPalette.selectionIndicator)
+        compare(row.trailingItem.foregroundColor, outline.border.color)
+
+        row.forceActiveFocus(Qt.TabFocusReason)
+        tryCompare(row, "visualFocus", true)
+        compare(outline.border.color, HoloniightPalette.borderFocus)
+        compare(row.trailingItem.borderColor, outline.border.color)
+        compare(row.trailingItem.foregroundColor, outline.border.color)
+
+        row.enabled = false
+        compare(row.trailingItem.borderColor, outline.border.color)
+        compare(row.trailingItem.foregroundColor, outline.border.color)
+    }
+
     function test_browse_panel_uses_shared_recent_category_and_empty_components() {
         const panel = createTemporaryObject(browsePanelComponent, root)
         verify(panel)

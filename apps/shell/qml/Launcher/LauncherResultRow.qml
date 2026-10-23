@@ -53,6 +53,8 @@ HnListDelegate {
 
         HnKeyHint {
             keyGroups: [[Qt.Key_Return]]
+            borderColor: root.outlineColor
+            foregroundColor: root.outlineColor
         }
     }
 }

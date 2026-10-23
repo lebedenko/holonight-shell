@@ -79,6 +79,35 @@ TestCase {
         compare(cancel.Accessible.name, cancel.text)
     }
 
+    function test_button_hints_track_container_borders_and_focus() {
+        const cancel = findChild(dialog, "cancelButton")
+        const authenticate = findChild(dialog, "authenticateButton")
+        const cancelHint = findChild(cancel, "cancelButtonKeyHint")
+        const authenticateHint = findChild(authenticate, "authenticateButtonKeyHint")
+        verify(cancelHint && authenticateHint)
+        compare(cancelHint.background.color.a, 0)
+        compare(authenticateHint.background.color.a, 0)
+        compare(cancelHint.foregroundColor, cancel.background.border.color)
+        compare(authenticateHint.foregroundColor, authenticate.background.border.color)
+        compare(authenticateHint.borderColor, HoloniightPalette.accentCyan)
+
+        cancel.forceActiveFocus(Qt.TabFocusReason)
+        tryCompare(cancel, "activeFocus", true)
+        compare(cancelHint.borderColor, HoloniightPalette.accentCyan)
+        compare(cancelHint.foregroundColor, cancel.background.border.color)
+
+        authenticate.forceActiveFocus(Qt.TabFocusReason)
+        tryCompare(authenticate, "activeFocus", true)
+        compare(cancelHint.borderColor, HoloniightPalette.borderPassive)
+        compare(cancelHint.foregroundColor, cancel.background.border.color)
+        compare(authenticateHint.borderColor, authenticate.background.border.color)
+        compare(authenticateHint.foregroundColor, authenticate.background.border.color)
+
+        authenticate.enabled = false
+        compare(authenticateHint.borderColor, authenticate.background.border.color)
+        compare(authenticateHint.foregroundColor, authenticate.background.border.color)
+    }
+
     function cleanup() {
         dialog.destroy()
         dialog = null

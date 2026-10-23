@@ -392,9 +392,17 @@ Controls.ApplicationWindow {
                 role: HnTypographyRole.Subheading
                 color: button.enabled ? HoloniightPalette.textPrimary : HoloniightPalette.textMuted
             }
-            HnKeyHint { visible: button.hintKeys.length > 0; keyGroups: button.hintKeys; Accessible.ignored: true }
+            HnKeyHint {
+                objectName: button.objectName + "KeyHint"
+                visible: button.hintKeys.length > 0
+                keyGroups: button.hintKeys
+                borderColor: buttonBackground.border.color
+                foregroundColor: buttonBackground.border.color
+                Accessible.ignored: true
+            }
         }
         background: Rectangle {
+            id: buttonBackground
             radius: 5
             color: button.primary ? Qt.alpha(HoloniightPalette.accentCyan, button.down ? 0.25 : 0.13)
                                   : HoloniightPalette.surfaceRaised
