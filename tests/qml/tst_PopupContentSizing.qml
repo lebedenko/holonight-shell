@@ -16,6 +16,7 @@ TestCase {
     Component { id: battery; BatteryPopupContent {} }
     Component { id: storage; StoragePopupContent {} }
     Component { id: weather; WeatherPopupContent {} }
+    Component { id: currentWeather; WeatherCurrentSection {} }
 
     function test_natural_size_data() {
         return [
@@ -99,7 +100,7 @@ TestCase {
     }
 
     function test_weather_natural_width_fits_six_hourly_cards() {
-        const popup = createTemporaryObject(weather, root, { height: 1200 })
+        const popup = createTemporaryObject(weather, root, { width: 800, height: 1200 })
         verify(popup)
         popup.width = Math.ceil(popup.implicitWidth)
         const hourly = findChild(popup, "weatherHourlyList")
@@ -107,6 +108,56 @@ TestCase {
         tryVerify(() => hourly.itemAtIndex(5) !== null)
         const sixth = hourly.itemAtIndex(5)
         verify(sixth.x + sixth.width <= hourly.width + 1)
+    }
+
+    function test_weather_natural_width_places_sun_events_side_by_side() {
+        failOnWarning(/.*Binding loop detected.*/)
+        const popup = createTemporaryObject(weather, root, { width: 800, height: 1200 })
+        verify(popup)
+        popup.width = Math.ceil(popup.implicitWidth)
+        const sunrise = findChild(popup, "weatherSunrise")
+        const sunset = findChild(popup, "weatherSunset")
+        verify(sunrise && sunset)
+        waitForRendering(popup)
+        fuzzyCompare(sunrise.y, sunset.y, 1)
+        verify(sunset.x >= sunrise.x + sunrise.width)
+        verify(sunset.x + sunset.width <= sunset.parent.width + 1)
+        const naturalWidth = popup.implicitWidth
+        popup.width = 240
+        waitForRendering(popup)
+        fuzzyCompare(popup.implicitWidth, naturalWidth, 1)
+    }
+
+    function test_temperature_unit_adjacency_data() {
+        return [
+            { tag: "single digit", temperature: 7, hasData: true },
+            { tag: "double digit", temperature: 23, hasData: true },
+            { tag: "negative", temperature: -12, hasData: true },
+            { tag: "three digits", temperature: 123, hasData: true },
+            { tag: "no data", temperature: 0, hasData: false }
+        ]
+    }
+
+    function test_temperature_unit_adjacency(data) {
+        TopbarTestSeed.setWeatherHasData(data.hasData)
+        TopbarTestSeed.setWeatherTemperature(data.temperature)
+        const hero = createTemporaryObject(currentWeather, root, { width: 600, height: 280 })
+        verify(hero)
+        const number = findChild(hero, "weatherTemperature")
+        const unit = findChild(hero, "weatherTemperatureUnit")
+        verify(number && unit)
+        waitForRendering(hero)
+        compare(number.text, data.hasData ? String(data.temperature) : "")
+        compare(unit.text, data.hasData ? "°C" : "")
+        fuzzyCompare(number.width, number.implicitWidth, 1)
+        if (data.hasData) {
+            fuzzyCompare(unit.x, number.x + number.width + 6, 1)
+            fuzzyCompare(unit.y, number.y + 8, 1)
+        }
+        hero.width = 240
+        waitForRendering(hero)
+        verify(number.width <= number.parent.width)
+        verify(unit.x + unit.width <= unit.parent.width + 1)
     }
 
     function test_weather_keeps_both_sun_events_inside_narrow_details() {
@@ -123,6 +174,8 @@ TestCase {
     }
 
     function cleanup() {
+        TopbarTestSeed.setWeatherHasData(true)
+        TopbarTestSeed.setWeatherTemperature(20)
         PopupTestSeed.setStorageVolumeCount(0)
         PopupTestSeed.setAudioDeviceCount(0)
         PopupTestSeed.setBatteryMetrics(false)

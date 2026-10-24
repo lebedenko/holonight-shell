@@ -206,6 +206,11 @@ TestCase {
         compare(popup.showTitle, true)
         compare(popup.panelLeft, 24)
         compare(popup.panelTop, 15)
+        compare(popup.panelRadius, 18)
+        compare(popup.panelChamfer, 20)
+        popup.height = popup.panelTop + popup.glowPadding + 20
+        verify(popup.panelRadius <= popup.panelDrawableHeight / 2)
+        verify(popup.panelChamfer <= popup.panelDrawableHeight / 2)
         compare(popup.panelShapeProfile.kind, HnShapeKind.Hybrid)
         compare(popup.panelChamferedCorners, HnCornerMask.TopRight | HnCornerMask.BottomLeft)
         compare(popup.panelFillColor, HoloniightPalette.surfaceRaised)

@@ -17,7 +17,9 @@ Item {
                                                   HoloniightPalette.borderPassive.g,
                                                   HoloniightPalette.borderPassive.b, 0.62)
 
-    implicitWidth: Math.max(currentSection.implicitWidth + detailsGrid.naturalWidth + 2 * PopupMetrics.sectionGap + HnMetrics.separatorWidth, hourlyStrip.naturalWidth)
+    readonly property real forecastSummaryWidth: 455
+    readonly property real forecastDetailsWidth: Math.max(detailsGrid.naturalWidth, sunrise.naturalWidth + sunset.naturalWidth + PopupMetrics.rowGap)
+    implicitWidth: Math.max(root.forecastSummaryWidth + forecastDetailsWidth + 2 * PopupMetrics.sectionGap + HnMetrics.separatorWidth, currentSection.implicitWidth + detailsGrid.naturalWidth + 2 * PopupMetrics.sectionGap + HnMetrics.separatorWidth, hourlyStrip.naturalWidth)
     implicitHeight: viewport.contentHeight
     readonly property bool narrow: width < implicitWidth
 
@@ -137,7 +139,7 @@ Item {
                 Column {
                     id: forecastSummary
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 455
+                    Layout.preferredWidth: root.forecastSummaryWidth
                     Layout.alignment: Qt.AlignTop
                     spacing: PopupMetrics.rowGap
 
@@ -161,7 +163,7 @@ Item {
 
                 Column {
                     id: forecastDetails
-                    Layout.preferredWidth: detailsGrid.naturalWidth
+                    Layout.preferredWidth: root.forecastDetailsWidth
                     Layout.fillWidth: root.narrow
                     Layout.alignment: Qt.AlignTop
                     spacing: 10
@@ -174,7 +176,7 @@ Item {
                     GridLayout {
                         objectName: "weatherSunEvents"
                         width: parent.width
-                        columns: width >= sunrise.implicitWidth + sunset.implicitWidth + columnSpacing ? 2 : 1
+                        columns: width >= sunrise.naturalWidth + sunset.naturalWidth + columnSpacing ? 2 : 1
                         columnSpacing: PopupMetrics.rowGap
                         rowSpacing: PopupMetrics.rowGap
                         WeatherSunEvent {
@@ -228,6 +230,7 @@ Item {
                             HnLabel {
                                 width: parent.width
                                 rawText: qsTr("Moon")
+                                font.family: AppearanceService.uiFont
                                 role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.textSecondary
                                             elide: Text.ElideRight
@@ -272,6 +275,7 @@ Item {
                             HnLabel {
                                 width: parent.width
                                 rawText: qsTr("Air Quality")
+                                font.family: AppearanceService.uiFont
                                 role: HnTypographyRole.MicroHeader
                                 color: HoloniightPalette.textSecondary
                                             elide: Text.ElideRight

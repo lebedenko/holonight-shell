@@ -61,8 +61,8 @@ Item {
                                                                   root.panelDrawableHeight,
                                                                   NaN, NaN, HnCornerMask.Inherit,
                                                                   HnAppearance.revision)
-    readonly property real panelRadius: root.panelShapeProfile.radius
-    readonly property real panelChamfer: root.panelShapeProfile.chamfer
+    readonly property real panelRadius: Math.min(root.panelShapeProfile.radius * 1.5, root.panelDrawableWidth / 2, root.panelDrawableHeight / 2)
+    readonly property real panelChamfer: Math.min(root.panelShapeProfile.chamfer * 2.0, root.panelDrawableWidth / 2, root.panelDrawableHeight / 2)
     readonly property int panelChamferedCorners: root.panelShapeProfile.corners
 
     focus: true
@@ -91,7 +91,6 @@ Item {
     }
 
     // Glow declared before the panel shape and labels so it renders behind them
-    // (MultiEffect z-order rule from CLAUDE.md).
     //
     // HoloNight philosophy: geometry first, light second. The border carries the shape;
     // the glow is a soft ambient accent, not a neon emission. Keep shadowOpacity low and
@@ -101,9 +100,9 @@ Item {
         anchors.fill: panelShape
         shadowEnabled: true
         shadowColor: HoloniightPalette.accentCyan
-        shadowBlur: 0.5
-        shadowOpacity: 0.12
-        shadowScale: 1.01
+        shadowBlur: 0.6
+        shadowOpacity: 0.2
+        shadowScale: 1.0
         shadowHorizontalOffset: 0
         shadowVerticalOffset: 0
         autoPaddingEnabled: true
@@ -133,7 +132,6 @@ Item {
             const topRight = panelShape.hasChamfer(HnCornerMask.TopRight)
             const bottomRight = panelShape.hasChamfer(HnCornerMask.BottomRight)
             const bottomLeft = panelShape.hasChamfer(HnCornerMask.BottomLeft)
-            const ptr = StatusPopupSurface.pointerX
             const frameInset = root.panelBorderWidth / 2
             const left = root.panelLeft + frameInset
             const right = root.panelRight - frameInset
@@ -142,6 +140,12 @@ Item {
             const tipY = root.topPadding + frameInset
             const topLeftExtent = topLeft ? chamfer : rad
             const topRightExtent = topRight ? chamfer : rad
+
+            const pointerMin = left + topLeftExtent + half
+            const pointerMax = right - topRightExtent - half
+            const ptr = pointerMin <= pointerMax
+                ? Math.max(pointerMin, Math.min(pointerMax, StatusPopupSurface.pointerX))
+                : (left + right) / 2
 
             ctx.beginPath()
             ctx.moveTo(left + topLeftExtent, top)
@@ -179,19 +183,6 @@ Item {
             ctx.lineWidth = root.panelBorderWidth
             ctx.strokeStyle = root.panelBorderColor
             ctx.stroke()
-
-            ctx.beginPath()
-            ctx.moveTo(Math.max(left + topLeftExtent, ptr - half - 22), top)
-            ctx.lineTo(ptr - half, top)
-            ctx.lineTo(ptr, tipY)
-            ctx.lineTo(ptr + half, top)
-            ctx.lineTo(Math.min(right - topRightExtent, ptr + half + 22), top)
-            ctx.lineWidth = root.panelBorderWidth * 1.2
-            ctx.strokeStyle = Qt.rgba(root.panelAccentColor.r, root.panelAccentColor.g,
-                                      root.panelAccentColor.b, 0.72)
-            ctx.shadowBlur = 8
-            ctx.shadowColor = root.panelAccentColor
-            ctx.stroke()
         }
 
         Connections {
@@ -204,7 +195,6 @@ Item {
             function onPanelShapeProfileChanged() { panelShape.requestPaint() }
             function onPanelFillColorChanged() { panelShape.requestPaint() }
             function onPanelBorderColorChanged() { panelShape.requestPaint() }
-            function onPanelAccentColorChanged() { panelShape.requestPaint() }
             function onPanelBorderWidthChanged() { panelShape.requestPaint() }
         }
     }

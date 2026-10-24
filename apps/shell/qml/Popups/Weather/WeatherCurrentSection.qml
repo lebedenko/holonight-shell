@@ -72,7 +72,8 @@ Item {
 
                     Text {
                         id: tempText
-                        width: Math.max(0, temperatureRow.width - tempUnitText.implicitWidth - temperatureRow.spacing)
+                        objectName: "weatherTemperature"
+                        width: Math.min(implicitWidth, Math.max(0, temperatureRow.width - tempUnitText.implicitWidth - temperatureRow.spacing))
                         text: WeatherService.hasData ? Math.round(WeatherService.current.temperature) : ""
                         color: WeatherService.hasData ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
                         font.pointSize: AppearanceService.displayFontSize * 3.5
@@ -83,6 +84,7 @@ Item {
 
                     Text {
                         id: tempUnitText
+                        objectName: "weatherTemperatureUnit"
                         text: WeatherService.hasData ? "°C" : ""
                         color: tempText.color
                         font.pointSize: AppearanceService.displayFontSize * 1.75
