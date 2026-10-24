@@ -31,3 +31,10 @@ StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, con
       .pointer_x = std::clamp(anchor_center - left, pointer_inset, surface_width - pointer_inset),
   };
 }
+
+QRect statusPopupInputRect(const QSize& surface_size) {
+  constexpr int kGlowPadding = 24;
+  constexpr int kPanelTop = 15;
+  return {kGlowPadding, kPanelTop, std::max(0, surface_size.width() - 2 * kGlowPadding),
+          std::max(0, surface_size.height() - kPanelTop - kGlowPadding)};
+}

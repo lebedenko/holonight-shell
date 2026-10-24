@@ -18,3 +18,5 @@ struct StatusPopupGeometry {
 
 [[nodiscard]] StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, const QRect& screen_geometry,
                                                       const QRect& available_geometry, int anchor_x, int anchor_width);
+
+[[nodiscard]] QRect statusPopupInputRect(const QSize& surface_size);

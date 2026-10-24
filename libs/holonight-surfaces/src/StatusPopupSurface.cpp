@@ -67,6 +67,7 @@ PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QS
                                                        int anchor_width) {
   const StatusPopupGeometry geometry = statusPopupGeometry(kStatusPopupInitialSize, screen->geometry(),
                                                            screen->availableGeometry(), anchor_x, anchor_width);
+  const QRect input_rect = statusPopupInputRect({geometry.surface_width, geometry.surface_height});
   return {
       .dismiss =
           {
@@ -93,6 +94,8 @@ PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QS
               .margin_left = geometry.left_margin,
               .exclusive_zone = 0,
               .keyboard_interactivity = KeyboardInteractivity::OnDemand,
+              .input_region_policy = input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region,
+              .input_region = QRegion(input_rect),
               .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Status/StatusPopup.qml")),
               .initial_properties = {{QStringLiteral("popupId"), popup_id}},
               .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
@@ -104,6 +107,7 @@ PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QS
 }
 
 void StatusPopupSurface::onPairOpened() {
+  applied_input_rect_.reset();
   setPopupVisible(true);
   frame_connection_ =
       connect(contentView(), &QQuickWindow::afterAnimating, this, &StatusPopupSurface::updateSurfaceGeometry);
@@ -118,6 +122,14 @@ void StatusPopupSurface::onPairOpened() {
 }
 
 void StatusPopupSurface::updateSurfaceGeometry() {
+  if (contentView() != nullptr && contentHost() != nullptr) {
+    const QRect input_rect = statusPopupInputRect(contentView()->size());
+    if (applied_input_rect_ != input_rect &&
+        contentHost()->setInputRegion(input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region,
+                                      QRegion(input_rect))) {
+      applied_input_rect_ = input_rect;
+    }
+  }
   auto* root = qobject_cast<QQuickItem*>(contentRootObject());
   if (root == nullptr || current_screen_ == nullptr || contentHost() == nullptr) {
     return;

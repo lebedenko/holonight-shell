@@ -64,3 +64,30 @@ TEST(TooltipGeometry, ClampsToScreenEdges) {
   EXPECT_EQ(TooltipGeometry::leftMargin(1920, 1920, 1920, 48), 8);
   EXPECT_EQ(TooltipGeometry::leftMargin(1920, 1920, 3790, 48), 1588);
 }
+
+TEST(StatusPopupGeometry, InputRectangleIncludesPanelAndCornerCutoutsOnly) {
+  const QRect panel = statusPopupInputRect(QSize(348, 250));
+  EXPECT_EQ(panel, QRect(24, 15, 300, 211));
+  EXPECT_TRUE(panel.contains(QPoint(174, 100)));
+  EXPECT_TRUE(panel.contains(panel.topLeft()));
+  EXPECT_TRUE(panel.contains(panel.bottomRight()));
+  EXPECT_FALSE(panel.contains(QPoint(23, 100)));
+  EXPECT_FALSE(panel.contains(QPoint(324, 100)));
+  EXPECT_FALSE(panel.contains(QPoint(174, 14)));
+  EXPECT_FALSE(panel.contains(QPoint(174, 226)));
+  EXPECT_FALSE(panel.contains(QPoint(174, 6)));  // Decorative notch tip.
+}
+
+TEST(StatusPopupGeometry, InputRectangleTracksSurfaceResizing) {
+  EXPECT_EQ(statusPopupInputRect(QSize(650, 800)), QRect(24, 15, 602, 761));
+  EXPECT_EQ(statusPopupInputRect(QSize(49, 40)), QRect(24, 15, 1, 1));
+}
+
+TEST(StatusPopupGeometry, InputRectangleClampsUndersizedSurfacesToEmpty) {
+  for (const QSize size : {QSize(48, 250), QSize(348, 39), QSize(1, 1), QSize(0, 0), QSize(-1, -1)}) {
+    const QRect panel = statusPopupInputRect(size);
+    EXPECT_TRUE(panel.isEmpty());
+    EXPECT_GE(panel.width(), 0);
+    EXPECT_GE(panel.height(), 0);
+  }
+}

@@ -20,6 +20,8 @@ void expectDismissPolicy(const LayerSurfaceSpec& spec, QScreen* screen, const QS
   EXPECT_EQ(spec.width, 0);
   EXPECT_EQ(spec.height, 0);
   EXPECT_EQ(spec.exclusive_zone, 0);
+  EXPECT_EQ(spec.input_region_policy, InputRegionPolicy::Default);
+  EXPECT_TRUE(spec.input_region.isEmpty());
   EXPECT_EQ(spec.qml_url, url);
   EXPECT_EQ(spec.color, QColor(Qt::transparent));
 }
@@ -39,6 +41,10 @@ TEST(PairedSurfacePolicy, DescribesStatusContentAndDismissSurfacesCompletely) {
   EXPECT_EQ(pair.content.width, geometry.surface_width);
   EXPECT_EQ(pair.content.height, geometry.surface_height);
   EXPECT_EQ(pair.content.margin_left, geometry.left_margin);
+  const QRect input_rect = statusPopupInputRect(QSize(geometry.surface_width, geometry.surface_height));
+  EXPECT_EQ(pair.content.input_region_policy,
+            input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region);
+  EXPECT_EQ(pair.content.input_region, QRegion(input_rect));
   EXPECT_EQ(pair.content.keyboard_interactivity, KeyboardInteractivity::OnDemand);
   EXPECT_EQ(pair.content.initial_properties.value(QStringLiteral("popupId")).toString(), QStringLiteral("audio"));
   EXPECT_TRUE(static_cast<bool>(pair.content.before_load));

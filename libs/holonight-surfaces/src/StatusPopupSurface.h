@@ -6,6 +6,8 @@
 #include <QQmlEngine>
 #include <QString>
 
+#include <optional>
+
 class QScreen;
 
 class StatusPopupSurface : public PairedTransientSurfaceHost {
@@ -55,6 +57,7 @@ class StatusPopupSurface : public PairedTransientSurfaceHost {
   int anchor_local_x_ = 0;
   int anchor_width_ = 0;
   StatusPopupGeometry applied_geometry_;
+  std::optional<QRect> applied_input_rect_;
   QMetaObject::Connection frame_connection_;
   QMetaObject::Connection screen_connection_;
   QMetaObject::Connection available_connection_;
