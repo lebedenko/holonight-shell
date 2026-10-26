@@ -74,7 +74,7 @@ Item {
                         id: tempText
                         objectName: "weatherTemperature"
                         width: Math.min(implicitWidth, Math.max(0, temperatureRow.width - tempUnitText.implicitWidth - temperatureRow.spacing))
-                        text: WeatherService.hasData ? Math.round(WeatherService.current.temperature) : ""
+                        text: WeatherService.hasData ? Math.round(WeatherService.displayTemperature(WeatherService.current.temperature, WeatherService.temperatureUnit)) : ""
                         color: WeatherService.hasData ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
                         font.pointSize: AppearanceService.displayFontSize * 3.5
                         font.family: AppearanceService.displayFont
@@ -85,7 +85,7 @@ Item {
                     Text {
                         id: tempUnitText
                         objectName: "weatherTemperatureUnit"
-                        text: WeatherService.hasData ? "°C" : ""
+                        text: WeatherService.hasData ? WeatherService.temperatureUnit : ""
                         color: tempText.color
                         font.pointSize: AppearanceService.displayFontSize * 1.75
                         font.family: AppearanceService.displayFont
@@ -119,8 +119,10 @@ Item {
 
                 HnLabel {
                     width: parent.width
+                    objectName: "weatherFeelsLike"
+                    visible: WeatherService.showFeelsLike
                     rawText: WeatherService.hasData
-                        ? "Feels like " + Math.round(WeatherService.current.feelsLike) + "°C"
+                        ? "Feels like " + WeatherService.formatTemperature(WeatherService.current.feelsLike, WeatherService.temperatureUnit)
                         : ""
                     role: HnTypographyRole.Caption
                     color: HoloniightPalette.textPrimary

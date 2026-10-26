@@ -141,7 +141,7 @@ Column {
                 HnLabel {
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: card.width - 16
-                    rawText: Math.round(card.modelData.temperature) + "°C"
+                    rawText: WeatherService.formatTemperature(card.modelData.temperature, WeatherService.temperatureUnit)
                     role: HnTypographyRole.Subheading
                     color: HoloniightPalette.textPrimary
                     horizontalAlignment: Text.AlignHCenter

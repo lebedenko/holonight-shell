@@ -27,7 +27,7 @@ Canvas {
                 break
             }
             result.push({
-                temperature: list[idx].temperature,
+                temperature: WeatherService.displayTemperature(list[idx].temperature, WeatherService.temperatureUnit),
                 timestamp: list[idx].timestamp,
             })
         }
@@ -120,9 +120,9 @@ Canvas {
         ctx.fillStyle = HoloniightPalette.textMuted
         ctx.font = root.canvasFont(9, AppearanceService.monospaceFont, "monospace")
         ctx.textAlign = "left"
-        ctx.fillText(maxT + "°", 0, yPos(maxT) + 4)
-        ctx.fillText(midT + "°", 0, yPos(midT) + 4)
-        ctx.fillText(minT + "°", 0, yPos(minT) + 4)
+        ctx.fillText(maxT + WeatherService.temperatureUnit, 0, yPos(maxT) + 4)
+        ctx.fillText(midT + WeatherService.temperatureUnit, 0, yPos(midT) + 4)
+        ctx.fillText(minT + WeatherService.temperatureUnit, 0, yPos(minT) + 4)
 
         ctx.textAlign = "center"
         for (let tick = 0; tick <= 6; tick++) {

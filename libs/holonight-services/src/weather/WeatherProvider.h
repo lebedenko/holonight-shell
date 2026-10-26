@@ -27,6 +27,7 @@ class WeatherProvider : public QObject {
   Q_ENUM(FetchErrorKind)
 
   explicit WeatherProvider(QObject* parent = nullptr);
+  WeatherProvider(QNetworkAccessManager* network, QObject* parent);
   ~WeatherProvider() override = default;
 
   WeatherProvider(const WeatherProvider&) = delete;
@@ -35,6 +36,10 @@ class WeatherProvider : public QObject {
   WeatherProvider& operator=(WeatherProvider&&) = delete;
 
   virtual void fetchWeather(double lat, double lon, const QString& api_key, const QString& units, const QString& lang);
+  void setProvider(const QString& provider) { provider_name_ = provider; }
+  virtual void geocodeCity(const QString& city, const QString& language);
+  [[nodiscard]] static WeatherCache parseOpenMeteo(const QJsonObject& root);
+  [[nodiscard]] static int conditionFromWmo(int code);
   virtual void fetchGeolocation(const QString& geo_api_key);
   virtual void reverseGeocode(double lat, double lon, const QString& api_key);
   virtual void cancelPending();
@@ -60,7 +65,9 @@ class WeatherProvider : public QObject {
   void onGeoReply(QNetworkReply* reply);
   void onLocationReply(QNetworkReply* reply);
 
+  QString provider_name_{"openweathermap"};
   QNetworkAccessManager nam_;
+  QNetworkAccessManager* network_;
   QNetworkReply* geo_reply_{nullptr};
   QNetworkReply* location_reply_{nullptr};
   QNetworkReply* weather_reply_{nullptr};

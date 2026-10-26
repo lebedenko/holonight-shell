@@ -112,7 +112,7 @@ Column {
                             width: parent.width
                             visible: dayCard.index === 0
                             rawText: (dayCard.index === 0 && WeatherService.hasData)
-                                ? Math.round(WeatherService.current.temperature) + "°C"
+                                ? WeatherService.formatTemperature(WeatherService.current.temperature, WeatherService.temperatureUnit)
                                 : ""
                             role: HnTypographyRole.Subheading
                             color: HoloniightPalette.textPrimary
@@ -129,7 +129,8 @@ Column {
                             HnLabel {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: dayCard.width
-                                rawText: dayCard.index > 0 ? Math.round(dayCard.entry.tempMax) + "°C" : ""
+                                objectName: "weatherDailyMax" + dayCard.index
+                                rawText: dayCard.index > 0 ? WeatherService.formatTemperature(dayCard.entry.tempMax, WeatherService.temperatureUnit) : ""
                                 role: HnTypographyRole.Body
                                 color: HoloniightPalette.textPrimary
                                 horizontalAlignment: Text.AlignHCenter
@@ -139,7 +140,7 @@ Column {
                             HnLabel {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 width: dayCard.width
-                                rawText: dayCard.index > 0 ? Math.round(dayCard.entry.tempMin) + "°C" : ""
+                                rawText: dayCard.index > 0 ? WeatherService.formatTemperature(dayCard.entry.tempMin, WeatherService.temperatureUnit) : ""
                                 role: HnTypographyRole.Caption
                                 color: HoloniightPalette.textMuted
                                 horizontalAlignment: Text.AlignHCenter

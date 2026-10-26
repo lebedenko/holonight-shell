@@ -36,7 +36,7 @@ struct HourlyEntry {
 
  public:
   qint64 timestamp{0};        // Unix seconds (UTC), from hourly[i].dt
-  double temperature{0.0};    // degrees in the configured unit, from hourly[i].temp
+  double temperature{0.0};    // degrees Celsius, independent of display units
   int condition_id{0};        // OWM condition id, from hourly[i].weather[0].id
   double precipitation{0.0};  // mm/1h, from hourly[i].rain["1h"] + hourly[i].snow["1h"]; 0 if absent
   QString icon_code;          // e.g. "04n", from hourly[i].weather[0].icon

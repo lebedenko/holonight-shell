@@ -130,9 +130,10 @@ Column {
         value: WeatherService.hasData ? WeatherService.current.visibility.toFixed(0) + " km" : "—"
     }
     DetailCell {
+        objectName: "weatherPressure"
         iconName: "pressure"
         label: "Pressure"
-        value: WeatherService.hasData ? WeatherService.current.pressure + " hPa" : "—"
+        value: WeatherService.hasData ? WeatherService.displayPressure(WeatherService.current.pressure, WeatherService.pressureUnit).toFixed(WeatherService.pressureUnit === "bar" ? 3 : WeatherService.pressureUnit === "inHg" ? 2 : 0) + " " + WeatherService.pressureUnit : "—"
     }
     DetailCell {
         iconName: "uv"

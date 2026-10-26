@@ -189,9 +189,9 @@ bool ProductConfigWriter::write(const ProductConfig& config, const QString& path
   out << "provider = " << tomlQuote(config.weather.provider) << "\n";
   out << "location_source = " << tomlQuote(config.weather.location_source) << "\n";
   out << "api_key = " << tomlQuote(config.weather.api_key)
-      << " # openweathermap.org key; empty = weather widget disabled\n";
+      << " # openweathermap.org key; required only for OpenWeatherMap\n";
   out << "geo_api_key = " << tomlQuote(config.weather.geo_api_key)
-      << " # ipgeolocation.io key; used only when latitude/longitude are unset\n";
+      << " # ipgeolocation.io key; required for automatic location\n";
   if (config.weather.latitude) {
     out << "latitude = " << *config.weather.latitude << "\n";
   } else {

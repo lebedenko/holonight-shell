@@ -66,11 +66,21 @@ Item {
                 HnLabel {
                     objectName: "weatherLocationLabel"
                     width: parent.width
-                    visible: text.length > 0
+                    visible: WeatherService.showLocation && text.length > 0
                     rawText: WeatherService.locationLabel
                     role: HnTypographyRole.Caption
                     color: HoloniightPalette.textSecondary
                     elide: Text.ElideRight
+                }
+
+                HnLabel {
+                    objectName: "weatherStatus"
+                    width: parent.width
+                    rawText: WeatherService.status
+                    visible: text.length > 0
+                    wrapMode: Text.WordWrap
+                    role: HnTypographyRole.Caption
+                    color: HoloniightPalette.textSecondary
                 }
 
                 GridLayout {
@@ -322,10 +332,11 @@ Item {
                     spacing: PopupMetrics.textGap
 
                     SectionLabel {
-                        rawText: qsTr("Temperature (°C)")
+                        rawText: qsTr("Temperature (%1)").arg(WeatherService.temperatureUnit)
                         width: parent.width
                     }
                     TemperatureGraph {
+                        objectName: "weatherTemperatureGraph"
                         width: parent.width
                         height: 128
                     }
@@ -372,8 +383,9 @@ Item {
 
                 HnLabel {
                     id: sourceLabel
+                    objectName: "weatherAttribution"
                     Layout.maximumWidth: parent.width * 0.5
-                    rawText: qsTr("Source: OpenWeather")
+                    rawText: qsTr("Source: %1").arg(WeatherService.attribution)
                     role: HnTypographyRole.Caption
                     color: HoloniightPalette.accentBlue
                     horizontalAlignment: Text.AlignRight

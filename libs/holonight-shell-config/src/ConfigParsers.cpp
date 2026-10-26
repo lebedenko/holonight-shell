@@ -276,11 +276,19 @@ WeatherConfig parseWeather(const toml::table& tbl, MissingDefaults& missing) {
   const auto sec = tbl["weather"];
 
   bool unused_missing = false;
-  cfg.provider = readStr(sec["provider"], cfg.provider, "weather.provider", unused_missing);
+  cfg.provider = readStr(sec["provider"], QStringLiteral("openweathermap"), "weather.provider", unused_missing);
   cfg.location_source = readStr(sec["location_source"], cfg.location_source, "weather.location_source", unused_missing);
   cfg.api_key = readStr(sec["api_key"], cfg.api_key, "weather.api_key", missing.weather_api_key);
   cfg.geo_api_key = readStr(sec["geo_api_key"], cfg.geo_api_key, "weather.geo_api_key", missing.weather_geo_api_key);
   cfg.units = readStr(sec["units"], cfg.units, "weather.units", missing.weather_units);
+  if (cfg.units == QLatin1String("imperial")) {
+    cfg.temp_unit = "fahrenheit";
+    cfg.wind_unit = "mph";
+  }
+  if (cfg.units == QLatin1String("standard")) {
+    cfg.temp_unit = "kelvin";
+    cfg.wind_unit = "ms";
+  }
   cfg.temp_unit = readStr(sec["temp_unit"], cfg.temp_unit, "weather.temp_unit", unused_missing);
   cfg.wind_unit = readStr(sec["wind_unit"], cfg.wind_unit, "weather.wind_unit", unused_missing);
   cfg.pressure_unit = readStr(sec["pressure_unit"], cfg.pressure_unit, "weather.pressure_unit", unused_missing);
@@ -297,6 +305,9 @@ WeatherConfig parseWeather(const toml::table& tbl, MissingDefaults& missing) {
   // (it triggers IP-geolocation fallback), so they are never written back as defaults.
   cfg.latitude = readOptionalCoordinate(sec["latitude"], -90.0, 90.0, "weather.latitude");
   cfg.longitude = readOptionalCoordinate(sec["longitude"], -180.0, 180.0, "weather.longitude");
+  if (!sec["location_source"]) {
+    cfg.location_source = cfg.latitude && cfg.longitude ? "manual" : "auto";
+  }
 
   // Display metadata has no missing-default write-back.
   bool location_missing_ignored = false;
@@ -695,10 +706,10 @@ QStringList weatherDefaultLines(const MissingDefaults& missing) {
   const WeatherConfig weather;
   QStringList lines;
   if (missing.weather_api_key) {
-    lines << QStringLiteral("api_key = \"\" # openweathermap.org key; empty = weather widget disabled");
+    lines << QStringLiteral("api_key = \"\" # openweathermap.org key; required only for OpenWeatherMap");
   }
   if (missing.weather_geo_api_key) {
-    lines << QStringLiteral("geo_api_key = \"\" # ipgeolocation.io key; used only when latitude/longitude are unset");
+    lines << QStringLiteral("geo_api_key = \"\" # ipgeolocation.io key; required for automatic location");
   }
   if (missing.weather_units) {
     lines << QStringLiteral("units = %1 # metric | imperial | standard").arg(tomlQuote(weather.units));

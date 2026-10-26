@@ -3,6 +3,7 @@
 #include "ConfigService.h"
 #include "WeatherProvider.h"
 
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -226,7 +227,9 @@ void WeatherService::start() {
   }
   started_ = true;
   applyConfig();
-  loadCache();
+  if (configured_) {
+    loadCache();
+  }
   evaluateStaleOnLoad();
   if (!configured_) {
     qCInfo(lcWeather) << "weather not configured (missing api_key or location source); widget hidden";
@@ -241,72 +244,141 @@ void WeatherService::applyConfig() {
     return;
   }
   const HoloNight::ShellConfig::WeatherConfig& cfg = config_->weather();
+  preferences_ = cfg;
+  provider_->setProvider(cfg.provider);
   api_key_ = cfg.api_key;
   geo_api_key_ = cfg.geo_api_key;
   configured_city_ = cfg.city;
   configured_country_ = cfg.country;
-  units_ = cfg.units;
   lang_ = cfg.lang;
   refresh_interval_ = cfg.refresh_interval;
   setConfigured(computeConfigured());
+  if (!configured_) {
+    setStatus(QStringLiteral(
+        "Choose a provider and location; OpenWeatherMap and automatic location require their API keys."));
+  }
+  emit preferencesChanged();
+  emit currentChanged();
+  emit forecastChanged();
 }
 
 bool WeatherService::computeConfigured() const {
-  if (config_ == nullptr || api_key_.isEmpty()) {
+  if (config_ == nullptr) {
     return false;
   }
-  const HoloNight::ShellConfig::WeatherConfig& cfg = config_->weather();
-  const bool has_coords = cfg.latitude.has_value() && cfg.longitude.has_value();
-  return has_coords || !geo_api_key_.isEmpty();
+  const auto& cfg = preferences_;
+  if (cfg.provider != QLatin1String("open-meteo") &&
+      (cfg.provider != QLatin1String("openweathermap") || api_key_.isEmpty())) {
+    return false;
+  }
+  if (cfg.location_source == QLatin1String("auto")) {
+    return !geo_api_key_.isEmpty();
+  }
+  return (cfg.latitude.has_value() && cfg.longitude.has_value()) || !cfg.city.trimmed().isEmpty();
 }
 
 void WeatherService::onConfigChanged() {
+  const auto previous = preferences_;
   applyConfig();
-  if (!configured_) {
-    refresh_timer_.stop();
-    stale_timer_.stop();
+  const auto& next = preferences_;
+  const bool request_changed = previous.provider != next.provider || previous.api_key != next.api_key ||
+                               previous.geo_api_key != next.geo_api_key ||
+                               previous.location_source != next.location_source || previous.latitude != next.latitude ||
+                               previous.longitude != next.longitude || previous.city != next.city ||
+                               previous.country != next.country || previous.lang != next.lang;
+  if (!request_changed) {
+    if (previous.refresh_interval != next.refresh_interval && started_ && configured_ && !idle_paused_ &&
+        !lid_paused_) {
+      resetBackoff();
+      refresh_timer_.start(refresh_interval_ * 1000);
+    }
     return;
   }
+  if (configured_) {
+    setStatus({});
+  }
+  provider_->cancelPending();
+  refresh_timer_.stop();
+  stale_timer_.stop();
+  geo_pending_ = fetch_pending_ = false;
+  location_resolved_ = false;
+  setHasData(false);
+  current_ = {};
+  hourly_.clear();
+  daily_.clear();
+  rebuildForecastVariants();
+  setResolvedLocation({});
+  fetched_at_ = 0;
+  setStale(true);
+  emit currentChanged();
+  emit forecastChanged();
+  if (!started_ || !configured_) {
+    return;
+  }
+  loadCache();
+  evaluateStaleOnLoad();
   resetBackoff();
-  setStale(false);
-  location_resolved_ = false;  // coordinates may have changed; re-resolve
   resolveLocation();
 }
 
 void WeatherService::resolveLocation() {
-  if (config_ == nullptr) {
+  if (config_ == nullptr || !configured_ || idle_paused_ || lid_paused_) {
     return;
   }
   const HoloNight::ShellConfig::WeatherConfig& cfg = config_->weather();
+  if (cfg.location_source == QLatin1String("auto")) {
+    geo_pending_ = true;
+    provider_->fetchGeolocation(geo_api_key_);
+    return;
+  }
   if (cfg.latitude.has_value() && cfg.longitude.has_value()) {
     lat_ = *cfg.latitude;
     lon_ = *cfg.longitude;
     location_resolved_ = true;
     setResolvedLocation(mergeConfiguredLocation(location_));
-    if (configured_city_.trimmed().isEmpty() || configured_country_.trimmed().isEmpty()) {
+    if (cfg.provider == QLatin1String("openweathermap") &&
+        (configured_city_.trimmed().isEmpty() || configured_country_.trimmed().isEmpty())) {
       provider_->reverseGeocode(lat_, lon_, api_key_);
     }
     fetch();
     return;
   }
-  if (!geo_api_key_.isEmpty()) {
+  if (!configured_city_.trimmed().isEmpty()) {
     geo_pending_ = true;
-    provider_->fetchGeolocation(geo_api_key_);
+    provider_->geocodeCity(configured_city_ + (configured_country_.isEmpty() ? QString() : ", " + configured_country_),
+                           lang_);
   }
 }
 
 void WeatherService::onGeoFetched(double lat, double lon, const WeatherLocation& location) {
+  if (!geo_pending_ || idle_paused_ || lid_paused_) {
+    return;
+  }
   geo_pending_ = false;
+  if (has_data_ && (lat_ != lat || lon_ != lon)) {
+    setHasData(false);
+    current_ = {};
+    hourly_.clear();
+    daily_.clear();
+    rebuildForecastVariants();
+    emit currentChanged();
+    emit forecastChanged();
+  }
   lat_ = lat;
   lon_ = lon;
   location_resolved_ = true;
-  setResolvedLocation(mergeConfiguredLocation(location));
+  setResolvedLocation(preferences_.location_source == QLatin1String("auto") ? location
+                                                                            : mergeConfiguredLocation(location));
   qCInfo(lcWeather) << "location resolved via geolocation:" << location_label_ << lat << lon;
   fetch();
 }
 
 void WeatherService::onGeoError(const QString& message) {
+  if (!geo_pending_ || idle_paused_ || lid_paused_) {
+    return;
+  }
   geo_pending_ = false;
+  setStatus(message);
   qCWarning(lcWeather) << "geolocation failed:" << message;
   setStale(true);
   stepBackoff();
@@ -336,16 +408,24 @@ void WeatherService::onRefreshTimer() {
 }
 
 void WeatherService::fetch() {
-  if (!configured_ || !location_resolved_) {
+  if (!configured_ || idle_paused_ || lid_paused_) {
+    return;
+  }
+  if (!location_resolved_) {
+    resolveLocation();
     return;
   }
   fetch_failed_ = false;
   fetch_pending_ = true;
-  provider_->fetchWeather(lat_, lon_, api_key_, units_, lang_);
+  provider_->fetchWeather(lat_, lon_, api_key_, QStringLiteral("metric"), lang_);
 }
 
 void WeatherService::onWeatherFetched(const CurrentWeather& weather, const QList<HourlyEntry>& hourly,
                                       const QList<DailyEntry>& daily) {
+  if (!fetch_pending_ || idle_paused_ || lid_paused_) {
+    return;
+  }
+  setStatus({});
   current_ = weather;
   hourly_ = hourly;
   daily_ = daily;
@@ -357,10 +437,11 @@ void WeatherService::onWeatherFetched(const CurrentWeather& weather, const QList
 }
 
 void WeatherService::onFetchError(WeatherProvider::FetchErrorKind kind, const QString& message) {
-  if (fetch_failed_) {
+  if (!fetch_pending_ || idle_paused_ || lid_paused_ || fetch_failed_) {
     return;  // the other half of this cycle already reported failure
   }
   fetch_failed_ = true;
+  setStatus(message);
   qCWarning(lcWeather) << "fetch failed:" << message;
   setStale(true);
   if (kind == WeatherProvider::FetchErrorKind::Authentication) {
@@ -418,7 +499,7 @@ void WeatherService::onIdleChanged(bool idle) {
     provider_->cancelPending();
     geo_pending_ = false;
     fetch_pending_ = false;
-  } else if (!lid_paused_) {
+  } else if (!lid_paused_ && configured_) {
     fetch();
     refresh_timer_.start(refresh_interval_ * 1000);
   }
@@ -440,7 +521,7 @@ void WeatherService::resumeActivity() {
     return;
   }
   lid_paused_ = false;
-  if (!idle_paused_) {
+  if (!idle_paused_ && configured_) {
     fetch();
     refresh_timer_.start(refresh_interval_ * 1000);
   }
@@ -545,6 +626,11 @@ void WeatherService::loadCache() {
     return;
   }
   const QJsonObject root = doc.object();
+  if (root.value("version").toInt() != 2 || root.value("identity").toString() != cacheIdentity()) {
+    return;
+  }
+  lat_ = root.value("latitude").toDouble();
+  lon_ = root.value("longitude").toDouble();
   current_ = currentFromJson(root.value(QStringLiteral("current")).toObject());
   hourly_ = hourlyFromJson(root.value(QStringLiteral("hourly")).toArray());
   daily_ = dailyFromJson(root.value(QStringLiteral("daily")).toArray());
@@ -569,6 +655,10 @@ void WeatherService::saveCache() const {
   }
   QJsonObject root;
   root.insert(QStringLiteral("fetched_at"), static_cast<double>(fetched_at_));
+  root.insert("latitude", lat_);
+  root.insert("longitude", lon_);
+  root.insert("version", 2);
+  root.insert("identity", cacheIdentity());
   root.insert(QStringLiteral("current"), currentToJson(current_));
   root.insert(QStringLiteral("hourly"), hourlyToJson(hourly_));
   root.insert(QStringLiteral("daily"), dailyToJson(daily_));
@@ -586,4 +676,89 @@ void WeatherService::saveCache() const {
   if (!out.commit()) {
     qCWarning(lcWeather) << "failed to commit weather cache:" << path;
   }
+}
+
+void WeatherService::setStatus(const QString& status) {
+  if (status_ == status) {
+    return;
+  }
+  status_ = status;
+  emit statusChanged();
+}
+QString WeatherService::cacheIdentity() const {
+  QJsonObject identity{
+      {"provider", preferences_.provider},
+      {"source", preferences_.location_source},
+      {"city", configured_city_},
+      {"country", configured_country_},
+      {"lang", lang_},
+  };
+  if (preferences_.latitude) {
+    identity.insert("latitude", *preferences_.latitude);
+  }
+  if (preferences_.longitude) {
+    identity.insert("longitude", *preferences_.longitude);
+  }
+  return QString::fromLatin1(
+      QCryptographicHash::hash(QJsonDocument(identity).toJson(QJsonDocument::Compact), QCryptographicHash::Sha256)
+          .toHex());
+}
+QString WeatherService::temperatureUnit() const {
+  if (preferences_.temp_unit == QLatin1String("fahrenheit")) {
+    return QStringLiteral("°F");
+  }
+  return preferences_.temp_unit == QLatin1String("kelvin") ? QStringLiteral("K") : QStringLiteral("°C");
+}
+QString WeatherService::windUnit() const {
+  if (preferences_.wind_unit == QLatin1String("ms")) {
+    return QStringLiteral("m/s");
+  }
+  if (preferences_.wind_unit == QLatin1String("mph")) {
+    return QStringLiteral("mph");
+  }
+  return preferences_.wind_unit == QLatin1String("knots") ? QStringLiteral("knots") : QStringLiteral("km/h");
+}
+QString WeatherService::pressureUnit() const {
+  if (preferences_.pressure_unit == QLatin1String("mmhg")) {
+    return QStringLiteral("mmHg");
+  }
+  if (preferences_.pressure_unit == QLatin1String("inhg")) {
+    return QStringLiteral("inHg");
+  }
+  return preferences_.pressure_unit == QLatin1String("bar") ? QStringLiteral("bar") : QStringLiteral("hPa");
+}
+QString WeatherService::attribution() const {
+  return preferences_.provider == QLatin1String("open-meteo") ? QStringLiteral("Open-Meteo (CC BY 4.0)")
+                                                              : QStringLiteral("OpenWeatherMap");
+}
+double WeatherService::displayTemperature(double celsius, const QString& unit) const {
+  const auto selected = unit.isEmpty() ? temperatureUnit() : unit;
+  if (selected == QStringLiteral("°F")) {
+    return (celsius * 1.8) + 32;
+  }
+  return selected == QLatin1String("K") ? celsius + 273.15 : celsius;
+}
+double WeatherService::displayWind(double kmh, const QString& unit) const {
+  const auto selected = unit.isEmpty() ? windUnit() : unit;
+  if (selected == QLatin1String("m/s")) {
+    return kmh / 3.6;
+  }
+  if (selected == QLatin1String("mph")) {
+    return kmh / 1.609344;
+  }
+  return selected == QLatin1String("knots") ? kmh / 1.852 : kmh;
+}
+double WeatherService::displayPressure(double hpa, const QString& unit) const {
+  const auto selected = unit.isEmpty() ? pressureUnit() : unit;
+  if (selected == QLatin1String("mmHg")) {
+    return hpa * 0.750061683;
+  }
+  if (selected == QLatin1String("inHg")) {
+    return hpa / 33.863886667;
+  }
+  return selected == QLatin1String("bar") ? hpa / 1000 : hpa;
+}
+QString WeatherService::formatTemperature(double celsius, const QString& unit) const {
+  const auto selected = unit.isEmpty() ? temperatureUnit() : unit;
+  return QString::number(qRound(displayTemperature(celsius, selected))) + selected;
 }

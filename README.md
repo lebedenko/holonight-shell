@@ -21,7 +21,7 @@ HoloNight is designed around TokyoNight Storm colors, thin HUD geometry, and res
 | Battery | Charge percent + charging state via UPower D-Bus |
 | Keyboard layout | Live layout code (e.g. `EN`, `UA`) via Hyprland IPC |
 | System tray | StatusNotifierItem (SNI) protocol; attention glow on urgent items |
-| Weather | Current conditions via OpenWeather; click opens a popup with current/details/hourly/daily sections plus temperature & precipitation graphs. Hidden entirely until an API key is configured. Location from config coordinates or IP-geolocation fallback. Disk-cached for offline startup |
+| Weather | Open-Meteo or OpenWeatherMap current/details/hourly/daily forecasts and graphs. Saved/external settings update live. Manual city/coordinates or explicit IP geolocation; provider/location-specific offline cache |
 | Clock | Time (`HH:mm`) and date (`ddd d MMM`) with Rajdhani font; click opens the right sidebar |
 | Session | Canvas-drawn power button (top bar); session actions (lock, log out, sleep, reboot, shut down) are in the right sidebar |
 | Status popups | Click Network / Audio / Battery / Keyboard to open a positioned popup below the widget (notch aligned to widget center, per-id sizing) via `StatusPopupSurface`; dismiss by re-clicking, switching widgets, clicking outside, or Esc. The Audio popup is a mini-pavucontrol (Output / Input / Applications tabs with per-row mute + volume slider, click-row-to-set-default, and a Master Volume bar). The Battery popup is a compact panel: charge percent + fill bar, charge state with time-to-empty/full, conditional Health and Cycle-count rows, and a power-profile selector (Power Saver / Balanced / Performance circle buttons) backed by power-profiles-daemon — hidden when the daemon is absent |
@@ -487,8 +487,12 @@ position = "center-bottom"
 pause_hide_minutes = 10           # fades out after this many minutes continuously paused (1-60)
 
 [weather]
-api_key = ""          # openweathermap.org key; empty = weather widget disabled
-geo_api_key = ""      # ipgeolocation.io key; used only when latitude/longitude are unset
+provider = "open-meteo" # or openweathermap, which requires api_key
+location_source = "manual" # or auto, which requires geo_api_key
+city = "Lviv"
+country = "Ukraine"
+api_key = ""          # required only for OpenWeatherMap
+geo_api_key = ""      # ipgeolocation.io key for automatic mode
 # latitude = 49.83968  # uncomment to pin location and skip IP geolocation
 # longitude = 24.02972
 units = "metric"      # metric | imperial | standard

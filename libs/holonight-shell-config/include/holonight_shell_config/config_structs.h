@@ -116,13 +116,13 @@ struct CalendarConfig {
 struct WeatherConfig {
   QString provider{"open-meteo"};
   QString location_source{"manual"};
-  QString api_key;      // empty = weather disabled (no key is baked into the binary)
+  QString api_key;      // required only for OpenWeatherMap (no key is baked into the binary)
   QString geo_api_key;  // empty = no IP-geolocation fallback available
   // std::optional because 0.0 is a valid coordinate (null island): a missing-key sentinel
   // cannot distinguish "absent" from "present and 0.0". Absence triggers geolocation.
   std::optional<double> latitude;
   std::optional<double> longitude;
-  QString city;  // informational display label; may be filled from geolocation
+  QString city;  // manual city to resolve when coordinates are absent; also the display label
   QString country;
   QString units{"metric"};
   QString temp_unit{"celsius"};

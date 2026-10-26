@@ -1,5 +1,7 @@
 #include "WeatherProvider.h"
 
+#include "MoonPhaseCalculator.h"
+
 #include <QDate>
 #include <QDateTime>
 #include <QHash>
@@ -104,6 +106,40 @@ QUrl airPollutionUrl(double lat, double lon, const QString& api_key) {
   url.setQuery(query);
   return url;
 }
+QString conditionDescription(int condition_id) {
+  if (condition_id == 800) {
+    return QStringLiteral("Clear sky");
+  }
+  if (condition_id == 801) {
+    return QStringLiteral("Few clouds");
+  }
+  if (condition_id == 802) {
+    return QStringLiteral("Scattered clouds");
+  }
+  if (condition_id == 804) {
+    return QStringLiteral("Overcast clouds");
+  }
+  if (condition_id == 741) {
+    return QStringLiteral("Fog");
+  }
+  if (condition_id == 511) {
+    return QStringLiteral("Freezing rain");
+  }
+  if (condition_id >= 600 && condition_id < 700) {
+    return QStringLiteral("Snow");
+  }
+  if (condition_id >= 500 && condition_id < 600) {
+    return QStringLiteral("Rain");
+  }
+  if (condition_id >= 300 && condition_id < 400) {
+    return QStringLiteral("Drizzle");
+  }
+  if (condition_id >= 200 && condition_id < 300) {
+    return QStringLiteral("Thunderstorm");
+  }
+  return QStringLiteral("Unknown");
+}
+
 }  // namespace
 
 void WeatherProvider::populatePollutionData(CurrentWeather& current, const QJsonObject& pollution_obj) {
@@ -127,17 +163,63 @@ void WeatherProvider::populatePollutionData(CurrentWeather& current, const QJson
   current.so2 = components.value(QStringLiteral("so2")).toDouble(0.0);
 }
 
-WeatherProvider::WeatherProvider(QObject* parent) : QObject(parent), nam_(this) {}
+WeatherProvider::WeatherProvider(QObject* parent) : WeatherProvider(nullptr, parent) {}
+WeatherProvider::WeatherProvider(QNetworkAccessManager* network, QObject* parent)
+    : QObject(parent), nam_(this), network_((network != nullptr) ? network : &nam_) {
+  network_->setTransferTimeout(20000);
+}
 
 void WeatherProvider::fetchWeather(double lat, double lon, const QString& api_key, const QString& units,
                                    const QString& lang) {
   cleanupWeatherReplies();
 
-  const QUrl weather_url = owmUrl(QStringLiteral("onecall"), lat, lon, api_key, units, lang);
-  weather_reply_ = nam_.get(QNetworkRequest(weather_url));
+  if (provider_name_ == QLatin1String("open-meteo")) {
+    QUrl url(QStringLiteral("https://api.open-meteo.com/v1/forecast"));
+    QUrlQuery query;
+    query.addQueryItem("latitude", QString::number(lat, 'f', 6));
+    query.addQueryItem("longitude", QString::number(lon, 'f', 6));
+    query.addQueryItem("current",
+                       "temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,cloud_cover,"
+                       "pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m");
+    query.addQueryItem("hourly",
+                       "temperature_2m,weather_code,precipitation,precipitation_probability,uv_index,cloud_cover,"
+                       "visibility,dew_point_2m,is_day");
+    query.addQueryItem(
+        "daily",
+        "temperature_2m_min,temperature_2m_max,weather_code,precipitation_probability_max,uv_index_max,sunrise,sunset");
+    query.addQueryItem("temperature_unit", "celsius");
+    query.addQueryItem("wind_speed_unit", "kmh");
+    query.addQueryItem("precipitation_unit", "mm");
+    query.addQueryItem("timeformat", "unixtime");
+    query.addQueryItem("timezone", "auto");
+    url.setQuery(query);
+    QNetworkRequest request(url);
+    request.setTransferTimeout(20000);
+    weather_reply_ = network_->get(request);
+    connect(weather_reply_, &QNetworkReply::finished, this, [this] {
+      QString error;
+      const auto root = parseReplyBody(weather_reply_, error);
+      if (!root || !root->value("current").toObject().value("temperature_2m").isDouble() ||
+          !root->value("current").toObject().value("time").isDouble() || !root->value("hourly").isObject() ||
+          !root->value("daily").isObject()) {
+        cleanupWeatherReplies();
+        emit fetchError(FetchErrorKind::Transient,
+                        error.isEmpty() ? QStringLiteral("Incomplete forecast response") : error);
+        return;
+      }
+      const auto data = parseOpenMeteo(*root);
+      cleanupWeatherReplies();
+      emit weatherFetched(data.current, data.hourly, data.daily);
+    });
+    return;
+  }
+
+  const QUrl weather_url = owmUrl(QStringLiteral("onecall"), lat, lon, api_key, QStringLiteral("metric"), lang);
+  Q_UNUSED(units)
+  weather_reply_ = network_->get(QNetworkRequest(weather_url));
 
   const QUrl pollution_url = airPollutionUrl(lat, lon, api_key);
-  pollution_reply_ = nam_.get(QNetworkRequest(pollution_url));
+  pollution_reply_ = network_->get(QNetworkRequest(pollution_url));
 
   connect(weather_reply_, &QNetworkReply::finished, this, &WeatherProvider::checkComplete);
   connect(pollution_reply_, &QNetworkReply::finished, this, &WeatherProvider::checkComplete);
@@ -154,7 +236,7 @@ void WeatherProvider::fetchGeolocation(const QString& geo_api_key) {
   QUrlQuery query;
   query.addQueryItem(QStringLiteral("apiKey"), geo_api_key);
   url.setQuery(query);
-  geo_reply_ = nam_.get(QNetworkRequest(url));
+  geo_reply_ = network_->get(QNetworkRequest(url));
   connect(geo_reply_, &QNetworkReply::finished, this, [this] { onGeoReply(geo_reply_); });
 }
 
@@ -171,7 +253,7 @@ void WeatherProvider::reverseGeocode(double lat, double lon, const QString& api_
   query.addQueryItem(QStringLiteral("limit"), QStringLiteral("1"));
   query.addQueryItem(QStringLiteral("appid"), api_key);
   url.setQuery(query);
-  location_reply_ = nam_.get(QNetworkRequest(url));
+  location_reply_ = network_->get(QNetworkRequest(url));
   connect(location_reply_, &QNetworkReply::finished, this, [this] { onLocationReply(location_reply_); });
 }
 
@@ -271,7 +353,7 @@ void WeatherProvider::onGeoReply(QNetworkReply* reply) {
   bool lon_ok = false;
   const double lat = location.value(QStringLiteral("latitude")).toString().toDouble(&lat_ok);
   const double lon = location.value(QStringLiteral("longitude")).toString().toDouble(&lon_ok);
-  if (!lat_ok || !lon_ok) {
+  if (!lat_ok || !lon_ok || !std::isfinite(lat) || !std::isfinite(lon) || std::abs(lat) > 90 || std::abs(lon) > 180) {
     emit geoError(QStringLiteral("geolocation response missing latitude/longitude"));
     return;
   }
@@ -418,4 +500,177 @@ QList<DailyEntry> WeatherProvider::parseDailyJson(const QJsonArray& arr) {
     out.append(daily);
   }
   return out;
+}
+
+void WeatherProvider::geocodeCity(const QString& city, const QString& language) {
+  if (location_reply_ != nullptr) {
+    disconnect(location_reply_, nullptr, this, nullptr);
+    location_reply_->abort();
+    location_reply_->deleteLater();
+  }
+  QUrl url(QStringLiteral("https://geocoding-api.open-meteo.com/v1/search"));
+  QUrlQuery query;
+  query.addQueryItem("name", city);
+  query.addQueryItem("language", language);
+  query.addQueryItem("count", "1");
+  url.setQuery(query);
+  QNetworkRequest request(url);
+  request.setTransferTimeout(15000);
+  location_reply_ = network_->get(request);
+  connect(location_reply_, &QNetworkReply::finished, this, [this] {
+    auto* reply = location_reply_;
+    location_reply_ = nullptr;
+    QString error;
+    const auto root = parseReplyBody(reply, error);
+    reply->deleteLater();
+    if (!root) {
+      emit geoError(error);
+      return;
+    }
+    const auto results = root->value("results").toArray();
+    if (results.isEmpty()) {
+      emit geoError(QStringLiteral("No matching location"));
+      return;
+    }
+    const auto item = results.first().toObject();
+    const auto latitude = item.value("latitude");
+    const auto longitude = item.value("longitude");
+    if (!latitude.isDouble() || !longitude.isDouble() || !std::isfinite(latitude.toDouble()) ||
+        !std::isfinite(longitude.toDouble()) || std::abs(latitude.toDouble()) > 90 ||
+        std::abs(longitude.toDouble()) > 180) {
+      emit geoError(QStringLiteral("Invalid location coordinates"));
+      return;
+    }
+    emit geoFetched(latitude.toDouble(), longitude.toDouble(), parseLocationJson(item));
+  });
+}
+
+int WeatherProvider::conditionFromWmo(int code) {
+  switch (code) {
+    case 0:
+      return 800;
+    case 1:
+      return 801;
+    case 2:
+      return 802;
+    case 3:
+      return 804;
+    case 45:
+    case 48:
+      return 741;
+    case 51:
+      return 300;
+    case 53:
+      return 301;
+    case 55:
+      return 302;
+    case 56:
+    case 57:
+      return 511;
+    case 61:
+      return 500;
+    case 63:
+      return 501;
+    case 65:
+      return 502;
+    case 66:
+    case 67:
+      return 511;
+    case 71:
+    case 77:
+      return 600;
+    case 73:
+      return 601;
+    case 75:
+      return 602;
+    case 80:
+      return 520;
+    case 81:
+      return 521;
+    case 82:
+      return 522;
+    case 85:
+      return 620;
+    case 86:
+      return 622;
+    case 95:
+      return 200;
+    case 96:
+    case 99:
+      return 201;
+    default:
+      return 0;
+  }
+}
+
+WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
+  WeatherCache data;
+  const auto cur = root.value("current").toObject();
+  auto& current = data.current;
+  current.temperature = cur.value("temperature_2m").toDouble();
+  current.feels_like = cur.value("apparent_temperature").toDouble();
+  current.humidity = cur.value("relative_humidity_2m").toInt();
+  current.pressure = qRound(cur.value("pressure_msl").toDouble());
+  current.wind_speed = qRound(cur.value("wind_speed_10m").toDouble());
+  current.wind_gust = qRound(cur.value("wind_gusts_10m").toDouble());
+  current.wind_direction = cur.value("wind_direction_10m").toInt();
+  current.clouds = cur.value("cloud_cover").toInt();
+  current.condition_id = conditionFromWmo(cur.value("weather_code").toInt(-1));
+
+  current.condition = conditionDescription(current.condition_id);
+  current.icon_code = (cur.value("is_day").toInt() != 0) ? "01d" : "01n";
+  const auto timestamp = static_cast<qint64>(cur.value("time").toDouble());
+  current.time_updated = QDateTime::fromSecsSinceEpoch(timestamp, QTimeZone::UTC).toString(Qt::ISODate);
+  const auto hourly = root.value("hourly").toObject();
+  const auto times = hourly.value("time").toArray();
+  const auto forecastValue = [](const QJsonObject& object, const char* key, qsizetype index) {
+    const auto values = object.value(QLatin1String(key)).toArray();
+    return index < values.size() ? values[index].toDouble() : 0.0;
+  };
+  for (qsizetype i = 0; i < times.size(); ++i) {
+    const auto time = static_cast<qint64>(times[i].toDouble());
+    if (time <= timestamp && timestamp < time + 3600) {
+      current.uvi = forecastValue(hourly, "uv_index", i);
+      current.dew_point = forecastValue(hourly, "dew_point_2m", i);
+      current.visibility = forecastValue(hourly, "visibility", i) / 1000.0;
+    }
+    if (time < timestamp || data.hourly.size() >= 48) {
+      continue;
+    }
+    HourlyEntry entry;
+    entry.timestamp = time;
+    entry.temperature = forecastValue(hourly, "temperature_2m", i);
+    entry.condition_id = conditionFromWmo(static_cast<int>(forecastValue(hourly, "weather_code", i)));
+    entry.condition = conditionDescription(entry.condition_id);
+    entry.icon_code = forecastValue(hourly, "is_day", i) > 0 ? "01d" : "01n";
+    entry.precipitation = forecastValue(hourly, "precipitation", i);
+    entry.pop = forecastValue(hourly, "precipitation_probability", i) / 100.0;
+    entry.uvi = forecastValue(hourly, "uv_index", i);
+    entry.clouds = static_cast<int>(forecastValue(hourly, "cloud_cover", i));
+    data.hourly.append(entry);
+  }
+  const auto daily = root.value("daily").toObject();
+  const auto dates = daily.value("time").toArray();
+  for (qsizetype i = 0; i < dates.size(); ++i) {
+    DailyEntry entry;
+    entry.date = static_cast<qint64>(dates[i].toDouble());
+    entry.temp_min = forecastValue(daily, "temperature_2m_min", i);
+    entry.temp_max = forecastValue(daily, "temperature_2m_max", i);
+    entry.condition_id = conditionFromWmo(static_cast<int>(forecastValue(daily, "weather_code", i)));
+    entry.condition = conditionDescription(entry.condition_id);
+    entry.icon_code = "01d";
+    entry.pop = forecastValue(daily, "precipitation_probability_max", i) / 100.0;
+    entry.uvi = forecastValue(daily, "uv_index_max", i);
+    entry.sunrise = static_cast<qint64>(forecastValue(daily, "sunrise", i));
+    entry.sunset = static_cast<qint64>(forecastValue(daily, "sunset", i));
+    entry.moon_phase = static_cast<int>(MoonPhaseCalculator::phaseForDate(
+                           std::chrono::system_clock::time_point{std::chrono::seconds{entry.date}})) /
+                       8.0;
+    data.daily.append(entry);
+  }
+  if (!data.daily.isEmpty()) {
+    current.sunrise = data.daily.first().sunrise;
+    current.sunset = data.daily.first().sunset;
+  }
+  return data;
 }

@@ -75,8 +75,12 @@ images = [] # per-monitor wallpapers, in monitor order; empty = solid surfaceVar
 generic = false           # true = always show the generic tux logo instead of the distro logo
 
 [weather]
-api_key = "" # openweathermap.org key; empty = weather widget disabled
-geo_api_key = "" # ipgeolocation.io key; used only when latitude/longitude are unset
+provider = "open-meteo" # or openweathermap, which requires api_key
+location_source = "manual" # or auto, which requires geo_api_key
+city = "Lviv"
+country = "Ukraine"
+api_key = "" # required only for OpenWeatherMap
+geo_api_key = "" # ipgeolocation.io key required for automatic mode
 # latitude = 49.83968 # uncomment to pin location and skip IP geolocation
 # longitude = 24.02972
 units = "metric" # metric | imperial | standard
@@ -139,12 +143,26 @@ fallback. Bundled and distro-mapped logos are tinted to the active theme color; 
 as-is, untinted. Unlike every other section, `[logo]` is not watched for live reload — changes only take effect
 on the next shell restart.
 
-Weather is hidden until `weather.api_key` is set and either coordinates or a geolocation key are available.
-Set both `weather.latitude` and `weather.longitude` to pin a location and skip IP geolocation; omit them to let
-`weather.geo_api_key` resolve the location. `weather.city` and `weather.country` are optional display text; missing
-values are resolved from geolocation. `weather.units` is passed to OpenWeather as `metric`, `imperial`, or `standard`; `weather.lang`
-controls localized condition text. Fetched weather is cached on disk for offline startup, and updates run every
-`weather.refresh_interval` seconds.
+Weather settings reload after Settings **Save** or external document edits. Set `provider` to
+`"open-meteo"` (no weather key) or `"openweathermap"` (`api_key` required). In `location_source = "manual"`,
+set both optional coordinates (zero is valid), or a city with optional country for geocoding. Settings
+searches cities on Enter and stages a selected result's name, country and coordinates; entering a
+validated `latitude, longitude` pair stages coordinates directly. In `location_source = "auto"`,
+`geo_api_key` from ipgeolocation.io is required and inactive manual values are ignored and retained.
+
+`temp_unit` accepts `celsius`, `fahrenheit`, `kelvin`; `wind_unit` accepts `kmh`, `ms`, `mph`, `knots`;
+`pressure_unit` accepts `hpa`, `mmhg`, `inhg`, `bar`. These and `show_in_bar`, `compact_mode`,
+`show_feels_like`, `show_location` apply immediately without fetching again. Compact mode displays
+only the bar icon and temperature. `refresh_interval` reschedules polling; provider, location,
+credentials and language changes cancel and replace requests. Idle/lid pauses remain effective.
+
+Legacy documents without `provider` use OpenWeatherMap. Without `location_source`, a coordinate
+pair takes precedence over IP fallback. Missing individual unit fields inherit `units`: metric =
+Celsius/km/h, imperial = Fahrenheit/mph, standard = Kelvin/m/s. Pressure defaults to hPa.
+`lang` localizes geocoding names and OpenWeatherMap conditions; Open-Meteo conditions use English.
+Versioned, provider/location-specific caches support offline startup; old incompatible caches are
+ignored. Open-Meteo AQI is unavailable; moon presentation uses the existing moon calculator.
+See the [design](sdd/weather-settings-sync.md).
 
 Notifications are served by the in-process freedesktop notification daemon. `notifications.default_timeout_ms`
 sets the auto-dismiss delay for normal/low urgency notifications; critical notifications stay until dismissed.
@@ -204,14 +222,23 @@ configuration changes are needed. Countdown completion and media player availabi
 | `background.images` | `[]` | Array of image paths (absolute or `~/`-prefixed) |
 | `logo.file` | unset | Path to an image (absolute or `~/`-prefixed); ignored with a warning if unreadable |
 | `logo.generic` | `false` | Boolean; `true` = always show the generic tux logo |
-| `weather.api_key` | `""` | OpenWeather API key; empty disables weather |
-| `weather.geo_api_key` | `""` | IP geolocation API key used when coordinates are unset |
+| `weather.provider` | `"open-meteo"` in new files | `"open-meteo"` or `"openweathermap"`; absent legacy key infers OpenWeatherMap |
+| `weather.location_source` | `"manual"` in new files | `"manual"` or `"auto"`; absent legacy key uses coordinates first |
+| `weather.temp_unit` | `"celsius"` | Temperature display; legacy units fallback when absent |
+| `weather.wind_unit` | `"kmh"` | Wind display; legacy units fallback when absent |
+| `weather.pressure_unit` | `"hpa"` | Pressure display |
+| `weather.show_in_bar` | `true` | Bar visibility with width animation |
+| `weather.compact_mode` | `false` | Bar icon and temperature only |
+| `weather.show_feels_like` | `true` | Feels-like in popup and tooltip |
+| `weather.show_location` | `true` | Location in popup and tooltip |
+| `weather.api_key` | `""` | OpenWeatherMap API key; required only for that provider |
+| `weather.geo_api_key` | `""` | IP geolocation API key required in automatic mode |
 | `weather.latitude` | unset | Optional floating-point latitude |
 | `weather.longitude` | unset | Optional floating-point longitude |
-| `weather.city` | unset | Optional display label |
+| `weather.city` | unset | Manual city to resolve when coordinates are absent |
 | `weather.country` | unset | Optional display country |
 | `weather.units` | `"metric"` | `"metric"`, `"imperial"`, or `"standard"` |
-| `weather.lang` | `"en"` | OpenWeather language code |
+| `weather.lang` | `"en"` | Geocoding and OpenWeatherMap language code |
 | `weather.refresh_interval` | `1800` | Positive integer seconds |
 | `notifications.default_timeout_ms` | `5000` | Positive integer milliseconds |
 | `notifications.max_visible` | `3` | Integer from `1` to `10` |

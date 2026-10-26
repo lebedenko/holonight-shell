@@ -3,17 +3,22 @@
 #include "WeatherProvider.h"
 #include "WeatherService.h"
 
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkReply>
 #include <QSignalSpy>
 #include <QString>
 #include <QTemporaryDir>
+#include <QTest>
 #include <QTimeZone>
+#include <QUrlQuery>
 
+#include <cstring>
 #include <gtest/gtest.h>
 
 namespace {
@@ -45,6 +50,12 @@ class FakeWeatherProvider : public WeatherProvider {
     last_units = units;
     last_lang = lang;
     fetch_weather_calls++;
+  }
+
+  void geocodeCity(const QString& city, const QString& language) override {
+    last_city = city;
+    last_lang = language;
+    ++geocode_city_calls;
   }
 
   void fetchGeolocation(const QString& geo_api_key) override {
@@ -87,6 +98,8 @@ class FakeWeatherProvider : public WeatherProvider {
   double last_reverse_lat{0.0};
   double last_reverse_lon{0.0};
   QString last_reverse_api_key;
+  QString last_city;
+  int geocode_city_calls{0};
   int fetch_weather_calls{0};
   int fetch_geo_calls{0};
   int reverse_geocode_calls{0};
@@ -380,6 +393,17 @@ class WeatherServiceTest : public ::testing::Test {
     current_obj["updated"] = "2026-06-19T16:00:00Z";
 
     QJsonObject root;
+    const QJsonObject identity{{"provider", "openweathermap"},
+                               {"source", "manual"},
+                               {"city", ""},
+                               {"country", ""},
+                               {"lang", "en"},
+                               {"latitude", 45.0},
+                               {"longitude", -75.0}};
+    root["version"] = 2;
+    root["identity"] = QString::fromLatin1(
+        QCryptographicHash::hash(QJsonDocument(identity).toJson(QJsonDocument::Compact), QCryptographicHash::Sha256)
+            .toHex());
     root["fetched_at"] = static_cast<double>(fetched_at);
     root["current"] = current_obj;
     root["hourly"] = QJsonArray();
@@ -689,7 +713,289 @@ TEST_F(WeatherServiceTest, ForecastVariantsAreRebuiltWhenForecastChanges) {
 
   HourlyEntry replacement;
   replacement.temperature = 18.0;
+  triggerRefreshTimer(service);
   raw_provider->triggerWeatherFetched({}, {replacement}, {});
   ASSERT_EQ(service.hourlyVariant().size(), 1);
   EXPECT_EQ(getHourlyVariantCache(service).at(0).value<HourlyEntry>().temperature, 18.0);
+}
+
+TEST_F(WeatherServiceTest, OpenMeteoNeedsNoKeyAndDisplayChangesDoNotRefetch) {
+  const QByteArray base = "[weather]\nprovider='open-meteo'\nlocation_source='manual'\nlatitude=0.0\nlongitude=0.0\n";
+  writeTempConfig(config_path, base);
+  ConfigService config;
+  auto provider = std::make_unique<FakeWeatherProvider>();
+  auto* fake = provider.get();
+  WeatherService service(&config, std::move(provider));
+  service.start();
+  ASSERT_TRUE(service.configured());
+  ASSERT_EQ(fake->fetch_weather_calls, 1);
+  EXPECT_EQ(fake->last_units, "metric");
+  CurrentWeather weather;
+  weather.temperature = 20;
+  fake->triggerWeatherFetched(weather, {}, {});
+  writeTempConfig(config_path,
+                  base +
+                      "temp_unit='fahrenheit'\nwind_unit='mph'\npressure_unit='inhg'\nshow_in_bar=false\ncompact_mode="
+                      "true\nshow_location=false\nshow_feels_like=false\nrefresh_interval=60\n");
+  ASSERT_TRUE(QTest::qWaitFor([&] { return service.temperatureUnit() == "°F"; }));
+  EXPECT_EQ(fake->fetch_weather_calls, 1);
+  EXPECT_TRUE(service.hasData());
+  EXPECT_DOUBLE_EQ(service.currentVariant().value<CurrentWeather>().temperature, 20);
+  EXPECT_EQ(service.formatTemperature(20), "68°F");
+  EXPECT_NEAR(service.displayWind(16.09344), 10, 1e-6);
+  EXPECT_NEAR(service.displayPressure(1013.25), 29.9213, 0.001);
+  EXPECT_FALSE(service.showInBar());
+  EXPECT_TRUE(service.compactMode());
+  EXPECT_FALSE(service.showLocation());
+  EXPECT_FALSE(service.showFeelsLike());
+  EXPECT_EQ(getRefreshTimerInterval(service), 60000);
+}
+
+TEST_F(WeatherServiceTest, ExplicitAutomaticModeIgnoresInactiveCoordinatesAndLabels) {
+  writeTempConfig(config_path,
+                  "[weather]\nprovider='open-meteo'\nlocation_source='auto'\ngeo_api_key='geo'\nlatitude=0."
+                  "0\nlongitude=0.0\ncity='Inactive'\ncountry='Inactive'\n");
+  ConfigService config;
+  auto provider = std::make_unique<FakeWeatherProvider>();
+  auto* fake = provider.get();
+  WeatherService service(&config, std::move(provider));
+  service.start();
+  EXPECT_EQ(fake->fetch_weather_calls, 0);
+  EXPECT_EQ(fake->fetch_geo_calls, 1);
+  fake->triggerGeoFetched(50, 30, {"Kyiv", "Ukraine"});
+  EXPECT_EQ(fake->last_lat, 50);
+  EXPECT_EQ(fake->last_lon, 30);
+  EXPECT_EQ(service.locationLabel(), "Kyiv, Ukraine");
+}
+
+TEST_F(WeatherServiceTest, LocationChangesClearPreviousDataAndWaitForLidResume) {
+  const QByteArray base = "[weather]\nprovider='open-meteo'\nlocation_source='manual'\nlongitude=0.0\n";
+  writeTempConfig(config_path, base + "latitude=0.0\n");
+  ConfigService config;
+  auto provider = std::make_unique<FakeWeatherProvider>();
+  auto* fake = provider.get();
+  WeatherService service(&config, std::move(provider));
+  service.start();
+  fake->triggerWeatherFetched({}, {}, {});
+  ASSERT_TRUE(service.hasData());
+  service.pauseActivity();
+  writeTempConfig(config_path, base + "latitude=10.0\n");
+  ASSERT_TRUE(QTest::qWaitFor([&] { return config.weather().latitude == 10.0; }));
+  EXPECT_FALSE(service.hasData());
+  EXPECT_EQ(fake->fetch_weather_calls, 1);
+  fake->triggerWeatherFetched({}, {}, {});
+  EXPECT_FALSE(service.hasData());
+  service.resumeActivity();
+  EXPECT_EQ(fake->fetch_weather_calls, 2);
+  EXPECT_EQ(fake->last_lat, 10);
+}
+
+TEST_F(WeatherServiceTest, CacheReusesMatchingDataAndRejectsAnotherProviderOrLegacyFormat) {
+  const QByteArray base = "[weather]\nprovider='open-meteo'\nlocation_source='manual'\nlatitude=0.0\nlongitude=0.0\n";
+  writeTempConfig(config_path, base);
+  ConfigService config;
+  {
+    auto provider = std::make_unique<FakeWeatherProvider>();
+    auto* fake = provider.get();
+    WeatherService service(&config, std::move(provider));
+    service.start();
+    CurrentWeather weather;
+    weather.temperature = 17;
+    fake->triggerWeatherFetched(weather, {}, {});
+  }
+  {
+    WeatherService service(&config, std::make_unique<FakeWeatherProvider>());
+    service.start();
+    EXPECT_TRUE(service.hasData());
+    EXPECT_DOUBLE_EQ(service.currentVariant().value<CurrentWeather>().temperature, 17);
+  }
+  writeTempConfig(config_path, "[weather]\nprovider='openweathermap'\napi_key='key'\nlatitude=0.0\nlongitude=0.0\n");
+  ASSERT_TRUE(QMetaObject::invokeMethod(&config, "parseFile", Qt::DirectConnection));
+  {
+    WeatherService service(&config, std::make_unique<FakeWeatherProvider>());
+    service.start();
+    EXPECT_FALSE(service.hasData());
+  }
+  writeCache(QDateTime::currentSecsSinceEpoch(), 17);
+  QFile cache(tmp_cache.path() + "/holonight/weather.json");
+  ASSERT_TRUE(cache.open(QIODevice::ReadOnly));
+  auto root = QJsonDocument::fromJson(cache.readAll()).object();
+  cache.close();
+  root.remove("version");
+  ASSERT_TRUE(cache.open(QIODevice::WriteOnly));
+  cache.write(QJsonDocument(root).toJson());
+  cache.close();
+  WeatherService service(&config, std::make_unique<FakeWeatherProvider>());
+  service.start();
+  EXPECT_FALSE(service.hasData());
+}
+
+TEST(WeatherProviderParsing, OpenMeteoUsesCanonicalUnitsAndMapsForecasts) {
+  const auto doc = QJsonDocument::fromJson(R"({
+    "current":{"time":3600,"temperature_2m":20,"apparent_temperature":19,"relative_humidity_2m":50,"weather_code":63,"is_day":1,"pressure_msl":1013,"wind_speed_10m":18,"wind_gusts_10m":30},
+    "hourly":{"time":[0,3600,7200],"temperature_2m":[10,20,21],"weather_code":[0,63,95],"precipitation":[0,1.5,2],"precipitation_probability":[0,40,80],"visibility":[10000,9000,8000],"uv_index":[0,3,4],"is_day":[0,1,1]},
+    "daily":{"time":[0],"temperature_2m_min":[10],"temperature_2m_max":[22],"weather_code":[63],"sunrise":[1000],"sunset":[9000],"uv_index_max":[5],"precipitation_probability_max":[80]}
+  })");
+  const auto data = WeatherProvider::parseOpenMeteo(doc.object());
+  EXPECT_EQ(data.current.condition_id, 501);
+  EXPECT_EQ(data.current.wind_speed, 18);
+  EXPECT_DOUBLE_EQ(data.current.temperature, 20);
+  EXPECT_DOUBLE_EQ(data.current.visibility, 9);
+  EXPECT_EQ(data.current.aqi, 0);
+  EXPECT_EQ(data.current.sunrise, 1000);
+  ASSERT_EQ(data.hourly.size(), 2);
+  EXPECT_DOUBLE_EQ(data.hourly[0].precipitation, 1.5);
+  EXPECT_DOUBLE_EQ(data.hourly[0].pop, 0.4);
+  EXPECT_EQ(data.hourly[1].condition_id, 200);
+  ASSERT_EQ(data.daily.size(), 1);
+  EXPECT_DOUBLE_EQ(data.daily[0].temp_min, 10);
+  EXPECT_DOUBLE_EQ(data.daily[0].temp_max, 22);
+  EXPECT_GE(data.daily[0].moon_phase, 0);
+  EXPECT_EQ(WeatherProvider::conditionFromWmo(99), 201);
+  EXPECT_EQ(WeatherProvider::conditionFromWmo(999), 0);
+}
+
+namespace {
+class FixtureReply : public QNetworkReply {
+ public:
+  explicit FixtureReply(const QNetworkRequest& request, QObject* parent) : QNetworkReply(parent) {
+    setRequest(request);
+    setUrl(request.url());
+    open(QIODevice::ReadOnly);
+  }
+  void abort() override { aborted = true; }
+  void complete(const QByteArray& bytes, bool fail = false) {
+    bytes_ = bytes;
+    if (fail) setError(QNetworkReply::ConnectionRefusedError, "fixture failure");
+    setFinished(true);
+    emit readyRead();
+    emit finished();
+  }
+  bool aborted{false};
+
+ protected:
+  qint64 readData(char* data, qint64 size) override {
+    const auto count = std::min<qint64>(size, bytes_.size() - offset_);
+    if (count <= 0) return -1;
+    memcpy(data, bytes_.constData() + offset_, count);
+    offset_ += count;
+    return count;
+  }
+
+ private:
+  QByteArray bytes_;
+  qint64 offset_{0};
+};
+class FixtureNetwork : public QNetworkAccessManager {
+ public:
+  QList<FixtureReply*> requests;
+
+ protected:
+  QNetworkReply* createRequest(Operation, const QNetworkRequest& request, QIODevice*) override {
+    auto* reply = new FixtureReply(request, this);
+    requests.append(reply);
+    return reply;
+  }
+};
+}  // namespace
+
+TEST(WeatherProviderNetwork, DispatchesProvidersWithCanonicalUnitsAndCancelsObsoleteReplies) {
+  FixtureNetwork network;
+  WeatherProvider provider(&network, nullptr);
+  QSignalSpy spy(&provider, &WeatherProvider::weatherFetched);
+  provider.setProvider("openweathermap");
+  provider.fetchWeather(0, 0, "key", "imperial", "de");
+  ASSERT_EQ(network.requests.size(), 2);
+  EXPECT_EQ(network.requests[0]->url().host(), "api.openweathermap.org");
+  EXPECT_EQ(QUrlQuery(network.requests[0]->url()).queryItemValue("units"), "metric");
+  auto* obsolete = network.requests[0];
+  provider.setProvider("open-meteo");
+  provider.fetchWeather(10, 20, "", "metric", "en");
+  ASSERT_EQ(network.requests.size(), 3);
+  EXPECT_TRUE(obsolete->aborted);
+  EXPECT_EQ(network.requests[2]->url().host(), "api.open-meteo.com");
+  EXPECT_FALSE(QUrlQuery(network.requests[2]->url()).hasQueryItem("appid"));
+  network.requests[2]->complete(R"({"current":{"temperature_2m":12,"time":3600},"hourly":{},"daily":{}})");
+  EXPECT_EQ(spy.count(), 1);
+  obsolete->complete(R"({"current":{"temp":99}})");
+  EXPECT_EQ(spy.count(), 1);
+  provider.fetchWeather(10, 20, "", "metric", "en");
+  provider.cancelPending();
+  network.requests[3]->complete("{}");
+  EXPECT_EQ(spy.count(), 1);
+}
+
+TEST(WeatherConversions, ConvertsAllSupportedUnitsFromCanonicalValues) {
+  WeatherService service(nullptr, std::make_unique<FakeWeatherProvider>());
+  EXPECT_DOUBLE_EQ(service.displayTemperature(0, "°C"), 0);
+  EXPECT_DOUBLE_EQ(service.displayTemperature(0, "°F"), 32);
+  EXPECT_DOUBLE_EQ(service.displayTemperature(0, "K"), 273.15);
+  EXPECT_DOUBLE_EQ(service.displayWind(36, "km/h"), 36);
+  EXPECT_DOUBLE_EQ(service.displayWind(36, "m/s"), 10);
+  EXPECT_NEAR(service.displayWind(1.852, "knots"), 1, 1e-9);
+  EXPECT_NEAR(service.displayWind(1.609344, "mph"), 1, 1e-9);
+  EXPECT_DOUBLE_EQ(service.displayPressure(1000, "hPa"), 1000);
+  EXPECT_DOUBLE_EQ(service.displayPressure(1000, "bar"), 1);
+  EXPECT_NEAR(service.displayPressure(1013.25, "mmHg"), 760, 0.001);
+  EXPECT_NEAR(service.displayPressure(1013.25, "inHg"), 29.9213, 0.001);
+}
+TEST(WeatherProviderNetwork, CityResolutionAcceptsZeroAndReportsEmptyResults) {
+  FixtureNetwork network;
+  WeatherProvider provider(&network, nullptr);
+  QSignalSpy success(&provider, &WeatherProvider::geoFetched);
+  QSignalSpy failure(&provider, &WeatherProvider::geoError);
+  provider.geocodeCity("Null Island", "en");
+  EXPECT_EQ(network.requests[0]->url().host(), "geocoding-api.open-meteo.com");
+  network.requests[0]->complete(R"({"results":[{"name":"Null Island","latitude":0,"longitude":0}]})");
+  ASSERT_EQ(success.count(), 1);
+  EXPECT_DOUBLE_EQ(success.at(0).at(0).toDouble(), 0);
+  provider.geocodeCity("Unknown", "en");
+  network.requests[1]->complete("{}");
+  EXPECT_EQ(failure.count(), 1);
+  EXPECT_EQ(success.count(), 1);
+}
+
+TEST_F(WeatherServiceTest, ManualCityResolvesWithoutAnIpKeyAndResumesAfterIdle) {
+  const QByteArray base = "[weather]\nprovider='open-meteo'\nlocation_source='manual'\n";
+  writeTempConfig(config_path, base + "city='Lviv'\ncountry='Ukraine'\n");
+  ConfigService config;
+  auto provider = std::make_unique<FakeWeatherProvider>();
+  auto* fake = provider.get();
+  WeatherService service(&config, std::move(provider));
+  service.start();
+  EXPECT_EQ(fake->last_city, "Lviv, Ukraine");
+  EXPECT_EQ(fake->fetch_geo_calls, 0);
+  EXPECT_EQ(fake->fetch_weather_calls, 0);
+  service.onIdleChanged(true);
+  writeTempConfig(config_path, base + "city='Kyiv'\ncountry='Ukraine'\nlang='de'\n");
+  ASSERT_TRUE(QTest::qWaitFor([&] { return config.weather().city == "Kyiv"; }));
+  EXPECT_EQ(fake->geocode_city_calls, 1);
+  fake->triggerGeoFetched(49, 24, {"Lviv", "Ukraine"});
+  EXPECT_FALSE(isLocationResolved(service));
+  service.onIdleChanged(false);
+  EXPECT_EQ(fake->last_city, "Kyiv, Ukraine");
+  EXPECT_EQ(fake->last_lang, "de");
+  fake->triggerGeoFetched(50, 30, {"Kyiv", "Ukraine"});
+  EXPECT_EQ(fake->fetch_weather_calls, 1);
+  EXPECT_EQ(fake->last_lat, 50);
+}
+TEST_F(WeatherServiceTest, ProviderCredentialsAndLanguageChangesReplaceRequests) {
+  const QByteArray base =
+      "[weather]\nlocation_source='manual'\nlatitude=0.0\nlongitude=0.0\ncity='Pinned'\ncountry='Pinned'\n";
+  writeTempConfig(config_path, base + "provider='open-meteo'\n");
+  ConfigService config;
+  auto provider = std::make_unique<FakeWeatherProvider>();
+  auto* fake = provider.get();
+  WeatherService service(&config, std::move(provider));
+  service.start();
+  writeTempConfig(config_path, base + "provider='openweathermap'\napi_key='new'\nlang='de'\n");
+  ASSERT_TRUE(QTest::qWaitFor([&] { return fake->fetch_weather_calls == 2; }));
+  EXPECT_EQ(fake->cancel_pending_calls, 1);
+  EXPECT_EQ(fake->last_api_key, "new");
+  EXPECT_EQ(fake->last_lang, "de");
+  writeTempConfig(config_path, base + "provider='openweathermap'\napi_key='replacement'\nlang='fr'\n");
+  ASSERT_TRUE(QTest::qWaitFor([&] { return fake->fetch_weather_calls == 3; }));
+  EXPECT_EQ(fake->cancel_pending_calls, 2);
+  EXPECT_EQ(fake->last_api_key, "replacement");
+  EXPECT_EQ(fake->last_lang, "fr");
 }

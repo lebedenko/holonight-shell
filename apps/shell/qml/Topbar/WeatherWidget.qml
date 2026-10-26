@@ -10,7 +10,7 @@ BarSection {
 
     required property string barMonitorName
     readonly property int iconSize: iconRoles.topbar
-    readonly property bool ready: WeatherService.hasData
+    readonly property bool ready: WeatherService.hasData && WeatherService.showInBar
 
     readonly property int slantCut: 12
     readonly property int contentLeftMargin: 24 + root.slantCut
@@ -76,11 +76,12 @@ BarSection {
 
         Column {
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(tempText.implicitWidth, condText.width)
+            width: WeatherService.compactMode ? tempText.implicitWidth : Math.max(tempText.implicitWidth, condText.width)
 
             Text {
                 id: tempText
-                text: root.ready ? Math.round(WeatherService.current.temperature) + "°C" : ""
+                objectName: "weatherBarTemperature"
+                text: root.ready ? WeatherService.formatTemperature(WeatherService.current.temperature, WeatherService.temperatureUnit) : ""
                 color: root.ready ? root.temperatureColor(WeatherService.current.temperature) : HoloniightPalette.textPrimary
                 font.family: AppearanceService.displayFont
                 font.pointSize: AppearanceService.displayFontSize * 0.75
@@ -89,6 +90,8 @@ BarSection {
 
             HnLabel {
                 id: condText
+                objectName: "weatherBarCondition"
+                visible: !WeatherService.compactMode
                 rawText: root.ready ? root.shortCondition(WeatherService.current.condition).toUpperCase() : ""
                 role: HnTypographyRole.Caption
                 color: HoloniightPalette.accentViolet
@@ -104,10 +107,12 @@ BarSection {
     HoverHandler { id: hoverHandler }
 
     BarTooltipArea {
+        objectName: "weatherTooltip"
         barMonitorName: root.barMonitorName
         title: root.ready ? root.capitalize(WeatherService.current.condition) : ""
         description: root.ready
-            ? ("Feels like " + Math.round(WeatherService.current.feelsLike) + "°\nClick for forecast"
+            ? ((WeatherService.showLocation && WeatherService.locationLabel.length > 0 ? WeatherService.locationLabel + "\n" : "")
+               + (WeatherService.showFeelsLike ? "Feels like " + WeatherService.formatTemperature(WeatherService.current.feelsLike, WeatherService.temperatureUnit) + "\n" : "") + "Click for forecast"
                + (WeatherService.stale ? "\nStale — last update over 1h ago" : ""))
             : ""
         iconName: ""

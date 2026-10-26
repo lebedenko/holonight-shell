@@ -191,6 +191,15 @@ class FakeNetworkService : public QObject {
 
 class FakeWeatherService : public QObject {
   Q_OBJECT
+  Q_PROPERTY(bool showInBar MEMBER show_in_bar_ NOTIFY preferencesChanged)
+  Q_PROPERTY(bool compactMode MEMBER compact_mode_ NOTIFY preferencesChanged)
+  Q_PROPERTY(bool showFeelsLike MEMBER show_feels_like_ NOTIFY preferencesChanged)
+  Q_PROPERTY(bool showLocation MEMBER show_location_ NOTIFY preferencesChanged)
+  Q_PROPERTY(QString temperatureUnit MEMBER temperature_unit_ NOTIFY preferencesChanged)
+  Q_PROPERTY(QString windUnit MEMBER wind_unit_ NOTIFY preferencesChanged)
+  Q_PROPERTY(QString pressureUnit MEMBER pressure_unit_ NOTIFY preferencesChanged)
+  Q_PROPERTY(QString attribution MEMBER attribution_ NOTIFY preferencesChanged)
+  Q_PROPERTY(QString status MEMBER status_ NOTIFY preferencesChanged)
   Q_PROPERTY(bool hasData READ hasData NOTIFY hasDataChanged)
   Q_PROPERTY(bool stale READ stale NOTIFY staleChanged)
   Q_PROPERTY(QString locationLabel READ locationLabel NOTIFY locationChanged)
@@ -199,6 +208,19 @@ class FakeWeatherService : public QObject {
   Q_PROPERTY(QVariantList daily READ daily CONSTANT)
 
  public:
+  Q_INVOKABLE double displayTemperature(double value, const QString& = {}) const {
+    return temperature_unit_ == "°F" ? value * 1.8 + 32 : temperature_unit_ == "K" ? value + 273.15 : value;
+  }
+  Q_INVOKABLE double displayWind(double value, const QString& = {}) const {
+    return wind_unit_ == "mph" ? value / 1.609344 : value;
+  }
+  Q_INVOKABLE double displayPressure(double value, const QString& = {}) const {
+    return pressure_unit_ == "bar" ? value / 1000 : value;
+  }
+  Q_INVOKABLE QString formatTemperature(double value, const QString& = {}) const {
+    return QString::number(qRound(displayTemperature(value))) + temperature_unit_;
+  }
+
   [[nodiscard]] bool hasData() const { return has_data_; }
   [[nodiscard]] bool stale() const { return false; }
   [[nodiscard]] QString locationLabel() const { return location_label_; }
@@ -261,12 +283,22 @@ class FakeWeatherService : public QObject {
   }
 
  Q_SIGNALS:
+  void preferencesChanged();
   void hasDataChanged();
   void staleChanged();
   void locationChanged();
   void currentChanged();
 
  private:
+  bool show_in_bar_{true};
+  bool compact_mode_{false};
+  bool show_feels_like_{true};
+  bool show_location_{true};
+  QString temperature_unit_{QStringLiteral("°C")};
+  QString wind_unit_{QStringLiteral("km/h")};
+  QString pressure_unit_{QStringLiteral("hPa")};
+  QString attribution_{QStringLiteral("OpenWeatherMap")};
+  QString status_;
   bool has_data_{true};
   QString location_label_{QStringLiteral("Lviv, Ukraine")};
   QVariant current_{QVariantMap{

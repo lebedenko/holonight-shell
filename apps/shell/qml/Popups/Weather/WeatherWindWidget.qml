@@ -116,7 +116,7 @@ Item {
                 spacing: 4
                 Text {
                     id: speedText
-                    text: root.hasData ? root.speedKmh : "—"
+                    text: root.hasData ? Math.round(WeatherService.displayWind(root.speedKmh, WeatherService.windUnit)) : "—"
                     color: HoloniightPalette.textPrimary
                     font.family: AppearanceService.displayFont
                     font.pointSize: AppearanceService.displayFontSize * 1.3125
@@ -124,7 +124,7 @@ Item {
                 }
                 HnLabel {
                     anchors.baseline: speedText.baseline
-                    rawText: root.hasData ? "km/h" : ""
+                    rawText: root.hasData ? WeatherService.windUnit : ""
                     role: HnTypographyRole.Caption
                     color: HoloniightPalette.textMuted
                 }
@@ -149,7 +149,7 @@ Item {
             HnLabel {
                 id: gustLabel
                 width: parent.width
-                rawText: root.hasData && root.gustKmh > 0 ? "gusts " + root.gustKmh + " km/h" : ""
+                rawText: root.hasData && root.gustKmh > 0 ? "gusts " + Math.round(WeatherService.displayWind(root.gustKmh, WeatherService.windUnit)) + " " + WeatherService.windUnit : ""
                 role: HnTypographyRole.Caption
                 color: HoloniightPalette.textSecondary
                 elide: Text.ElideRight

@@ -12,6 +12,7 @@
 #include <QVariant>
 #include <QVariantList>
 
+#include <holonight_shell_config/config_structs.h>
 #include <memory>
 
 class ConfigService;
@@ -25,6 +26,15 @@ class WeatherService : public QObject, public IActivityGate {
   QML_SINGLETON
   friend class WeatherServiceTest;
 
+  Q_PROPERTY(bool showInBar READ showInBar NOTIFY preferencesChanged)
+  Q_PROPERTY(bool compactMode READ compactMode NOTIFY preferencesChanged)
+  Q_PROPERTY(bool showFeelsLike READ showFeelsLike NOTIFY preferencesChanged)
+  Q_PROPERTY(bool showLocation READ showLocation NOTIFY preferencesChanged)
+  Q_PROPERTY(QString temperatureUnit READ temperatureUnit NOTIFY preferencesChanged)
+  Q_PROPERTY(QString windUnit READ windUnit NOTIFY preferencesChanged)
+  Q_PROPERTY(QString pressureUnit READ pressureUnit NOTIFY preferencesChanged)
+  Q_PROPERTY(QString attribution READ attribution NOTIFY preferencesChanged)
+  Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(bool configured READ configured NOTIFY configuredChanged)
   Q_PROPERTY(bool hasData READ hasData NOTIFY hasDataChanged)
   Q_PROPERTY(bool stale READ stale NOTIFY staleChanged)
@@ -52,6 +62,20 @@ class WeatherService : public QObject, public IActivityGate {
   [[nodiscard]] QVariantList hourlyVariant() const;
   [[nodiscard]] QVariantList dailyVariant() const;
 
+  [[nodiscard]] bool showInBar() const { return preferences_.show_in_bar; }
+  [[nodiscard]] bool compactMode() const { return preferences_.compact_mode; }
+  [[nodiscard]] bool showFeelsLike() const { return preferences_.show_feels_like; }
+  [[nodiscard]] bool showLocation() const { return preferences_.show_location; }
+  [[nodiscard]] QString temperatureUnit() const;
+  [[nodiscard]] QString windUnit() const;
+  [[nodiscard]] QString pressureUnit() const;
+  [[nodiscard]] QString attribution() const;
+  [[nodiscard]] QString status() const { return status_; }
+  Q_INVOKABLE [[nodiscard]] double displayTemperature(double celsius, const QString& unit = {}) const;
+  Q_INVOKABLE [[nodiscard]] double displayWind(double kmh, const QString& unit = {}) const;
+  Q_INVOKABLE [[nodiscard]] double displayPressure(double hpa, const QString& unit = {}) const;
+  Q_INVOKABLE [[nodiscard]] QString formatTemperature(double celsius, const QString& unit = {}) const;
+
   // Called by ShellApplication::startServices(). Loads cache, resolves location, begins polling.
   void start();
 
@@ -63,6 +87,8 @@ class WeatherService : public QObject, public IActivityGate {
   Q_INVOKABLE [[nodiscard]] static QString iconPath(int condition_id, bool is_day);
 
  Q_SIGNALS:
+  void preferencesChanged();
+  void statusChanged();
   void configuredChanged();
   void hasDataChanged();
   void staleChanged();
@@ -143,11 +169,14 @@ class WeatherService : public QObject, public IActivityGate {
   QString location_label_;
 
   // Config snapshot, refreshed in applyConfig().
+  HoloNight::ShellConfig::WeatherConfig preferences_;
+  QString status_;
+  [[nodiscard]] QString cacheIdentity() const;
+  void setStatus(const QString& status);
   QString api_key_;
   QString geo_api_key_;
   QString configured_city_;
   QString configured_country_;
-  QString units_{"metric"};
   QString lang_{"en"};
   int refresh_interval_{600};
 
