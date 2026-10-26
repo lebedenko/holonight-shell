@@ -5,7 +5,7 @@ import Holonight.Core
 import HolonightShell
 
 // Application Volume section (REQ-F-9001/9002): "APPLICATION VOLUME" label + "Show All" toggle,
-// wrapping the unchanged AudioStreamList in a height-capped clip container (4 rows by default).
+// wrapping the grouped AudioStreamList in a height-capped clip container (4 rows by default).
 // Toggling showAll only changes a height number — no model reset, no row destruction (§8.3 of
 // DESIGN.md). `showAll` resets to false on every popup open by construction: the whole popup QML
 // tree is destroyed and rebuilt each time StatusPopupSurface::show() runs (§3), so there is
@@ -14,7 +14,7 @@ ColumnLayout {
   id: root
 
   property bool showAll: false
-  property var model: AudioService.playbackStreams
+  property var model: AudioService.playbackApplications
 
   spacing: 8
 

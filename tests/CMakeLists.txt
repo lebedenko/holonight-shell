@@ -178,6 +178,7 @@ holonight_add_test_exe(test_holonight_services
   test_window_activation_server.cpp
   test_suspend_inhibitor_service.cpp
   test_logind_session_resolver.cpp
+  test_audio_application_model.cpp
   test_mpris_metadata.cpp
   test_mpris_selection.cpp
   test_mpris_service.cpp

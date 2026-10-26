@@ -8,8 +8,8 @@ import Holonight.Controls
 
 import HolonightShell
 
-// One application stream row (sink-input / source-output): app icon, application name,
-// media title subtitle, volume slider, percentage, disabled "..." placeholder. Application
+// One grouped playback application row: app icon, application name,
+// stream-count or media subtitle, volume slider, percentage, disabled "..." placeholder. Application
 // streams always use the cyan accent (no per-section accent, no default concept).
 HnListDelegate {
   id: root
@@ -23,11 +23,10 @@ HnListDelegate {
   readonly property color accentColor: HoloniightPalette.accentCyan
   readonly property int volumePct: root.model.volume ?? 0
   readonly property string iconName: root.model.iconName ?? ""
-  readonly property string appName: root.model.application && root.model.application.length > 0
-      ? root.model.application : root.model.name
+  readonly property string appName: root.model.application ?? ""
 
   title: root.appName
-  subtitle: root.model.name && root.model.name.length > 0 && root.model.name !== root.appName ? root.model.name : ""
+  subtitle: root.model.subtitle ?? ""
   leadingContentAlignment: Qt.AlignVCenter
   sizeRole: HnControlSize.Large
 
@@ -58,9 +57,9 @@ HnListDelegate {
         accentColor: root.accentColor
         muted: root.model.muted ?? false
         accessibleName: qsTr("%1 volume").arg(root.appName)
-        onValueChanging: (value) => AudioService.setStreamVolume(root.model.streamId, value)
-        onValueCommitted: (value) => AudioService.setStreamVolume(root.model.streamId, value)
-        onMuteRequested: AudioService.setStreamMuted(root.model.streamId, !root.model.muted)
+        onValueChanging: (value) => AudioService.playbackApplications.setVolume(root.model.applicationKey, value)
+        onValueCommitted: (value) => AudioService.playbackApplications.setVolume(root.model.applicationKey, value)
+        onMuteRequested: AudioService.playbackApplications.setMuted(root.model.applicationKey, !root.model.muted)
       }
 
       HnLabel {

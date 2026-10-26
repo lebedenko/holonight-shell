@@ -498,6 +498,57 @@ TestCase {
         compare(AudioMetadataFormat.formatDeviceMetadata("Unknown", 0, 48000, ""), "")
     }
 
+    Component {
+        id: groupedApplicationsSectionComponent
+        AudioApplicationsSection { width: 640 }
+    }
+
+    function test_grouped_streams_keep_mpv_visible_and_drag_stable() {
+        PopupTestSeed.clearPlaybackStreams()
+        const section = createTemporaryObject(groupedApplicationsSectionComponent, root)
+        verify(section)
+        const list = findChild(section, "audioApplicationsStreamList")
+        for (let id = 1; id <= 4; ++id)
+            PopupTestSeed.addPlaybackStream(id, "Teams")
+        PopupTestSeed.addPlaybackStream(5, "mpv")
+        tryCompare(list, "count", 2)
+        compare(section.showAll, false)
+        compare(findChild(section, "showAllToggle").visible, false)
+        list.forceLayout()
+        const teams = list.itemAtIndex(0)
+        verify(teams)
+        compare(teams.subtitle, "4 streams")
+        const slider = findChild(teams, "streamVolumeSlider")
+        verify(slider)
+        waitForRendering(section)
+        mousePress(slider, slider.width / 2, slider.height / 2)
+        verify(slider.dragging)
+        const dragValue = slider.displayValue
+        PopupTestSeed.addPlaybackStream(6, "Teams", 90)
+        PopupTestSeed.addPlaybackStream(1, "Teams", 20)
+        compare(list.itemAtIndex(0), teams)
+        compare(slider.dragging, true)
+        compare(slider.displayValue, dragValue)
+        compare(teams.subtitle, "5 streams")
+        mouseRelease(slider, slider.width / 2, slider.height / 2)
+        slider.forceActiveFocus()
+        keyClick(Qt.Key_Right)
+        verify(slider.activeFocus)
+        keyClick(Qt.Key_M)
+        PopupTestSeed.removePlaybackStream(5)
+        tryCompare(list, "count", 1)
+        compare(list.itemAtIndex(0), teams)
+        // More streams never consume application slots; distinct apps do.
+        for (let id = 10; id < 15; ++id)
+            PopupTestSeed.addPlaybackStream(id, "App " + id)
+        tryCompare(list, "count", 6)
+        tryCompare(findChild(section, "showAllToggle"), "visible", true)
+        section.showAll = true
+        const clip = findChild(section, "audioApplicationsClipContainer")
+        tryCompare(clip, "height", list.contentHeight)
+        PopupTestSeed.clearPlaybackStreams()
+    }
+
     function test_applications_section_caps_at_four_rows_and_show_all_expands() {
         const section = createTemporaryObject(applicationsSectionComponent, root)
         verify(section)

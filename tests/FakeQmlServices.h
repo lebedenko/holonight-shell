@@ -1222,6 +1222,17 @@ class PopupTestSeed : public QObject {
     }
     emit storage_.snapshotChanged(count > 0 ? QList{drive} : QList<HoloNight::System::StorageDrive>{}, volumes, true);
   }
+  Q_INVOKABLE void clearPlaybackStreams() { audio_.playbackStreams()->clear(); }
+  Q_INVOKABLE void addPlaybackStream(int id, const QString& application, int volume = 50) {
+    AudioStream stream;
+    stream.id = static_cast<uint32_t>(id);
+    stream.application = application;
+    stream.name = QStringLiteral("Media title");
+    stream.volume = static_cast<uint8_t>(volume);
+    audio_.onStreamAdded(stream);
+  }
+  Q_INVOKABLE void removePlaybackStream(int id) { audio_.onStreamRemoved(static_cast<uint32_t>(id)); }
+
   Q_INVOKABLE void setAudioDeviceCount(int count) {
     audio_.outputs()->clear();
     for (int i = 0; i < count; ++i) {

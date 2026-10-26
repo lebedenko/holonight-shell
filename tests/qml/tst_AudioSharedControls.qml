@@ -98,8 +98,9 @@ TestCase {
             height: 128
             model: ListModel {
                 ListElement {
-                    streamId: 11
-                    name: "Now Playing"
+                    applicationKey: "name:Test Player"
+                    streamCount: 1
+                    subtitle: "Now Playing"
                     application: "Test Player"
                     iconName: "multimedia-player"
                     muted: true

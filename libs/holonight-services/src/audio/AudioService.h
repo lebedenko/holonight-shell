@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AudioApplicationModel.h"
+
 #include <QQmlEngine>
 
 #include <AudioController.h>
@@ -16,10 +18,17 @@ class AudioService final : public HoloNight::System::AudioController {
   Q_OBJECT
   QML_ELEMENT
   QML_SINGLETON
+  Q_PROPERTY(AudioApplicationModel* playbackApplications READ playbackApplications CONSTANT)
 
  public:
-  explicit AudioService(QObject* parent = nullptr) : AudioController(parent) {}
-  explicit AudioService(SkipInitTag tag, QObject* parent = nullptr) : AudioController(tag, parent) {}
+  explicit AudioService(QObject* parent = nullptr)
+      : AudioController(parent), applications_(new AudioApplicationModel(this)) {}
+  explicit AudioService(SkipInitTag tag, QObject* parent = nullptr)
+      : AudioController(tag, parent), applications_(new AudioApplicationModel(this)) {}
+  AudioApplicationModel* playbackApplications() const { return applications_; }
+
+ private:
+  AudioApplicationModel* applications_;
 };
 
 // Anonymous model metadata lets tools resolve inherited provider properties.
