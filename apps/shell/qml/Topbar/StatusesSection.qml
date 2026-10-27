@@ -44,6 +44,11 @@ BarSection {
             Layout.alignment: Qt.AlignVCenter
         }
 
+        BluetoothWidget {
+            barMonitorName: root.barMonitorName
+            Layout.alignment: Qt.AlignVCenter
+        }
+
         StorageWidget {
             barMonitorName: root.barMonitorName
             Layout.alignment: Qt.AlignVCenter

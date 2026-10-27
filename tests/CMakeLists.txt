@@ -496,3 +496,10 @@ if(DBUS_RUN_SESSION_EXECUTABLE)
 endif()
 
 add_test(NAME test_session_state COMMAND ${HOLONIGHT_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_session_state.py)
+
+add_executable(test_bluetooth_presentation bluetooth_main.cpp test_bluetooth_presentation.cpp
+  ../apps/shell/app/BluetoothService.cpp ../apps/shell/app/BluetoothService.h)
+target_include_directories(test_bluetooth_presentation PRIVATE ${PROJECT_SOURCE_DIR}/apps/shell/app)
+target_link_libraries(test_bluetooth_presentation PRIVATE HoloNightSystem::Bluetooth Qt6::Qml Qt6::Gui Qt6::Test GTest::gtest GTest::gmock)
+add_test(NAME bluetooth_presentation COMMAND test_bluetooth_presentation)
+set_tests_properties(bluetooth_presentation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

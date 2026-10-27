@@ -26,6 +26,7 @@ Item {
 
     // Feature content is measured after loading; unknown IDs use the title fallback.
     readonly property var popupSources: ({
+        "bluetooth": "qrc:/HolonightShell/Popups/Bluetooth/BluetoothPopupContent.qml",
         "storage": "qrc:/HolonightShell/Popups/Storage/StoragePopupContent.qml",
         "weather": "qrc:/HolonightShell/Popups/Weather/WeatherPopupContent.qml",
         "audio": "qrc:/HolonightShell/Popups/Audio/AudioPopupContent.qml",

@@ -1,4 +1,6 @@
 add_library(holonight_app STATIC
+    app/BluetoothService.h
+    app/BluetoothService.cpp
     app/ControlCommandBuffer.h
     app/ControlServer.h
     app/ControlServer.cpp
@@ -9,6 +11,7 @@ add_library(holonight_app STATIC
 )
 
 target_link_libraries(holonight_app PUBLIC
+    HoloNightSystem::Bluetooth
     holonight_core
     holonight_platform
     holonight_services

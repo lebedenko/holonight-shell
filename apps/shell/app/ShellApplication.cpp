@@ -7,6 +7,7 @@
 #include "AudioService.h"
 #include "BackgroundManager.h"
 #include "BatteryService.h"
+#include "BluetoothService.h"
 #include "BrightnessChannelSource.h"
 #include "BrightnessService.h"
 #include "CalendarService.h"
@@ -120,6 +121,7 @@ ShellApplication::ShellApplication(QObject* parent)
       battery_(new BatteryService(this)),
       audio_(new AudioService(this)),
       storage_(new StorageService(this)),
+      bluetooth_(new BluetoothService(this)),
       network_(new NetworkService(this)),
       power_profiles_(new PowerProfilesService(this)),
       session_(new SessionService(integration_->integration(), this)),
@@ -217,6 +219,7 @@ void ShellApplication::registerQmlTypes() {
   reg(battery_, "BatteryService");
   reg(audio_, "AudioService");
   reg(storage_, "StorageService");
+  reg(bluetooth_, "BluetoothService");
   reg(settings_navigation_service_, "SettingsNavigationService");
   reg(network_, "NetworkService");
   reg(power_profiles_, "PowerProfilesService");
@@ -322,6 +325,26 @@ void ShellApplication::startServices() {
           &ShellApplication::updateAudioOsdSuppression);
   connect(status_popup_surface_, &StatusPopupSurface::activePopupChanged, this,
           &ShellApplication::updateAudioOsdSuppression);
+  bluetooth_->setDiscoveryReleaseDelay(2000);
+  bluetooth_->requestDefaultAgent();
+  auto updateBluetooth = [this] {
+    bluetooth_->setActive(status_popup_surface_->isPopupVisible() &&
+                          status_popup_surface_->activePopupId() == QStringLiteral("bluetooth"));
+  };
+  connect(status_popup_surface_, &StatusPopupSurface::popupVisibleChanged, this, updateBluetooth);
+  connect(status_popup_surface_, &StatusPopupSurface::activePopupChanged, this, updateBluetooth);
+  connect(bluetooth_, &BluetoothService::pairingRequested, this, [this] {
+    if (status_popup_surface_->isPopupVisible() &&
+        status_popup_surface_->activePopupId() == QStringLiteral("bluetooth"))
+      return;
+    const auto monitor = resolveOsdMonitor();
+    QScreen* screen = QGuiApplication::primaryScreen();
+    for (auto* candidate : QGuiApplication::screens())
+      if (candidate->name() == monitor) screen = candidate;
+    const auto geometry = screen ? screen->geometry() : QRect(0, 0, 800, 600);
+    const auto anchor = bluetooth_->anchor(monitor).value_or(QPair<int, int>{geometry.x() + geometry.width() / 2, 1});
+    status_popup_surface_->show(QStringLiteral("bluetooth"), monitor, anchor.first, anchor.second);
+  });
   // Brightness suppression is wired in startLayerSurfaces() instead because SidebarManager does
   // not exist until the layer-shell provider is ready.
 

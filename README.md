@@ -574,3 +574,9 @@ command-valued settings are not service startup. Native executables and referenc
 assets are not decoded as configuration. Dynamic constructs are reported as unchecked;
 a successful check is not a guarantee about arbitrary Lua or shell code. Inspection
 is limited to 128 referenced files, 1 MiB per file, and 16 nested command wrappers.
+
+Bluetooth controls use the installed `HoloNightSystem::Bluetooth` client and BlueZ.
+The bar widget opens connection and pairing controls; Bluetooth Settings opens the
+independent Settings page. Opening the popup scans; closing releases this client's
+scan after two seconds. Stop scan persists until Start or reopening. Dismissal
+cancels pairing. Default-agent conflicts appear as diagnostics; Blueman may coexist.

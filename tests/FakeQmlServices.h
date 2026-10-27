@@ -3,6 +3,7 @@
 #include "AudioService.h"
 #include "BatteryService.h"
 #include "BatteryState.h"
+#include "BluetoothService.h"
 #include "CompositorBackend.h"
 #include "CompositorService.h"
 #include "ConfigService.h"
@@ -1245,6 +1246,45 @@ class FakeTopbarTestSeed : public QObject {
   FakeNetworkService& network_;
 };
 
+class TestBluetoothBackend : public HoloNight::System::BluetoothBackend {
+  Q_OBJECT
+ public:
+  void start() override {}
+  void stop() override {}
+  void execute(const QString& id, HoloNight::System::BluetoothOperation operation, const QString& target,
+               const QVariant&) override {
+    last_ = {id, target, operation, {}, {}};
+  }
+  void respond(const QString& id, bool, const QString&) override { emit agentCanceled(id); }
+  void requestDefaultAgent() override {}
+  Q_INVOKABLE void seed() {
+    using namespace HoloNight::System;
+    emit snapshotChanged({{"adapter", "AA", "Computer", true}, {"other", "BB", "Other"}},
+                         {{.id = "headphones",
+                           .adapterId = "adapter",
+                           .alias = "Headphones",
+                           .paired = true,
+                           .connected = true,
+                           .battery = 72},
+                          {.id = "keyboard", .adapterId = "adapter", .alias = "Keyboard", .paired = true},
+                          {.id = "phone", .adapterId = "adapter", .alias = "Phone", .rssi = -50}},
+                         true);
+  }
+  Q_INVOKABLE void clear() { emit snapshotChanged({}, {}, false); }
+  Q_INVOKABLE void fail() {
+    last_.errorName = QStringLiteral("org.bluez.Error.Failed");
+    last_.errorMessage = QStringLiteral("Test Bluetooth error");
+    emit operationFinished(last_);
+  }
+  Q_INVOKABLE void pairing() {
+    emit agentRequested(
+        {"interaction", "phone", HoloNight::System::BluetoothInteraction::Confirmation, "000042", {}, 0});
+  }
+
+ private:
+  HoloNight::System::BluetoothResult last_;
+};
+
 class NullStorageBackend : public HoloNight::System::StorageBackend {
  public:
   void start() override {}
@@ -1628,6 +1668,8 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StorageService", &storage_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BluetoothService", &bluetooth_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BluetoothTestSeed", &bluetooth_backend_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PopupTestSeed", &popup_test_seed_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PowerProfilesService", &power_profiles_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "TrayModel", &tray_model_) >= 0 &&
@@ -1689,6 +1731,8 @@ class FakeQmlServices {
   BatteryService battery_;
   SuspendInhibitorService suspend_inhibitor_service_{SuspendInhibitorService::SkipInit};
   AudioService audio_;
+  TestBluetoothBackend bluetooth_backend_;
+  BluetoothService bluetooth_{&bluetooth_backend_, nullptr};
   NullStorageBackend storage_backend_;
   HoloNight::System::StorageController storage_controller_{&storage_backend_};
   StorageService storage_{&storage_controller_};
