@@ -14,6 +14,9 @@ TestCase {
     Component { id: popupComponent; WeatherPopupContent { width: 1000; height: 1200 } }
 
     function init() {
+        WeatherService.resetHourlyData()
+        WeatherService.setEmptyForecasts(false)
+        WeatherService.setAvailableFields(["temperature", "humidity", "visibility", "pressure", "uvi", "windSpeed", "windGust", "windDirection", "aqi", "timeUpdated", "feelsLike", "condition", "conditionId", "sunrise", "sunset"])
         TopbarTestSeed.setWeatherHasData(true)
         WeatherService.setCurrentTemperature(18)
         WeatherService.setLocationLabel("Lviv, Ukraine")
@@ -77,5 +80,48 @@ TestCase {
         compare(findChild(popup, "weatherPressure").value, "1.026 bar")
         WeatherService.attribution = "Open-Meteo (CC BY 4.0)"
         verify(findChild(popup, "weatherAttribution").text.includes("Open-Meteo"))
+    }
+
+    function test_unavailable_values_hide_and_restore_at_both_widths() {
+        for (const width of [1000, 400]) {
+            const popup = createTemporaryObject(popupComponent, root, {width: width})
+            verify(popup)
+            WeatherService.setAvailableFields(["windGust"])
+            WeatherService.setEmptyForecasts(true)
+            compare(findChild(popup, "weatherFeelsLike").visible, false)
+            compare(findChild(popup, "weatherPressure").visible, false)
+            compare(findChild(popup, "weatherWindSpeed").visible, false)
+            compare(findChild(popup, "weatherWindDirection").visible, false)
+            compare(findChild(popup, "weatherWindGust").visible, true)
+            compare(findChild(popup, "weatherSunrise").visible, false)
+            compare(findChild(popup, "weatherTemperatureGraph").hasSamples, false)
+            const hiddenHeight = popup.implicitHeight
+            WeatherService.setAvailableFields(["temperature", "feelsLike", "pressure", "sunrise"])
+            WeatherService.setEmptyForecasts(false)
+            tryCompare(findChild(popup, "weatherFeelsLike"), "visible", true)
+            tryCompare(findChild(popup, "weatherPressure"), "visible", true)
+            tryVerify(() => popup.implicitHeight > hiddenHeight)
+            popup.destroy()
+        }
+    }
+
+    function test_graphs_preserve_gaps_and_zero_samples() {
+        const popup = createTemporaryObject(popupComponent, root)
+        const graph = findChild(popup, "weatherTemperatureGraph")
+        WeatherService.setHourlyData([
+            {timestamp: 3600, temperature: 0, precipitation: 0, availableFields: ["temperature", "precipitation"]},
+            {timestamp: 7200, temperature: 0, precipitation: 0, availableFields: []},
+            {timestamp: 10800, temperature: 2, precipitation: 0, availableFields: ["temperature"]}
+        ])
+        const precipitation = findChild(popup, "weatherPrecipitationGraph")
+        compare(precipitation.hasSamples, true)
+        compare(precipitation.completeSamples, false)
+        compare(graph.points.length, 3)
+        compare(graph.points[1].timestamp, 7200)
+        compare(graph.points[1].valid, false)
+        compare(graph.points[0].valid, true)
+        compare(graph.hasSamples, true)
+        WeatherService.setHourlyData([{timestamp: 3600, temperature: 0, availableFields: ["temperature"]}])
+        compare(graph.hasSamples, false)
     }
 }

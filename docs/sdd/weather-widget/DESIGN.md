@@ -1660,3 +1660,21 @@ ConfigService emits weatherChanged()
 ### 14.9 WeatherProvider as a Separate Class (Test Seam)
 
 **Rationale:** By injecting `WeatherProvider` via `std::unique_ptr<WeatherProvider>` in the test constructor of `WeatherService`, unit tests can provide a mock `WeatherProvider` subclass that emits signals without making real network calls. This pattern is identical to `BatteryService(DbusPropertyClientPtr dbus, ...)` where `DbusPropertyClientPtr` is injected for testing. The `SkipInitTag` constructor is also provided for tests that need a service with no initialization at all.
+
+## Partial response availability
+
+Current, hourly and daily snapshots expose `availableFields`, using the QML property
+names. Only valid supplied measurements are shown; explicit zero values remain valid.
+Derived measurements require their source inputs. Open-Meteo moon phase remains locally
+calculated. Omitted OpenWeatherMap rain and snow retain the provider's zero convention.
+Air pollution is optional: its failure publishes successful weather without AQI and is
+retried on the next refresh. A main weather failure retains the last successful snapshot.
+
+The popup collapses unavailable measurements and empty sections. Graphs retain timestamps,
+skip missing precipitation and break temperature lines across missing samples. Temperature
+requires two valid samples; precipitation requires one. The no-precipitation message is
+shown only when all displayed samples are available and zero. Display preferences still
+apply in addition to availability.
+
+Cache version 3 persists availability per snapshot entry. Older cache versions are ignored
+because their zero defaults cannot distinguish unavailable data from actual measurements.

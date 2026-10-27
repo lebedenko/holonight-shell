@@ -11,12 +11,15 @@ Item {
     property int gustKmh: 0
     property int directionDeg: 0
     property bool hasData: false
+    property bool hasSpeed: false
+    property bool hasGust: false
+    property bool hasDirection: false
 
     readonly property int normalizedDirection: ((root.directionDeg % 360) + 360) % 360
     readonly property string directionCode: directionName(root.normalizedDirection, true)
     readonly property string directionLabel: directionName(root.normalizedDirection, false)
-    implicitWidth: Math.ceil(112 + 12 + Math.max(gustLabel.implicitWidth, directionLabel.implicitWidth, speedRow.implicitWidth))
-    implicitHeight: Math.max(126, textColumn.implicitHeight + 8)
+    implicitWidth: Math.ceil((root.hasDirection ? 112 + 12 : 0) + Math.max(gustLabel.implicitWidth, directionText.implicitWidth, speedRow.implicitWidth))
+    implicitHeight: Math.max(root.hasDirection ? 126 : 0, textColumn.implicitHeight + 8)
 
     function directionName(degrees, compact) {
         const codes = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
@@ -30,6 +33,7 @@ Item {
         spacing: 12
 
         Item {
+            visible: root.hasDirection
             Layout.preferredWidth: 112
             Layout.fillHeight: true
 
@@ -113,6 +117,8 @@ Item {
 
             Row {
                 id: speedRow
+                objectName: "weatherWindSpeed"
+                visible: root.hasSpeed
                 spacing: 4
                 Text {
                     id: speedText
@@ -131,6 +137,7 @@ Item {
             }
 
             HnLabel {
+                visible: root.hasDirection
                 rawText: root.hasData ? root.directionCode : "—"
                 role: HnTypographyRole.Subheading
                 color: HoloniightPalette.accentViolet
@@ -138,7 +145,9 @@ Item {
             }
 
             HnLabel {
-                id: directionLabel
+                id: directionText
+                objectName: "weatherWindDirection"
+                visible: root.hasDirection
                 width: parent.width
                 rawText: root.hasData ? "From " + root.directionLabel : ""
                 role: HnTypographyRole.Caption
@@ -148,8 +157,10 @@ Item {
 
             HnLabel {
                 id: gustLabel
+                objectName: "weatherWindGust"
+                visible: root.hasGust
                 width: parent.width
-                rawText: root.hasData && root.gustKmh > 0 ? "gusts " + Math.round(WeatherService.displayWind(root.gustKmh, WeatherService.windUnit)) + " " + WeatherService.windUnit : ""
+                rawText: root.hasData && root.hasGust ? "gusts " + Math.round(WeatherService.displayWind(root.gustKmh, WeatherService.windUnit)) + " " + WeatherService.windUnit : ""
                 role: HnTypographyRole.Caption
                 color: HoloniightPalette.textSecondary
                 elide: Text.ElideRight

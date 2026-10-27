@@ -17,7 +17,8 @@ Item {
     implicitHeight: Math.max(256, currentContent.implicitHeight + 44)
 
     readonly property color dividerColor: HoloniightPalette.borderPassive
-    readonly property bool isDay: WeatherService.hasData
+    readonly property bool isDay: !WeatherService.current.availableFields.includes("sunrise") || !WeatherService.current.availableFields.includes("sunset")
+        ? !String(WeatherService.current.iconCode || "").endsWith("n") : WeatherService.hasData
         && (Date.now() / 1000) >= WeatherService.current.sunrise
         && (Date.now() / 1000) < WeatherService.current.sunset
 
@@ -48,7 +49,7 @@ Item {
                 windSpeedKmh: WeatherService.hasData ? WeatherService.current.windSpeed : 0
                 isDay: root.isDay
                 iconSize: Math.min(220, parent.width, parent.height)
-                moonPhase: (WeatherService.hasData && WeatherService.daily.length > 0) ? WeatherService.daily[0].moonPhase : undefined
+                moonPhase: (WeatherService.hasData && WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase")) ? WeatherService.daily[0].moonPhase : undefined
                 anchors.centerIn: parent
             }
         }
@@ -67,6 +68,7 @@ Item {
 
                 Row {
                     id: temperatureRow
+                    visible: WeatherService.current.availableFields.includes("temperature")
                     width: parent.width
                     spacing: 6
 
@@ -98,6 +100,7 @@ Item {
 
                 HnLabel {
                     width: parent.width
+                    visible: WeatherService.current.availableFields.includes("condition")
                     rawText: WeatherService.hasData ? WeatherService.current.condition : ""
                     role: HnTypographyRole.MicroHeader
                     color: HoloniightPalette.accentViolet
@@ -107,6 +110,7 @@ Item {
 
                 Item {
                     width: parent.width
+                    visible: WeatherService.current.availableFields.includes("feelsLike") && WeatherService.showFeelsLike
                     height: 12
 
                     HnSeparator {
@@ -120,7 +124,7 @@ Item {
                 HnLabel {
                     width: parent.width
                     objectName: "weatherFeelsLike"
-                    visible: WeatherService.showFeelsLike
+                    visible: WeatherService.current.availableFields.includes("feelsLike") && WeatherService.showFeelsLike
                     rawText: WeatherService.hasData
                         ? "Feels like " + WeatherService.formatTemperature(WeatherService.current.feelsLike, WeatherService.temperatureUnit)
                         : ""

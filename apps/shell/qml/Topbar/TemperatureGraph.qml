@@ -6,6 +6,9 @@ Canvas {
     id: root
     antialiasing: true
 
+    readonly property bool hasSamples: points.filter(point => point.valid).length >= 2
+    onPointsChanged: requestPaint()
+
     readonly property int displaySeconds: 24 * 60 * 60
 
     function canvasFont(fontSize, family, fallbackFamily) {
@@ -27,6 +30,7 @@ Canvas {
                 break
             }
             result.push({
+                valid: list[idx].availableFields.includes("temperature"),
                 temperature: WeatherService.displayTemperature(list[idx].temperature, WeatherService.temperatureUnit),
                 timestamp: list[idx].timestamp,
             })
@@ -39,7 +43,7 @@ Canvas {
         ctx.reset()
 
         const pts = root.points
-        if (pts.length < 2) {
+        if (!root.hasSamples) {
             return
         }
 
@@ -52,7 +56,7 @@ Canvas {
         const plotW = wid - leftPad - rightPad
         const plotH = hgt - topPad - bottomPad
 
-        const temps = pts.map(point => point.temperature)
+        const temps = pts.filter(point => point.valid).map(point => point.temperature)
         const minT = Math.floor(Math.min.apply(null, temps))
         const maxT = Math.ceil(Math.max.apply(null, temps))
         const range = Math.max(1, maxT - minT)
@@ -63,9 +67,12 @@ Canvas {
         function yPos(val) { return topPad + ((maxT - val) / range) * plotH }
         function drawTemperaturePath() {
             ctx.beginPath()
-            ctx.moveTo(xPos(pts[0].timestamp), yPos(pts[0].temperature))
-            for (let idx = 1; idx < pts.length; idx++) {
-                ctx.lineTo(xPos(pts[idx].timestamp), yPos(pts[idx].temperature))
+            let connected = false
+            for (const point of pts) {
+                if (!point.valid) { connected = false; continue }
+                if (connected) ctx.lineTo(xPos(point.timestamp), yPos(point.temperature))
+                else ctx.moveTo(xPos(point.timestamp), yPos(point.temperature))
+                connected = true
             }
         }
 
@@ -111,6 +118,7 @@ Canvas {
 
         ctx.fillStyle = HoloniightPalette.accentCyan
         for (let idx = 0; idx < pts.length; idx += Math.max(1, Math.floor(pts.length / 12))) {
+            if (!pts[idx].valid) continue
             ctx.beginPath()
             ctx.arc(xPos(pts[idx].timestamp), yPos(pts[idx].temperature), 2, 0, Math.PI * 2)
             ctx.fill()

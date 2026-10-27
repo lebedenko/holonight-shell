@@ -245,7 +245,7 @@ TEST(WeatherProviderParsing, ParseHourlyJsonSuccess) {
 }
 
 TEST(WeatherProviderParsing, ParseHourlyJsonClampsBoundedValues) {
-  QJsonObject entry{{"pop", 1.5}, {"clouds", -1}};
+  QJsonObject entry{{"dt", 0}, {"pop", 1.5}, {"clouds", -1}};
   entry["rain"] = QJsonObject{{"1h", -2.0}};
   entry["snow"] = QJsonObject{{"1h", -3.0}};
 
@@ -300,7 +300,7 @@ TEST(WeatherProviderParsing, ParseDailyJsonSuccess) {
 }
 
 TEST(WeatherProviderParsing, ParseDailyJsonClampsProbabilityAndMoonPhase) {
-  const QJsonObject entry{{"pop", -0.2}, {"moon_phase", 1.5}};
+  const QJsonObject entry{{"dt", 0}, {"pop", -0.2}, {"moon_phase", 1.5}};
 
   const QList<DailyEntry> parsed = WeatherProvider::parseDailyJson(QJsonArray{entry});
 
@@ -343,16 +343,23 @@ TEST(WeatherProviderParsing, PopulatePollutionDataSuccess) {
   EXPECT_DOUBLE_EQ(current.so2, 5.5);
 }
 
-TEST(WeatherProviderParsing, PopulatePollutionDataClampsAqiButPreservesMissingValue) {
+TEST(WeatherProviderParsing, PopulatePollutionDataRejectsInvalidAqi) {
   QJsonObject high_aqi{{"list", QJsonArray{QJsonObject{{"main", QJsonObject{{"aqi", 7}}}}}}};
   CurrentWeather current;
 
   WeatherProvider::populatePollutionData(current, high_aqi);
-  EXPECT_EQ(current.aqi, 5);
+  EXPECT_EQ(current.aqi, 0);
 
   WeatherProvider::populatePollutionData(current,
                                          QJsonObject{{"list", QJsonArray{QJsonObject{{"main", QJsonObject{}}}}}});
-  EXPECT_EQ(current.aqi, 5);
+  EXPECT_EQ(current.aqi, 0);
+
+  for (const auto& invalid : QJsonArray{0, 6, 2.5, QJsonValue::Null, "2"}) {
+    CurrentWeather unavailable;
+    WeatherProvider::populatePollutionData(
+        unavailable, QJsonObject{{"list", QJsonArray{QJsonObject{{"main", QJsonObject{{"aqi", invalid}}}}}}});
+    EXPECT_FALSE(unavailable.available_fields.contains("aqi"));
+  }
 
   CurrentWeather missing_aqi;
   WeatherProvider::populatePollutionData(missing_aqi,
@@ -400,7 +407,7 @@ class WeatherServiceTest : public ::testing::Test {
                                {"lang", "en"},
                                {"latitude", 45.0},
                                {"longitude", -75.0}};
-    root["version"] = 2;
+    root["version"] = 3;
     root["identity"] = QString::fromLatin1(
         QCryptographicHash::hash(QJsonDocument(identity).toJson(QJsonDocument::Compact), QCryptographicHash::Sha256)
             .toHex());
@@ -801,13 +808,21 @@ TEST_F(WeatherServiceTest, CacheReusesMatchingDataAndRejectsAnotherProviderOrLeg
     service.start();
     CurrentWeather weather;
     weather.temperature = 17;
-    fake->triggerWeatherFetched(weather, {}, {});
+    weather.available_fields = {"temperature"};
+    HourlyEntry hourly;
+    hourly.available_fields = {"temperature", "precipitation"};
+    DailyEntry daily;
+    daily.available_fields = {"moonPhase"};
+    fake->triggerWeatherFetched(weather, {hourly}, {daily});
   }
   {
     WeatherService service(&config, std::make_unique<FakeWeatherProvider>());
     service.start();
     EXPECT_TRUE(service.hasData());
     EXPECT_DOUBLE_EQ(service.currentVariant().value<CurrentWeather>().temperature, 17);
+    EXPECT_EQ(service.currentVariant().value<CurrentWeather>().available_fields, QStringList{"temperature"});
+    EXPECT_TRUE(service.hourlyVariant()[0].value<HourlyEntry>().available_fields.contains("precipitation"));
+    EXPECT_TRUE(service.dailyVariant()[0].value<DailyEntry>().available_fields.contains("moonPhase"));
   }
   writeTempConfig(config_path, "[weather]\nprovider='openweathermap'\napi_key='key'\nlatitude=0.0\nlongitude=0.0\n");
   ASSERT_TRUE(QMetaObject::invokeMethod(&config, "parseFile", Qt::DirectConnection));
@@ -821,7 +836,7 @@ TEST_F(WeatherServiceTest, CacheReusesMatchingDataAndRejectsAnotherProviderOrLeg
   ASSERT_TRUE(cache.open(QIODevice::ReadOnly));
   auto root = QJsonDocument::fromJson(cache.readAll()).object();
   cache.close();
-  root.remove("version");
+  root["version"] = 2;
   ASSERT_TRUE(cache.open(QIODevice::WriteOnly));
   cache.write(QJsonDocument(root).toJson());
   cache.close();
@@ -998,4 +1013,74 @@ TEST_F(WeatherServiceTest, ProviderCredentialsAndLanguageChangesReplaceRequests)
   EXPECT_EQ(fake->cancel_pending_calls, 2);
   EXPECT_EQ(fake->last_api_key, "replacement");
   EXPECT_EQ(fake->last_lang, "fr");
+}
+
+TEST(WeatherProviderParsing, AvailabilityDistinguishesZeroFromMissingAndMalformed) {
+  const auto current =
+      WeatherProvider::parseCurrentJson(QJsonObject{{"temp", 0}, {"humidity", QJsonValue::Null}, {"wind_deg", "bad"}});
+  EXPECT_TRUE(current.available_fields.contains("temperature"));
+  EXPECT_FALSE(current.available_fields.contains("humidity"));
+  EXPECT_FALSE(current.available_fields.contains("windDirection"));
+  EXPECT_FALSE(current.available_fields.contains("timeUpdated"));
+  const auto hourly = WeatherProvider::parseHourlyJson(
+      QJsonArray{QJsonObject{}, QJsonObject{{"dt", 1.5}}, QJsonObject{{"dt", 0}, {"temp", 0}}});
+  ASSERT_EQ(hourly.size(), 1);
+  EXPECT_TRUE(hourly[0].available_fields.contains("temperature"));
+  EXPECT_TRUE(hourly[0].available_fields.contains("precipitation"));
+  EXPECT_FALSE(hourly[0].available_fields.contains("pop"));
+  const auto daily = WeatherProvider::parseDailyJson(
+      QJsonArray{QJsonObject{{"dt", QJsonValue::Null}}, QJsonObject{{"dt", 0}, {"temp", QJsonObject{{"min", 0}}}}});
+  ASSERT_EQ(daily.size(), 1);
+  EXPECT_TRUE(daily[0].available_fields.contains("tempMin"));
+  EXPECT_FALSE(daily[0].available_fields.contains("tempMax"));
+}
+
+TEST(WeatherProviderParsing, OpenMeteoAvailabilityHandlesShortArraysAndDerivedValues) {
+  const auto data = WeatherProvider::parseOpenMeteo(QJsonDocument::fromJson(R"({
+    "current":{"time":3600,"temperature_2m":0},
+    "hourly":{"time":[3600,7200,null],"temperature_2m":[0],"visibility":[null],"uv_index":[0]},
+    "daily":{"time":[0,null],"temperature_2m_min":[0],"sunrise":[null]}
+  })")
+                                                        .object());
+  EXPECT_TRUE(data.current.available_fields.contains("temperature"));
+  EXPECT_TRUE(data.current.available_fields.contains("uvi"));
+  EXPECT_FALSE(data.current.available_fields.contains("visibility"));
+  EXPECT_FALSE(data.current.available_fields.contains("sunrise"));
+  ASSERT_EQ(data.hourly.size(), 2);
+  EXPECT_TRUE(data.hourly[0].available_fields.contains("temperature"));
+  EXPECT_FALSE(data.hourly[1].available_fields.contains("temperature"));
+  ASSERT_EQ(data.daily.size(), 1);
+  EXPECT_TRUE(data.daily[0].available_fields.contains("moonPhase"));
+}
+
+TEST(WeatherProviderNetwork, PublishesWeatherWhenOptionalPollutionFailsAndRetriesNextRefresh) {
+  FixtureNetwork network;
+  WeatherProvider provider(&network, nullptr);
+  QSignalSpy success(&provider, &WeatherProvider::weatherFetched);
+  QSignalSpy failure(&provider, &WeatherProvider::fetchError);
+  provider.fetchWeather(0, 0, "key", "metric", "en");
+  network.requests[0]->complete(R"({"current":{"temp":0,"dt":3600}})");
+  network.requests[1]->complete("", true);
+  ASSERT_EQ(success.count(), 1);
+  EXPECT_EQ(failure.count(), 0);
+  const auto current = success[0][0].value<CurrentWeather>();
+  EXPECT_TRUE(current.available_fields.contains("temperature"));
+  EXPECT_FALSE(current.available_fields.contains("aqi"));
+  provider.fetchWeather(0, 0, "key", "metric", "en");
+  EXPECT_EQ(network.requests.size(), 4);
+}
+
+TEST(WeatherProviderNetwork, PublishesPartialOpenMeteoForecastWithoutCurrentTemperature) {
+  FixtureNetwork network;
+  WeatherProvider provider(&network, nullptr);
+  provider.setProvider("open-meteo");
+  QSignalSpy success(&provider, &WeatherProvider::weatherFetched);
+  provider.fetchWeather(0, 0, "", "metric", "en");
+  network.requests[0]->complete(
+      R"({"current":{"time":3600,"temperature_2m":null},"hourly":{"time":[3600],"temperature_2m":[0]}})");
+  ASSERT_EQ(success.count(), 1);
+  EXPECT_FALSE(success[0][0].value<CurrentWeather>().available_fields.contains("temperature"));
+  const auto hourly = success[0][1].value<QList<HourlyEntry>>();
+  ASSERT_EQ(hourly.size(), 1);
+  EXPECT_TRUE(hourly[0].available_fields.contains("temperature"));
 }

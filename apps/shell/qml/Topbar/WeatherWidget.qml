@@ -112,7 +112,7 @@ BarSection {
         title: root.ready ? root.capitalize(WeatherService.current.condition) : ""
         description: root.ready
             ? ((WeatherService.showLocation && WeatherService.locationLabel.length > 0 ? WeatherService.locationLabel + "\n" : "")
-               + (WeatherService.showFeelsLike ? "Feels like " + WeatherService.formatTemperature(WeatherService.current.feelsLike, WeatherService.temperatureUnit) + "\n" : "") + "Click for forecast"
+               + (WeatherService.showFeelsLike && WeatherService.current.availableFields.includes("feelsLike") ? "Feels like " + WeatherService.formatTemperature(WeatherService.current.feelsLike, WeatherService.temperatureUnit) + "\n" : "") + "Click for forecast"
                + (WeatherService.stale ? "\nStale — last update over 1h ago" : ""))
             : ""
         iconName: ""

@@ -6,6 +6,7 @@ import Holonight.Core
 Column {
     id: root
     spacing: 8
+    visible: WeatherService.current.availableFields.includes("humidity") || WeatherService.current.availableFields.includes("visibility") || WeatherService.current.availableFields.includes("pressure") || WeatherService.current.availableFields.includes("uvi") || WeatherService.current.availableFields.includes("windSpeed") || WeatherService.current.availableFields.includes("windGust") || WeatherService.current.availableFields.includes("windDirection")
     readonly property real naturalWidth: Math.max(30 + 90 + 8 + 90, wind.implicitWidth)
 
     component DetailCell: Item {
@@ -120,22 +121,26 @@ Column {
     }
 
     DetailCell {
+        visible: WeatherService.current.availableFields.includes("humidity")
         iconName: "humidity"
         label: "Humidity"
         value: WeatherService.hasData ? WeatherService.current.humidity + "%" : "—"
     }
     DetailCell {
+        visible: WeatherService.current.availableFields.includes("visibility")
         iconName: "visibility"
         label: "Visibility"
         value: WeatherService.hasData ? WeatherService.current.visibility.toFixed(0) + " km" : "—"
     }
     DetailCell {
+        visible: WeatherService.current.availableFields.includes("pressure")
         objectName: "weatherPressure"
         iconName: "pressure"
         label: "Pressure"
         value: WeatherService.hasData ? WeatherService.displayPressure(WeatherService.current.pressure, WeatherService.pressureUnit).toFixed(WeatherService.pressureUnit === "bar" ? 3 : WeatherService.pressureUnit === "inHg" ? 2 : 0) + " " + WeatherService.pressureUnit : "—"
     }
     DetailCell {
+        visible: WeatherService.current.availableFields.includes("uvi")
         iconName: "uv"
         label: "UV Index"
         value: {
@@ -153,6 +158,10 @@ Column {
         width: parent.width
         height: implicitHeight
         hasData: WeatherService.hasData
+        hasSpeed: WeatherService.current.availableFields.includes("windSpeed")
+        hasGust: WeatherService.current.availableFields.includes("windGust")
+        hasDirection: WeatherService.current.availableFields.includes("windDirection")
+        visible: hasSpeed || hasGust || hasDirection
         speedKmh: WeatherService.hasData ? WeatherService.current.windSpeed : 0
         gustKmh: WeatherService.hasData ? WeatherService.current.windGust : 0
         directionDeg: WeatherService.hasData ? WeatherService.current.windDirection : 0

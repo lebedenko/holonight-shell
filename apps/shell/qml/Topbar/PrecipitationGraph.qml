@@ -8,6 +8,10 @@ Canvas {
     id: root
     antialiasing: true
 
+    readonly property bool hasSamples: points.filter(point => point.valid).length >= 1
+    readonly property bool completeSamples: points.length > 0 && points.every(point => point.valid)
+    onPointsChanged: requestPaint()
+
     readonly property int displaySeconds: 24 * 60 * 60
 
     function canvasFont(fontSize, family, fallbackFamily) {
@@ -29,6 +33,7 @@ Canvas {
                 break
             }
             result.push({
+                valid: list[idx].availableFields.includes("precipitation"),
                 precipitation: list[idx].precipitation,
                 timestamp: list[idx].timestamp,
             })
@@ -42,7 +47,7 @@ Canvas {
         ctx.reset()
 
         const pts = root.points
-        if (pts.length === 0) {
+        if (!root.hasSamples) {
             return
         }
 
@@ -55,7 +60,7 @@ Canvas {
         const plotW = wid - leftPad - rightPad
         const plotH = hgt - topPad - bottomPad
 
-        const vals = pts.map(point => point.precipitation)
+        const vals = pts.filter(point => point.valid).map(point => point.precipitation)
         const maxP = Math.max.apply(null, vals)
         const hasPrecipitation = maxP > 0
         const axisMax = Math.max(1, Math.ceil(maxP))
@@ -85,7 +90,7 @@ Canvas {
             ctx.stroke()
         }
 
-        if (!hasPrecipitation) {
+        if (!hasPrecipitation && root.completeSamples) {
             ctx.fillStyle = Qt.rgba(HoloniightPalette.textMuted.r,
                                     HoloniightPalette.textMuted.g,
                                     HoloniightPalette.textMuted.b, 0.48)
@@ -102,11 +107,11 @@ Canvas {
 
         ctx.fillStyle = barGradient
         if (hasPrecipitation) {
-            for (let idx = 0; idx < vals.length; idx++) {
-                if (vals[idx] <= 0) {
+            for (let idx = 0; idx < pts.length; idx++) {
+                if (!pts[idx].valid || pts[idx].precipitation <= 0) {
                     continue
                 }
-                const barH = Math.max(2, (vals[idx] / axisMax) * plotH)
+                const barH = Math.max(2, (pts[idx].precipitation / axisMax) * plotH)
                 const barX = xPos(pts[idx].timestamp) + (slot - barW) / 2
                 const barY = hgt - bottomPad - barH
                 ctx.fillRect(barX, barY, barW, barH)

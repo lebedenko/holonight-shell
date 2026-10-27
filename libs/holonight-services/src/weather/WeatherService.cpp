@@ -22,6 +22,7 @@ namespace {
 
 QJsonObject currentToJson(const CurrentWeather& cur) {
   QJsonObject obj;
+  obj.insert("availableFields", QJsonArray::fromStringList(cur.available_fields));
   obj.insert(QStringLiteral("temp"), cur.temperature);
   obj.insert(QStringLiteral("feels"), cur.feels_like);
   obj.insert(QStringLiteral("cond"), cur.condition);
@@ -51,6 +52,7 @@ QJsonObject currentToJson(const CurrentWeather& cur) {
 
 CurrentWeather currentFromJson(const QJsonObject& obj) {
   CurrentWeather cur;
+  for (const auto& field : obj.value("availableFields").toArray()) cur.available_fields.append(field.toString());
   cur.temperature = obj.value(QStringLiteral("temp")).toDouble(0.0);
   cur.feels_like = obj.value(QStringLiteral("feels")).toDouble(0.0);
   cur.condition = obj.value(QStringLiteral("cond")).toString();
@@ -82,6 +84,7 @@ QJsonArray hourlyToJson(const QList<HourlyEntry>& hourly) {
   QJsonArray arr;
   for (const HourlyEntry& entry : hourly) {
     QJsonObject obj;
+    obj.insert("availableFields", QJsonArray::fromStringList(entry.available_fields));
     obj.insert(QStringLiteral("dt"), static_cast<double>(entry.timestamp));
     obj.insert(QStringLiteral("temp"), entry.temperature);
     obj.insert(QStringLiteral("cond_id"), entry.condition_id);
@@ -102,6 +105,7 @@ QList<HourlyEntry> hourlyFromJson(const QJsonArray& arr) {
   for (const auto& value : arr) {
     const QJsonObject obj = value.toObject();
     HourlyEntry entry;
+    for (const auto& field : obj.value("availableFields").toArray()) entry.available_fields.append(field.toString());
     entry.timestamp = static_cast<qint64>(obj.value(QStringLiteral("dt")).toDouble(0.0));
     entry.temperature = obj.value(QStringLiteral("temp")).toDouble(0.0);
     entry.condition_id = obj.value(QStringLiteral("cond_id")).toInt(0);
@@ -120,6 +124,7 @@ QJsonArray dailyToJson(const QList<DailyEntry>& daily) {
   QJsonArray arr;
   for (const DailyEntry& entry : daily) {
     QJsonObject obj;
+    obj.insert("availableFields", QJsonArray::fromStringList(entry.available_fields));
     obj.insert(QStringLiteral("date"), static_cast<double>(entry.date));
     obj.insert(QStringLiteral("t_min"), entry.temp_min);
     obj.insert(QStringLiteral("t_max"), entry.temp_max);
@@ -143,6 +148,7 @@ QList<DailyEntry> dailyFromJson(const QJsonArray& arr) {
   for (const auto& value : arr) {
     const QJsonObject obj = value.toObject();
     DailyEntry entry;
+    for (const auto& field : obj.value("availableFields").toArray()) entry.available_fields.append(field.toString());
     entry.date = static_cast<qint64>(obj.value(QStringLiteral("date")).toDouble(0.0));
     entry.temp_min = obj.value(QStringLiteral("t_min")).toDouble(0.0);
     entry.temp_max = obj.value(QStringLiteral("t_max")).toDouble(0.0);
@@ -626,7 +632,7 @@ void WeatherService::loadCache() {
     return;
   }
   const QJsonObject root = doc.object();
-  if (root.value("version").toInt() != 2 || root.value("identity").toString() != cacheIdentity()) {
+  if (root.value("version").toInt() != 3 || root.value("identity").toString() != cacheIdentity()) {
     return;
   }
   lat_ = root.value("latitude").toDouble();
@@ -657,7 +663,7 @@ void WeatherService::saveCache() const {
   root.insert(QStringLiteral("fetched_at"), static_cast<double>(fetched_at_));
   root.insert("latitude", lat_);
   root.insert("longitude", lon_);
-  root.insert("version", 2);
+  root.insert("version", 3);
   root.insert("identity", cacheIdentity());
   root.insert(QStringLiteral("current"), currentToJson(current_));
   root.insert(QStringLiteral("hourly"), hourlyToJson(hourly_));

@@ -9,6 +9,8 @@ import "../../WeatherIcon"
 
 Column {
     id: root
+    readonly property var entries: WeatherService.hourly.filter(entry => entry.availableFields.some(field => ["temperature", "pop", "conditionId", "condition"].includes(field)))
+    visible: entries.length > 0
     spacing: 6
     readonly property int cardWidth: 108
     readonly property real naturalWidth: 6 * cardWidth + 5 * strip.spacing
@@ -49,13 +51,13 @@ Column {
         flickableDirection: Flickable.HorizontalFlick
         boundsBehavior: Flickable.StopAtBounds
         spacing: 8
-        model: WeatherService.hourly
+        model: root.entries
 
         delegate: Rectangle {
             id: card
             required property var modelData  // HourlyEntry Q_GADGET
             required property int index
-            readonly property bool isCurrent: card.index === 0
+            readonly property bool isCurrent: WeatherService.hourly.length > 0 && card.modelData.timestamp === WeatherService.hourly[0].timestamp
             width: root.cardWidth
             height: strip.height
             radius: 4
@@ -89,7 +91,7 @@ Column {
             }
 
             readonly property bool isDay: {
-                if (card.isCurrent) {
+                if (card.isCurrent && WeatherService.current.availableFields.includes("sunrise") && WeatherService.current.availableFields.includes("sunset")) {
                     return WeatherService.hasData
                         && (Date.now() / 1000) >= WeatherService.current.sunrise
                         && (Date.now() / 1000) < WeatherService.current.sunset
@@ -100,8 +102,7 @@ Column {
                 if (entry && entry.sunrise && entry.sunset) {
                     return card.modelData.timestamp >= entry.sunrise && card.modelData.timestamp < entry.sunset
                 }
-                return card.modelData.timestamp >= WeatherService.current.sunrise
-                    && card.modelData.timestamp < WeatherService.current.sunset
+                return String(card.modelData.iconCode || "").endsWith("n") ? false : true
             }
 
             Column {
@@ -134,13 +135,14 @@ Column {
                     date: new Date(card.modelData.timestamp * 1000)
                     moonPhase: {
                         var entry = root.getDailyEntryForTimestamp(card.modelData.timestamp)
-                        return entry ? entry.moonPhase : ((WeatherService.daily.length > 0) ? WeatherService.daily[0].moonPhase : undefined)
+                        return entry && entry.availableFields.includes("moonPhase") ? entry.moonPhase : undefined
                     }
                 }
 
                 HnLabel {
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: card.width - 16
+                    visible: card.modelData.availableFields.includes("temperature")
                     rawText: WeatherService.formatTemperature(card.modelData.temperature, WeatherService.temperatureUnit)
                     role: HnTypographyRole.Subheading
                     color: HoloniightPalette.textPrimary
@@ -149,6 +151,7 @@ Column {
                 }
 
                 Row {
+                    visible: card.modelData.availableFields.includes("pop")
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 2
 

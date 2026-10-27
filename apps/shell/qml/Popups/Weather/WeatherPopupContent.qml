@@ -11,6 +11,10 @@ import "../Status/PopupMetrics.js" as PopupMetrics
 Item {
     id: root
 
+    readonly property bool hasMoon: WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase")
+    readonly property bool hasSun: WeatherService.current.availableFields.includes("sunrise") || WeatherService.current.availableFields.includes("sunset")
+    readonly property bool hasAqi: WeatherService.current.availableFields.includes("aqi")
+    readonly property bool hasForecastDetails: hasMoon || hasSun || hasAqi
     readonly property int sidePad: 0
     readonly property int topPad: 0
     readonly property color dividerColor: Qt.rgba(HoloniightPalette.borderPassive.r,
@@ -99,7 +103,7 @@ Item {
 
                     HnSeparator {
                         orientation: Qt.Vertical
-                    visible: !root.narrow
+                    visible: !root.narrow && detailsGrid.visible
                     Layout.fillHeight: true
                             fadeMode: HnSeparator.FadeBoth
                         opacity: 0.5
@@ -108,13 +112,14 @@ Item {
                     WeatherDetailsGrid {
                         id: detailsGrid
                         Layout.preferredWidth: detailsGrid.naturalWidth
-                        Layout.fillWidth: root.narrow
+                        Layout.fillWidth: true
                         Layout.alignment: Qt.AlignTop
                     }
                 }
             }
 
             HnSeparator {
+                visible: hourlyStrip.visible
                 orientation: Qt.Horizontal
                 width: parent.width
                 fadeMode: HnSeparator.FadeBoth
@@ -122,6 +127,7 @@ Item {
             }
 
             SectionLabel {
+                visible: hourlyStrip.visible
                 rawText: qsTr("Hourly Forecast")
                 width: parent.width
             }
@@ -133,6 +139,7 @@ Item {
             }
 
             HnSeparator {
+                visible: hourlyStrip.visible && (forecastSummary.visible || forecastDetails.visible)
                 orientation: Qt.Horizontal
                 width: parent.width
                 fadeMode: HnSeparator.FadeBoth
@@ -140,6 +147,7 @@ Item {
             }
 
             GridLayout {
+                visible: dailyCards.entries.length > 0 || root.hasForecastDetails
                 width: parent.width
                 height: implicitHeight
                 columns: root.narrow ? 1 : 3
@@ -148,6 +156,7 @@ Item {
 
                 Column {
                     id: forecastSummary
+                    visible: dailyCards.entries.length > 0
                     Layout.fillWidth: true
                     Layout.preferredWidth: root.forecastSummaryWidth
                     Layout.alignment: Qt.AlignTop
@@ -159,13 +168,14 @@ Item {
                     }
 
                     WeatherDailyCards {
+                        id: dailyCards
                         width: parent.width
                     }
                 }
 
                 HnSeparator {
                     orientation: Qt.Vertical
-                    visible: !root.narrow
+                    visible: !root.narrow && forecastSummary.visible && forecastDetails.visible
                     Layout.fillHeight: true
                     fadeMode: HnSeparator.FadeBoth
                     opacity: 0.5
@@ -173,8 +183,9 @@ Item {
 
                 Column {
                     id: forecastDetails
+                    visible: root.hasForecastDetails
+                    Layout.fillWidth: true
                     Layout.preferredWidth: root.forecastDetailsWidth
-                    Layout.fillWidth: root.narrow
                     Layout.alignment: Qt.AlignTop
                     spacing: 10
 
@@ -184,6 +195,7 @@ Item {
                     }
 
                     GridLayout {
+                        visible: root.hasSun
                         objectName: "weatherSunEvents"
                         width: parent.width
                         columns: width >= sunrise.naturalWidth + sunset.naturalWidth + columnSpacing ? 2 : 1
@@ -191,6 +203,7 @@ Item {
                         rowSpacing: PopupMetrics.rowGap
                         WeatherSunEvent {
                             id: sunrise
+                            visible: WeatherService.current.availableFields.includes("sunrise")
                             objectName: "weatherSunrise"
                             Layout.fillWidth: true
                             title: qsTr("Sunrise")
@@ -199,6 +212,7 @@ Item {
                         }
                         WeatherSunEvent {
                             id: sunset
+                            visible: WeatherService.current.availableFields.includes("sunset")
                             objectName: "weatherSunset"
                             Layout.fillWidth: true
                             title: qsTr("Sunset")
@@ -208,6 +222,7 @@ Item {
                     }
 
                     HnSeparator {
+                        visible: root.hasSun && root.hasMoon
                         orientation: Qt.Horizontal
                         width: parent.width
                         fadeMode: HnSeparator.FadeEnd
@@ -216,12 +231,13 @@ Item {
 
                     // Line 2: Moon Phase
                     RowLayout {
+                        visible: root.hasMoon
                         width: parent.width
                         spacing: 12
 
                         Image {
                             source: {
-                                var mp = (WeatherService.hasData && WeatherService.daily.length > 0)
+                                var mp = (WeatherService.hasData && WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase"))
                                     ? WeatherService.daily[0].moonPhase
                                     : undefined;
                                 return "qrc:/HolonightShell/weather-png/512x512/" + WeatherIconBridge.moonPhaseIcon(mp) + ".png";
@@ -248,7 +264,7 @@ Item {
                             HnLabel {
                                 width: parent.width
                                 rawText: {
-                                    var mp = (WeatherService.hasData && WeatherService.daily.length > 0)
+                                    var mp = (WeatherService.hasData && WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase"))
                                         ? WeatherService.daily[0].moonPhase
                                         : undefined;
                                     return WeatherIconBridge.moonPhaseDescription(mp);
@@ -261,6 +277,7 @@ Item {
                     }
 
                     HnSeparator {
+                        visible: root.hasAqi && (root.hasSun || root.hasMoon)
                         orientation: Qt.Horizontal
                         width: parent.width
                         fadeMode: HnSeparator.FadeEnd
@@ -269,6 +286,7 @@ Item {
 
                     // Line 3: Air Quality
                     RowLayout {
+                        visible: root.hasAqi
                         width: parent.width
                         spacing: 12
 
@@ -311,6 +329,7 @@ Item {
             }
 
             HnSeparator {
+                visible: (forecastSummary.visible || forecastDetails.visible) && (temperatureGraphColumn.visible || precipitationGraphColumn.visible)
                 orientation: Qt.Horizontal
                 width: parent.width
                 fadeMode: HnSeparator.FadeBoth
@@ -318,6 +337,7 @@ Item {
             }
 
             GridLayout {
+                visible: temperatureGraph.hasSamples || precipitationGraph.hasSamples
                 width: parent.width
                 height: implicitHeight
                 columns: root.narrow ? 1 : 3
@@ -326,6 +346,7 @@ Item {
 
                 Column {
                     id: temperatureGraphColumn
+                    visible: temperatureGraph.hasSamples
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
@@ -336,6 +357,7 @@ Item {
                         width: parent.width
                     }
                     TemperatureGraph {
+                        id: temperatureGraph
                         objectName: "weatherTemperatureGraph"
                         width: parent.width
                         height: 128
@@ -344,7 +366,7 @@ Item {
 
                 HnSeparator {
                     orientation: Qt.Vertical
-                    visible: !root.narrow
+                    visible: !root.narrow && temperatureGraphColumn.visible && precipitationGraphColumn.visible
                     Layout.fillHeight: true
                     fadeMode: HnSeparator.FadeBoth
                     opacity: 0.32
@@ -352,6 +374,7 @@ Item {
 
                 Column {
                     id: precipitationGraphColumn
+                    visible: precipitationGraph.hasSamples
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
@@ -362,6 +385,8 @@ Item {
                         width: parent.width
                     }
                     PrecipitationGraph {
+                        id: precipitationGraph
+                        objectName: "weatherPrecipitationGraph"
                         width: parent.width
                         height: 128
                     }
@@ -374,6 +399,7 @@ Item {
 
                 HnLabel {
                     id: updatedLabel
+                    visible: WeatherService.current.availableFields.includes("timeUpdated")
                     Layout.fillWidth: true
                     rawText: qsTr("Updated: %1").arg(root.updateTime())
                     role: HnTypographyRole.Caption

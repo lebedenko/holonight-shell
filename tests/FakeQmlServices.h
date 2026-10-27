@@ -40,6 +40,7 @@
 #include <QtQml/qqml.h>
 
 #include <memory>
+#include <optional>
 
 class NullDbusPropertyClient final : public DbusPropertyClient {
  public:
@@ -204,8 +205,8 @@ class FakeWeatherService : public QObject {
   Q_PROPERTY(bool stale READ stale NOTIFY staleChanged)
   Q_PROPERTY(QString locationLabel READ locationLabel NOTIFY locationChanged)
   Q_PROPERTY(QVariant current READ current NOTIFY currentChanged)
-  Q_PROPERTY(QVariantList hourly READ hourly CONSTANT)
-  Q_PROPERTY(QVariantList daily READ daily CONSTANT)
+  Q_PROPERTY(QVariantList hourly READ hourly NOTIFY forecastChanged)
+  Q_PROPERTY(QVariantList daily READ daily NOTIFY forecastChanged)
 
  public:
   Q_INVOKABLE double displayTemperature(double value, const QString& = {}) const {
@@ -226,9 +227,13 @@ class FakeWeatherService : public QObject {
   [[nodiscard]] QString locationLabel() const { return location_label_; }
   [[nodiscard]] QVariant current() const { return current_; }
   [[nodiscard]] QVariantList hourly() const {
+    if (empty_forecasts_) return {};
+    if (hourly_override_.has_value()) return *hourly_override_;
     QVariantList rows;
     for (int i = 0; i < 6; ++i) {
       rows.append(QVariantMap{
+          {"availableFields",
+           QStringList{"timestamp", "temperature", "conditionId", "condition", "pop", "precipitation"}},
           {"timestamp", 1791118800 + (i * 3600)},
           {"temperature", 18 - i},
           {"conditionId", 801},
@@ -240,9 +245,12 @@ class FakeWeatherService : public QObject {
     return rows;
   }
   [[nodiscard]] QVariantList daily() const {
+    if (empty_forecasts_) return {};
     QVariantList rows;
     for (int i = 0; i < 5; ++i) {
       rows.append(QVariantMap{
+          {"availableFields",
+           QStringList{"date", "tempMin", "tempMax", "conditionId", "condition", "pop", "moonPhase"}},
           {"date", 1791118800 + (i * 86400)},
           {"tempMax", 18 + i},
           {"tempMin", 7 + i},
@@ -282,7 +290,26 @@ class FakeWeatherService : public QObject {
     emit currentChanged();
   }
 
+  Q_INVOKABLE void setAvailableFields(const QStringList& fields) {
+    auto map = current_.toMap();
+    map["availableFields"] = fields;
+    current_ = map;
+    emit currentChanged();
+  }
+  Q_INVOKABLE void setHourlyData(const QVariantList& values) {
+    hourly_override_ = values;
+    emit forecastChanged();
+  }
+  Q_INVOKABLE void resetHourlyData() {
+    hourly_override_.reset();
+    emit forecastChanged();
+  }
+  Q_INVOKABLE void setEmptyForecasts(bool empty) {
+    empty_forecasts_ = empty;
+    emit forecastChanged();
+  }
  Q_SIGNALS:
+  void forecastChanged();
   void preferencesChanged();
   void hasDataChanged();
   void staleChanged();
@@ -290,6 +317,8 @@ class FakeWeatherService : public QObject {
   void currentChanged();
 
  private:
+  std::optional<QVariantList> hourly_override_;
+  bool empty_forecasts_{false};
   bool show_in_bar_{true};
   bool compact_mode_{false};
   bool show_feels_like_{true};
@@ -302,6 +331,9 @@ class FakeWeatherService : public QObject {
   bool has_data_{true};
   QString location_label_{QStringLiteral("Lviv, Ukraine")};
   QVariant current_{QVariantMap{
+      {"availableFields",
+       QStringList{"temperature", "humidity", "visibility", "pressure", "uvi", "windSpeed", "windGust", "windDirection",
+                   "aqi", "timeUpdated", "feelsLike", "condition", "conditionId", "sunrise", "sunset"}},
       {QStringLiteral("temperature"), 18.0},
       {QStringLiteral("humidity"), 73},
       {QStringLiteral("visibility"), 10.0},

@@ -4,6 +4,7 @@
 #include <QMetaType>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 struct WeatherLocation {
   QString city;
@@ -21,9 +22,13 @@ struct WeatherLocation {
 // Q_PROPERTY names stay camelCase (the QML-facing contract); the backing members are
 // lower_case to satisfy readability-identifier-naming (MemberCase: lower_case).
 
+// available_fields lists valid measurements using their QML property names; numeric defaults
+// are storage defaults only and must not be used to infer availability.
+
 // A single hourly forecast entry from OWM /onecall hourly list.
 struct HourlyEntry {
   Q_GADGET
+  Q_PROPERTY(QStringList availableFields MEMBER available_fields)
   Q_PROPERTY(qint64 timestamp MEMBER timestamp)
   Q_PROPERTY(double temperature MEMBER temperature)
   Q_PROPERTY(int conditionId MEMBER condition_id)
@@ -35,6 +40,7 @@ struct HourlyEntry {
   Q_PROPERTY(int clouds MEMBER clouds)
 
  public:
+  QStringList available_fields;
   qint64 timestamp{0};        // Unix seconds (UTC), from hourly[i].dt
   double temperature{0.0};    // degrees Celsius, independent of display units
   int condition_id{0};        // OWM condition id, from hourly[i].weather[0].id
@@ -51,6 +57,7 @@ struct HourlyEntry {
 // Daily summary direct from OWM /onecall daily list.
 struct DailyEntry {
   Q_GADGET
+  Q_PROPERTY(QStringList availableFields MEMBER available_fields)
   Q_PROPERTY(qint64 date MEMBER date)
   Q_PROPERTY(double tempMin MEMBER temp_min)
   Q_PROPERTY(double tempMax MEMBER temp_max)
@@ -65,6 +72,7 @@ struct DailyEntry {
   Q_PROPERTY(qint64 sunset MEMBER sunset)
 
  public:
+  QStringList available_fields;
   qint64 date{0};  // Unix seconds of local midnight for that day
   double temp_min{0.0};
   double temp_max{0.0};
@@ -84,6 +92,7 @@ struct DailyEntry {
 // Current weather (from OWM /onecall endpoint).
 struct CurrentWeather {
   Q_GADGET
+  Q_PROPERTY(QStringList availableFields MEMBER available_fields)
   Q_PROPERTY(double temperature MEMBER temperature)
   Q_PROPERTY(double feelsLike MEMBER feels_like)
   Q_PROPERTY(QString condition MEMBER condition)
@@ -110,6 +119,7 @@ struct CurrentWeather {
   Q_PROPERTY(double so2 MEMBER so2)
 
  public:
+  QStringList available_fields;
   double temperature{0.0};  // temp
   double feels_like{0.0};   // feels_like
   QString condition;        // weather[0].description

@@ -80,6 +80,30 @@ std::optional<QJsonObject> parseReplyBody(QNetworkReply* reply, QString& error_o
   return doc.object();
 }
 
+bool validNumber(const QJsonValue& value) { return value.isDouble() && std::isfinite(value.toDouble()); }
+
+bool validTimestamp(const QJsonValue& value) {
+  if (!validNumber(value)) return false;
+  const double seconds = value.toDouble();
+  // Bound the conversion to the calendar range supported by QDateTime.
+  return std::trunc(seconds) == seconds && seconds >= -62135596800.0 && seconds <= 253402300799.0;
+}
+
+void markFields(QStringList& fields, const QJsonObject& object,
+                std::initializer_list<std::pair<const char*, const char*>> mapping) {
+  for (const auto& [source, target] : mapping) {
+    const auto value = object.value(QLatin1String(source));
+    const bool text =
+        qstrcmp(target, "condition") == 0 || qstrcmp(target, "iconCode") == 0 || qstrcmp(target, "summary") == 0;
+    const bool timestamp = qstrcmp(source, "dt") == 0 || qstrcmp(source, "time") == 0 ||
+                           qstrcmp(source, "sunrise") == 0 || qstrcmp(source, "sunset") == 0;
+    if (timestamp && !validTimestamp(value)) continue;
+    if ((text && value.isString() && !value.toString().isEmpty()) || (!text && validNumber(value))) {
+      fields.append(QLatin1String(target));
+    }
+  }
+}
+
 int clampPercentage(int value) { return std::clamp(value, 0, 100); }
 
 double clampUnitInterval(double value) { return std::clamp(value, 0.0, 1.0); }
@@ -150,11 +174,14 @@ void WeatherProvider::populatePollutionData(CurrentWeather& current, const QJson
   const QJsonObject entry = list.first().toObject();
   const QJsonObject main = entry.value(QStringLiteral("main")).toObject();
   const QJsonValue aqi = main.value(QStringLiteral("aqi"));
-  if (aqi.isDouble()) {
-    current.aqi = std::clamp(aqi.toInt(), 1, 5);
+  if (validNumber(aqi) && aqi.toDouble() >= 1 && aqi.toDouble() <= 5 && aqi.toDouble() == aqi.toInt()) {
+    current.available_fields.append(QStringLiteral("aqi"));
+    current.aqi = aqi.toInt();
   }
 
   const QJsonObject components = entry.value(QStringLiteral("components")).toObject();
+  markFields(current.available_fields, components,
+             {{"pm2_5", "pm2_5"}, {"pm10", "pm10"}, {"co", "co"}, {"no2", "no2"}, {"o3", "o3"}, {"so2", "so2"}});
   current.pm2_5 = components.value(QStringLiteral("pm2_5")).toDouble(0.0);
   current.pm10 = components.value(QStringLiteral("pm10")).toDouble(0.0);
   current.co = components.value(QStringLiteral("co")).toDouble(0.0);
@@ -199,9 +226,8 @@ void WeatherProvider::fetchWeather(double lat, double lon, const QString& api_ke
     connect(weather_reply_, &QNetworkReply::finished, this, [this] {
       QString error;
       const auto root = parseReplyBody(weather_reply_, error);
-      if (!root || !root->value("current").toObject().value("temperature_2m").isDouble() ||
-          !root->value("current").toObject().value("time").isDouble() || !root->value("hourly").isObject() ||
-          !root->value("daily").isObject()) {
+      if (!root || (!root->value("current").isObject() && !root->value("hourly").isObject() &&
+                    !root->value("daily").isObject())) {
         cleanupWeatherReplies();
         emit fetchError(FetchErrorKind::Transient,
                         error.isEmpty() ? QStringLiteral("Incomplete forecast response") : error);
@@ -313,12 +339,14 @@ void WeatherProvider::checkComplete() {
     return true;
   };
 
-  if (!check_reply(weather_reply_, weather_obj) || !check_reply(pollution_reply_, pollution_obj)) {
+  if (!check_reply(weather_reply_, weather_obj)) {
     cleanupWeatherReplies();
     qCWarning(lcWeather) << "fetch failed:" << error_msg;
     emit fetchError(error_kind, error_msg);
     return;
   }
+
+  check_reply(pollution_reply_, pollution_obj);
 
   CurrentWeather current = parseCurrentJson(weather_obj.value(QStringLiteral("current")).toObject());
   populatePollutionData(current, pollution_obj);
@@ -412,6 +440,21 @@ CurrentWeather WeatherProvider::parseCurrentJson(const QJsonObject& root) {
   CurrentWeather out;
   const QJsonObject& obj = root;
 
+  markFields(out.available_fields, obj,
+             {{"temp", "temperature"},
+              {"feels_like", "feelsLike"},
+              {"humidity", "humidity"},
+              {"pressure", "pressure"},
+              {"uvi", "uvi"},
+              {"dew_point", "dewPoint"},
+              {"clouds", "clouds"},
+              {"wind_speed", "windSpeed"},
+              {"wind_deg", "windDirection"},
+              {"wind_gust", "windGust"},
+              {"visibility", "visibility"},
+              {"sunrise", "sunrise"},
+              {"sunset", "sunset"},
+              {"dt", "timeUpdated"}});
   out.temperature = obj.value(QStringLiteral("temp")).toDouble(0.0);
   out.feels_like = obj.value(QStringLiteral("feels_like")).toDouble(0.0);
   out.humidity = clampPercentage(obj.value(QStringLiteral("humidity")).toInt(0));
@@ -423,6 +466,8 @@ CurrentWeather WeatherProvider::parseCurrentJson(const QJsonObject& root) {
   const QJsonArray weather = obj.value(QStringLiteral("weather")).toArray();
   if (!weather.isEmpty()) {
     const QJsonObject first = weather.first().toObject();
+    markFields(out.available_fields, first,
+               {{"id", "conditionId"}, {"description", "condition"}, {"icon", "iconCode"}});
     out.condition_id = first.value(QStringLiteral("id")).toInt(0);
     out.condition = first.value(QStringLiteral("description")).toString();
     out.icon_code = first.value(QStringLiteral("icon")).toString();
@@ -451,7 +496,17 @@ QList<HourlyEntry> WeatherProvider::parseHourlyJson(const QJsonArray& arr) {
   out.reserve(arr.size());
   for (const auto& value : arr) {
     const QJsonObject entry = value.toObject();
+    if (!validTimestamp(entry.value("dt"))) continue;
     HourlyEntry hourly;
+    markFields(hourly.available_fields, entry,
+               {{"dt", "timestamp"}, {"temp", "temperature"}, {"pop", "pop"}, {"uvi", "uvi"}, {"clouds", "clouds"}});
+    bool valid_precipitation = true;
+    for (const auto* key : {"rain", "snow"}) {
+      if (!entry.contains(key)) continue;
+      const auto amount = entry.value(key).toObject();
+      if (!validNumber(amount.value("1h")) && !validNumber(amount.value("3h"))) valid_precipitation = false;
+    }
+    if (valid_precipitation) hourly.available_fields.append("precipitation");
     hourly.timestamp = static_cast<qint64>(entry.value(QStringLiteral("dt")).toDouble(0.0));
     hourly.temperature = entry.value(QStringLiteral("temp")).toDouble(0.0);
     hourly.precipitation = precipFromEntry(entry);
@@ -462,6 +517,8 @@ QList<HourlyEntry> WeatherProvider::parseHourlyJson(const QJsonArray& arr) {
     const QJsonArray weather = entry.value(QStringLiteral("weather")).toArray();
     if (!weather.isEmpty()) {
       const QJsonObject first = weather.first().toObject();
+      markFields(hourly.available_fields, first,
+                 {{"id", "conditionId"}, {"description", "condition"}, {"icon", "iconCode"}});
       hourly.condition_id = first.value(QStringLiteral("id")).toInt(0);
       hourly.condition = first.value(QStringLiteral("description")).toString();
       hourly.icon_code = first.value(QStringLiteral("icon")).toString();
@@ -476,12 +533,22 @@ QList<DailyEntry> WeatherProvider::parseDailyJson(const QJsonArray& arr) {
   out.reserve(arr.size());
   for (const auto& value : arr) {
     const QJsonObject entry = value.toObject();
+    if (!validTimestamp(entry.value("dt"))) continue;
     DailyEntry daily;
+    markFields(daily.available_fields, entry,
+               {{"dt", "date"},
+                {"sunrise", "sunrise"},
+                {"sunset", "sunset"},
+                {"pop", "pop"},
+                {"uvi", "uvi"},
+                {"moon_phase", "moonPhase"},
+                {"summary", "summary"}});
     daily.date = static_cast<qint64>(entry.value(QStringLiteral("dt")).toDouble(0.0));
     daily.sunrise = static_cast<qint64>(entry.value(QStringLiteral("sunrise")).toDouble(0.0));
     daily.sunset = static_cast<qint64>(entry.value(QStringLiteral("sunset")).toDouble(0.0));
 
     const QJsonObject temp = entry.value(QStringLiteral("temp")).toObject();
+    markFields(daily.available_fields, temp, {{"min", "tempMin"}, {"max", "tempMax"}});
     daily.temp_min = temp.value(QStringLiteral("min")).toDouble(0.0);
     daily.temp_max = temp.value(QStringLiteral("max")).toDouble(0.0);
 
@@ -493,6 +560,8 @@ QList<DailyEntry> WeatherProvider::parseDailyJson(const QJsonArray& arr) {
     const QJsonArray weather = entry.value(QStringLiteral("weather")).toArray();
     if (!weather.isEmpty()) {
       const QJsonObject first = weather.first().toObject();
+      markFields(daily.available_fields, first,
+                 {{"id", "conditionId"}, {"description", "condition"}, {"icon", "iconCode"}});
       daily.condition_id = first.value(QStringLiteral("id")).toInt(0);
       daily.condition = first.value(QStringLiteral("description")).toString();
       daily.icon_code = first.value(QStringLiteral("icon")).toString();
@@ -607,6 +676,18 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
   WeatherCache data;
   const auto cur = root.value("current").toObject();
   auto& current = data.current;
+  markFields(current.available_fields, cur,
+             {{"temperature_2m", "temperature"},
+              {"apparent_temperature", "feelsLike"},
+              {"relative_humidity_2m", "humidity"},
+              {"pressure_msl", "pressure"},
+              {"wind_speed_10m", "windSpeed"},
+              {"wind_gusts_10m", "windGust"},
+              {"wind_direction_10m", "windDirection"},
+              {"cloud_cover", "clouds"},
+              {"time", "timeUpdated"}});
+  if (validNumber(cur.value("weather_code"))) current.available_fields.append({"conditionId", "condition"});
+  if (validNumber(cur.value("is_day"))) current.available_fields.append("iconCode");
   current.temperature = cur.value("temperature_2m").toDouble();
   current.feels_like = cur.value("apparent_temperature").toDouble();
   current.humidity = cur.value("relative_humidity_2m").toInt();
@@ -627,9 +708,23 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
     const auto values = object.value(QLatin1String(key)).toArray();
     return index < values.size() ? values[index].toDouble() : 0.0;
   };
+  const auto markForecast = [](QStringList& fields, const QJsonObject& object, qsizetype index,
+                               std::initializer_list<std::pair<const char*, const char*>> mapping) {
+    for (const auto& [source, target] : mapping) {
+      const auto values = object.value(QLatin1String(source)).toArray();
+      if (index < values.size() && validNumber(values[index])) {
+        if ((qstrcmp(source, "sunrise") == 0 || qstrcmp(source, "sunset") == 0) && !validTimestamp(values[index]))
+          continue;
+        fields.append(QLatin1String(target));
+      }
+    }
+  };
   for (qsizetype i = 0; i < times.size(); ++i) {
+    if (!validTimestamp(times[i])) continue;
     const auto time = static_cast<qint64>(times[i].toDouble());
-    if (time <= timestamp && timestamp < time + 3600) {
+    if (validTimestamp(cur.value("time")) && time <= timestamp && timestamp < time + 3600) {
+      markForecast(current.available_fields, hourly, i,
+                   {{"uv_index", "uvi"}, {"dew_point_2m", "dewPoint"}, {"visibility", "visibility"}});
       current.uvi = forecastValue(hourly, "uv_index", i);
       current.dew_point = forecastValue(hourly, "dew_point_2m", i);
       current.visibility = forecastValue(hourly, "visibility", i) / 1000.0;
@@ -638,6 +733,16 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
       continue;
     }
     HourlyEntry entry;
+    markForecast(entry.available_fields, hourly, i,
+                 {{"temperature_2m", "temperature"},
+                  {"weather_code", "conditionId"},
+                  {"weather_code", "condition"},
+                  {"is_day", "iconCode"},
+                  {"precipitation", "precipitation"},
+                  {"precipitation_probability", "pop"},
+                  {"uv_index", "uvi"},
+                  {"cloud_cover", "clouds"}});
+    entry.available_fields.append("timestamp");
     entry.timestamp = time;
     entry.temperature = forecastValue(hourly, "temperature_2m", i);
     entry.condition_id = conditionFromWmo(static_cast<int>(forecastValue(hourly, "weather_code", i)));
@@ -652,7 +757,18 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
   const auto daily = root.value("daily").toObject();
   const auto dates = daily.value("time").toArray();
   for (qsizetype i = 0; i < dates.size(); ++i) {
+    if (!validTimestamp(dates[i])) continue;
     DailyEntry entry;
+    markForecast(entry.available_fields, daily, i,
+                 {{"temperature_2m_min", "tempMin"},
+                  {"temperature_2m_max", "tempMax"},
+                  {"weather_code", "conditionId"},
+                  {"weather_code", "condition"},
+                  {"precipitation_probability_max", "pop"},
+                  {"uv_index_max", "uvi"},
+                  {"sunrise", "sunrise"},
+                  {"sunset", "sunset"}});
+    entry.available_fields.append({"date", "moonPhase"});
     entry.date = static_cast<qint64>(dates[i].toDouble());
     entry.temp_min = forecastValue(daily, "temperature_2m_min", i);
     entry.temp_max = forecastValue(daily, "temperature_2m_max", i);
@@ -669,6 +785,9 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
     data.daily.append(entry);
   }
   if (!data.daily.isEmpty()) {
+    for (const auto* field : {"sunrise", "sunset"}) {
+      if (data.daily.first().available_fields.contains(field)) current.available_fields.append(field);
+    }
     current.sunrise = data.daily.first().sunrise;
     current.sunset = data.daily.first().sunset;
   }
