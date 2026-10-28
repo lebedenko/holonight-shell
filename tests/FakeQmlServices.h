@@ -1270,7 +1270,39 @@ class TestBluetoothBackend : public HoloNight::System::BluetoothBackend {
                           {.id = "phone", .adapterId = "adapter", .alias = "Phone", .rssi = -50}},
                          true);
   }
+  Q_INVOKABLE void preview() {
+    using namespace HoloNight::System;
+    emit snapshotChanged(
+        {{"adapter", "AA", "Computer", true}},
+        {{.id = "headphones",
+          .adapterId = "adapter",
+          .alias = "Sony WH-1000XM5",
+          .icon = "audio-headphones",
+          .paired = true,
+          .connected = true,
+          .battery = 72},
+         {.id = "keyboard",
+          .adapterId = "adapter",
+          .alias = "Keychron K8 Pro",
+          .icon = "input-keyboard",
+          .paired = true,
+          .connected = true,
+          .battery = 81},
+         {.id = "mouse", .adapterId = "adapter", .alias = "MX Master 3S", .icon = "input-mouse", .paired = true},
+         {.id = "gamepad", .adapterId = "adapter", .alias = "8BitDo Pro 2", .icon = "input-gaming", .paired = true},
+         {.id = "buds", .adapterId = "adapter", .alias = "Pixel Buds", .icon = "audio-headphones", .rssi = -61},
+         {.id = "phone", .adapterId = "adapter", .alias = "Andrii’s Phone", .icon = "phone", .rssi = -67}},
+        true);
+  }
+  Q_INVOKABLE void manyDevices() {
+    using namespace HoloNight::System;
+    QList<BluetoothDevice> devices;
+    for (int i = 0; i < 9; ++i)
+      devices.append({.id = QString::number(i), .adapterId = "adapter", .alias = QStringLiteral("Device %1").arg(i)});
+    emit snapshotChanged({{"adapter", "AA", "Computer", true}}, devices, true);
+  }
   Q_INVOKABLE void clear() { emit snapshotChanged({}, {}, false); }
+  Q_INVOKABLE void complete() { QTimer::singleShot(0, this, [this] { emit operationFinished(last_); }); }
   Q_INVOKABLE void fail() {
     last_.errorName = QStringLiteral("org.bluez.Error.Failed");
     last_.errorMessage = QStringLiteral("Test Bluetooth error");

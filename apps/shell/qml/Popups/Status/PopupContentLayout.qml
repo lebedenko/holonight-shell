@@ -4,11 +4,13 @@ import QtQuick.Controls as Controls
 import Holonight.Core
 import "PopupMetrics.js" as PopupMetrics
 
-// Measurement is independent of the allocated viewport. Only this viewport scrolls.
+// Measurement is independent of the allocated viewport. Consumers can allocate
+// the body height to independently scrolling sections instead of scrolling it here.
 Item {
     id: root
 
     default property alias contentData: body.data
+    property bool scrollBody: true
     property Component header
     property Component footer
     property real contentSpacing: PopupMetrics.sectionGap
@@ -39,11 +41,11 @@ Item {
             y: root.pinned ? root.headerExtent : 0
             height: Math.max(0, root.height - (root.pinned ? root.headerExtent + root.footerExtent : 0))
             contentWidth: width
-            contentHeight: body.implicitHeight + (root.pinned ? 0 : root.headerExtent + root.footerExtent)
+            contentHeight: root.scrollBody ? body.implicitHeight + (root.pinned ? 0 : root.headerExtent + root.footerExtent) : height
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             flickableDirection: Flickable.VerticalFlick
-            interactive: contentHeight > height
+            interactive: root.scrollBody && contentHeight > height
             onContentHeightChanged: Qt.callLater(returnToBounds)
             Controls.ScrollBar.vertical: Controls.ScrollBar {}
 
@@ -51,6 +53,7 @@ Item {
                 id: body
                 y: root.pinned ? 0 : root.headerExtent
                 width: viewport.width
+                height: root.scrollBody ? implicitHeight : Math.max(0, viewport.height - (root.pinned ? 0 : root.headerExtent + root.footerExtent))
                 spacing: root.contentSpacing
             }
         },
@@ -58,7 +61,7 @@ Item {
             id: footerLoader
             parent: root.pinned ? root : viewport.contentItem
             width: root.width
-            y: root.pinned ? root.height - implicitHeight : root.headerExtent + body.implicitHeight + root.contentSpacing
+            y: root.pinned ? root.height - implicitHeight : root.headerExtent + body.height + root.contentSpacing
             sourceComponent: root.footer
         }
     ]
