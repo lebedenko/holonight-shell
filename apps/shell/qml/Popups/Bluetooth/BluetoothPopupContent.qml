@@ -12,6 +12,16 @@ PopupContentLayout {
     property string expandedId: ""
     property string adapterId: BluetoothService.selectedId
 
+    readonly property real protectedSectionHeight: {
+        let total = 0;
+        for (let i = 0; i < sections.count; ++i) {
+            const section = sections.itemAt(i);
+            if (section && section.visible)
+                total += (section.modelData === "Available" ? section.headingHeight : section.implicitHeight) + root.contentSpacing;
+        }
+        return total;
+    }
+
     naturalWidth: 480
     scrollBody: false
     onAdapterIdChanged: expandedId = ""
@@ -68,6 +78,7 @@ PopupContentLayout {
     }
 
     Repeater {
+        id: sections
         model: ["Connected", "Paired", "Available"]
 
         delegate: ColumnLayout {
@@ -86,31 +97,33 @@ PopupContentLayout {
                         deviceRows.remove(i);
 
                 }
-                for (let i = 0; i < desired.length; ++i) {
+                // Keep surviving rows in place even when discovery changes service sorting.
+                for (const device of desired) {
                     let found = -1;
-                    for (let j = i; j < deviceRows.count; ++j) if (deviceRows.get(j).record.id === desired[i].id) {
-                        found = j;
-                        break;
+                    for (let j = 0; j < deviceRows.count; ++j) {
+                        if (deviceRows.get(j).record.id === device.id) {
+                            found = j;
+                            break;
+                        }
                     }
                     if (found < 0) {
-                        deviceRows.insert(i, {
-                        "record": desired[i]
-                    });
+                        deviceRows.append({"record": device});
                     } else {
-                        if (found !== i)
-                            deviceRows.move(found, i, 1);
-
-                        deviceRows.set(i, {
-                            "record": desired[i]
-                        });
+                        const previous = deviceRows.get(found).record;
+                        const fields = ["name", "icon", "connected", "paired", "busy", "battery", "rssi"];
+                        if (fields.some(field => previous[field] !== device[field]))
+                            deviceRows.setProperty(found, "record", device);
                     }
                 }
             }
 
+            readonly property real headingHeight: sectionHeading.implicitHeight + spacing
+            implicitHeight: headingHeight + (emptyLabel.visible ? emptyLabel.implicitHeight + spacing : 0) + deviceViewport.Layout.preferredHeight
             spacing: 8
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: sectionHeading.implicitHeight + spacing
+            Layout.minimumHeight: modelData !== "Available" && root.viewportItem.height >= root.protectedSectionHeight ? implicitHeight : headingHeight
+            Layout.maximumHeight: implicitHeight
             objectName: "section-" + modelData
             visible: !!BluetoothService.selectedAdapter.powered && (modelData === "Available" ? BluetoothService.scanning : deviceRows.count > 0)
             Component.onCompleted: syncDevices()
@@ -135,7 +148,7 @@ PopupContentLayout {
 
                 HnLabel {
                     Layout.fillWidth: true
-                    role: HnTypographyRole.Caption
+                    role: HnTypographyRole.MicroHeader
                     color: HoloniightPalette.accentBlue
                     font.letterSpacing: 2
                     rawText: section.modelData === "Connected" ? qsTr("CONNECTED") : section.modelData === "Paired" ? qsTr("PAIRED") : qsTr("AVAILABLE")
@@ -158,6 +171,7 @@ PopupContentLayout {
             }
 
             HnLabel {
+                id: emptyLabel
                 Layout.fillWidth: true
                 visible: section.modelData === "Available" && deviceRows.count === 0
                 rawText: qsTr("Looking for nearby devices…")
@@ -170,7 +184,7 @@ PopupContentLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 0
-                Layout.preferredHeight: Math.min(contentHeight, 5 * 64 + 4 * deviceList.spacing)
+                Layout.preferredHeight: section.modelData === "Available" ? Math.min(contentHeight, 5 * 64 + 4 * deviceList.spacing) : contentHeight
                 Layout.maximumHeight: Layout.preferredHeight
                 contentWidth: width
                 contentHeight: deviceList.implicitHeight

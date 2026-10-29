@@ -1294,13 +1294,23 @@ class TestBluetoothBackend : public HoloNight::System::BluetoothBackend {
          {.id = "phone", .adapterId = "adapter", .alias = "Andrii’s Phone", .icon = "phone", .rssi = -67}},
         true);
   }
-  Q_INVOKABLE void manyDevices() {
+  Q_INVOKABLE void discovery(int count, int rssi = -50) {
     using namespace HoloNight::System;
-    QList<BluetoothDevice> devices;
-    for (int i = 0; i < 9; ++i)
-      devices.append({.id = QString::number(i), .adapterId = "adapter", .alias = QStringLiteral("Device %1").arg(i)});
+    QList<BluetoothDevice> devices{{.id = "headphones",
+                                    .adapterId = "adapter",
+                                    .alias = "Headphones",
+                                    .paired = true,
+                                    .connected = true,
+                                    .battery = 72},
+                                   {.id = "keyboard", .adapterId = "adapter", .alias = "Keyboard", .paired = true}};
+    for (int index = 0; index < count; ++index)
+      devices.append({.id = QString::number(index),
+                      .adapterId = "adapter",
+                      .alias = QStringLiteral("Device %1").arg(100 - index),
+                      .rssi = rssi - index});
     emit snapshotChanged({{"adapter", "AA", "Computer", true}}, devices, true);
   }
+  Q_INVOKABLE void manyDevices() { discovery(9); }
   Q_INVOKABLE void clear() { emit snapshotChanged({}, {}, false); }
   Q_INVOKABLE void complete() { QTimer::singleShot(0, this, [this] { emit operationFinished(last_); }); }
   Q_INVOKABLE void fail() {

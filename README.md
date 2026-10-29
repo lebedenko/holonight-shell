@@ -580,3 +580,8 @@ The bar widget opens connection and pairing controls; Bluetooth Settings opens t
 independent Settings page. Opening the popup scans; closing releases this client's
 scan after two seconds. Stop scan persists until Start or reopening. Dismissal
 cancels pairing. Default-agent conflicts appear as diagnostics; Blueman may coexist.
+
+Connected and paired Bluetooth rows expand into a bordered card containing their
+connection action; nearby devices keep an inline Pair button. Discovery grows the
+Available section to five rows before scrolling, preserving existing row order.
+Full device names appear on hover only when the row label is truncated.
