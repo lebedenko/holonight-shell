@@ -523,6 +523,34 @@ Output format (one line per workspace entry):
 [ws rev=1] id=2 state=Occupied on_monitor=false
 ```
 
+Popup content immediately uses its latest natural height, capped by the screen's
+usable height. The panel and input region follow the compositor's actual allocation;
+new content can briefly be clipped while a larger allocation arrives. Screen limits
+continue to activate each popup's existing scrolling and pinning rules.
+
+### Trace status popup resizing
+
+From the repository root, run the shell with `HOLONIGHT_STATUS_POPUP_TRACE=1` to write
+geometry-only JSONL to `build/popup-resize-trace/geometry-<pid>.jsonl`. Stop the running
+shell service before starting a diagnostic instance; restore it after capture. Tracing
+is disabled by default and leaves sizing and scrolling behavior unchanged.
+
+The trace includes open/close, size requests, content-surface configure notifications,
+GUI snapshots before polish, and timestamped `frameSwapped` markers. Each popup view
+has its own frame sequence, latched at render synchronization. Item bounds are relative
+to the popup, with instance/parent identities, header/hero/body/footer geometry,
+viewport offsets and content height, and pinned state. Model values, network names,
+and device names are excluded.
+
+`frameSwapped` timestamps are captured on the render thread; its geometry snapshot is
+read later on the GUI thread (`snapshot_phase: "swap-delivery"`). Those bounds may
+already reflect a subsequent configure. These markers are not compositor presentation
+feedback. Compare the recording before deciding whether a transient GUI state was
+visible. On Wayland, Qt window and cursor coordinates need not be global compositor
+coordinates; size-request records also include requested layer margins. Capture actual
+compositor positions separately with `hyprctl layers -j`. Store recordings and analysis
+in the same ignored directory; recordings can contain visible personal information.
+
 ### Pixel-level visual testing
 
 `scripts/check-pill.sh` samples a single screen pixel and compares it to an expected color:

@@ -22,6 +22,7 @@ PopupContentLayout {
 
     NetworkCurrentCard {
         id: currentCard
+        objectName: "popupTraceHero"
     }
 
     HnLabel {

@@ -4,15 +4,111 @@
 #include "ShellConstants.h"
 #include "StatusPopupGeometry.h"
 
+#include <QCursor>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
 #include <QGuiApplication>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickView>
 #include <QScreen>
 
+#include <atomic>
 #include <cmath>
+#include <memory>
 
 using namespace Holonight::Wayland;
+
+namespace {
+bool popupTraceEnabled() {
+  static const bool enabled = qEnvironmentVariable("HOLONIGHT_STATUS_POPUP_TRACE") == "1";
+  return enabled;
+}
+
+// Called only on the GUI thread. Never serialize model values or arbitrary object names.
+void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 emitted_ms = 0,
+                const StatusPopupGeometry* allocation = nullptr) {
+  if (!popupTraceEnabled() || view == nullptr) {
+    return;
+  }
+  static QFile output;
+  if (output.fileName().isEmpty()) {
+    QDir().mkpath("build/popup-resize-trace");
+    output.setFileName(
+        QStringLiteral("build/popup-resize-trace/geometry-%1.jsonl").arg(QCoreApplication::applicationPid()));
+    if (!output.open(QIODevice::WriteOnly | QIODevice::Append)) {
+      qWarning("Cannot open popup geometry trace");
+      return;
+    }
+  }
+  if (!output.isOpen()) {
+    return;
+  }
+  QJsonObject record{{"event", event},
+                     {"utc_ms", QDateTime::currentMSecsSinceEpoch()},
+                     {"frame", static_cast<qint64>(frame)},
+                     {"emitted_utc_ms", emitted_ms},
+                     {"snapshot_phase", emitted_ms == 0 ? "event" : "swap-delivery"},
+                     {"actual_width", view->width()},
+                     {"actual_height", view->height()},
+                     {"surface_x", view->x()},
+                     {"surface_y", view->y()},
+                     {"scale", view->devicePixelRatio()},
+                     {"surface_instance", QString::number(reinterpret_cast<quintptr>(view), 16)},
+                     {"pointer_x", QCursor::pos().x()},
+                     {"pointer_y", QCursor::pos().y()}};
+  if (allocation != nullptr) {
+    record.insert("allocation_width", allocation->surface_width);
+    record.insert("allocation_height", allocation->surface_height);
+    record.insert("margin_left", allocation->left_margin);
+    record.insert("margin_top", kStatusPopupTopGap);
+  }
+  auto* root = qobject_cast<QQuickItem*>(view->rootObject());
+  if (root != nullptr) {
+    record.insert("requested_width", root->implicitWidth());
+    record.insert("requested_height", root->implicitHeight());
+    QJsonArray items;
+    const auto visit = [&](const auto& self, QQuickItem* item) -> void {
+      const QString name = item->objectName();
+      if (name == "popupTraceLayout" || name == "popupTraceHeader" || name == "popupTraceHero" ||
+          name == "popupTraceBody" || name == "popupTraceFooter" || name == "audioMasterPanel" ||
+          name == "popupContentViewport" || name == "audioPopupViewport" || name == "audioPopupPinnedHeader" ||
+          name == "outputDeviceSection" || name == "inputDeviceSection" || name == "section-Connected" ||
+          name == "section-Paired" || name == "section-Available" || name == "devices-Connected" ||
+          name == "devices-Paired" || name == "devices-Available") {
+        const QPointF origin = item->mapToItem(root, QPointF());
+        QJsonObject bounds{{"role", name},
+                           {"instance", QString::number(reinterpret_cast<quintptr>(item), 16)},
+                           {"parent_instance", QString::number(reinterpret_cast<quintptr>(item->parentItem()), 16)},
+                           {"x", origin.x()},
+                           {"y", origin.y()},
+                           {"width", item->width()},
+                           {"height", item->height()},
+                           {"implicit_height", item->implicitHeight()},
+                           {"visible", item->isVisible()}};
+        for (const char* property : {"contentY", "contentHeight", "pinned"}) {
+          const QVariant value = item->property(property);
+          if (value.isValid()) {
+            bounds.insert(QString::fromLatin1(property), QJsonValue::fromVariant(value));
+          }
+        }
+        items.append(bounds);
+      }
+      for (QQuickItem* child : item->childItems()) {
+        self(self, child);
+      }
+    };
+    visit(visit, root);
+    record.insert("items", items);
+  }
+  output.write(QJsonDocument(record).toJson(QJsonDocument::Compact) + '\n');
+  output.flush();
+}
+}  // namespace
 
 StatusPopupSurface::StatusPopupSurface(QObject* parent) : PairedTransientSurfaceHost("StatusPopupSurface", parent) {}
 StatusPopupSurface::~StatusPopupSurface() { destroySurface(); }
@@ -97,7 +193,10 @@ PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QS
               .input_region_policy = input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region,
               .input_region = QRegion(input_rect),
               .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Status/StatusPopup.qml")),
-              .initial_properties = {{QStringLiteral("popupId"), popup_id}},
+              .initial_properties =
+                  {{QStringLiteral("popupId"), popup_id},
+                   {QStringLiteral("maximumSurfaceHeight"),
+                    statusPopupMaximumSize(screen->geometry(), screen->availableGeometry()).height()}},
               .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
               .color = Qt::transparent,
               .before_load =
@@ -108,6 +207,33 @@ PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QS
 
 void StatusPopupSurface::onPairOpened() {
   applied_input_rect_.reset();
+  if (popupTraceEnabled()) {
+    auto* view = contentView();
+    tracePopup("open", view);
+    const auto frame = std::make_shared<std::atomic<quint64>>(0);
+    const auto synchronized_frame = std::make_shared<std::atomic<quint64>>(0);
+    connect(view, &QQuickWindow::afterAnimating, view,
+            [view, frame] { tracePopup("gui-snapshot-before-polish", view, ++(*frame)); });
+    connect(
+        view, &QQuickWindow::beforeSynchronizing, view,
+        [frame, synchronized_frame] { synchronized_frame->store(frame->load()); }, Qt::DirectConnection);
+    // Render callbacks capture scalar markers only. Geometry is read on the GUI thread.
+    connect(
+        view, &QQuickWindow::frameSwapped, view,
+        [view, synchronized_frame] {
+          const auto number = synchronized_frame->load();
+          const auto timestamp = QDateTime::currentMSecsSinceEpoch();
+          QMetaObject::invokeMethod(
+              view,
+              [view, number, timestamp] {
+                // Geometry here is delivery-time state, not render-thread state.
+                tracePopup("frame-swapped", view, number, timestamp);
+              },
+              Qt::QueuedConnection);
+        },
+        Qt::DirectConnection);
+    connect(contentHost(), &LayerSurfaceHost::configured, view, [view] { tracePopup("configure", view); });
+  }
   setPopupVisible(true);
   frame_connection_ =
       connect(contentView(), &QQuickWindow::afterAnimating, this, &StatusPopupSurface::updateSurfaceGeometry);
@@ -134,6 +260,8 @@ void StatusPopupSurface::updateSurfaceGeometry() {
   if (root == nullptr || current_screen_ == nullptr || contentHost() == nullptr) {
     return;
   }
+  root->setProperty("maximumSurfaceHeight",
+                    statusPopupMaximumSize(current_screen_->geometry(), current_screen_->availableGeometry()).height());
   if (!std::isfinite(root->implicitWidth()) || !std::isfinite(root->implicitHeight()) || root->implicitWidth() <= 0 ||
       root->implicitHeight() <= 0) {
     return;
@@ -149,6 +277,7 @@ void StatusPopupSurface::updateSurfaceGeometry() {
     }
     return;
   }
+  tracePopup("size-request", contentView(), 0, 0, &geometry);
   applied_geometry_ = geometry;
   contentHost()->setSize(geometry.surface_width, geometry.surface_height);
   contentHost()->setMargins(kStatusPopupTopGap, 0, 0, geometry.left_margin);
@@ -168,6 +297,7 @@ void StatusPopupSurface::onPairTerminated() {
 }
 
 void StatusPopupSurface::destroySurface() {
+  tracePopup("close", contentView());
   disconnect(frame_connection_);
   disconnect(screen_connection_);
   disconnect(available_connection_);

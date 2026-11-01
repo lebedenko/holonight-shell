@@ -35,6 +35,9 @@ Item {
     })
     readonly property string contentSource: root.popupSources[root.popupId] ?? ""
     readonly property bool showTitle: root.contentSource.length === 0 || contentLoader.status === Loader.Error
+    property int maximumSurfaceHeight: 0
+    readonly property real targetSurfaceHeight: maximumSurfaceHeight > 0
+        ? Math.max(1, Math.min(Math.ceil(implicitHeight), maximumSurfaceHeight)) : height
     property bool geometryReady: false
     readonly property int contentPadding: PopupMetrics.contentInset
     readonly property Item loadedContent: contentLoader.status === Loader.Ready ? contentLoader.item as Item : null
@@ -220,7 +223,7 @@ Item {
         x: root.panelLeft + root.contentPadding
         y: root.panelTop + root.contentPadding
         width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
-        height: Math.max(0, root.panelBottom - y - root.contentPadding)
+        height: Math.max(0, root.targetSurfaceHeight - root.glowPadding - y - root.contentPadding)
         active: root.contentSource.length > 0
         focus: active
         source: root.contentSource

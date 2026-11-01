@@ -91,3 +91,11 @@ TEST(StatusPopupGeometry, InputRectangleClampsUndersizedSurfacesToEmpty) {
     EXPECT_GE(panel.height(), 0);
   }
 }
+
+TEST(StatusPopupGeometry, MaximumSizePreservesScreenAndBarAllowances) {
+  EXPECT_EQ(statusPopupMaximumSize(QRect(0, 0, 800, 600), QRect(0, 64, 800, 536)),
+            QSize(800 - 2 * kScreenEdgeMargin, 536 - kStatusPopupTopGap - kScreenEdgeMargin));
+  EXPECT_EQ(statusPopupMaximumSize(QRect(0, 0, 800, 600), QRect(0, 0, 800, 600)),
+            QSize(800 - 2 * kScreenEdgeMargin, 600 - kBarHeight - kStatusPopupTopGap - kScreenEdgeMargin));
+  EXPECT_EQ(statusPopupMaximumSize(QRect(0, 0, 1, 1), QRect()), QSize(1, 1));
+}

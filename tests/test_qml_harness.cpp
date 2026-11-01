@@ -5,6 +5,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QQmlAbstractUrlInterceptor>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickImageProvider>
@@ -34,6 +35,20 @@ class TestIconProvider : public QQuickImageProvider {
     QImage image(dimensions, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
     return image;
+  }
+};
+#endif
+
+#ifndef HOLONIGHT_COMPILED_ACCEPTANCE
+class ShellSourceInterceptor : public QQmlAbstractUrlInterceptor {
+ public:
+  QUrl intercept(const QUrl& url, DataType) override {
+    const QString prefix = QStringLiteral("qrc:/HolonightShell/");
+    if (url.toString().startsWith(prefix) && url.path().endsWith(".qml")) {
+      return QUrl::fromLocalFile(QStringLiteral(TEST_SOURCE_DIR) + "/apps/shell/qml/" +
+                                 url.toString().mid(prefix.size()));
+    }
+    return url;
   }
 };
 #endif
@@ -113,10 +128,14 @@ class Setup : public QObject {
     // 3. Make sure each test QML engine can find the HolonightShell module.
 #ifndef HOLONIGHT_COMPILED_ACCEPTANCE
     engine->addImportPath(modules_dir_.path());
+    engine->addUrlInterceptor(&source_interceptor_);
 #endif
   }
 
  private:
+#ifndef HOLONIGHT_COMPILED_ACCEPTANCE
+  ShellSourceInterceptor source_interceptor_;
+#endif
   QTemporaryDir modules_dir_;
   std::unique_ptr<FakeQmlServices> services_;
 };

@@ -244,12 +244,48 @@ TestCase {
         compare(width, 84);
     }
 
+    function test_delayedDiscoveryAllocationPreservesSections() {
+        BluetoothTestSeed.discovery(1);
+        BluetoothService.setActive(true);
+        BluetoothTestSeed.complete();
+        tryVerify(() => !BluetoothService.selectedAdapter.busy);
+        BluetoothService.scan(false);
+        BluetoothTestSeed.complete();
+        tryVerify(() => !BluetoothService.scanning && !BluetoothService.selectedAdapter.busy);
+        const wrapper = createTemporaryObject(wrapperComponent, testCase);
+        tryVerify(() => wrapper.loadedContent !== null);
+        const popup = wrapper.loadedContent;
+        waitForRendering(popup);
+        wrapper.height = Math.ceil(wrapper.implicitHeight);
+        waitForRendering(popup);
+        const header = popup.headerItem;
+        const connected = findChild(popup, "section-Connected");
+        const paired = findChild(popup, "section-Paired");
+        const originalY = paired.mapToItem(popup, 0, 0).y;
+        const headerY = header.mapToItem(popup, 0, 0).y;
+        const allocatedHeight = wrapper.height;
+        BluetoothService.scan(true);
+        BluetoothTestSeed.complete();
+        tryVerify(() => BluetoothService.scanning && !BluetoothService.selectedAdapter.busy);
+        waitForRendering(popup);
+        waitForRendering(popup);
+        compare(wrapper.height, allocatedHeight);
+        compare(findChild(popup, "section-Connected"), connected);
+        compare(findChild(popup, "section-Paired"), paired);
+        fuzzyCompare(paired.mapToItem(popup, 0, 0).y, originalY, 1);
+        fuzzyCompare(header.mapToItem(popup, 0, 0).y, headerY, 1);
+        wrapper.height = Math.ceil(wrapper.implicitHeight);
+        waitForRendering(popup);
+        fuzzyCompare(paired.mapToItem(popup, 0, 0).y, originalY, 1);
+    }
+
     function test_incrementalDiscoveryPreservesRowsAndGrowsToFive() {
         BluetoothTestSeed.discovery(1);
         BluetoothService.setActive(true);
         BluetoothTestSeed.complete();
-        const popup = createTemporaryObject(popupComponent, testCase);
-        popup.height = Qt.binding(() => popup.implicitHeight);
+        const wrapper = createTemporaryObject(wrapperComponent, testCase);
+        tryVerify(() => wrapper.loadedContent !== null);
+        const popup = wrapper.loadedContent;
         waitForRendering(popup);
         const viewport = findChild(popup, "devices-Available");
         const connected = findChild(popup, "device-headphones");
@@ -267,6 +303,9 @@ TestCase {
             BluetoothTestSeed.discovery(count);
             tryVerify(() => popup.height > previousHeight);
             previousHeight = popup.height;
+            waitForRendering(wrapper);
+            waitForRendering(wrapper);
+            compare(wrapper.height, 600);
             compare(findChild(popup, "device-0"), first);
             compare(first.mapToItem(viewport.contentItem, 0, 0).y, firstY);
             compare(connected.mapToItem(popup, 0, 0).y, connectedY);
@@ -286,6 +325,19 @@ TestCase {
         verify(changes.count > 0);
         verify(action.activeFocus);
         compare(popup.expandedId, "headphones");
+        for (const budget of [700, 400, 1000]) {
+            wrapper.maximumSurfaceHeight = budget;
+            waitForRendering(wrapper);
+            waitForRendering(wrapper);
+            verify(viewport.contentY >= 0);
+            verify(viewport.contentY <= Math.max(0, viewport.contentHeight - viewport.height) + 1);
+            verify(viewport.height <= 5 * 64 + 4 * 4);
+        }
+        BluetoothTestSeed.discovery(1);
+        waitForRendering(wrapper);
+        tryVerify(() => Math.abs(viewport.contentY) < 1);
+        compare(findChild(popup, "device-0"), first);
+        verify(action.activeFocus);
     }
 
     function test_sectionsAndPendingError() {
@@ -329,6 +381,17 @@ TestCase {
     visible: true
     width: 500
     height: 700
+
+    Component {
+        id: wrapperComponent
+        StatusPopup {
+            popupId: "bluetooth"
+            maximumSurfaceHeight: 1200
+            width: 560
+            height: 600
+
+        }
+    }
 
     Component {
         id: popupComponent

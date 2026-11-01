@@ -47,6 +47,8 @@ TEST(PairedSurfacePolicy, DescribesStatusContentAndDismissSurfacesCompletely) {
   EXPECT_EQ(pair.content.input_region, QRegion(input_rect));
   EXPECT_EQ(pair.content.keyboard_interactivity, KeyboardInteractivity::OnDemand);
   EXPECT_EQ(pair.content.initial_properties.value(QStringLiteral("popupId")).toString(), QStringLiteral("audio"));
+  EXPECT_EQ(pair.content.initial_properties.value(QStringLiteral("maximumSurfaceHeight")).toInt(),
+            statusPopupMaximumSize(screen->geometry(), screen->availableGeometry()).height());
   EXPECT_TRUE(static_cast<bool>(pair.content.before_load));
   QQmlEngine engine;
   pair.content.before_load(&engine);

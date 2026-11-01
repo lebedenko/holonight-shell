@@ -16,6 +16,8 @@ struct StatusPopupGeometry {
   bool operator==(const StatusPopupGeometry&) const = default;
 };
 
+[[nodiscard]] QSize statusPopupMaximumSize(const QRect& screen_geometry, const QRect& available_geometry);
+
 [[nodiscard]] StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, const QRect& screen_geometry,
                                                       const QRect& available_geometry, int anchor_x, int anchor_width);
 

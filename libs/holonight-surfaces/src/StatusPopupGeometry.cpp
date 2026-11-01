@@ -4,17 +4,23 @@
 
 #include <algorithm>
 
+QSize statusPopupMaximumSize(const QRect& screen_geometry, const QRect& available_geometry) {
+  const QRect usable = screen_geometry.intersected(available_geometry);
+  const int available_width = std::max(1, usable.width() - (2 * kScreenEdgeMargin));
+  const int available_height = std::max(
+      1, std::min(usable.height(), screen_geometry.height() - kBarHeight) - kStatusPopupTopGap - kScreenEdgeMargin);
+  return {available_width, available_height};
+}
+
 StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, const QRect& screen_geometry,
                                         const QRect& available_geometry, int anchor_x, int anchor_width) {
   constexpr int kGlowPadding = 24;
   constexpr int kTopPadding = 6;
   constexpr int kNotchCornerClearance = 9;
   const QRect usable = screen_geometry.intersected(available_geometry);
-  const int available_width = std::max(1, usable.width() - (2 * kScreenEdgeMargin));
-  const int available_height = std::max(
-      1, std::min(usable.height(), screen_geometry.height() - kBarHeight) - kStatusPopupTopGap - kScreenEdgeMargin);
-  const int surface_width = std::clamp(requested_surface_size.width(), 1, available_width);
-  const int surface_height = std::clamp(requested_surface_size.height(), 1, available_height);
+  const QSize maximum = statusPopupMaximumSize(screen_geometry, available_geometry);
+  const int surface_width = std::clamp(requested_surface_size.width(), 1, maximum.width());
+  const int surface_height = std::clamp(requested_surface_size.height(), 1, maximum.height());
   const int content_width = std::max(0, surface_width - (2 * kGlowPadding));
   const int anchor_center = anchor_x - screen_geometry.x() + (anchor_width / 2);
   const int minimum_left = usable.x() - screen_geometry.x() + kScreenEdgeMargin;

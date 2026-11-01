@@ -245,15 +245,107 @@ TestCase {
     Component {
         id: synthetic
         PopupContentLayout {
+            id: syntheticPopup
+            property int footerHeight: 40
             property int rows: 1
             width: 300
             height: Math.min(implicitHeight, 250)
             header: Component { PopupHeader { title: "Test" } }
-            footer: Component { Item { implicitHeight: 40 } }
+            footer: Component { Item { implicitHeight: syntheticPopup.footerHeight } }
             Repeater {
                 model: rows
                 Rectangle { Layout.fillWidth: true; implicitHeight: 64 }
             }
+        }
+    }
+
+    Component {
+        id: wrapper
+        StatusPopup {
+            maximumSurfaceHeight: 1100
+            width: 700
+            height: 350
+
+        }
+    }
+
+    function test_wrapper_delayed_allocation_data() {
+        return [{tag: "network", id: "network"}, {tag: "audio", id: "audio"}]
+    }
+
+    function test_wrapper_delayed_allocation(data) {
+        failOnWarning(/.*Binding loop detected.*/)
+        const frame = createTemporaryObject(wrapper, root, {popupId: data.id})
+        tryVerify(() => frame.loadedContent !== null)
+        const popup = frame.loadedContent
+        waitForRendering(frame)
+        frame.height = Math.ceil(frame.implicitHeight)
+        waitForRendering(frame)
+        const actual = frame.height
+        const header = popup.headerItem
+        const headerY = header.mapToItem(frame, 0, 0).y
+        const hero = findChild(popup, data.id === "audio" ? "audioMasterPanel" : "popupTraceHero")
+        const heroY = hero ? hero.mapToItem(frame, 0, 0).y : 0
+        for (let pass = 0; pass < 4; ++pass) {
+            if (data.id === "network") popup.infoOpen = pass % 2 === 0
+            else {
+                popup.outputExpanded = pass % 2 === 0
+                popup.inputExpanded = pass % 2 !== 0
+            }
+            waitForRendering(frame)
+            waitForRendering(frame)
+            compare(frame.height, actual)
+            fuzzyCompare(header.mapToItem(frame, 0, 0).y, headerY, 1)
+            if (hero) fuzzyCompare(hero.mapToItem(frame, 0, 0).y, heroY, 1)
+            const footer = popup.footerItem
+            const footerY = footer ? footer.mapToItem(frame, 0, 0).y : 0
+            // Deliver an older configure before the current one.
+            frame.height = actual - 20
+            waitForRendering(frame)
+            if (footer) fuzzyCompare(footer.mapToItem(frame, 0, 0).y, footerY, 1)
+            frame.height = Math.ceil(frame.implicitHeight)
+            waitForRendering(frame)
+            if (footer) fuzzyCompare(footer.mapToItem(frame, 0, 0).y, footerY, 1)
+            frame.height = actual
+        }
+        const natural = Math.ceil(frame.implicitHeight)
+        for (const budget of [natural + 100, natural, natural - 100, 150, 1100]) {
+            frame.maximumSurfaceHeight = budget
+            waitForRendering(frame)
+            fuzzyCompare(popup.height + frame.panelTop + frame.glowPadding + 2 * frame.contentPadding,
+                         Math.min(natural, budget), 1)
+            compare(frame.height, actual)
+        }
+        frame.maximumSurfaceHeight = 0
+        waitForRendering(frame)
+        fuzzyCompare(popup.height + frame.panelTop + frame.glowPadding + 2 * frame.contentPadding,
+                     actual, 1)
+    }
+
+    // Hold allocation for several rendered frames, as a compositor may do after set_size.
+    function test_delayed_allocation_keeps_header_and_scroll_state_observable() {
+        const popup = createTemporaryObject(synthetic, root, { height: 250, rows: 8 })
+        verify(popup)
+        waitForRendering(popup)
+        const header = popup.headerItem
+        const footer = popup.footerItem
+        const headerY = header.mapToItem(popup, 0, 0).y
+        popup.viewportItem.contentY = popup.viewportItem.contentHeight - popup.viewportItem.height
+        for (let pass = 0; pass < 3; ++pass) {
+            popup.rows = 1
+            waitForRendering(popup)
+            waitForRendering(popup)
+            compare(popup.height, 250)
+            compare(popup.headerItem, header)
+            compare(popup.footerItem, footer)
+            fuzzyCompare(header.mapToItem(popup, 0, 0).y, headerY, 1)
+            tryVerify(() => Math.abs(popup.viewportItem.contentY) < 1)
+            popup.height = Math.ceil(popup.implicitHeight)
+            waitForRendering(popup)
+            popup.rows = 8
+            waitForRendering(popup)
+            popup.height = 250
+            waitForRendering(popup)
         }
     }
 

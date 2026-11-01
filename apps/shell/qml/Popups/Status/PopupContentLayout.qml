@@ -8,6 +8,7 @@ import "PopupMetrics.js" as PopupMetrics
 // the body height to independently scrolling sections instead of scrolling it here.
 Item {
     id: root
+    objectName: "popupTraceLayout"
 
     default property alias contentData: body.data
     property bool scrollBody: true
@@ -28,6 +29,7 @@ Item {
     data: [
         Loader {
             id: headerLoader
+            objectName: "popupTraceHeader"
             parent: root.pinned ? root : viewport.contentItem
             width: root.width
             y: 0
@@ -51,6 +53,7 @@ Item {
 
             ColumnLayout {
                 id: body
+                objectName: "popupTraceBody"
                 y: root.pinned ? 0 : root.headerExtent
                 width: viewport.width
                 height: root.scrollBody ? implicitHeight : Math.max(0, viewport.height - (root.pinned ? 0 : root.headerExtent + root.footerExtent))
@@ -59,6 +62,7 @@ Item {
         },
         Loader {
             id: footerLoader
+            objectName: "popupTraceFooter"
             parent: root.pinned ? root : viewport.contentItem
             width: root.width
             y: root.pinned ? root.height - implicitHeight : root.headerExtent + body.height + root.contentSpacing
