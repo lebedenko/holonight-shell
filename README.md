@@ -523,20 +523,20 @@ Output format (one line per workspace entry):
 [ws rev=1] id=2 state=Occupied on_monitor=false
 ```
 
-Popup content immediately uses its latest natural height, capped by the screen's
-usable height. The panel and input region follow the compositor's actual allocation;
-new content can briefly be clipped while a larger allocation arrives. Screen limits
-continue to activate each popup's existing scrolling and pinning rules.
+Status popups use one constant layer surface per session, sized to the screen's usable
+area. The panel, its input region, and its content change together inside that surface:
+resizing a layer surface is not atomic, and compositors can stretch stale buffers into
+the new size. Screen limits activate each popup's existing scrolling and pinning rules.
 
-### Trace status popup resizing
+### Trace status popup layout
 
 From the repository root, run the shell with `HOLONIGHT_STATUS_POPUP_TRACE=1` to write
 geometry-only JSONL to `build/popup-resize-trace/geometry-<pid>.jsonl`. Stop the running
 shell service before starting a diagnostic instance; restore it after capture. Tracing
 is disabled by default and leaves sizing and scrolling behavior unchanged.
 
-The trace includes open/close, size requests, content-surface configure notifications,
-GUI snapshots before polish, and timestamped `frameSwapped` markers. Each popup view
+The trace includes open/close, content-surface configure notifications, panel frame
+bounds, GUI snapshots before polish, and timestamped `frameSwapped` markers. Each popup view
 has its own frame sequence, latched at render synchronization. Item bounds are relative
 to the popup, with instance/parent identities, header/hero/body/footer geometry,
 viewport offsets and content height, and pinned state. Model values, network names,
@@ -547,8 +547,7 @@ read later on the GUI thread (`snapshot_phase: "swap-delivery"`). Those bounds m
 already reflect a subsequent configure. These markers are not compositor presentation
 feedback. Compare the recording before deciding whether a transient GUI state was
 visible. On Wayland, Qt window and cursor coordinates need not be global compositor
-coordinates; size-request records also include requested layer margins. Capture actual
-compositor positions separately with `hyprctl layers -j`. Store recordings and analysis
+coordinates. Capture actual compositor positions separately with `hyprctl layers -j`. Store recordings and analysis
 in the same ignored directory; recordings can contain visible personal information.
 
 ### Pixel-level visual testing

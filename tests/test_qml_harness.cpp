@@ -45,6 +45,11 @@ class TestIconProvider : public QQuickImageProvider {
 class ShellSourceInterceptor : public QQmlAbstractUrlInterceptor {
  public:
   QUrl intercept(const QUrl& url, DataType) override {
+    const QString presentation_prefix = QStringLiteral("qrc:/HolonightShell/Presentation/");
+    if (url.toString().startsWith(presentation_prefix) && url.path().endsWith(".qml")) {
+      return QUrl::fromLocalFile(QStringLiteral(TEST_SOURCE_DIR) + "/qml/Presentation/" +
+                                 url.toString().mid(presentation_prefix.size()));
+    }
     const QString prefix = QStringLiteral("qrc:/HolonightShell/");
     if (url.toString().startsWith(prefix) && url.path().endsWith(".qml")) {
       return QUrl::fromLocalFile(QStringLiteral(TEST_SOURCE_DIR) + "/apps/shell/qml/" +
@@ -128,7 +133,8 @@ class Setup : public QObject {
             if (name == "audioMasterPanel" || name == "outputDeviceSection" || name == "inputDeviceSection" ||
                 name == "audioCurrentDeviceRow" || name == "audioPopupPinnedHeader" || name == "popupTraceFooter" ||
                 name == "audioPopupViewport" || name == "masterVolumeBadge" || name == "masterVolumeSlider" ||
-                name == "masterVolumePercentageText" || name == "statusPopupContentLoader") {
+                name == "masterVolumePercentageText" || name == "statusPopupContentLoader" ||
+                name == "statusPopupFrame") {
               const auto position = item->mapToItem(root, QPointF{});
               const auto key = name + (name == "audioCurrentDeviceRow" ? item->parentItem()->objectName() : QString{});
               frame.insert(

@@ -20,6 +20,26 @@ Controls.Popup {
     height: Math.min(implicitHeight, parent ? parent.height : implicitHeight)
     closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
     onOpened: passwordForm.forceActiveFocus()
+
+    // The overlay fills the window, which is a screen-sized surface here: dim only the panel.
+    readonly property Item dimTarget: {
+        for (let item = parent; item; item = item.parent) {
+            if (item.objectName === "statusPopupFrame")
+                return item
+        }
+        return parent
+    }
+
+    Controls.Overlay.modal: Item {
+        Rectangle {
+            objectName: "wifiPasswordDim"
+            x: root.dimTarget ? root.dimTarget.x : 0
+            y: root.dimTarget ? root.dimTarget.y : 0
+            width: root.dimTarget ? root.dimTarget.width : 0
+            height: root.dimTarget ? root.dimTarget.height : 0
+            color: Qt.alpha(root.palette.shadow, root.palette.shadow.a * 0.5)
+        }
+    }
     onClosed: root.passwordText = ""
 
     Controls.ScrollView {

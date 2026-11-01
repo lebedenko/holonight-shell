@@ -12,29 +12,14 @@ QSize statusPopupMaximumSize(const QRect& screen_geometry, const QRect& availabl
   return {available_width, available_height};
 }
 
-StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, const QRect& screen_geometry,
-                                        const QRect& available_geometry, int anchor_x, int anchor_width) {
-  constexpr int kGlowPadding = 24;
-  constexpr int kTopPadding = 6;
-  constexpr int kNotchCornerClearance = 9;
+StatusPopupSurfacePlacement statusPopupSurfacePlacement(const QRect& screen_geometry, const QRect& available_geometry,
+                                                        int anchor_x, int anchor_width) {
   const QRect usable = screen_geometry.intersected(available_geometry);
-  const QSize maximum = statusPopupMaximumSize(screen_geometry, available_geometry);
-  const int surface_width = std::clamp(requested_surface_size.width(), 1, maximum.width());
-  const int surface_height = std::clamp(requested_surface_size.height(), 1, maximum.height());
-  const int content_width = std::max(0, surface_width - (2 * kGlowPadding));
-  const int anchor_center = anchor_x - screen_geometry.x() + (anchor_width / 2);
-  const int minimum_left = usable.x() - screen_geometry.x() + kScreenEdgeMargin;
-  const int maximum_left =
-      std::max(minimum_left, usable.right() + 1 - screen_geometry.x() - kScreenEdgeMargin - surface_width);
-  const int left = std::clamp(anchor_center - (surface_width / 2), minimum_left, maximum_left);
-  const int pointer_inset = std::min(surface_width / 2, kGlowPadding + kNotchCornerClearance);
+  const int left_margin = usable.x() - screen_geometry.x() + kScreenEdgeMargin;
   return {
-      .content_width = content_width,
-      .content_height = std::max(0, surface_height - kTopPadding - kGlowPadding),
-      .surface_width = surface_width,
-      .surface_height = surface_height,
-      .left_margin = left,
-      .pointer_x = std::clamp(anchor_center - left, pointer_inset, surface_width - pointer_inset),
+      .surface_size = statusPopupMaximumSize(screen_geometry, available_geometry),
+      .left_margin = left_margin,
+      .anchor_center = anchor_x - screen_geometry.x() + (anchor_width / 2) - left_margin,
   };
 }
 

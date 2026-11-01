@@ -7,7 +7,9 @@ import Holonight.Controls
 import "../../Utility" as Utility
 import "PopupMetrics.js" as PopupMetrics
 
-// Shared frame owns padding and publishes the loaded body's natural size to the surface host.
+// The layer surface stays constant while open: resizing one is not atomic, and the compositor
+// stretches stale buffers into the new size. The frame below moves inside it instead, in the same
+// polish pass as the content, and publishes panelBounds for the surface's input region.
 Item {
     id: root
 
@@ -36,8 +38,15 @@ Item {
     readonly property string contentSource: root.popupSources[root.popupId] ?? ""
     readonly property bool showTitle: root.contentSource.length === 0 || contentLoader.status === Loader.Error
     property int maximumSurfaceHeight: 0
-    readonly property real targetSurfaceHeight: maximumSurfaceHeight > 0
-        ? Math.max(1, Math.min(Math.ceil(implicitHeight), maximumSurfaceHeight)) : height
+    // Anchor center in surface coordinates, injected by StatusPopupSurface.
+    property int anchorCenter: width / 2
+    readonly property int frameWidth: Math.max(1, Math.min(Math.ceil(implicitWidth), width))
+    readonly property int frameHeight: maximumSurfaceHeight > 0
+        ? Math.max(1, Math.min(Math.ceil(implicitHeight), maximumSurfaceHeight)) : Math.max(1, height)
+    readonly property int frameX: Math.max(0, Math.min(anchorCenter - Math.floor(frameWidth / 2), width - frameWidth))
+    readonly property int pointerInset: Math.min(Math.floor(frameWidth / 2), glowPadding + notchHalfWidth)
+    readonly property int pointerX: Math.max(pointerInset, Math.min(anchorCenter - frameX, frameWidth - pointerInset))
+    readonly property rect panelBounds: Qt.rect(frameX, 0, frameWidth, frameHeight)
     property bool geometryReady: false
     readonly property int contentPadding: PopupMetrics.contentInset
     readonly property Item loadedContent: contentLoader.status === Loader.Ready ? contentLoader.item as Item : null
@@ -56,8 +65,8 @@ Item {
     // Panel body geometry within the (padded) surface.
     readonly property int panelLeft: root.glowPadding
     readonly property int panelTop: root.topPadding + root.notchBandHeight
-    readonly property int panelRight: root.width - root.glowPadding
-    readonly property int panelBottom: root.height - root.glowPadding
+    readonly property int panelRight: root.frameWidth - root.glowPadding
+    readonly property int panelBottom: root.frameHeight - root.glowPadding
     readonly property real panelDrawableWidth: Math.max(0, root.panelRight - root.panelLeft - root.panelBorderWidth)
     readonly property real panelDrawableHeight: Math.max(0, root.panelBottom - root.panelTop - root.panelBorderWidth)
     readonly property var panelShapeProfile: HnAppearance.resolve(HnSurfaceRole.Popup, HnCornerStyle.Inherit,
@@ -73,15 +82,6 @@ Item {
 
     Keys.onEscapePressed: StatusPopupSurface.hide()
 
-    Rectangle {
-        anchors.fill: parent
-        color: "transparent"
-        border.color: "red"
-        border.width: 1
-        visible: AppearanceService.debugOverlays
-        z: 99999
-    }
-
     // Entry animation: fade in while sliding up a few pixels.
     property real entryProgress: 0.0
     opacity: root.entryProgress
@@ -94,138 +94,151 @@ Item {
         running: root.geometryReady
     }
 
-    // Glow declared before the panel shape and labels so it renders behind them
-    //
-    // HoloNight philosophy: geometry first, light second. The border carries the shape;
-    // the glow is a soft ambient accent, not a neon emission. Keep shadowOpacity low and
-    // the blur wide so it reads as energy around the panel rather than a bright halo.
-    MultiEffect {
-        source: panelShape
-        anchors.fill: panelShape
-        shadowEnabled: true
-        shadowColor: HoloniightPalette.accentCyan
-        shadowBlur: 0.6
-        shadowOpacity: 0.2
-        shadowScale: 1.0
-        shadowHorizontalOffset: 0
-        shadowVerticalOffset: 0
-        autoPaddingEnabled: true
-    }
+    Item {
+        id: panelFrame
+        objectName: "statusPopupFrame"
+        x: root.frameX
+        width: root.frameWidth
+        height: root.frameHeight
 
-    // Whole popup outline (rounded panel + upward notch) drawn as one continuous path so the
-    // notch is seamless with the border.
-    Canvas {
-        id: panelShape
-        anchors.fill: parent
-
-        function hasChamfer(corner) {
-            return (root.panelChamferedCorners & corner) !== 0
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.color: "red"
+            border.width: 1
+            visible: AppearanceService.debugOverlays
+            z: 99999
         }
 
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.reset()
-
-            const half = root.notchHalfWidth
-            const rad = root.panelRadius
-            const chamfer = root.panelChamfer
-            const topLeft = panelShape.hasChamfer(HnCornerMask.TopLeft)
-            const topRight = panelShape.hasChamfer(HnCornerMask.TopRight)
-            const bottomRight = panelShape.hasChamfer(HnCornerMask.BottomRight)
-            const bottomLeft = panelShape.hasChamfer(HnCornerMask.BottomLeft)
-            const frameInset = root.panelBorderWidth / 2
-            const left = root.panelLeft + frameInset
-            const right = root.panelRight - frameInset
-            const top = root.panelTop + frameInset
-            const bottom = root.panelBottom - frameInset
-            const tipY = root.topPadding + frameInset
-            const topLeftExtent = topLeft ? chamfer : rad
-            const topRightExtent = topRight ? chamfer : rad
-
-            const pointerMin = left + topLeftExtent + half
-            const pointerMax = right - topRightExtent - half
-            const ptr = pointerMin <= pointerMax
-                ? Math.max(pointerMin, Math.min(pointerMax, StatusPopupSurface.pointerX))
-                : (left + right) / 2
-
-            ctx.beginPath()
-            ctx.moveTo(left + topLeftExtent, top)
-            ctx.lineTo(ptr - half, top)
-            ctx.lineTo(ptr, tipY)
-            ctx.lineTo(ptr + half, top)
-            ctx.lineTo(right - topRightExtent, top)
-            if (topRight) {
-                ctx.lineTo(right, top + chamfer)
-            } else {
-                ctx.arcTo(right, top, right, top + rad, rad)
-            }
-            ctx.lineTo(right, bottom - (bottomRight ? chamfer : rad))
-            if (bottomRight) {
-                ctx.lineTo(right - chamfer, bottom)
-            } else {
-                ctx.arcTo(right, bottom, right - rad, bottom, rad)
-            }
-            ctx.lineTo(left + (bottomLeft ? chamfer : rad), bottom)
-            if (bottomLeft) {
-                ctx.lineTo(left, bottom - chamfer)
-            } else {
-                ctx.arcTo(left, bottom, left, bottom - rad, rad)
-            }
-            ctx.lineTo(left, top + topLeftExtent)
-            if (topLeft) {
-                ctx.lineTo(left + chamfer, top)
-            } else {
-                ctx.arcTo(left, top, left + rad, top, rad)
-            }
-            ctx.closePath()
-
-            ctx.fillStyle = root.panelFillColor
-            ctx.fill()
-            ctx.lineWidth = root.panelBorderWidth
-            ctx.strokeStyle = root.panelBorderColor
-            ctx.stroke()
+        // Glow declared before the panel shape and labels so it renders behind them
+        //
+        // HoloNight philosophy: geometry first, light second. The border carries the shape;
+        // the glow is a soft ambient accent, not a neon emission. Keep shadowOpacity low and
+        // the blur wide so it reads as energy around the panel rather than a bright halo.
+        MultiEffect {
+            source: panelShape
+            anchors.fill: panelShape
+            shadowEnabled: true
+            shadowColor: HoloniightPalette.accentCyan
+            shadowBlur: 0.6
+            shadowOpacity: 0.2
+            shadowScale: 1.0
+            shadowHorizontalOffset: 0
+            shadowVerticalOffset: 0
+            autoPaddingEnabled: true
         }
 
-        Connections {
-            target: StatusPopupSurface
-            function onGeometryChanged() { panelShape.requestPaint() }
+        // Whole popup outline (rounded panel + upward notch) drawn as one continuous path so the
+        // notch is seamless with the border.
+        Canvas {
+            id: panelShape
+            anchors.fill: parent
+
+            function hasChamfer(corner) {
+                return (root.panelChamferedCorners & corner) !== 0
+            }
+
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.reset()
+
+                const half = root.notchHalfWidth
+                const rad = root.panelRadius
+                const chamfer = root.panelChamfer
+                const topLeft = panelShape.hasChamfer(HnCornerMask.TopLeft)
+                const topRight = panelShape.hasChamfer(HnCornerMask.TopRight)
+                const bottomRight = panelShape.hasChamfer(HnCornerMask.BottomRight)
+                const bottomLeft = panelShape.hasChamfer(HnCornerMask.BottomLeft)
+                const frameInset = root.panelBorderWidth / 2
+                const left = root.panelLeft + frameInset
+                const right = root.panelRight - frameInset
+                const top = root.panelTop + frameInset
+                const bottom = root.panelBottom - frameInset
+                const tipY = root.topPadding + frameInset
+                const topLeftExtent = topLeft ? chamfer : rad
+                const topRightExtent = topRight ? chamfer : rad
+
+                const pointerMin = left + topLeftExtent + half
+                const pointerMax = right - topRightExtent - half
+                const ptr = pointerMin <= pointerMax
+                    ? Math.max(pointerMin, Math.min(pointerMax, root.pointerX))
+                    : (left + right) / 2
+
+                ctx.beginPath()
+                ctx.moveTo(left + topLeftExtent, top)
+                ctx.lineTo(ptr - half, top)
+                ctx.lineTo(ptr, tipY)
+                ctx.lineTo(ptr + half, top)
+                ctx.lineTo(right - topRightExtent, top)
+                if (topRight) {
+                    ctx.lineTo(right, top + chamfer)
+                } else {
+                    ctx.arcTo(right, top, right, top + rad, rad)
+                }
+                ctx.lineTo(right, bottom - (bottomRight ? chamfer : rad))
+                if (bottomRight) {
+                    ctx.lineTo(right - chamfer, bottom)
+                } else {
+                    ctx.arcTo(right, bottom, right - rad, bottom, rad)
+                }
+                ctx.lineTo(left + (bottomLeft ? chamfer : rad), bottom)
+                if (bottomLeft) {
+                    ctx.lineTo(left, bottom - chamfer)
+                } else {
+                    ctx.arcTo(left, bottom, left, bottom - rad, rad)
+                }
+                ctx.lineTo(left, top + topLeftExtent)
+                if (topLeft) {
+                    ctx.lineTo(left + chamfer, top)
+                } else {
+                    ctx.arcTo(left, top, left + rad, top, rad)
+                }
+                ctx.closePath()
+
+                ctx.fillStyle = root.panelFillColor
+                ctx.fill()
+                ctx.lineWidth = root.panelBorderWidth
+                ctx.strokeStyle = root.panelBorderColor
+                ctx.stroke()
+            }
+
+            Connections {
+                target: root
+                function onPointerXChanged() { panelShape.requestPaint() }
+                function onPanelShapeProfileChanged() { panelShape.requestPaint() }
+                function onPanelFillColorChanged() { panelShape.requestPaint() }
+                function onPanelBorderColorChanged() { panelShape.requestPaint() }
+                function onPanelBorderWidthChanged() { panelShape.requestPaint() }
+            }
         }
 
-        Connections {
-            target: root
-            function onPanelShapeProfileChanged() { panelShape.requestPaint() }
-            function onPanelFillColorChanged() { panelShape.requestPaint() }
-            function onPanelBorderColorChanged() { panelShape.requestPaint() }
-            function onPanelBorderWidthChanged() { panelShape.requestPaint() }
+        HnLabel {
+            id: titleText
+            x: root.panelLeft + root.contentPadding
+            y: root.panelTop + root.contentPadding
+            width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
+            visible: root.showTitle
+            rawText: contentLoader.status === Loader.Error ? qsTr("Unable to load %1").arg(root.displayTitle) : root.displayTitle
+            role: HnTypographyRole.Body
+            color: HoloniightPalette.textPrimary
+            font.weight: Font.Medium
+            elide: Text.ElideRight
         }
-    }
 
-    HnLabel {
-        id: titleText
-        x: root.panelLeft + root.contentPadding
-        y: root.panelTop + root.contentPadding
-        width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
-        visible: root.showTitle
-        rawText: contentLoader.status === Loader.Error ? qsTr("Unable to load %1").arg(root.displayTitle) : root.displayTitle
-        role: HnTypographyRole.Body
-        color: HoloniightPalette.textPrimary
-        font.weight: Font.Medium
-        elide: Text.ElideRight
-    }
-
-    // Allocate the interior independently from the body's natural size.
-    Loader {
-        id: contentLoader
-        objectName: "statusPopupContentLoader"
-        x: root.panelLeft + root.contentPadding
-        y: root.panelTop + root.contentPadding
-        width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
-        height: Math.max(0, root.targetSurfaceHeight - root.glowPadding - y - root.contentPadding)
-        active: root.contentSource.length > 0
-        focus: active
-        source: root.contentSource
+        // Allocate the interior independently from the body's natural size.
+        Loader {
+            id: contentLoader
+            objectName: "statusPopupContentLoader"
+            x: root.panelLeft + root.contentPadding
+            y: root.panelTop + root.contentPadding
+            width: Math.max(0, root.panelRight - root.panelLeft - 2 * root.contentPadding)
+            height: Math.max(0, root.frameHeight - root.glowPadding - y - root.contentPadding)
+            active: root.contentSource.length > 0
+            focus: active
+            source: root.contentSource
+        }
     }
 }

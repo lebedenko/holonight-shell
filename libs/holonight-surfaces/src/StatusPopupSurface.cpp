@@ -13,13 +13,13 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QQmlEngine>
+#include <QQmlProperty>
 #include <QQuickItem>
 #include <QQuickView>
 #include <QScreen>
 #include <QThread>
 
 #include <atomic>
-#include <cmath>
 #include <memory>
 
 using namespace Holonight::Wayland;
@@ -31,8 +31,7 @@ bool popupTraceEnabled() {
 }
 
 // Called only on the GUI thread. Never serialize model values or arbitrary object names.
-void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 emitted_ms = 0,
-                const StatusPopupGeometry* allocation = nullptr) {
+void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 emitted_ms = 0) {
   if (!popupTraceEnabled() || view == nullptr) {
     return;
   }
@@ -62,17 +61,13 @@ void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 e
                      {"surface_instance", QString::number(reinterpret_cast<quintptr>(view), 16)},
                      {"pointer_x", QCursor::pos().x()},
                      {"pointer_y", QCursor::pos().y()}};
-  if (allocation != nullptr) {
-    record.insert("allocation_width", allocation->surface_width);
-    record.insert("allocation_height", allocation->surface_height);
-    record.insert("margin_left", allocation->left_margin);
-    record.insert("margin_top", kStatusPopupTopGap);
-  }
   auto* root = qobject_cast<QQuickItem*>(view->rootObject());
   if (root != nullptr) {
     record.insert("root_width", root->width());
     record.insert("root_height", root->height());
-    record.insert("target_height", QJsonValue::fromVariant(root->property("targetSurfaceHeight")));
+    record.insert("frame_x", QJsonValue::fromVariant(root->property("frameX")));
+    record.insert("frame_width", QJsonValue::fromVariant(root->property("frameWidth")));
+    record.insert("frame_height", QJsonValue::fromVariant(root->property("frameHeight")));
     record.insert("requested_width", root->implicitWidth());
     record.insert("requested_height", root->implicitHeight());
     QJsonArray items;
@@ -95,7 +90,8 @@ void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 e
                            {"height", item->height()},
                            {"implicit_height", item->implicitHeight()},
                            {"visible", item->isVisible()}};
-        for (const char* property : {"contentY", "contentHeight", "pinned", "outputExpanded", "inputExpanded", "expanded"}) {
+        for (const char* property :
+             {"contentY", "contentHeight", "pinned", "outputExpanded", "inputExpanded", "expanded"}) {
           const QVariant value = item->property(property);
           if (value.isValid()) {
             bounds.insert(QString::fromLatin1(property), QJsonValue::fromVariant(value));
@@ -153,22 +149,19 @@ bool StatusPopupSurface::ensureSurface(const QString& popup_id, const QString& s
     return false;
   }
 
-  const StatusPopupGeometry geometry = statusPopupGeometry(kStatusPopupInitialSize, screen->geometry(),
-                                                           screen->availableGeometry(), anchor_x, anchor_width);
   current_screen_ = screen;
   anchor_local_x_ = anchor_x - screen->geometry().x();
   anchor_width_ = anchor_width;
-  applied_geometry_ = geometry;
-  setPointerX(geometry.pointer_x);
+  applied_placement_ =
+      statusPopupSurfacePlacement(screen->geometry(), screen->availableGeometry(), anchor_x, anchor_width);
   setActivePopupId(popup_id);
   return openPair(surfaceSpec(screen, popup_id, anchor_x, anchor_width));
 }
 
 PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QString& popup_id, int anchor_x,
                                                        int anchor_width) {
-  const StatusPopupGeometry geometry = statusPopupGeometry(kStatusPopupInitialSize, screen->geometry(),
-                                                           screen->availableGeometry(), anchor_x, anchor_width);
-  const QRect input_rect = statusPopupInputRect({geometry.surface_width, geometry.surface_height});
+  const StatusPopupSurfacePlacement placement =
+      statusPopupSurfacePlacement(screen->geometry(), screen->availableGeometry(), anchor_x, anchor_width);
   return {
       .dismiss =
           {
@@ -189,19 +182,18 @@ PairedLayerSurfaceSpec StatusPopupSurface::surfaceSpec(QScreen* screen, const QS
               .name_space = QStringLiteral("status-popup"),
               .layer = Layer::Top,
               .anchors = Anchor::Top | Anchor::Left,
-              .width = geometry.surface_width,
-              .height = geometry.surface_height,
+              .width = placement.surface_size.width(),
+              .height = placement.surface_size.height(),
               .margin_top = kStatusPopupTopGap,
-              .margin_left = geometry.left_margin,
+              .margin_left = placement.left_margin,
               .exclusive_zone = 0,
               .keyboard_interactivity = KeyboardInteractivity::OnDemand,
-              .input_region_policy = input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region,
-              .input_region = QRegion(input_rect),
+              // Clicks pass through until QML publishes the panel bounds (onPairOpened).
+              .input_region_policy = InputRegionPolicy::Empty,
               .qml_url = QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Status/StatusPopup.qml")),
-              .initial_properties =
-                  {{QStringLiteral("popupId"), popup_id},
-                   {QStringLiteral("maximumSurfaceHeight"),
-                    statusPopupMaximumSize(screen->geometry(), screen->availableGeometry()).height()}},
+              .initial_properties = {{QStringLiteral("popupId"), popup_id},
+                                     {QStringLiteral("maximumSurfaceHeight"), placement.surface_size.height()},
+                                     {QStringLiteral("anchorCenter"), placement.anchor_center}},
               .window_flags = Qt::FramelessWindowHint | Qt::BypassWindowManagerHint,
               .color = Qt::transparent,
               .before_load =
@@ -248,59 +240,61 @@ void StatusPopupSurface::onPairOpened() {
     connect(contentHost(), &LayerSurfaceHost::configured, view, [view] { tracePopup("configure", view); });
   }
   setPopupVisible(true);
-  frame_connection_ =
-      connect(contentView(), &QQuickWindow::afterAnimating, this, &StatusPopupSurface::updateSurfaceGeometry);
-  const auto request_frame = [this] {
-    if (contentView() != nullptr) {
-      contentView()->update();
-    }
-  };
-  screen_connection_ = connect(current_screen_, &QScreen::geometryChanged, this, request_frame);
-  available_connection_ = connect(current_screen_, &QScreen::availableGeometryChanged, this, request_frame);
-  contentView()->update();
+  auto* root = contentRootObject();
+  // The panel moves inside the fixed surface, so only the input region needs C++ follow-up. It has
+  // to track the binding: panel changes land during polish, with no later frame guaranteed.
+  if (root != nullptr) {
+    QQmlProperty(root, QStringLiteral("panelBounds")).connectNotifySignal(this, SLOT(updateInputRegion()));
+  }
+  updateInputRegion();
+  screen_connection_ =
+      connect(current_screen_, &QScreen::geometryChanged, this, &StatusPopupSurface::updateSurfacePlacement);
+  available_connection_ =
+      connect(current_screen_, &QScreen::availableGeometryChanged, this, &StatusPopupSurface::updateSurfacePlacement);
 }
 
-void StatusPopupSurface::updateSurfaceGeometry() {
-  if (contentView() != nullptr && contentHost() != nullptr) {
-    const QRect input_rect = statusPopupInputRect(contentView()->size());
-    if (applied_input_rect_ != input_rect &&
-        contentHost()->setInputRegion(input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region,
-                                      QRegion(input_rect))) {
-      applied_input_rect_ = input_rect;
-    }
+void StatusPopupSurface::onPairConfigured() {
+  // Either surface of the pair can report first; the entrance waits for the visible one.
+  auto* root = contentRootObject();
+  if (root != nullptr && contentHost() != nullptr && contentHost()->state() == LayerSurfaceHost::State::Configured) {
+    root->setProperty("geometryReady", true);
   }
-  auto* root = qobject_cast<QQuickItem*>(contentRootObject());
+}
+
+void StatusPopupSurface::updateInputRegion() {
+  auto* root = contentRootObject();
+  if (root == nullptr || contentHost() == nullptr) {
+    return;
+  }
+  const QRectF bounds = root->property("panelBounds").toRectF();
+  const QRect frame = bounds.toAlignedRect();
+  const QRect input_rect = statusPopupInputRect(frame.size()).translated(frame.topLeft());
+  if (applied_input_rect_ != input_rect &&
+      contentHost()->setInputRegion(input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region,
+                                    QRegion(input_rect))) {
+    applied_input_rect_ = input_rect;
+  }
+}
+
+// Screen changes are the only remaining resize; content changes never reach this path.
+void StatusPopupSurface::updateSurfacePlacement() {
+  auto* root = contentRootObject();
   if (root == nullptr || current_screen_ == nullptr || contentHost() == nullptr) {
     return;
   }
-  root->setProperty("maximumSurfaceHeight",
-                    statusPopupMaximumSize(current_screen_->geometry(), current_screen_->availableGeometry()).height());
-  if (!std::isfinite(root->implicitWidth()) || !std::isfinite(root->implicitHeight()) || root->implicitWidth() <= 0 ||
-      root->implicitHeight() <= 0) {
+  const auto placement = statusPopupSurfacePlacement(current_screen_->geometry(), current_screen_->availableGeometry(),
+                                                     current_screen_->geometry().x() + anchor_local_x_, anchor_width_);
+  if (placement == applied_placement_) {
     return;
   }
-  const QSize requested{static_cast<int>(std::ceil(root->implicitWidth())),
-                        static_cast<int>(std::ceil(root->implicitHeight()))};
-  const auto geometry =
-      statusPopupGeometry(requested, current_screen_->geometry(), current_screen_->availableGeometry(),
-                          current_screen_->geometry().x() + anchor_local_x_, anchor_width_);
-  if (geometry == applied_geometry_) {
-    if (contentView()->width() == geometry.surface_width && contentView()->height() == geometry.surface_height) {
-      root->setProperty("geometryReady", true);
-    }
-    return;
-  }
-  tracePopup("size-request", contentView(), 0, 0, &geometry);
-  applied_geometry_ = geometry;
-  contentHost()->setSize(geometry.surface_width, geometry.surface_height);
-  contentHost()->setMargins(kStatusPopupTopGap, 0, 0, geometry.left_margin);
-  pointer_x_ = geometry.pointer_x;
-  Q_EMIT geometryChanged();
-  contentView()->update();
+  applied_placement_ = placement;
+  root->setProperty("maximumSurfaceHeight", placement.surface_size.height());
+  root->setProperty("anchorCenter", placement.anchor_center);
+  contentHost()->setSize(placement.surface_size.width(), placement.surface_size.height());
+  contentHost()->setMargins(kStatusPopupTopGap, 0, 0, placement.left_margin);
 }
 
 void StatusPopupSurface::onPairTerminated() {
-  disconnect(frame_connection_);
   disconnect(screen_connection_);
   disconnect(available_connection_);
   setPopupVisible(false);
@@ -311,7 +305,6 @@ void StatusPopupSurface::onPairTerminated() {
 
 void StatusPopupSurface::destroySurface() {
   tracePopup("close", contentView());
-  disconnect(frame_connection_);
   disconnect(screen_connection_);
   disconnect(available_connection_);
   clearPendingPair();
@@ -332,12 +325,4 @@ void StatusPopupSurface::setActivePopupId(const QString& popup_id) {
   }
   active_popup_id_ = popup_id;
   Q_EMIT activePopupChanged();
-}
-
-void StatusPopupSurface::setPointerX(int value) {
-  if (pointer_x_ == value) {
-    return;
-  }
-  pointer_x_ = value;
-  Q_EMIT geometryChanged();
 }

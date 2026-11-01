@@ -16,7 +16,6 @@ class StatusPopupSurface : public PairedTransientSurfaceHost {
   QML_SINGLETON
   Q_PROPERTY(bool popupVisible READ isPopupVisible NOTIFY popupVisibleChanged)
   Q_PROPERTY(QString activePopupId READ activePopupId NOTIFY activePopupChanged)
-  Q_PROPERTY(int pointerX READ pointerX NOTIFY geometryChanged)
 
  public:
   explicit StatusPopupSurface(QObject* parent = nullptr);
@@ -28,7 +27,6 @@ class StatusPopupSurface : public PairedTransientSurfaceHost {
 
   [[nodiscard]] bool isPopupVisible() const { return popup_visible_; }
   [[nodiscard]] QString activePopupId() const { return active_popup_id_; }
-  [[nodiscard]] int pointerX() const { return pointer_x_; }
   [[nodiscard]] static PairedLayerSurfaceSpec surfaceSpec(QScreen* screen, const QString& popup_id, int anchor_x,
                                                           int anchor_width);
 
@@ -39,29 +37,29 @@ class StatusPopupSurface : public PairedTransientSurfaceHost {
  Q_SIGNALS:
   void popupVisibleChanged();
   void activePopupChanged();
-  void geometryChanged();
 
  protected:
   void onPairOpened() override;
+  void onPairConfigured() override;
   void onPairTerminated() override;
+
+ private Q_SLOTS:
+  void updateInputRegion();
 
  private:
   [[nodiscard]] bool ensureSurface(const QString& popup_id, const QString& screen_name, int anchor_x, int anchor_width);
   void destroySurface();
-  void updateSurfaceGeometry();
+  void updateSurfacePlacement();
   void setPopupVisible(bool visible);
   void setActivePopupId(const QString& popup_id);
-  void setPointerX(int value);
 
   QPointer<QScreen> current_screen_;
   int anchor_local_x_ = 0;
   int anchor_width_ = 0;
-  StatusPopupGeometry applied_geometry_;
+  StatusPopupSurfacePlacement applied_placement_;
   std::optional<QRect> applied_input_rect_;
-  QMetaObject::Connection frame_connection_;
   QMetaObject::Connection screen_connection_;
   QMetaObject::Connection available_connection_;
   QString active_popup_id_;
-  int pointer_x_ = 0;
   bool popup_visible_ = false;
 };

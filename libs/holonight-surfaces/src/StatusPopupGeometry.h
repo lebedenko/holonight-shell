@@ -3,22 +3,20 @@
 #include <QRect>
 #include <QSize>
 
-// Bootstrap allocation only; QML measurements replace it before the entrance animation.
-inline constexpr QSize kStatusPopupInitialSize{480, 320};
-
-struct StatusPopupGeometry {
-  int content_width{};
-  int content_height{};
-  int surface_width{};
-  int surface_height{};
+// Fixed layer-surface allocation for one popup session. Resizing a layer surface is not atomic:
+// the compositor can stretch a stale buffer into the new size, so the panel moves inside this
+// constant surface instead (see StatusPopup.qml).
+struct StatusPopupSurfacePlacement {
+  QSize surface_size;
   int left_margin{};
-  int pointer_x{};
-  bool operator==(const StatusPopupGeometry&) const = default;
+  int anchor_center{};  // Horizontal anchor center in surface coordinates.
+  bool operator==(const StatusPopupSurfacePlacement&) const = default;
 };
 
 [[nodiscard]] QSize statusPopupMaximumSize(const QRect& screen_geometry, const QRect& available_geometry);
 
-[[nodiscard]] StatusPopupGeometry statusPopupGeometry(const QSize& requested_surface_size, const QRect& screen_geometry,
-                                                      const QRect& available_geometry, int anchor_x, int anchor_width);
+[[nodiscard]] StatusPopupSurfacePlacement statusPopupSurfacePlacement(const QRect& screen_geometry,
+                                                                      const QRect& available_geometry, int anchor_x,
+                                                                      int anchor_width);
 
 [[nodiscard]] QRect statusPopupInputRect(const QSize& surface_size);

@@ -22,7 +22,7 @@ Item {
                                                   HoloniightPalette.borderPassive.b, 0.62)
 
     readonly property real forecastSummaryWidth: 455
-    readonly property real forecastDetailsWidth: Math.max(detailsGrid.naturalWidth, sunrise.naturalWidth + sunset.naturalWidth + PopupMetrics.rowGap)
+    readonly property real forecastDetailsWidth: Math.ceil(Math.max(detailsGrid.naturalWidth, sunrise.naturalWidth + sunset.naturalWidth + PopupMetrics.rowGap))
     implicitWidth: Math.max(root.forecastSummaryWidth + forecastDetailsWidth + 2 * PopupMetrics.sectionGap + HnMetrics.separatorWidth, currentSection.implicitWidth + detailsGrid.naturalWidth + 2 * PopupMetrics.sectionGap + HnMetrics.separatorWidth, hourlyStrip.naturalWidth)
     implicitHeight: viewport.contentHeight
     readonly property bool narrow: width < implicitWidth

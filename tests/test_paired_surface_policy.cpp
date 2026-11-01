@@ -32,23 +32,20 @@ TEST(PairedSurfacePolicy, DescribesStatusContentAndDismissSurfacesCompletely) {
   ASSERT_NE(screen, nullptr);
   const int anchor_x = screen->geometry().x() + 300;
   const PairedLayerSurfaceSpec pair = StatusPopupSurface::surfaceSpec(screen, QStringLiteral("audio"), anchor_x, 40);
-  const StatusPopupGeometry geometry =
-      statusPopupGeometry(kStatusPopupInitialSize, screen->geometry(), screen->availableGeometry(), anchor_x, 40);
+  const StatusPopupSurfacePlacement placement =
+      statusPopupSurfacePlacement(screen->geometry(), screen->availableGeometry(), anchor_x, 40);
   expectDismissPolicy(pair.dismiss, screen, QStringLiteral("status-popup-dismiss"),
                       QUrl(QStringLiteral("qrc:/HolonightShell/Popups/Status/StatusPopupDismissOverlay.qml")));
   EXPECT_EQ(pair.content.name_space, QStringLiteral("status-popup"));
   EXPECT_EQ(pair.content.anchors, Anchor::Top | Anchor::Left);
-  EXPECT_EQ(pair.content.width, geometry.surface_width);
-  EXPECT_EQ(pair.content.height, geometry.surface_height);
-  EXPECT_EQ(pair.content.margin_left, geometry.left_margin);
-  const QRect input_rect = statusPopupInputRect(QSize(geometry.surface_width, geometry.surface_height));
-  EXPECT_EQ(pair.content.input_region_policy,
-            input_rect.isEmpty() ? InputRegionPolicy::Empty : InputRegionPolicy::Region);
-  EXPECT_EQ(pair.content.input_region, QRegion(input_rect));
+  EXPECT_EQ(QSize(pair.content.width, pair.content.height), placement.surface_size);
+  EXPECT_EQ(pair.content.margin_left, placement.left_margin);
+  EXPECT_EQ(pair.content.input_region_policy, InputRegionPolicy::Empty);
   EXPECT_EQ(pair.content.keyboard_interactivity, KeyboardInteractivity::OnDemand);
   EXPECT_EQ(pair.content.initial_properties.value(QStringLiteral("popupId")).toString(), QStringLiteral("audio"));
   EXPECT_EQ(pair.content.initial_properties.value(QStringLiteral("maximumSurfaceHeight")).toInt(),
             statusPopupMaximumSize(screen->geometry(), screen->availableGeometry()).height());
+  EXPECT_EQ(pair.content.initial_properties.value(QStringLiteral("anchorCenter")).toInt(), placement.anchor_center);
   EXPECT_TRUE(static_cast<bool>(pair.content.before_load));
   QQmlEngine engine;
   pair.content.before_load(&engine);

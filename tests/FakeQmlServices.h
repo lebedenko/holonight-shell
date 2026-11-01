@@ -508,7 +508,6 @@ class FakeStatusPopupSurface : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool popupVisible READ popupVisible NOTIFY popupVisibleChanged)
   Q_PROPERTY(QString activePopupId READ activePopupId NOTIFY popupVisibleChanged)
-  Q_PROPERTY(int pointerX READ pointerX CONSTANT)
   Q_PROPERTY(int hideCount READ hideCount NOTIFY hideCountChanged)
 
  public:
@@ -518,7 +517,6 @@ class FakeStatusPopupSurface : public QObject {
     active_popup_id_ = popup_id;
     Q_EMIT popupVisibleChanged();
   }
-  [[nodiscard]] int pointerX() const { return 120; }
   [[nodiscard]] int hideCount() const { return hide_count_; }
   Q_INVOKABLE void hide() {
     ++hide_count_;
@@ -527,7 +525,6 @@ class FakeStatusPopupSurface : public QObject {
   }
 
  Q_SIGNALS:
-  void geometryChanged();
   void hideCountChanged();
   void popupVisibleChanged();
 

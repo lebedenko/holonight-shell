@@ -4,52 +4,36 @@
 
 #include <gtest/gtest.h>
 
-TEST(StatusPopupGeometry, FitsRequestedSurfaceAndCentersUnderAnchor) {
-  const auto geometry =
-      statusPopupGeometry(QSize(348, 250), QRect(0, 0, 1920, 1080), QRect(0, 64, 1920, 1016), 900, 80);
-  EXPECT_EQ(geometry.surface_width, 348);
-  EXPECT_EQ(geometry.surface_height, 250);
-  EXPECT_EQ(geometry.left_margin, 766);
-  EXPECT_EQ(geometry.pointer_x, 174);
-}
-
-TEST(StatusPopupGeometry, ResizesWithoutMovingTheAnchor) {
+TEST(StatusPopupGeometry, SurfaceFillsTheBudgetAndLocalizesTheAnchor) {
   const QRect screen(0, 0, 1920, 1080);
   const QRect available(0, 64, 1920, 1016);
-  const auto small = statusPopupGeometry(QSize(348, 250), screen, available, 900, 80);
-  const auto large = statusPopupGeometry(QSize(650, 800), screen, available, 900, 80);
-  EXPECT_GT(large.surface_height, small.surface_height);
-  EXPECT_GT(large.surface_width, small.surface_width);
-  EXPECT_EQ(small.left_margin + small.pointer_x, large.left_margin + large.pointer_x);
-  EXPECT_EQ(statusPopupGeometry(QSize(348, 250), screen, available, 900, 80), small);
+  const auto placement = statusPopupSurfacePlacement(screen, available, 900, 80);
+  EXPECT_EQ(placement.surface_size, statusPopupMaximumSize(screen, available));
+  EXPECT_EQ(placement.left_margin, kScreenEdgeMargin);
+  EXPECT_EQ(placement.anchor_center, 940 - kScreenEdgeMargin);
 }
 
-TEST(StatusPopupGeometry, ClampsToMonitorAndKeepsPointerInsideFrame) {
+TEST(StatusPopupGeometry, SurfaceDoesNotDependOnTheAnchor) {
   const QRect screen(0, 0, 800, 600);
   const QRect available(0, 64, 800, 536);
-  for (const int anchor : {0, 400, 790}) {
-    const auto geometry = statusPopupGeometry(QSize(2000, 2000), screen, available, anchor, 40);
-    EXPECT_GE(geometry.left_margin, kScreenEdgeMargin);
-    EXPECT_LE(geometry.left_margin + geometry.surface_width, 800 - kScreenEdgeMargin);
-    EXPECT_LE(geometry.surface_height + kStatusPopupTopGap + kScreenEdgeMargin, available.height());
-    EXPECT_GE(geometry.pointer_x, 33);
-    EXPECT_LE(geometry.pointer_x, geometry.surface_width - 33);
-  }
+  const auto left = statusPopupSurfacePlacement(screen, available, 0, 40);
+  const auto right = statusPopupSurfacePlacement(screen, available, 790, 40);
+  EXPECT_EQ(left.surface_size, right.surface_size);
+  EXPECT_EQ(left.left_margin, right.left_margin);
+  EXPECT_EQ(right.left_margin + right.surface_size.width(), 800 - kScreenEdgeMargin);
+  EXPECT_EQ(right.anchor_center - left.anchor_center, 790);
 }
 
 TEST(StatusPopupGeometry, LocalizesNonPrimaryMonitorAndAvailableHorizontalBounds) {
-  const auto geometry =
-      statusPopupGeometry(QSize(348, 250), QRect(1920, 100, 1920, 1080), QRect(2020, 164, 1820, 1016), 1920, 40);
-  EXPECT_EQ(geometry.left_margin, 108);
-  EXPECT_EQ(geometry.pointer_x, 33);
+  const auto placement =
+      statusPopupSurfacePlacement(QRect(1920, 100, 1920, 1080), QRect(2020, 164, 1820, 1016), 1920, 40);
+  EXPECT_EQ(placement.left_margin, 108);
+  EXPECT_EQ(placement.anchor_center, 20 - 108);
 }
 
-TEST(StatusPopupGeometry, HandlesTinyAllocationsWithoutInvalidClampBounds) {
-  const auto geometry = statusPopupGeometry(QSize(0, 0), QRect(0, 0, 32, 32), QRect(0, 0, 32, 32), 0, 0);
-  EXPECT_EQ(geometry.surface_width, 1);
-  EXPECT_EQ(geometry.surface_height, 1);
-  EXPECT_GE(geometry.pointer_x, 0);
-  EXPECT_LE(geometry.pointer_x, geometry.surface_width);
+TEST(StatusPopupGeometry, HandlesTinyAllocationsWithoutInvalidSizes) {
+  const auto placement = statusPopupSurfacePlacement(QRect(0, 0, 32, 32), QRect(0, 0, 32, 32), 0, 0);
+  EXPECT_EQ(placement.surface_size, QSize(16, 1));
 }
 
 TEST(TooltipGeometry, CentersUnderAnchorWhenThereIsRoom) {
@@ -78,7 +62,7 @@ TEST(StatusPopupGeometry, InputRectangleIncludesPanelAndCornerCutoutsOnly) {
   EXPECT_FALSE(panel.contains(QPoint(174, 6)));  // Decorative notch tip.
 }
 
-TEST(StatusPopupGeometry, InputRectangleTracksSurfaceResizing) {
+TEST(StatusPopupGeometry, InputRectangleTracksFrameResizing) {
   EXPECT_EQ(statusPopupInputRect(QSize(650, 800)), QRect(24, 15, 602, 761));
   EXPECT_EQ(statusPopupInputRect(QSize(49, 40)), QRect(24, 15, 1, 1));
 }

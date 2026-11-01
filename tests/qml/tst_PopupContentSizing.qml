@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import QtTest
 import HolonightShell
@@ -114,10 +115,11 @@ TestCase {
         failOnWarning(/.*Binding loop detected.*/)
         const popup = createTemporaryObject(weather, root, { width: 800, height: 1200 })
         verify(popup)
-        popup.width = Math.ceil(popup.implicitWidth)
+        popup.width = Qt.binding(() => Math.ceil(popup.implicitWidth))
         const sunrise = findChild(popup, "weatherSunrise")
         const sunset = findChild(popup, "weatherSunset")
         verify(sunrise && sunset)
+        tryVerify(() => Math.abs(sunrise.y - sunset.y) <= 1)
         waitForRendering(popup)
         fuzzyCompare(sunrise.y, sunset.y, 1)
         verify(sunset.x >= sunrise.x + sunrise.width)
@@ -292,7 +294,7 @@ TestCase {
         popup.inputExpanded = false
         if (data.wrapped) frame.geometryReady = true
         wait(300) // Let the entrance animation finish.
-        frame.height = Math.ceil(frame.implicitHeight)
+        if (!data.wrapped) frame.height = Math.ceil(frame.implicitHeight)
         waitForRendering(frame)
         const master = findChild(popup, "audioMasterPanel")
         const section = findChild(popup, data.input ? "inputDeviceSection" : "outputDeviceSection")
@@ -311,7 +313,7 @@ TestCase {
                 frame.Window.window.update()
                 waitForRendering(frame)
             }
-            frame.height = Math.ceil(frame.implicitHeight)
+            if (!data.wrapped) frame.height = Math.ceil(frame.implicitHeight)
             for (let index = 0; index < 4; ++index) {
                 frame.Window.window.update()
                 waitForRendering(frame)
@@ -349,7 +351,12 @@ TestCase {
             const delta = sample[sectionKey].height - collapsedSectionHeight
             const footerY = sample.popupTraceFooter.y
             verify(footerY >= frames[0].popupTraceFooter.y - 1, "footer undershoot frame " + index)
-            // A delayed allocation may leave the footer at its old endpoint.
+            if (data.wrapped) {
+                // Panel and content must land in one frame; the surface itself never changes.
+                compare(sample.allocation.height, frames[0].allocation.height, "surface height frame " + index)
+                compare(sample.statusPopupFrame.height, Math.ceil(sample.allocation.requestedHeight),
+                        "panel height frame " + index)
+            }
             const maximumFooterY = frames[0].popupTraceFooter.y + Math.max(...frames.map(frame => frame[sectionKey].height)) - collapsedSectionHeight
             verify(footerY <= maximumFooterY + 1)
             const expanded = sample[sectionKey].expanded
@@ -428,16 +435,7 @@ TestCase {
             compare(frame.height, actual)
             fuzzyCompare(header.mapToItem(frame, 0, 0).y, headerY, 1)
             if (hero) fuzzyCompare(hero.mapToItem(frame, 0, 0).y, heroY, 1)
-            const footer = popup.footerItem
-            const footerY = footer ? footer.mapToItem(frame, 0, 0).y : 0
-            // Deliver an older configure before the current one.
-            frame.height = actual - 20
-            waitForRendering(frame)
-            if (footer) fuzzyCompare(footer.mapToItem(frame, 0, 0).y, footerY, 1)
-            frame.height = Math.ceil(frame.implicitHeight)
-            waitForRendering(frame)
-            if (footer) fuzzyCompare(footer.mapToItem(frame, 0, 0).y, footerY, 1)
-            frame.height = actual
+            compare(frame.panelBounds.height, Math.ceil(frame.implicitHeight))
         }
         const natural = Math.ceil(frame.implicitHeight)
         for (const budget of [natural + 100, natural, natural - 100, 150, 1100]) {
@@ -453,7 +451,48 @@ TestCase {
                      actual, 1)
     }
 
-    // Hold allocation for several rendered frames, as a compositor may do after set_size.
+    function test_panel_stays_inside_surface_and_points_at_anchor_data() {
+        return [{tag: "left-edge", anchor: 0}, {tag: "center", anchor: 350}, {tag: "right-edge", anchor: 700}]
+    }
+
+    function test_panel_stays_inside_surface_and_points_at_anchor(data) {
+        const frame = createTemporaryObject(wrapper, root, {popupId: "audio", anchorCenter: data.anchor})
+        tryVerify(() => frame.loadedContent !== null)
+        waitForRendering(frame)
+        verify(frame.frameX >= 0)
+        verify(frame.frameX + frame.frameWidth <= frame.width)
+        verify(frame.pointerX >= frame.pointerInset)
+        verify(frame.pointerX <= frame.frameWidth - frame.pointerInset)
+        if (data.anchor === 350) compare(frame.frameX + frame.pointerX, data.anchor)
+        const bounds = frame.panelBounds
+        compare([bounds.x, bounds.y, bounds.width, bounds.height],
+                [frame.frameX, 0, frame.frameWidth, frame.frameHeight])
+    }
+
+    function test_oversized_content_clamps_to_surface() {
+        const frame = createTemporaryObject(wrapper, root, {popupId: "audio", width: 200, anchorCenter: 100})
+        tryVerify(() => frame.loadedContent !== null)
+        waitForRendering(frame)
+        compare(frame.frameWidth, 200)
+        compare(frame.frameX, 0)
+    }
+
+    function test_password_dim_is_limited_to_the_panel() {
+        const frame = createTemporaryObject(wrapper, root, {popupId: "network"})
+        tryVerify(() => frame.loadedContent !== null)
+        waitForRendering(frame)
+        const prompt = frame.loadedContent.passwordPrompt
+        const panel = findChild(frame, "statusPopupFrame")
+        compare(prompt.dimTarget, panel)
+        prompt.open()
+        tryVerify(() => prompt.opened)
+        const dim = findChild(prompt.Controls.Overlay.overlay, "wifiPasswordDim")
+        verify(dim)
+        compare(dim.width, panel.width)
+        compare(dim.height, panel.height)
+        prompt.close()
+    }
+
     function test_delayed_allocation_keeps_header_and_scroll_state_observable() {
         const popup = createTemporaryObject(synthetic, root, { height: 250, rows: 8 })
         verify(popup)
