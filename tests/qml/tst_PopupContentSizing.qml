@@ -178,6 +178,8 @@ TestCase {
         TopbarTestSeed.setWeatherTemperature(20)
         PopupTestSeed.setStorageVolumeCount(0)
         PopupTestSeed.setAudioDeviceCount(0)
+        PopupTestSeed.setAudioDeviceCount(0, true)
+        controlsEvidence.endPopupFrames()
         PopupTestSeed.setBatteryMetrics(false)
         NetworkService.setNetworkCount(1)
     }
@@ -266,6 +268,135 @@ TestCase {
             width: 700
             height: 350
 
+        }
+    }
+
+    function test_audio_rendered_frames_data() {
+        const cases = []
+        for (const wrapped of [false, true])
+            for (const input of [false, true])
+                for (const delay of [0, 1, 4])
+                    cases.push({tag: [wrapped, input, delay].join("-"), wrapped: wrapped, input: input, delay: delay})
+        return cases
+    }
+
+    function test_audio_rendered_frames(data) {
+        PopupTestSeed.setAudioDeviceCount(2)
+        PopupTestSeed.setAudioDeviceCount(2, true)
+        const frame = createTemporaryObject(data.wrapped ? wrapper : audio, root,
+                                            data.wrapped ? {popupId: "audio"} : {width: 600, height: 1000})
+        verify(frame)
+        if (data.wrapped) tryVerify(() => frame.loadedContent !== null)
+        const popup = data.wrapped ? frame.loadedContent : frame
+        popup.outputExpanded = false
+        popup.inputExpanded = false
+        if (data.wrapped) frame.geometryReady = true
+        wait(300) // Let the entrance animation finish.
+        frame.height = Math.ceil(frame.implicitHeight)
+        waitForRendering(frame)
+        const master = findChild(popup, "audioMasterPanel")
+        const section = findChild(popup, data.input ? "inputDeviceSection" : "outputDeviceSection")
+        const row = findChild(section, "audioCurrentDeviceRow")
+        const masterY = master.mapToItem(frame, 0, 0).y
+        const rowY = row.mapToItem(frame, 0, 0).y
+        const precise = controlsEvidence.beginPopupFrames(frame)
+        const masterWidth = master.width
+        const popupWidth = frame.width
+        frame.Window.window.update()
+        waitForRendering(frame)
+        for (const expanded of [true, false, true, false]) {
+            if (data.input) popup.inputExpanded = expanded
+            else popup.outputExpanded = expanded
+            for (let index = 0; index < data.delay; ++index) {
+                frame.Window.window.update()
+                waitForRendering(frame)
+            }
+            frame.height = Math.ceil(frame.implicitHeight)
+            for (let index = 0; index < 4; ++index) {
+                frame.Window.window.update()
+                waitForRendering(frame)
+            }
+        }
+        // Rapid toggles within a single event turn must not disturb the final state.
+        popup.inputExpanded = true
+        popup.inputExpanded = false
+        popup.outputExpanded = true
+        popup.outputExpanded = false
+        waitForRendering(frame)
+        fuzzyCompare(master.mapToItem(frame, 0, 0).y, masterY, 1)
+        fuzzyCompare(row.mapToItem(frame, 0, 0).y, rowY, 1)
+        const frames = controlsEvidence.endPopupFrames()
+        if (!precise) return // Normal-loop recording still exercises every toggle.
+        verify(frames.length >= 4)
+        const rowKey = "audioCurrentDeviceRow" + section.objectName
+        let previousExpanded = false
+        let previousFooterY = frames[0].popupTraceFooter.y
+        const sectionKey = data.input ? "inputDeviceSection" : "outputDeviceSection"
+        const collapsedSectionHeight = frames[0][sectionKey].height
+        for (let index = 0; index < frames.length; ++index) {
+            fuzzyCompare(frames[index].audioMasterPanel.y, masterY, 1, "master frame " + index)
+            fuzzyCompare(frames[index].audioMasterPanel.width, masterWidth, 1, "master width frame " + index)
+            compare(frames[index].allocation.width, popupWidth)
+            for (const role of ["audioPopupPinnedHeader", "masterVolumeBadge", "masterVolumeSlider", "masterVolumePercentageText"]) {
+                for (const dimension of ["x", "y", "width", "height"])
+                    fuzzyCompare(frames[index][role][dimension], frames[0][role][dimension], 1,
+                                 role + " " + dimension + " frame " + index)
+            }
+            compare(frames[index].audioMasterPanel.instance, frames[0].audioMasterPanel.instance)
+            compare(frames[index].audioMasterPanel.parent, frames[0].audioMasterPanel.parent)
+            fuzzyCompare(frames[index][rowKey].y, rowY, 1, "toggle row frame " + index)
+            const sample = frames[index]
+            const delta = sample[sectionKey].height - collapsedSectionHeight
+            const footerY = sample.popupTraceFooter.y
+            verify(footerY >= frames[0].popupTraceFooter.y - 1, "footer undershoot frame " + index)
+            // A delayed allocation may leave the footer at its old endpoint.
+            const maximumFooterY = frames[0].popupTraceFooter.y + Math.max(...frames.map(frame => frame[sectionKey].height)) - collapsedSectionHeight
+            verify(footerY <= maximumFooterY + 1)
+            const expanded = sample[sectionKey].expanded
+            if (expanded === previousExpanded)
+                verify(expanded ? footerY >= previousFooterY - 1 : footerY <= previousFooterY + 1,
+                       "footer reversal frame " + index)
+            if (!data.input)
+                fuzzyCompare(sample.inputDeviceSection.y, frames[0].inputDeviceSection.y + delta, 1,
+                             "content below output frame " + index)
+            previousExpanded = expanded
+            previousFooterY = footerY
+        }
+    }
+
+    function test_audio_constrained_scroll_correction() {
+        PopupTestSeed.setAudioDeviceCount(2)
+        PopupTestSeed.setAudioDeviceCount(2, true)
+        const popup = createTemporaryObject(audio, root, {width: 600, height: 400,
+                                                        outputExpanded: true, inputExpanded: true})
+        verify(popup)
+        waitForRendering(popup)
+        const viewport = popup.viewportItem
+        verify(viewport.interactive)
+        const headerY = popup.headerItem.mapToItem(popup, 0, 0).y
+        for (const input of [false, true]) {
+            viewport.contentY = Math.max(0, viewport.contentHeight - viewport.height)
+            const oldContentY = viewport.contentY
+            const precise = controlsEvidence.beginPopupFrames(popup)
+            if (input) popup.inputExpanded = false
+            else popup.outputExpanded = false
+            for (let index = 0; index < 24; ++index) {
+                popup.Window.window.update()
+                waitForRendering(popup)
+                fuzzyCompare(popup.headerItem.mapToItem(popup, 0, 0).y, headerY, 1)
+            }
+            const frames = controlsEvidence.endPopupFrames()
+            if (precise) {
+                verify(frames.length > 0)
+                for (let index = 0; index < frames.length; ++index) {
+                    fuzzyCompare(frames[index].audioPopupPinnedHeader.y, headerY, 1,
+                                 "constrained header frame " + index)
+                    verify(frames[index].audioPopupViewport.contentY >= -1)
+                    verify(frames[index].audioPopupViewport.contentY <= oldContentY + 1)
+                }
+            }
+            verify(viewport.contentY >= -1)
+            verify(viewport.contentY <= Math.max(0, viewport.contentHeight - viewport.height) + 1)
         }
     }
 

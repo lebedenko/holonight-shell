@@ -5,6 +5,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
 #include <QQmlAbstractUrlInterceptor>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -12,6 +13,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QTemporaryDir>
+#include <QThread>
 #include <QtMath>
 #include <QtQuickTest/quicktest.h>
 
@@ -106,6 +108,59 @@ class Setup : public QObject {
     // grabImage crops in logical coordinates, which truncates fractional-DPR captures.
     return new AuthenticationImage(item->window()->grabWindow().copy(pixels), this);
   }
+  Q_INVOKABLE bool beginPopupFrames(QQuickItem* root) {
+    disconnect(popup_frames_connection_);
+    popup_frames_.clear();
+    if (qEnvironmentVariable("QSG_RENDER_LOOP") != "basic" || !root || !root->window()) {
+      return false;
+    }
+    popup_frames_connection_ = connect(
+        root->window(), &QQuickWindow::beforeSynchronizing, root,
+        [this, root] {
+          Q_ASSERT(QThread::currentThread() == thread());
+          QVariantMap frame{{"allocation", QVariantMap{{"width", root->width()},
+                                                       {"height", root->height()},
+                                                       {"requestedHeight", root->implicitHeight()}}}};
+          auto items = root->findChildren<QQuickItem*>();
+          items.prepend(root);
+          for (auto* item : items) {
+            const auto name = item->objectName();
+            if (name == "audioMasterPanel" || name == "outputDeviceSection" || name == "inputDeviceSection" ||
+                name == "audioCurrentDeviceRow" || name == "audioPopupPinnedHeader" || name == "popupTraceFooter" ||
+                name == "audioPopupViewport" || name == "masterVolumeBadge" || name == "masterVolumeSlider" ||
+                name == "masterVolumePercentageText" || name == "statusPopupContentLoader") {
+              const auto position = item->mapToItem(root, QPointF{});
+              const auto key = name + (name == "audioCurrentDeviceRow" ? item->parentItem()->objectName() : QString{});
+              frame.insert(
+                  key, QVariantMap{{"y", position.y()},
+                                   {"height", item->height()},
+                                   {"width", item->width()},
+                                   {"x", position.x()},
+                                   {"contentY", item->property("contentY")},
+                                   {"expanded", item->property("expanded")},
+                                   {"instance", QString::number(reinterpret_cast<quintptr>(item), 16)},
+                                   {"parent", QString::number(reinterpret_cast<quintptr>(item->parentItem()), 16)}});
+            }
+          }
+          popup_frames_.append(frame);
+        },
+        Qt::DirectConnection);
+    return true;
+  }
+  Q_INVOKABLE QVariantList endPopupFrames() {
+    disconnect(popup_frames_connection_);
+    if (!popup_frames_.isEmpty() && qEnvironmentVariable("HOLONIGHT_STATUS_POPUP_TRACE") == "1") {
+      QDir().mkpath("build/popup-resize-trace");
+      QFile output(
+          QStringLiteral("build/popup-resize-trace/test-frames-%1.jsonl").arg(QCoreApplication::applicationPid()));
+      if (output.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        output.write(QJsonDocument::fromVariant(popup_frames_).toJson(QJsonDocument::Compact) + '\n');
+      }
+    }
+    const auto frames = popup_frames_;
+    popup_frames_.clear();
+    return frames;
+  }
   // NOLINTEND(readability-convert-member-functions-to-static)
 
  public slots:
@@ -136,6 +191,8 @@ class Setup : public QObject {
 #ifndef HOLONIGHT_COMPILED_ACCEPTANCE
   ShellSourceInterceptor source_interceptor_;
 #endif
+  QMetaObject::Connection popup_frames_connection_;
+  QVariantList popup_frames_;
   QTemporaryDir modules_dir_;
   std::unique_ptr<FakeQmlServices> services_;
 };

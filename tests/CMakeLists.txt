@@ -311,6 +311,16 @@ set_tests_properties(test_holonight_qml_harness PROPERTIES
   ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QML_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH};QML2_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH}:${CMAKE_BINARY_DIR}"
 )
 
+# Frame geometry must be sampled on the GUI thread after layout polish.
+add_test(NAME test_popup_resize_frames COMMAND test_holonight_qml_harness
+  -input ${CMAKE_CURRENT_SOURCE_DIR}/qml/tst_PopupContentSizing.qml
+  PopupContentSizing::test_audio_rendered_frames
+  PopupContentSizing::test_audio_constrained_scroll_correction
+  PopupContentSizing::test_wrapper_delayed_allocation)
+set_tests_properties(test_popup_resize_frames PROPERTIES
+  ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QSG_RENDER_LOOP=basic;QML_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH};QML2_IMPORT_PATH=${HOLONIGHT_RUNTIME_QML_PATH}:${CMAKE_BINARY_DIR}"
+)
+
 # --- coverage instrumentation and report target ---
 if(ENABLE_COVERAGE)
   foreach(test_exe IN ITEMS

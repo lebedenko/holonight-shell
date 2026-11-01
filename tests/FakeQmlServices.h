@@ -1379,8 +1379,9 @@ class PopupTestSeed : public QObject {
   }
   Q_INVOKABLE void removePlaybackStream(int id) { audio_.onStreamRemoved(static_cast<uint32_t>(id)); }
 
-  Q_INVOKABLE void setAudioDeviceCount(int count) {
-    audio_.outputs()->clear();
+  Q_INVOKABLE void setAudioDeviceCount(int count, bool input = false) {
+    auto* model = input ? audio_.inputs() : audio_.outputs();
+    model->clear();
     for (int i = 0; i < count; ++i) {
       AudioDevice device;
       device.id = static_cast<uint32_t>(i + 1);
@@ -1389,7 +1390,7 @@ class PopupTestSeed : public QObject {
       device.volume = 55;
       device.channel_count = 2;
       device.is_default = i == 0;
-      audio_.outputs()->applyAdd(device);
+      model->applyAdd(device);
     }
   }
   Q_INVOKABLE void setBatteryMetrics(bool visible) {

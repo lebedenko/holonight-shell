@@ -16,6 +16,7 @@
 #include <QQuickItem>
 #include <QQuickView>
 #include <QScreen>
+#include <QThread>
 
 #include <atomic>
 #include <cmath>
@@ -69,12 +70,16 @@ void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 e
   }
   auto* root = qobject_cast<QQuickItem*>(view->rootObject());
   if (root != nullptr) {
+    record.insert("root_width", root->width());
+    record.insert("root_height", root->height());
+    record.insert("target_height", QJsonValue::fromVariant(root->property("targetSurfaceHeight")));
     record.insert("requested_width", root->implicitWidth());
     record.insert("requested_height", root->implicitHeight());
     QJsonArray items;
     const auto visit = [&](const auto& self, QQuickItem* item) -> void {
       const QString name = item->objectName();
-      if (name == "popupTraceLayout" || name == "popupTraceHeader" || name == "popupTraceHero" ||
+      if (item == root || name == "statusPopupContentLoader" || name == "audioCurrentDeviceRow" ||
+          name == "popupTraceLayout" || name == "popupTraceHeader" || name == "popupTraceHero" ||
           name == "popupTraceBody" || name == "popupTraceFooter" || name == "audioMasterPanel" ||
           name == "popupContentViewport" || name == "audioPopupViewport" || name == "audioPopupPinnedHeader" ||
           name == "outputDeviceSection" || name == "inputDeviceSection" || name == "section-Connected" ||
@@ -90,7 +95,7 @@ void tracePopup(const char* event, QQuickView* view, quint64 frame = 0, qint64 e
                            {"height", item->height()},
                            {"implicit_height", item->implicitHeight()},
                            {"visible", item->isVisible()}};
-        for (const char* property : {"contentY", "contentHeight", "pinned"}) {
+        for (const char* property : {"contentY", "contentHeight", "pinned", "outputExpanded", "inputExpanded", "expanded"}) {
           const QVariant value = item->property(property);
           if (value.isValid()) {
             bounds.insert(QString::fromLatin1(property), QJsonValue::fromVariant(value));
@@ -216,7 +221,15 @@ void StatusPopupSurface::onPairOpened() {
             [view, frame] { tracePopup("gui-snapshot-before-polish", view, ++(*frame)); });
     connect(
         view, &QQuickWindow::beforeSynchronizing, view,
-        [frame, synchronized_frame] { synchronized_frame->store(frame->load()); }, Qt::DirectConnection);
+        [view, frame, synchronized_frame] {
+          synchronized_frame->store(frame->load());
+          // The basic loop synchronizes on the GUI thread after layout polish.
+          // Never traverse live QML items from the threaded render loop.
+          if (QThread::currentThread() == view->thread()) {
+            tracePopup("synchronized-before-render", view, frame->load());
+          }
+        },
+        Qt::DirectConnection);
     // Render callbacks capture scalar markers only. Geometry is read on the GUI thread.
     connect(
         view, &QQuickWindow::frameSwapped, view,
