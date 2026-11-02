@@ -7,14 +7,38 @@ Item {
     id: root
 
     required property var record
+    property bool keyboardCursor: false
     property bool expanded: false
     property bool adapterBusy: false
+    readonly property bool controlsFocused: pairAction.activeFocus || expandedAction.activeFocus || expandButton.activeFocus
+    function clearControlFocus(): void {
+        pairAction.focus = false;
+        expandedAction.focus = false;
+        expandButton.focus = false;
+    }
     readonly property string action: record.connected ? "disconnect" : record.paired ? "connect" : "pair"
     readonly property string actionText: record.busy ? qsTr("Working…") : record.connected ? qsTr("Disconnect") : record.paired ? qsTr("Connect") : qsTr("Pair")
     readonly property bool hasBattery: record.battery !== undefined && record.battery !== null
 
-    signal focusEntered()
-    signal expansionRequested()
+    signal leaveControls
+    function enterControls(): void {
+        if (record.connected || record.paired) {
+            if (!expanded)
+                expansionRequested();
+            Qt.callLater(() => expandedAction.forceActiveFocus());
+        } else {
+            pairAction.forceActiveFocus();
+        }
+    }
+    Keys.onPressed: event => {
+        if (HnInputPreferences.vimNavigation && event.modifiers === Qt.NoModifier && event.key === Qt.Key_H) {
+            clearControlFocus();
+            leaveControls();
+            event.accepted = true;
+        }
+    }
+    signal focusEntered
+    signal expansionRequested
     signal actionRequested(string action)
 
     implicitHeight: rowLayout.implicitHeight
@@ -28,8 +52,8 @@ Item {
         anchors.fill: parent
         radius: 8
         color: rowHover.hovered ? Qt.alpha(HoloniightPalette.accentBlue, 0.1) : root.expanded ? Qt.alpha(HoloniightPalette.accentBlue, 0.04) : "transparent"
-        border.width: root.expanded || mainButton.activeFocus ? 1 : 0
-        border.color: mainButton.activeFocus ? HoloniightPalette.accentBlue : HoloniightPalette.borderPassive
+        border.width: root.keyboardCursor || root.expanded || mainButton.activeFocus ? 1 : 0
+        border.color: root.keyboardCursor || mainButton.activeFocus ? HoloniightPalette.accentBlue : HoloniightPalette.borderPassive
     }
 
     ColumnLayout {
@@ -67,11 +91,9 @@ Item {
                     onClicked: {
                         if (root.record.connected || root.record.paired)
                             root.expansionRequested();
-
                     }
 
-                    background: Item {
-                    }
+                    background: Item {}
 
                     contentItem: RowLayout {
                         spacing: 16
@@ -127,13 +149,9 @@ Item {
                                     elide: Text.ElideRight
                                     rawText: root.record.busy ? qsTr("Working…") : root.record.connected ? qsTr("Connected") : root.record.paired ? qsTr("Paired · Disconnected") : root.record.rssi !== undefined && root.record.rssi !== null ? qsTr("%1 dBm").arg(root.record.rssi) : qsTr("Signal unknown")
                                 }
-
                             }
-
                         }
-
                     }
-
                 }
 
                 RowLayout {
@@ -166,7 +184,6 @@ Item {
                                 radius: 1
                                 color: HoloniightPalette.textSecondary
                             }
-
                         }
 
                         Rectangle {
@@ -177,7 +194,6 @@ Item {
                             radius: 1
                             color: HoloniightPalette.textSecondary
                         }
-
                     }
 
                     HnLabel {
@@ -187,10 +203,10 @@ Item {
                         horizontalAlignment: Text.AlignRight
                         rawText: root.hasBattery ? root.record.battery + "%" : ""
                     }
-
                 }
 
                 Controls.Button {
+                    id: pairAction
                     objectName: "action-" + root.record.id
                     visible: !root.record.connected && !root.record.paired
                     Layout.preferredWidth: 100
@@ -206,6 +222,7 @@ Item {
                 }
 
                 Controls.ToolButton {
+                    id: expandButton
                     objectName: "expand-" + root.record.id
                     visible: root.record.connected || root.record.paired
                     text: root.expanded ? "⌄" : "›"
@@ -218,12 +235,11 @@ Item {
                     }
                     onClicked: root.expansionRequested()
                 }
-
             }
-
         }
 
         Controls.Button {
+            id: expandedAction
             objectName: "expandedAction-" + root.record.id
             Layout.alignment: Qt.AlignRight
             Layout.rightMargin: 12
@@ -239,6 +255,5 @@ Item {
             }
             onClicked: root.actionRequested(root.action)
         }
-
     }
 }

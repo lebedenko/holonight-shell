@@ -301,6 +301,7 @@ if(QMLLINT)
             --bare
             --unqualified disable
             --unused-imports disable
+            -I "${HOLONIGHT_RUNTIME_QML_PATH}"
             -I "${CMAKE_CURRENT_SOURCE_DIR}/tests/qmllint"
             -I "${CMAKE_CURRENT_BINARY_DIR}/apps/shell"
             -I "${CMAKE_BINARY_DIR}"

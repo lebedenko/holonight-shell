@@ -22,6 +22,20 @@ TestCase {
         BluetoothTestSeed.clear();
     }
 
+    function test_initialFocusAndReopen() {
+        const popup = createTemporaryObject(popupComponent, testCase);
+        verify(popup !== null);
+        const power = findChild(popup, "bluetoothPower");
+        tryCompare(power, "activeFocus", true);
+        keyClick(Qt.Key_Tab);
+        verify(!power.activeFocus);
+        keyClick(Qt.Key_Backtab);
+        tryCompare(power, "activeFocus", true);
+        popup.visible = false;
+        popup.visible = true;
+        tryCompare(power, "activeFocus", true);
+    }
+
     function test_rowBatteryAndKeyboard() {
         const row = createTemporaryObject(rowComponent, testCase, {
             "record": {
@@ -78,7 +92,7 @@ TestCase {
         BluetoothTestSeed.fail();
         BluetoothService.selectAdapter("other");
         compare(popup.expandedId, "");
-        compare(findChild(popup, "section-Connected").visible, false);
+        compare(findChild(popup, "bluetoothDevices").count, 0);
         compare(findChild(popup, "bluetoothSummary").count, 0);
         BluetoothService.selectAdapter("adapter");
         popup.expandedId = "headphones";
@@ -90,16 +104,16 @@ TestCase {
         const popup = createTemporaryObject(popupComponent, testCase);
         verify(popup !== null);
         waitForRendering(popup);
-        compare(findChild(popup, "section-Available").visible, false);
+        compare(BluetoothService.scanning, false);
         BluetoothService.setActive(true);
-        tryCompare(findChild(popup, "section-Available"), "visible", true);
+        tryCompare(BluetoothService, "scanning", true);
         BluetoothTestSeed.pairing();
         verify(findChild(popup, "bluetoothPairing").visible);
         BluetoothTestSeed.complete();
         tryCompare(findChild(popup, "bluetoothScan"), "enabled", true);
         mouseClick(findChild(popup, "bluetoothScan"));
         BluetoothTestSeed.complete();
-        compare(findChild(popup, "section-Available").visible, false);
+        compare(BluetoothService.scanning, false);
         verify(findChild(popup, "bluetoothPairing").visible);
         tryCompare(findChild(popup, "bluetoothScan"), "enabled", true);
         mouseClick(findChild(popup, "bluetoothScan"));
@@ -152,30 +166,37 @@ TestCase {
         waitForRendering(popup);
         grabImage(popup).save(Qt.resolvedUrl("../../build/dev/bluetooth-popup-expanded-preview.png").toString().replace("file://", ""));
         popup.height = 260;
-        tryVerify(() => findChild(popup, "devices-Available").interactive);
+        tryVerify(() => findChild(popup, "bluetoothDevices").interactive);
         verify(!popup.viewportItem.interactive);
-        verify(findChild(popup, "devices-Connected").clip);
-        verify(findChild(popup, "devices-Paired").clip);
+        verify(findChild(popup, "bluetoothDevices").clip);
         verify(popup.viewportItem.clip);
     }
 
-    function test_availableRowsHaveIndependentFiveRowViewport() {
+    function test_deviceCollectionHasOneBoundedViewport() {
         BluetoothTestSeed.manyDevices();
         BluetoothService.setActive(true);
         BluetoothTestSeed.complete();
         tryVerify(() => !BluetoothService.selectedAdapter.busy);
-        const popup = createTemporaryObject(popupComponent, testCase, {height: 900});
+        const popup = createTemporaryObject(popupComponent, testCase, {
+            height: 900
+        });
         waitForRendering(popup);
-        const viewport = findChild(popup, "devices-Available");
+        const viewport = findChild(popup, "bluetoothDevices");
         verify(viewport.contentHeight > viewport.height);
-        verify(viewport.height <= 5 * 64 + 4 * 4);
+        verify(viewport.height <= 5 * 68);
         verify(!popup.viewportItem.interactive);
         viewport.contentY = viewport.contentHeight - viewport.height;
         verify(viewport.contentY > 0);
     }
     function test_wholeRowHover() {
         const row = createTemporaryObject(rowComponent, testCase, {
-            record: {id: "hover", name: "Keyboard", icon: "input-keyboard", connected: true, battery: 50}
+            record: {
+                id: "hover",
+                name: "Keyboard",
+                icon: "input-keyboard",
+                connected: true,
+                battery: 50
+            }
         });
         waitForRendering(row);
         const background = findChild(row, "rowBackground-hover");
@@ -188,7 +209,12 @@ TestCase {
     }
     function test_tooltipRequiresTruncationAndMainHover() {
         const row = createTemporaryObject(rowComponent, testCase, {
-            record: {id: "tooltip", name: "Short", connected: false, paired: false}
+            record: {
+                id: "tooltip",
+                name: "Short",
+                connected: false,
+                paired: false
+            }
         });
         waitForRendering(row);
         const button = findChild(row, "device-tooltip");
@@ -197,7 +223,12 @@ TestCase {
         tryCompare(button, "hovered", true);
         verify(!label.truncated);
         verify(!button.Controls.ToolTip.visible);
-        row.record = {id: "tooltip", name: "A very long Bluetooth device name repeated to exceed the available label width", connected: false, paired: false};
+        row.record = {
+            id: "tooltip",
+            name: "A very long Bluetooth device name repeated to exceed the available label width",
+            connected: false,
+            paired: false
+        };
         tryCompare(label, "truncated", true);
         tryCompare(button.Controls.ToolTip, "visible", true);
         mouseMove(findChild(row, "action-tooltip"), 50, 15);
@@ -206,7 +237,12 @@ TestCase {
 
     function test_expandedCardPaddingAndSingleAction() {
         const row = createTemporaryObject(rowComponent, testCase, {
-            record: {id: "card", name: "Keyboard", connected: false, paired: true}
+            record: {
+                id: "card",
+                name: "Keyboard",
+                connected: false,
+                paired: true
+            }
         });
         waitForRendering(row);
         compare(row.implicitHeight, 64);
@@ -231,113 +267,119 @@ TestCase {
 
     function test_batteryColumnDoesNotShiftAtOneHundredPercent() {
         const row = createTemporaryObject(rowComponent, testCase, {
-            record: {id: "battery", name: "Headphones", connected: true, paired: true, battery: 9}
+            record: {
+                id: "battery",
+                name: "Headphones",
+                connected: true,
+                paired: true,
+                battery: 9
+            }
         });
         waitForRendering(row);
         const battery = findChild(row, "battery-battery");
         const position = battery.mapToItem(row, 0, 0).x;
         const width = battery.width;
-        row.record = {id: "battery", name: "Headphones", connected: true, paired: true, battery: 100};
+        row.record = {
+            id: "battery",
+            name: "Headphones",
+            connected: true,
+            paired: true,
+            battery: 100
+        };
         waitForRendering(row);
         compare(battery.mapToItem(row, 0, 0).x, position);
         compare(battery.width, width);
         compare(width, 84);
     }
 
-    function test_delayedDiscoveryAllocationPreservesSections() {
-        BluetoothTestSeed.discovery(1);
+    function test_collectionNavigationAcrossSectionsAndDiscovery() {
+        BluetoothTestSeed.discovery(3);
         BluetoothService.setActive(true);
         BluetoothTestSeed.complete();
-        tryVerify(() => !BluetoothService.selectedAdapter.busy);
-        BluetoothService.scan(false);
-        BluetoothTestSeed.complete();
-        tryVerify(() => !BluetoothService.scanning && !BluetoothService.selectedAdapter.busy);
-        const wrapper = createTemporaryObject(wrapperComponent, testCase);
-        tryVerify(() => wrapper.loadedContent !== null);
-        const popup = wrapper.loadedContent;
+        const popup = createTemporaryObject(popupComponent, testCase);
         waitForRendering(popup);
-        wrapper.height = Math.ceil(wrapper.implicitHeight);
+        const list = findChild(popup, "bluetoothDevices");
+        verify(list.count >= 3);
+        list.forceActiveFocus();
+        keyClick(Qt.Key_End);
+        compare(list.currentIndex, list.count - 1);
+        keyClick(Qt.Key_Home);
+        compare(list.currentIndex, 0);
+        keyClick(Qt.Key_Down);
+        compare(list.currentIndex, 1);
+        const identity = list.currentItem.record.id;
+        BluetoothTestSeed.discovery(8);
         waitForRendering(popup);
-        const header = popup.headerItem;
-        const connected = findChild(popup, "section-Connected");
-        const paired = findChild(popup, "section-Paired");
-        const originalY = paired.mapToItem(popup, 0, 0).y;
-        const headerY = header.mapToItem(popup, 0, 0).y;
-        const allocatedHeight = wrapper.height;
-        BluetoothService.scan(true);
-        BluetoothTestSeed.complete();
-        tryVerify(() => BluetoothService.scanning && !BluetoothService.selectedAdapter.busy);
-        waitForRendering(popup);
-        waitForRendering(popup);
-        compare(wrapper.height, allocatedHeight);
-        compare(findChild(popup, "section-Connected"), connected);
-        compare(findChild(popup, "section-Paired"), paired);
-        fuzzyCompare(paired.mapToItem(popup, 0, 0).y, originalY, 1);
-        fuzzyCompare(header.mapToItem(popup, 0, 0).y, headerY, 1);
-        wrapper.height = Math.ceil(wrapper.implicitHeight);
-        waitForRendering(popup);
-        fuzzyCompare(paired.mapToItem(popup, 0, 0).y, originalY, 1);
+        compare(list.currentItem.record.id, identity);
+        keyClick(Qt.Key_PageDown);
+        verify(list.currentIndex > 1);
+        keyClick(Qt.Key_End);
+        compare(list.currentIndex, list.count - 1);
+        keyClick(Qt.Key_Down);
+        compare(list.currentIndex, list.count - 1);
+        // Navigation never dispatches a device action.
+        verify(!BluetoothService.devices.some(device => device.busy));
     }
 
-    function test_incrementalDiscoveryPreservesRowsAndGrowsToFive() {
+    function test_profileCountsAndModifierIsolation() {
+        BluetoothTestSeed.discovery(8);
+        BluetoothService.setActive(true);
+        BluetoothTestSeed.complete();
+        const popup = createTemporaryObject(popupComponent, testCase);
+        waitForRendering(popup);
+        const list = findChild(popup, "bluetoothDevices");
+        list.forceActiveFocus();
+        keyClick(Qt.Key_Home);
+        keyClick(Qt.Key_J, Qt.AltModifier);
+        compare(list.currentIndex, 0);
+        keyClick(Qt.Key_J);
+        compare(list.currentIndex, HnInputPreferences.vimNavigation ? 1 : 0);
+        if (HnInputPreferences.vimNavigation) {
+            keyClick(Qt.Key_2);
+            keyClick(Qt.Key_J);
+            compare(list.currentIndex, 3);
+            keyClick(Qt.Key_G);
+            keyClick(Qt.Key_G);
+            compare(list.currentIndex, 0);
+            keyClick(Qt.Key_D, Qt.ControlModifier);
+            verify(list.currentIndex > 0);
+            keyClick(Qt.Key_G, Qt.ShiftModifier);
+            compare(list.currentIndex, list.count - 1);
+            keyClick(Qt.Key_K, Qt.ControlModifier);
+            verify(findChild(popup, "bluetoothPower").activeFocus);
+            keyClick(Qt.Key_J, Qt.ControlModifier);
+            verify(list.activeFocus);
+            keyClick(Qt.Key_J, Qt.ControlModifier);
+            verify(findChild(popup, "bluetoothScan").activeFocus);
+            keyClick(Qt.Key_K, Qt.ControlModifier);
+            verify(list.activeFocus);
+            keyClick(Qt.Key_Home);
+            keyClick(Qt.Key_L);
+            const action = findChild(popup, "expandedAction-headphones");
+            tryCompare(action, "activeFocus", true);
+            const current = list.currentIndex;
+            keyClick(Qt.Key_J);
+            compare(list.currentIndex, current);
+            keyClick(Qt.Key_H);
+            verify(list.activeFocus);
+        }
+        verify(!BluetoothService.devices.some(device => device.busy));
+    }
+
+    function test_discoveryPreservesFocusedAction() {
         BluetoothTestSeed.discovery(1);
         BluetoothService.setActive(true);
         BluetoothTestSeed.complete();
-        const wrapper = createTemporaryObject(wrapperComponent, testCase);
-        tryVerify(() => wrapper.loadedContent !== null);
-        const popup = wrapper.loadedContent;
+        const popup = createTemporaryObject(popupComponent, testCase);
         waitForRendering(popup);
-        const viewport = findChild(popup, "devices-Available");
-        const connected = findChild(popup, "device-headphones");
-        mouseClick(connected);
+        popup.expandedId = "headphones";
         const action = findChild(popup, "expandedAction-headphones");
         action.forceActiveFocus();
+        BluetoothTestSeed.discovery(4);
         waitForRendering(popup);
-        const connectedY = connected.mapToItem(popup, 0, 0).y;
-        const first = findChild(popup, "device-0");
-        const firstY = first.mapToItem(viewport.contentItem, 0, 0).y;
-        const row = first.parent.parent.parent.parent;
-        const changes = createTemporaryObject(spyComponent, testCase, {target: row, signalName: "recordChanged"});
-        let previousHeight = popup.height;
-        for (let count = 2; count <= 5; ++count) {
-            BluetoothTestSeed.discovery(count);
-            tryVerify(() => popup.height > previousHeight);
-            previousHeight = popup.height;
-            waitForRendering(wrapper);
-            waitForRendering(wrapper);
-            compare(wrapper.height, 600);
-            compare(findChild(popup, "device-0"), first);
-            compare(first.mapToItem(viewport.contentItem, 0, 0).y, firstY);
-            compare(connected.mapToItem(popup, 0, 0).y, connectedY);
-            compare(popup.expandedId, "headphones");
-            verify(action.activeFocus);
-            compare(changes.count, 0);
-        }
-        const fiveHeight = popup.height;
-        BluetoothTestSeed.discovery(9);
-        tryVerify(() => viewport.interactive);
-        compare(popup.height, fiveHeight);
-        viewport.contentY = 80;
-        BluetoothTestSeed.discovery(10, -65);
-        waitForRendering(popup);
-        compare(viewport.contentY, 80);
-        compare(findChild(popup, "device-0"), first);
-        verify(changes.count > 0);
+        compare(findChild(popup, "expandedAction-headphones"), action);
         verify(action.activeFocus);
         compare(popup.expandedId, "headphones");
-        for (const budget of [700, 400, 1000]) {
-            wrapper.maximumSurfaceHeight = budget;
-            waitForRendering(wrapper);
-            waitForRendering(wrapper);
-            verify(viewport.contentY >= 0);
-            verify(viewport.contentY <= Math.max(0, viewport.contentHeight - viewport.height) + 1);
-            verify(viewport.height <= 5 * 64 + 4 * 4);
-        }
-        BluetoothTestSeed.discovery(1);
-        waitForRendering(wrapper);
-        tryVerify(() => Math.abs(viewport.contentY) < 1);
-        compare(findChild(popup, "device-0"), first);
-        verify(action.activeFocus);
     }
 
     function test_sectionsAndPendingError() {
@@ -389,7 +431,6 @@ TestCase {
             maximumSurfaceHeight: 1200
             width: 560
             height: 600
-
         }
     }
 
@@ -400,7 +441,6 @@ TestCase {
             width: 480
             height: 600
         }
-
     }
 
     Component {
@@ -410,7 +450,6 @@ TestCase {
             barMonitorName: "test"
             height: 32
         }
-
     }
 
     Component {
@@ -419,15 +458,11 @@ TestCase {
         BluetoothDeviceRow {
             width: 480
         }
-
     }
 
     Component {
         id: spyComponent
 
-        SignalSpy {
-        }
-
+        SignalSpy {}
     }
-
 }

@@ -5,6 +5,9 @@ import QtQuick.Controls as Controls
 import QtQuick.Layouts
 
 RowLayout {
+    function focusControl(): void {
+        powerSwitch.forceActiveFocus(Qt.TabFocusReason);
+    }
     spacing: 16
     implicitHeight: 72
 
@@ -20,7 +23,6 @@ RowLayout {
             size: 32
             normalColor: HoloniightPalette.accentBlue
         }
-
     }
 
     ColumnLayout {
@@ -35,7 +37,7 @@ RowLayout {
         }
 
         HnLabel {
-            property int count: BluetoothService.devices.filter((device) => {
+            property int count: BluetoothService.devices.filter(device => {
                 return device.connected;
             }).length
 
@@ -45,7 +47,6 @@ RowLayout {
             color: HoloniightPalette.textSecondary
             rawText: !BluetoothService.available ? qsTr("Service unavailable") : !BluetoothService.adapters.length ? qsTr("No adapter") : !BluetoothService.selectedAdapter.powered ? qsTr("Bluetooth is off") : count === 1 ? qsTr("1 device connected") : qsTr("%1 devices connected").arg(count)
         }
-
     }
 
     Controls.Switch {
@@ -62,5 +63,4 @@ RowLayout {
             when: "sizeRole" in powerSwitch
         }
     }
-
 }

@@ -53,10 +53,15 @@ ColumnLayout {
             input.clear();
             if (root.inputNeeded)
                 input.forceActiveFocus();
+            else if (!root.displayOnly)
+                acceptButton.forceActiveFocus();
+            else
+                cancelButton.forceActiveFocus();
         }
     }
     RowLayout {
         Controls.Button {
+            id: acceptButton
             objectName: "bluetoothPairingAccept"
             text: qsTr("Accept")
             visible: !root.displayOnly
@@ -64,6 +69,7 @@ ColumnLayout {
             onClicked: root.controller.respond(true, input.text)
         }
         Controls.Button {
+            id: cancelButton
             objectName: "bluetoothPairingCancel"
             text: qsTr("Cancel")
             onClicked: root.controller.cancelPairing()
