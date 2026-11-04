@@ -457,6 +457,7 @@ void ShellApplication::startLayerSurfaces() {
   layer_shell_manager_->start();
   background_manager_->start();
   sidebar_manager_->start();
+  notification_manager_->start();
 
   // REQ-C-008. Wired after start() on purpose: SidebarManager installs its own screenRemoved
   // handler inside start(), and same-sender direct connections fire in connection order, so ours

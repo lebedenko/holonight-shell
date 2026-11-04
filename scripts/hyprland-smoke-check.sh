@@ -156,6 +156,16 @@ Notifications:
   5. The critical toast stays until dismissed and uses the critical accent.
   6. Run several sticky notifications and verify queue overflow respects notifications.max_visible.
   7. Click the notification bell and verify the sidebar history reflects unread notifications.
+  8. Keep a terminal focused with a floating application on the same workspace. Type continuously
+     while sending notifications from another terminal. Verify typing stays in the terminal through
+     first appearance, subsequent arrivals, replacement (notify-send -p, then notify-send -r ID),
+     expiration, and recreation after the stack empties. Repeat with the pointer over the floating app.
+     Record Hyprland focus events and confirm the running shell binary when investigating focus loss.
+  9. Verify hover pauses the timeout, moving away resumes it, and dismiss and action buttons work.
+     An explicitly clicked action may activate its destination application.
+  10. Verify notifications layers already exist before the first toast, stay mapped when the stack
+      empties, and do not emit openlayer/closelayer events during normal toast lifecycles. With an
+      empty stack, click through its former area to the application underneath. Repeat after hotplug.
 
 Widgets (connected Hyprland or Sway with occupancy support):
   1. Move to an empty workspace and verify desktop widgets appear above the wallpaper and below normal windows.

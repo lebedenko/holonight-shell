@@ -1,4 +1,6 @@
 #include "LauncherSurface.h"
+#include "NotificationManager.h"
+#include "NotificationService.h"
 #include "NotificationToastSurface.h"
 #include "OsdSurface.h"
 #include "ShellConstants.h"
@@ -68,11 +70,38 @@ TEST(TransientSurfacePolicy, DescribesLauncherAndToastCompletely) {
   EXPECT_EQ(toast_spec.layer, Layer::Overlay);
   EXPECT_EQ(toast_spec.anchors, Anchor::Top | Anchor::Right);
   EXPECT_EQ(toast_spec.width, 462);
-  EXPECT_EQ(toast_spec.height, 120);
+  EXPECT_EQ(toast_spec.height, 1);
   EXPECT_EQ(toast_spec.margin_top, 8);
   EXPECT_EQ(toast_spec.margin_right, 12);
+  EXPECT_EQ(toast_spec.keyboard_interactivity, KeyboardInteractivity::None);
+  EXPECT_TRUE(toast_spec.window_flags.testFlag(Qt::WindowDoesNotAcceptFocus));
+  EXPECT_EQ(toast_spec.input_region_policy, InputRegionPolicy::Empty);
   EXPECT_EQ(toast_spec.initial_properties.value(QStringLiteral("monitorName")).toString(), QStringLiteral("DP-1"));
   EXPECT_TRUE(static_cast<bool>(toast_spec.before_load));
+}
+
+TEST(NotificationToastLifecycle, PreparesMonitorSurfacesAndReusesThemAfterTheQueueEmpties) {
+  NotificationService service(nullptr, nullptr);
+  NotificationManager manager(&service);
+  manager.start();
+  const auto surfaces = manager.findChildren<NotificationToastSurface*>();
+  ASSERT_EQ(surfaces.size(), QGuiApplication::screens().size());
+  ASSERT_FALSE(surfaces.isEmpty());
+  manager.start();
+  EXPECT_EQ(manager.findChildren<NotificationToastSurface*>(), surfaces);
+
+  NotificationData data;
+  data.monitor_name = QGuiApplication::primaryScreen()->name();
+  data.summary = QStringLiteral("Focus regression");
+  data.expire_timeout_ms = 0;
+  const auto first = service.addOrReplace(data);
+  service.dismiss(first);
+  QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+  EXPECT_EQ(manager.findChildren<NotificationToastSurface*>(), surfaces);
+
+  const auto next = service.addOrReplace(data);
+  EXPECT_EQ(manager.findChildren<NotificationToastSurface*>(), surfaces);
+  service.dismiss(next);
 }
 
 TEST(TransientSurfacePolicy, DesktopMenuUsesOutputCoordinatesIgnoringReservedBarSpace) {

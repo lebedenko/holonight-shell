@@ -10,6 +10,8 @@ Item {
   id: root
 
   required property string monitorName
+  readonly property bool hasToasts: toasts.count > 0
+  visible: hasToasts
 
   Utility.AppearanceReloadBridge {}
 
@@ -51,6 +53,8 @@ Item {
     }
 
     Repeater {
+      id: toasts
+      objectName: "toastRepeater"
       model: NotificationService.visibleModelForMonitor(root.monitorName)
 
       delegate: ToastItem {

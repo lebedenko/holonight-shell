@@ -15,8 +15,7 @@ class QScreen;
 // The surface is sized to the QML root's contentHeight and resized whenever the visible toast
 // set changes, so only the toasts (plus a small glow margin) capture pointer input — the rest of
 // the screen edge stays click-through. One instance per active monitor; owned by
-// NotificationManager, which creates it on the first notification and destroys it when the
-// monitor's visible set and queue both empty.
+// NotificationManager, which maps it at startup and retains it with empty pointer input while idle.
 class NotificationToastSurface : public TransientSurfaceHost {
   Q_OBJECT
 
@@ -47,6 +46,6 @@ class NotificationToastSurface : public TransientSurfaceHost {
   void onSurfaceTerminated() override;
 
   QString current_screen_;
-  bool pending_show_ = false;
-  QString pending_screen_;
+  int applied_height_ = -1;
+  bool applied_input_ = false;
 };

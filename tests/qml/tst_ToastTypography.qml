@@ -4,6 +4,36 @@ import HolonightShell
 
 TestCase {
     name: "ToastTypography"
+    visible: true
+
+    Component {
+        id: stackComponent
+
+        ToastStack {
+            monitorName: "DP-1"
+        }
+    }
+
+    function test_stack_hides_when_empty_and_reappears_for_the_next_toast() {
+        const stack = createTemporaryObject(stackComponent, this)
+        verify(stack)
+        const repeater = findChild(stack, "toastRepeater")
+        verify(repeater)
+        repeater.model = []
+        compare(stack.hasToasts, false)
+        compare(stack.visible, false)
+
+        const notification = { notifId: 57, summary: "Focus regression", body: "", actions: [], createdAtMs: Date.now() }
+        repeater.model = [notification]
+        compare(stack.hasToasts, true)
+        compare(stack.visible, true)
+        repeater.model = []
+        compare(stack.hasToasts, false)
+        compare(stack.visible, false)
+        repeater.model = [notification]
+        compare(stack.hasToasts, true)
+        compare(stack.visible, true)
+    }
 
     Component {
         id: toastComponent

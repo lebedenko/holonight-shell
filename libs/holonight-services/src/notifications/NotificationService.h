@@ -73,8 +73,7 @@ class NotificationService : public QAbstractListModel {
   // reason Closed. Unknown ids are a no-op (no signal), matching the spec. Driven by NotificationServer.
   void requestClose(uint32_t notif_id);
 
-  // True while the monitor still has any visible or queued notification. NotificationManager
-  // uses this on queueChanged to decide whether the monitor's toast surface can be torn down.
+  // True while the monitor still has any visible or queued notification.
   [[nodiscard]] bool hasNotificationsForMonitor(const QString& monitor_name) const;
 
   // Per-monitor, visible-only slice of the model for ToastStack.qml. Returns a cached
