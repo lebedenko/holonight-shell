@@ -71,10 +71,24 @@ TEST(HyprlandQml, PrivateContributionUsesInjectedInstanceAndMonitor) {
   item->setProperty("barMonitorName", "DP-2");
   EXPECT_TRUE(dot->property("activeOnAnotherMonitor").toBool());
   const auto populatedRows = model.rows;
-  model.rows.append(model.rows.first());
+  auto second = model.rows.first().toMap();
+  second.insert("id", "special:keymapp");
+  second.insert("name", "keymapp");
+  model.rows.append(second);
   emit model.changed();
   QTRY_COMPARE(item->property("implicitWidth").toDouble(), 72);
   EXPECT_EQ(item->property("implicitHeight").toDouble(), 32);
+  QList<QQuickItem*> dots;
+  const auto collectDots = [&dots](auto&& self, QQuickItem* parent) -> void {
+    if (parent->objectName() == "specialWorkspaceDot") dots.append(parent);
+    for (auto* child : parent->childItems()) self(self, child);
+  };
+  collectDots(collectDots, qobject_cast<QQuickItem*>(item.get()));
+  ASSERT_EQ(dots.size(), 2);
+  ASSERT_TRUE(QMetaObject::invokeMethod(dots[1], "activated"));
+  EXPECT_EQ(model.activated, "special:keymapp");
+  ASSERT_TRUE(QMetaObject::invokeMethod(dots[0], "activated"));
+  EXPECT_EQ(model.activated, "special:magic");
   model.rows.clear();
   emit model.changed();
   EXPECT_EQ(item->property("implicitWidth").toDouble(), 0);
