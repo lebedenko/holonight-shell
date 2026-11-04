@@ -48,6 +48,7 @@ using namespace HoloNight::ShellConfig;
 #include "SessionIntegrationService.h"
 #include "SessionService.h"
 #include "SettingsNavigationService.h"
+#include "ShellRuntime.h"
 #include "SidebarManager.h"
 #include "StatusPopupSurface.h"
 #include "SuspendInhibitorService.h"
@@ -221,6 +222,7 @@ void ShellApplication::registerQmlTypes() {
   reg(storage_, "StorageService");
   reg(bluetooth_, "BluetoothService");
   reg(settings_navigation_service_, "SettingsNavigationService");
+  reg(new ShellRuntime(this), "ShellRuntime");
   reg(network_, "NetworkService");
   reg(power_profiles_, "PowerProfilesService");
   reg(session_, "SessionService");

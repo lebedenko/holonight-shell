@@ -32,6 +32,8 @@ struct HourlyEntry {
   Q_PROPERTY(qint64 timestamp MEMBER timestamp)
   Q_PROPERTY(double temperature MEMBER temperature)
   Q_PROPERTY(int conditionId MEMBER condition_id)
+  Q_PROPERTY(QString provider MEMBER provider)
+  Q_PROPERTY(bool isDay MEMBER is_day)
   Q_PROPERTY(double precipitation MEMBER precipitation)
   Q_PROPERTY(QString iconCode MEMBER icon_code)
   Q_PROPERTY(QString condition MEMBER condition)
@@ -40,10 +42,12 @@ struct HourlyEntry {
   Q_PROPERTY(int clouds MEMBER clouds)
 
  public:
+  QString provider;
+  bool is_day{false};
   QStringList available_fields;
   qint64 timestamp{0};        // Unix seconds (UTC), from hourly[i].dt
   double temperature{0.0};    // degrees Celsius, independent of display units
-  int condition_id{0};        // OWM condition id, from hourly[i].weather[0].id
+  int condition_id{-1};       // provider-native condition code
   double precipitation{0.0};  // mm/1h, from hourly[i].rain["1h"] + hourly[i].snow["1h"]; 0 if absent
   QString icon_code;          // e.g. "04n", from hourly[i].weather[0].icon
   QString condition;          // weather[0].description; used for parsing
@@ -62,6 +66,8 @@ struct DailyEntry {
   Q_PROPERTY(double tempMin MEMBER temp_min)
   Q_PROPERTY(double tempMax MEMBER temp_max)
   Q_PROPERTY(int conditionId MEMBER condition_id)
+  Q_PROPERTY(QString provider MEMBER provider)
+  Q_PROPERTY(bool isDay MEMBER is_day)
   Q_PROPERTY(QString condition MEMBER condition)
   Q_PROPERTY(QString iconCode MEMBER icon_code)
   Q_PROPERTY(double pop MEMBER pop)
@@ -72,11 +78,13 @@ struct DailyEntry {
   Q_PROPERTY(qint64 sunset MEMBER sunset)
 
  public:
+  QString provider;
+  bool is_day{false};
   QStringList available_fields;
   qint64 date{0};  // Unix seconds of local midnight for that day
   double temp_min{0.0};
   double temp_max{0.0};
-  int condition_id{0};     // from the entry's weather[0].id
+  int condition_id{-1};    // provider-native condition code
   QString condition;       // display string, from weather[0].description
   QString icon_code;       // e.g. "02d", from weather[0].icon
   double pop{0.0};         // probability of precipitation (0.0 to 1.0)
@@ -97,6 +105,8 @@ struct CurrentWeather {
   Q_PROPERTY(double feelsLike MEMBER feels_like)
   Q_PROPERTY(QString condition MEMBER condition)
   Q_PROPERTY(int conditionId MEMBER condition_id)
+  Q_PROPERTY(QString provider MEMBER provider)
+  Q_PROPERTY(bool isDay MEMBER is_day)
   Q_PROPERTY(int humidity MEMBER humidity)
   Q_PROPERTY(int windSpeed MEMBER wind_speed)
   Q_PROPERTY(int windDirection MEMBER wind_direction)
@@ -119,11 +129,13 @@ struct CurrentWeather {
   Q_PROPERTY(double so2 MEMBER so2)
 
  public:
+  QString provider;
+  bool is_day{false};
   QStringList available_fields;
   double temperature{0.0};  // temp
   double feels_like{0.0};   // feels_like
   QString condition;        // weather[0].description
-  int condition_id{0};      // weather[0].id
+  int condition_id{-1};     // provider-native condition code
   int humidity{0};          // humidity (%)
   int wind_speed{0};        // wind_speed * 3.6, rounded (km/h)
   int wind_direction{0};    // wind_deg, meteorological direction where wind comes from

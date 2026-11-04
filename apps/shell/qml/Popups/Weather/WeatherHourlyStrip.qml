@@ -15,32 +15,6 @@ Column {
     readonly property int cardWidth: 108
     readonly property real naturalWidth: 6 * cardWidth + 5 * strip.spacing
 
-    function getDailyEntryForTimestamp(timestamp) {
-        var hourlyDate = new Date(timestamp * 1000)
-        var hYear = hourlyDate.getFullYear()
-        var hMonth = hourlyDate.getMonth()
-        var hDay = hourlyDate.getDate()
-
-        var daily = WeatherService.daily
-        for (var i = 0; i < daily.length; ++i) {
-            var d = daily[i]
-            if (!d) {
-                continue
-            }
-            var dailyDate = new Date(d.date * 1000)
-            if (dailyDate.getFullYear() === hYear &&
-                dailyDate.getMonth() === hMonth &&
-                dailyDate.getDate() === hDay) {
-                return d
-            }
-        }
-        return null
-    }
-
-    WeatherIconRoles {
-        id: iconRoles
-    }
-
     ListView {
         id: strip
         objectName: "weatherHourlyList"
@@ -90,20 +64,6 @@ Column {
                 id: hoverHandler
             }
 
-            readonly property bool isDay: {
-                if (card.isCurrent && WeatherService.current.availableFields.includes("sunrise") && WeatherService.current.availableFields.includes("sunset")) {
-                    return WeatherService.hasData
-                        && (Date.now() / 1000) >= WeatherService.current.sunrise
-                        && (Date.now() / 1000) < WeatherService.current.sunset
-                }
-                var daily = WeatherService.daily
-                var current = WeatherService.current
-                var entry = root.getDailyEntryForTimestamp(card.modelData.timestamp)
-                if (entry && entry.sunrise && entry.sunset) {
-                    return card.modelData.timestamp >= entry.sunrise && card.modelData.timestamp < entry.sunset
-                }
-                return String(card.modelData.iconCode || "").endsWith("n") ? false : true
-            }
 
             Column {
                 anchors.fill: parent
@@ -125,18 +85,14 @@ Column {
                     elide: Text.ElideRight
                 }
 
-                WeatherIconCompositor {
+                WeatherIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     conditionCode: card.modelData.conditionId
-                    conditionDescription: card.modelData.condition
-                    windSpeedKmh: card.isCurrent && WeatherService.hasData ? WeatherService.current.windSpeed : 0
-                    isDay: card.isDay
+                    provider: card.modelData.provider
+                    daylightAvailable: card.modelData.availableFields.includes("isDay")
+                    isDay: card.modelData.isDay
                     iconSize: 64
-                    date: new Date(card.modelData.timestamp * 1000)
-                    moonPhase: {
-                        var entry = root.getDailyEntryForTimestamp(card.modelData.timestamp)
-                        return entry && entry.availableFields.includes("moonPhase") ? entry.moonPhase : undefined
-                    }
+
                 }
 
                 HnLabel {

@@ -17,10 +17,10 @@ Item {
     implicitHeight: Math.max(256, currentContent.implicitHeight + 44)
 
     readonly property color dividerColor: HoloniightPalette.borderPassive
-    readonly property bool isDay: !WeatherService.current.availableFields.includes("sunrise") || !WeatherService.current.availableFields.includes("sunset")
-        ? !String(WeatherService.current.iconCode || "").endsWith("n") : WeatherService.hasData
-        && (Date.now() / 1000) >= WeatherService.current.sunrise
-        && (Date.now() / 1000) < WeatherService.current.sunset
+    WeatherDaylight { id: daylight }
+    property bool testing: false
+    property int previewIndex: 0
+    readonly property var preview: WeatherIconBridge.previewCatalogue[root.previewIndex]
 
     function temperatureColor(temperature) {
         if (temperature <= 5) {
@@ -42,16 +42,33 @@ Item {
             width: Math.min(240, Math.max(0, (root.width - layoutRow.spacing) * 0.46))
             height: parent.height
 
-            WeatherIconCompositor {
+            WeatherIcon {
                 id: heroIcon
-                conditionCode: WeatherService.hasData ? WeatherService.current.conditionId : 0
-                conditionDescription: WeatherService.hasData ? WeatherService.current.condition : ""
-                windSpeedKmh: WeatherService.hasData ? WeatherService.current.windSpeed : 0
-                isDay: root.isDay
+                objectName: "weatherHeroIcon"
+                provider: root.testing ? root.preview.provider : WeatherService.current.provider
+                conditionCode: root.testing ? root.preview.code : (WeatherService.hasData && WeatherService.current.availableFields.includes("conditionId") ? WeatherService.current.conditionId : -1)
+                isDay: root.testing ? root.preview.isDay : daylight.isDay
+                daylightAvailable: root.testing || daylight.available
                 iconSize: Math.min(220, parent.width, parent.height)
-                moonPhase: (WeatherService.hasData && WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase")) ? WeatherService.daily[0].moonPhase : undefined
                 anchors.centerIn: parent
             }
+            Loader {
+                anchors.fill: parent
+                active: root.testing
+                sourceComponent: Item {
+                    Text {
+                        objectName: "weatherPreviewCaption"
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        text: qsTr("%1 · %2 · %3\n%4").arg(root.preview.providerName).arg(root.preview.code).arg(root.preview.variant).arg(root.preview.description)
+                        color: HoloniightPalette.textPrimary
+                        font.pixelSize: 11
+                        wrapMode: Text.Wrap
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+            }
+
         }
 
         Item {
@@ -101,11 +118,13 @@ Item {
                 HnLabel {
                     width: parent.width
                     visible: WeatherService.current.availableFields.includes("condition")
+                    objectName: "weatherCondition"
                     rawText: WeatherService.hasData ? WeatherService.current.condition : ""
                     role: HnTypographyRole.MicroHeader
                     color: HoloniightPalette.accentViolet
                     font.family: AppearanceService.uiFont
-                    elide: Text.ElideRight
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideNone
                 }
 
                 Item {

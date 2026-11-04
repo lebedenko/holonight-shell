@@ -641,3 +641,23 @@ For manual migration from the unreleased `input.toml` contract, copy its `profil
 value into `[input].navigation` in `config.toml`. The old `version` and `profile`
 keys are no longer read. Old files are never deleted automatically. There are no
 application-specific navigation overrides.
+
+### Weather artwork troubleshooting
+
+Start the shell with `HOLONIGHT_TROUBLESHOOT=true` to expose the weather popup header's **Test**
+toggle. Only the exact lowercase value `true` enables it, read once at startup.
+Enable Test to browse OpenWeather then Open-Meteo conditions using the previous/next
+buttons; navigation wraps and includes day/night variants where artwork differs.
+The caption identifies provider, native code, variant, and canonical condition.
+Only the hero artwork changes; live data and forecasts continue updating. Disable Test
+to restore the latest live icon. Reopening the popup starts with Test off.
+
+The weather popup uses the approved PNG collection. The topbar retains its existing SVG artwork. Precipitation, thunderstorms and fog use neutral
+artwork; clear and dry cloud conditions use daylight where available, and overcast remains
+neutral. Unknown conditions show unavailable artwork. Cache version 4 preserves provider
+codes and daylight availability; older caches are ignored and weather is fetched normally.
+See [selection details](docs/sdd/weather-artwork-browser.md).
+
+Popup condition descriptions retain provider wording and meaning: OpenWeather response text,
+or Open-Meteo's documented description for its numeric weather code. Long descriptions wrap.
+Only the topbar applies its local short-description mapping to fit the available space.

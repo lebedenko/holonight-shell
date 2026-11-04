@@ -18,11 +18,13 @@ TestCase {
         WeatherService.setEmptyForecasts(false)
         WeatherService.setAvailableFields(["temperature", "humidity", "visibility", "pressure", "uvi", "windSpeed", "windGust", "windDirection", "aqi", "timeUpdated", "feelsLike", "condition", "conditionId", "sunrise", "sunset"])
         TopbarTestSeed.setWeatherHasData(true)
+        WeatherService.setConditionDescription("clear sky")
         WeatherService.setCurrentTemperature(18)
         WeatherService.setLocationLabel("Lviv, Ukraine")
     }
 
     function cleanup() {
+        WeatherService.setConditionDescription("clear sky")
         WeatherService.showInBar = true
         WeatherService.compactMode = false
         WeatherService.showFeelsLike = true
@@ -55,6 +57,24 @@ TestCase {
         compare(bar.enabled, false)
         tryCompare(bar, "implicitWidth", 0)
         compare(bar.visible, false)
+    }
+
+    function test_only_topbar_shortens_provider_description() {
+        const description = "thunderstorm with heavy drizzle"
+        WeatherService.setConditionDescription(description)
+        const bar = createTemporaryObject(barComponent, root)
+        const popup = createTemporaryObject(popupComponent, root, {width: 400})
+        verify(bar)
+        verify(popup)
+        compare(findChild(bar, "weatherBarCondition").rawText, "THUNDERSTORM")
+        const condition = findChild(popup, "weatherCondition")
+        compare(condition.rawText, description)
+        compare(condition.wrapMode, Text.WordWrap)
+        compare(condition.elide, Text.ElideNone)
+        compare(WeatherService.current.condition, description)
+        WeatherService.setConditionDescription("Light freezing drizzle")
+        compare(condition.rawText, "Light freezing drizzle")
+        compare(findChild(bar, "weatherBarCondition").rawText, "DRIZZLE")
     }
 
     function test_popup_switches_units_graph_and_attribution_are_reactive() {

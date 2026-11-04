@@ -39,7 +39,6 @@ class WeatherProvider : public QObject {
   void setProvider(const QString& provider) { provider_name_ = provider; }
   virtual void geocodeCity(const QString& city, const QString& language);
   [[nodiscard]] static WeatherCache parseOpenMeteo(const QJsonObject& root);
-  [[nodiscard]] static int conditionFromWmo(int code);
   virtual void fetchGeolocation(const QString& geo_api_key);
   virtual void reverseGeocode(double lat, double lon, const QString& api_key);
   virtual void cancelPending();

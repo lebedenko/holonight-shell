@@ -23,13 +23,6 @@
 
 namespace {
 
-QString weatherIcon(const QString& file_name) { return QStringLiteral("qrc:/HolonightShell/weather/") + file_name; }
-
-QString setTempXdg(const QTemporaryDir& tmp) {
-  qputenv("XDG_CONFIG_HOME", tmp.path().toUtf8());
-  return tmp.path() + "/holonight/config.toml";
-}
-
 void writeTempConfig(const QString& path, const QByteArray& content) {
   QDir().mkpath(QFileInfo(path).absolutePath());
   QFile file(path);
@@ -110,23 +103,6 @@ class FakeWeatherProvider : public WeatherProvider {
 
 // --- Part 1: Icon Mapping Tests (existing) ---
 
-TEST(WeatherService, IconPathMapsKnownDayAndNightConditions) {
-  const std::vector<std::pair<int, QString>> cases{
-      {200, "11"}, {299, "11"}, {300, "09"}, {399, "09"}, {500, "10"}, {504, "10"},
-      {511, "13"}, {520, "09"}, {531, "09"}, {600, "13"}, {699, "13"}, {700, "50"},
-      {799, "50"}, {800, "01"}, {801, "02"}, {802, "03"}, {803, "04"}, {804, "04"},
-  };
-  for (const auto& [condition_id, icon] : cases) {
-    EXPECT_EQ(WeatherService::iconPath(condition_id, true), weatherIcon(icon + QStringLiteral("d.svg")));
-    EXPECT_EQ(WeatherService::iconPath(condition_id, false), weatherIcon(icon + QStringLiteral("n.svg")));
-  }
-}
-
-TEST(WeatherService, IconPathFallsBackForUnknownCondition) {
-  EXPECT_EQ(WeatherService::iconPath(9999, true), weatherIcon(QStringLiteral("03d.svg")));
-  EXPECT_EQ(WeatherService::iconPath(9999, false), weatherIcon(QStringLiteral("03n.svg")));
-}
-
 // --- Part 2: Deterministic Response Parsing Tests ---
 
 TEST(WeatherProviderParsing, ParseCurrentJsonSuccess) {
@@ -194,7 +170,7 @@ TEST(WeatherProviderParsing, ParseCurrentJsonMalformedOrEmpty) {
   CurrentWeather parsed = WeatherProvider::parseCurrentJson(current_obj);
   EXPECT_DOUBLE_EQ(parsed.temperature, 0.0);
   EXPECT_DOUBLE_EQ(parsed.feels_like, 0.0);
-  EXPECT_EQ(parsed.condition_id, 0);
+  EXPECT_EQ(parsed.condition_id, -1);
   EXPECT_TRUE(parsed.condition.isEmpty());
   EXPECT_EQ(parsed.wind_speed, 0);
 }
@@ -407,7 +383,7 @@ class WeatherServiceTest : public ::testing::Test {
                                {"lang", "en"},
                                {"latitude", 45.0},
                                {"longitude", -75.0}};
-    root["version"] = 3;
+    root["version"] = 4;
     root["identity"] = QString::fromLatin1(
         QCryptographicHash::hash(QJsonDocument(identity).toJson(QJsonDocument::Compact), QCryptographicHash::Sha256)
             .toHex());
@@ -808,11 +784,22 @@ TEST_F(WeatherServiceTest, CacheReusesMatchingDataAndRejectsAnotherProviderOrLeg
     service.start();
     CurrentWeather weather;
     weather.temperature = 17;
-    weather.available_fields = {"temperature"};
+    weather.provider = "openmeteo";
+    weather.condition_id = 56;
+    weather.condition = "Freezing rain";
+    weather.is_day = true;
+    weather.available_fields = {"temperature", "conditionId", "isDay"};
     HourlyEntry hourly;
-    hourly.available_fields = {"temperature", "precipitation"};
+    hourly.provider = "openmeteo";
+    hourly.condition_id = 96;
+    hourly.condition = "Thunderstorm";
+    hourly.is_day = false;
+    hourly.available_fields = {"temperature", "precipitation", "isDay", "conditionId"};
     DailyEntry daily;
-    daily.available_fields = {"moonPhase"};
+    daily.provider = "openmeteo";
+    daily.condition_id = 97;
+    daily.available_fields = {"moonPhase", "conditionId"};
+    daily.condition = "Thunderstorm";
     fake->triggerWeatherFetched(weather, {hourly}, {daily});
   }
   {
@@ -820,7 +807,21 @@ TEST_F(WeatherServiceTest, CacheReusesMatchingDataAndRejectsAnotherProviderOrLeg
     service.start();
     EXPECT_TRUE(service.hasData());
     EXPECT_DOUBLE_EQ(service.currentVariant().value<CurrentWeather>().temperature, 17);
-    EXPECT_EQ(service.currentVariant().value<CurrentWeather>().available_fields, QStringList{"temperature"});
+    const auto current = service.currentVariant().value<CurrentWeather>();
+    EXPECT_EQ(current.provider, "openmeteo");
+    EXPECT_EQ(current.condition_id, 56);
+    EXPECT_EQ(current.condition, "Light freezing drizzle");
+    EXPECT_TRUE(current.is_day);
+    EXPECT_TRUE(current.available_fields.contains("isDay"));
+    const auto hourly = service.hourlyVariant()[0].value<HourlyEntry>();
+    EXPECT_EQ(hourly.provider, "openmeteo");
+    EXPECT_EQ(hourly.condition_id, 96);
+    EXPECT_EQ(hourly.condition, "Thunderstorm with slight hail");
+    EXPECT_FALSE(hourly.is_day);
+    EXPECT_TRUE(hourly.available_fields.contains("isDay"));
+    EXPECT_EQ(service.dailyVariant()[0].value<DailyEntry>().condition_id, 97);
+    EXPECT_EQ(service.dailyVariant()[0].value<DailyEntry>().condition, "Heavy thunderstorm");
+    EXPECT_EQ(service.dailyVariant()[0].value<DailyEntry>().provider, "openmeteo");
     EXPECT_TRUE(service.hourlyVariant()[0].value<HourlyEntry>().available_fields.contains("precipitation"));
     EXPECT_TRUE(service.dailyVariant()[0].value<DailyEntry>().available_fields.contains("moonPhase"));
   }
@@ -836,7 +837,7 @@ TEST_F(WeatherServiceTest, CacheReusesMatchingDataAndRejectsAnotherProviderOrLeg
   ASSERT_TRUE(cache.open(QIODevice::ReadOnly));
   auto root = QJsonDocument::fromJson(cache.readAll()).object();
   cache.close();
-  root["version"] = 2;
+  root["version"] = 3;
   ASSERT_TRUE(cache.open(QIODevice::WriteOnly));
   cache.write(QJsonDocument(root).toJson());
   cache.close();
@@ -852,7 +853,7 @@ TEST(WeatherProviderParsing, OpenMeteoUsesCanonicalUnitsAndMapsForecasts) {
     "daily":{"time":[0],"temperature_2m_min":[10],"temperature_2m_max":[22],"weather_code":[63],"sunrise":[1000],"sunset":[9000],"uv_index_max":[5],"precipitation_probability_max":[80]}
   })");
   const auto data = WeatherProvider::parseOpenMeteo(doc.object());
-  EXPECT_EQ(data.current.condition_id, 501);
+  EXPECT_EQ(data.current.condition_id, 63);
   EXPECT_EQ(data.current.wind_speed, 18);
   EXPECT_DOUBLE_EQ(data.current.temperature, 20);
   EXPECT_DOUBLE_EQ(data.current.visibility, 9);
@@ -861,13 +862,11 @@ TEST(WeatherProviderParsing, OpenMeteoUsesCanonicalUnitsAndMapsForecasts) {
   ASSERT_EQ(data.hourly.size(), 2);
   EXPECT_DOUBLE_EQ(data.hourly[0].precipitation, 1.5);
   EXPECT_DOUBLE_EQ(data.hourly[0].pop, 0.4);
-  EXPECT_EQ(data.hourly[1].condition_id, 200);
+  EXPECT_EQ(data.hourly[1].condition_id, 95);
   ASSERT_EQ(data.daily.size(), 1);
   EXPECT_DOUBLE_EQ(data.daily[0].temp_min, 10);
   EXPECT_DOUBLE_EQ(data.daily[0].temp_max, 22);
   EXPECT_GE(data.daily[0].moon_phase, 0);
-  EXPECT_EQ(WeatherProvider::conditionFromWmo(99), 201);
-  EXPECT_EQ(WeatherProvider::conditionFromWmo(999), 0);
 }
 
 namespace {
@@ -1083,4 +1082,58 @@ TEST(WeatherProviderNetwork, PublishesPartialOpenMeteoForecastWithoutCurrentTemp
   const auto hourly = success[0][1].value<QList<HourlyEntry>>();
   ASSERT_EQ(hourly.size(), 1);
   EXPECT_TRUE(hourly[0].available_fields.contains("temperature"));
+}
+
+TEST(WeatherProviderParsing, PreservesNativeCodesAndDaylightAvailability) {
+  for (int code : {56, 57, 66, 67, 96, 97, 99}) {
+    const auto data = WeatherProvider::parseOpenMeteo(QJsonObject{{"current", QJsonObject{{"weather_code", code}}}});
+    EXPECT_EQ(data.current.provider, "openmeteo");
+    EXPECT_EQ(data.current.condition_id, code);
+    EXPECT_FALSE(data.current.available_fields.contains("isDay"));
+    EXPECT_FALSE(data.current.condition.isEmpty());
+  }
+  for (const auto& icon : {QString("01d"), QString("01n"), QString("")}) {
+    const auto current = WeatherProvider::parseCurrentJson(QJsonObject{
+        {"weather", QJsonArray{QJsonObject{{"id", 800}, {"icon", icon}, {"description", "live description"}}}}});
+    EXPECT_EQ(current.provider, "openweather");
+    EXPECT_EQ(current.condition, "live description");
+    EXPECT_EQ(current.available_fields.contains("isDay"), !icon.isEmpty());
+    EXPECT_EQ(current.is_day, icon == "01d");
+  }
+}
+
+TEST(WeatherProviderParsing, KeepsOpenMeteoDescriptionsSpecificToItsNativeCodes) {
+  const QList<QPair<int, QString>> cases{{0, "Clear sky"},
+                                         {1, "Mainly clear"},
+                                         {2, "Partly cloudy"},
+                                         {3, "Overcast"},
+                                         {56, "Light freezing drizzle"},
+                                         {63, "Moderate rain"},
+                                         {96, "Thunderstorm with slight hail"}};
+  for (const auto& [code, label] : cases) {
+    const auto data = WeatherProvider::parseOpenMeteo(
+        QJsonObject{{"current", QJsonObject{{"time", 0}, {"weather_code", code}}},
+                    {"hourly", QJsonObject{{"time", QJsonArray{0}}, {"weather_code", QJsonArray{code}}}},
+                    {"daily", QJsonObject{{"time", QJsonArray{0}}, {"weather_code", QJsonArray{code}}}}});
+    EXPECT_EQ(data.current.condition, label);
+    ASSERT_EQ(data.hourly.size(), 1);
+    ASSERT_EQ(data.daily.size(), 1);
+    EXPECT_EQ(data.hourly[0].condition, label);
+    EXPECT_EQ(data.daily[0].condition, label);
+  }
+}
+TEST_F(WeatherServiceTest, TopbarRetainsLegacySvgForNativeWmoCodes) {
+  writeTempConfig(config_path,
+                  "[weather]\nprovider='open-meteo'\nlocation_source='manual'\nlatitude=0.0\nlongitude=0.0\n");
+  ConfigService config;
+  auto provider = std::make_unique<FakeWeatherProvider>();
+  auto* fake = provider.get();
+  WeatherService service(&config, std::move(provider));
+  service.start();
+  CurrentWeather current;
+  current.provider = "openmeteo";
+  current.condition_id = 3;
+  fake->triggerWeatherFetched(current, {}, {});
+  EXPECT_EQ(service.iconPath(3, false), "qrc:/HolonightShell/weather/04n.svg");
+  EXPECT_EQ(service.iconPath(0, true), "qrc:/HolonightShell/weather/01d.svg");
 }

@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import HolonightShell
 import Holonight.Core
@@ -62,9 +63,54 @@ Item {
                 width: parent.width
                 spacing: 6
 
-                SectionLabel {
-                    rawText: qsTr("Current Weather")
+                RowLayout {
                     width: parent.width
+                    spacing: 8
+                    SectionLabel {
+                        rawText: qsTr("Current Weather")
+                        Layout.fillWidth: false
+                        Layout.minimumWidth: 0
+                        Layout.maximumWidth: Math.max(0, parent.width - testControls.implicitWidth - 16)
+                    }
+                    Loader {
+                        id: testControls
+                        active: ShellRuntime.troubleshootEnabled
+                        sourceComponent: Row {
+                            spacing: 6
+                            Controls.Button {
+                                id: testButton
+                                objectName: "weatherTestButton"
+                                text: qsTr("Test")
+                                checkable: true
+                                Accessible.name: qsTr("Test weather conditions")
+                                onCheckedChanged: {
+                                    if (checked) currentSection.previewIndex = 0
+                                    currentSection.testing = checked
+                                }
+                            }
+                            Loader {
+                                active: testButton.checked
+                                sourceComponent: Row {
+                                    spacing: 6
+                                    Controls.Button {
+                                        objectName: "weatherPreviousCondition"
+                                        width: 32
+                                        text: "‹"
+                                        Accessible.name: qsTr("Previous weather condition")
+                                        onClicked: currentSection.previewIndex = (currentSection.previewIndex + WeatherIconBridge.previewCatalogue.length - 1) % WeatherIconBridge.previewCatalogue.length
+                                    }
+                                    Controls.Button {
+                                        objectName: "weatherNextCondition"
+                                        width: 32
+                                        text: "›"
+                                        Accessible.name: qsTr("Next weather condition")
+                                        onClicked: currentSection.previewIndex = (currentSection.previewIndex + 1) % WeatherIconBridge.previewCatalogue.length
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
                 }
 
                 HnLabel {
@@ -96,6 +142,7 @@ Item {
 
                     WeatherCurrentSection {
                         id: currentSection
+                        objectName: "weatherCurrentSection"
                         Layout.fillWidth: true
                         Layout.preferredWidth: currentSection.implicitWidth
                         Layout.fillHeight: true
@@ -207,7 +254,7 @@ Item {
                             objectName: "weatherSunrise"
                             Layout.fillWidth: true
                             title: qsTr("Sunrise")
-                            iconSource: "qrc:/HolonightShell/weather-png/512x512/sunrise.png"
+                            iconSource: "qrc:/HolonightShell/weather/sunrise.png"
                             timeText: WeatherService.hasData ? Qt.formatTime(new Date(WeatherService.current.sunrise * 1000), "HH:mm") : "—"
                         }
                         WeatherSunEvent {
@@ -216,7 +263,7 @@ Item {
                             objectName: "weatherSunset"
                             Layout.fillWidth: true
                             title: qsTr("Sunset")
-                            iconSource: "qrc:/HolonightShell/weather-png/512x512/sunset.png"
+                            iconSource: "qrc:/HolonightShell/weather/sunset.png"
                             timeText: WeatherService.hasData ? Qt.formatTime(new Date(WeatherService.current.sunset * 1000), "HH:mm") : "—"
                         }
                     }
@@ -240,7 +287,7 @@ Item {
                                 var mp = (WeatherService.hasData && WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase"))
                                     ? WeatherService.daily[0].moonPhase
                                     : undefined;
-                                return "qrc:/HolonightShell/weather-png/512x512/" + WeatherIconBridge.moonPhaseIcon(mp) + ".png";
+                                return "qrc:/HolonightShell/weather/" + WeatherIconBridge.moonPhaseIcon(mp) + ".png";
                             }
                             Layout.preferredWidth: 48
                             Layout.preferredHeight: 48

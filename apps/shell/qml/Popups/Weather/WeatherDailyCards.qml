@@ -8,6 +8,7 @@ import "../../WeatherIcon"
 
 Column {
     id: root
+    WeatherDaylight { id: daylight }
     readonly property var entries: WeatherService.daily.filter(entry => entry.availableFields.some(field => ["tempMin", "tempMax", "pop", "conditionId", "condition"].includes(field)))
     visible: entries.length > 0
     spacing: 8
@@ -88,21 +89,15 @@ Column {
                         elide: Text.ElideRight
                     }
 
-                    WeatherIconCompositor {
+                    WeatherIcon {
                         anchors.horizontalCenter: parent.horizontalCenter
                         conditionCode: dayCard.sourceIndex === 0
                             ? (WeatherService.hasData ? WeatherService.current.conditionId : 0)
                             : dayCard.entry.conditionId
-                        conditionDescription: dayCard.sourceIndex === 0
-                            ? (WeatherService.hasData ? WeatherService.current.condition : "")
-                            : dayCard.entry.condition
-                        windSpeedKmh: dayCard.sourceIndex === 0 && WeatherService.hasData ? WeatherService.current.windSpeed : 0
-                        isDay: dayCard.sourceIndex === 0 ? root.isCurrentDay : true
+                        provider: dayCard.sourceIndex === 0 ? WeatherService.current.provider : dayCard.entry.provider
+                        daylightAvailable: dayCard.sourceIndex === 0 ? daylight.available : true
+                        isDay: dayCard.sourceIndex === 0 ? daylight.isDay : true
                         iconSize: 64
-                        date: dayCard.sourceIndex === 0 ? new Date() : new Date(dayCard.entry.date * 1000)
-                        moonPhase: (WeatherService.hasData && WeatherService.daily.length > 0 && WeatherService.daily[0].availableFields.includes("moonPhase"))
-                            ? WeatherService.daily[0].moonPhase
-                            : undefined
                     }
 
                     Item {

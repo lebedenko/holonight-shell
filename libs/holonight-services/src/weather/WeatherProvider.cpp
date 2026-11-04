@@ -1,6 +1,7 @@
 #include "WeatherProvider.h"
 
 #include "MoonPhaseCalculator.h"
+#include "WeatherIconMapper.h"
 
 #include <QDate>
 #include <QDateTime>
@@ -129,39 +130,6 @@ QUrl airPollutionUrl(double lat, double lon, const QString& api_key) {
   query.addQueryItem(QStringLiteral("appid"), api_key);
   url.setQuery(query);
   return url;
-}
-QString conditionDescription(int condition_id) {
-  if (condition_id == 800) {
-    return QStringLiteral("Clear sky");
-  }
-  if (condition_id == 801) {
-    return QStringLiteral("Few clouds");
-  }
-  if (condition_id == 802) {
-    return QStringLiteral("Scattered clouds");
-  }
-  if (condition_id == 804) {
-    return QStringLiteral("Overcast clouds");
-  }
-  if (condition_id == 741) {
-    return QStringLiteral("Fog");
-  }
-  if (condition_id == 511) {
-    return QStringLiteral("Freezing rain");
-  }
-  if (condition_id >= 600 && condition_id < 700) {
-    return QStringLiteral("Snow");
-  }
-  if (condition_id >= 500 && condition_id < 600) {
-    return QStringLiteral("Rain");
-  }
-  if (condition_id >= 300 && condition_id < 400) {
-    return QStringLiteral("Drizzle");
-  }
-  if (condition_id >= 200 && condition_id < 300) {
-    return QStringLiteral("Thunderstorm");
-  }
-  return QStringLiteral("Unknown");
 }
 
 }  // namespace
@@ -438,6 +406,7 @@ WeatherLocation WeatherProvider::parseLocationJson(const QJsonObject& root) {
 
 CurrentWeather WeatherProvider::parseCurrentJson(const QJsonObject& root) {
   CurrentWeather out;
+  out.provider = "openweather";
   const QJsonObject& obj = root;
 
   markFields(out.available_fields, obj,
@@ -468,9 +437,13 @@ CurrentWeather WeatherProvider::parseCurrentJson(const QJsonObject& root) {
     const QJsonObject first = weather.first().toObject();
     markFields(out.available_fields, first,
                {{"id", "conditionId"}, {"description", "condition"}, {"icon", "iconCode"}});
-    out.condition_id = first.value(QStringLiteral("id")).toInt(0);
+    out.condition_id = first.value(QStringLiteral("id")).toInt(-1);
     out.condition = first.value(QStringLiteral("description")).toString();
     out.icon_code = first.value(QStringLiteral("icon")).toString();
+    if (out.icon_code.endsWith("d") || out.icon_code.endsWith("n")) {
+      out.is_day = out.icon_code.endsWith("d");
+      out.available_fields.append("isDay");
+    }
   }
 
   // OWM "metric" returns wind in m/s; the widget displays km/h.
@@ -498,6 +471,7 @@ QList<HourlyEntry> WeatherProvider::parseHourlyJson(const QJsonArray& arr) {
     const QJsonObject entry = value.toObject();
     if (!validTimestamp(entry.value("dt"))) continue;
     HourlyEntry hourly;
+    hourly.provider = "openweather";
     markFields(hourly.available_fields, entry,
                {{"dt", "timestamp"}, {"temp", "temperature"}, {"pop", "pop"}, {"uvi", "uvi"}, {"clouds", "clouds"}});
     bool valid_precipitation = true;
@@ -519,9 +493,13 @@ QList<HourlyEntry> WeatherProvider::parseHourlyJson(const QJsonArray& arr) {
       const QJsonObject first = weather.first().toObject();
       markFields(hourly.available_fields, first,
                  {{"id", "conditionId"}, {"description", "condition"}, {"icon", "iconCode"}});
-      hourly.condition_id = first.value(QStringLiteral("id")).toInt(0);
+      hourly.condition_id = first.value(QStringLiteral("id")).toInt(-1);
       hourly.condition = first.value(QStringLiteral("description")).toString();
       hourly.icon_code = first.value(QStringLiteral("icon")).toString();
+      if (hourly.icon_code.endsWith("d") || hourly.icon_code.endsWith("n")) {
+        hourly.is_day = hourly.icon_code.endsWith("d");
+        hourly.available_fields.append("isDay");
+      }
     }
     out.append(hourly);
   }
@@ -535,6 +513,7 @@ QList<DailyEntry> WeatherProvider::parseDailyJson(const QJsonArray& arr) {
     const QJsonObject entry = value.toObject();
     if (!validTimestamp(entry.value("dt"))) continue;
     DailyEntry daily;
+    daily.provider = "openweather";
     markFields(daily.available_fields, entry,
                {{"dt", "date"},
                 {"sunrise", "sunrise"},
@@ -562,9 +541,13 @@ QList<DailyEntry> WeatherProvider::parseDailyJson(const QJsonArray& arr) {
       const QJsonObject first = weather.first().toObject();
       markFields(daily.available_fields, first,
                  {{"id", "conditionId"}, {"description", "condition"}, {"icon", "iconCode"}});
-      daily.condition_id = first.value(QStringLiteral("id")).toInt(0);
+      daily.condition_id = first.value(QStringLiteral("id")).toInt(-1);
       daily.condition = first.value(QStringLiteral("description")).toString();
       daily.icon_code = first.value(QStringLiteral("icon")).toString();
+      if (daily.icon_code.endsWith("d") || daily.icon_code.endsWith("n")) {
+        daily.is_day = daily.icon_code.endsWith("d");
+        daily.available_fields.append("isDay");
+      }
     }
     out.append(daily);
   }
@@ -614,68 +597,11 @@ void WeatherProvider::geocodeCity(const QString& city, const QString& language) 
   });
 }
 
-int WeatherProvider::conditionFromWmo(int code) {
-  switch (code) {
-    case 0:
-      return 800;
-    case 1:
-      return 801;
-    case 2:
-      return 802;
-    case 3:
-      return 804;
-    case 45:
-    case 48:
-      return 741;
-    case 51:
-      return 300;
-    case 53:
-      return 301;
-    case 55:
-      return 302;
-    case 56:
-    case 57:
-      return 511;
-    case 61:
-      return 500;
-    case 63:
-      return 501;
-    case 65:
-      return 502;
-    case 66:
-    case 67:
-      return 511;
-    case 71:
-    case 77:
-      return 600;
-    case 73:
-      return 601;
-    case 75:
-      return 602;
-    case 80:
-      return 520;
-    case 81:
-      return 521;
-    case 82:
-      return 522;
-    case 85:
-      return 620;
-    case 86:
-      return 622;
-    case 95:
-      return 200;
-    case 96:
-    case 99:
-      return 201;
-    default:
-      return 0;
-  }
-}
-
 WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
   WeatherCache data;
   const auto cur = root.value("current").toObject();
   auto& current = data.current;
+  current.provider = "openmeteo";
   markFields(current.available_fields, cur,
              {{"temperature_2m", "temperature"},
               {"apparent_temperature", "feelsLike"},
@@ -687,7 +613,7 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
               {"cloud_cover", "clouds"},
               {"time", "timeUpdated"}});
   if (validNumber(cur.value("weather_code"))) current.available_fields.append({"conditionId", "condition"});
-  if (validNumber(cur.value("is_day"))) current.available_fields.append("iconCode");
+  if (validNumber(cur.value("is_day"))) current.available_fields.append({"iconCode", "isDay"});
   current.temperature = cur.value("temperature_2m").toDouble();
   current.feels_like = cur.value("apparent_temperature").toDouble();
   current.humidity = cur.value("relative_humidity_2m").toInt();
@@ -696,9 +622,10 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
   current.wind_gust = qRound(cur.value("wind_gusts_10m").toDouble());
   current.wind_direction = cur.value("wind_direction_10m").toInt();
   current.clouds = cur.value("cloud_cover").toInt();
-  current.condition_id = conditionFromWmo(cur.value("weather_code").toInt(-1));
+  current.condition_id = cur.value("weather_code").toInt(-1);
 
-  current.condition = conditionDescription(current.condition_id);
+  current.condition = WeatherIconMapper::description("openmeteo", current.condition_id);
+  current.is_day = cur.value("is_day").toInt() == 1;
   current.icon_code = (cur.value("is_day").toInt() != 0) ? "01d" : "01n";
   const auto timestamp = static_cast<qint64>(cur.value("time").toDouble());
   current.time_updated = QDateTime::fromSecsSinceEpoch(timestamp, QTimeZone::UTC).toString(Qt::ISODate);
@@ -738,6 +665,7 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
                   {"weather_code", "conditionId"},
                   {"weather_code", "condition"},
                   {"is_day", "iconCode"},
+                  {"is_day", "isDay"},
                   {"precipitation", "precipitation"},
                   {"precipitation_probability", "pop"},
                   {"uv_index", "uvi"},
@@ -745,8 +673,12 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
     entry.available_fields.append("timestamp");
     entry.timestamp = time;
     entry.temperature = forecastValue(hourly, "temperature_2m", i);
-    entry.condition_id = conditionFromWmo(static_cast<int>(forecastValue(hourly, "weather_code", i)));
-    entry.condition = conditionDescription(entry.condition_id);
+    entry.provider = "openmeteo";
+    entry.condition_id = entry.available_fields.contains("conditionId")
+                             ? static_cast<int>(forecastValue(hourly, "weather_code", i))
+                             : -1;
+    entry.condition = WeatherIconMapper::description("openmeteo", entry.condition_id);
+    entry.is_day = forecastValue(hourly, "is_day", i) == 1;
     entry.icon_code = forecastValue(hourly, "is_day", i) > 0 ? "01d" : "01n";
     entry.precipitation = forecastValue(hourly, "precipitation", i);
     entry.pop = forecastValue(hourly, "precipitation_probability", i) / 100.0;
@@ -772,8 +704,10 @@ WeatherCache WeatherProvider::parseOpenMeteo(const QJsonObject& root) {
     entry.date = static_cast<qint64>(dates[i].toDouble());
     entry.temp_min = forecastValue(daily, "temperature_2m_min", i);
     entry.temp_max = forecastValue(daily, "temperature_2m_max", i);
-    entry.condition_id = conditionFromWmo(static_cast<int>(forecastValue(daily, "weather_code", i)));
-    entry.condition = conditionDescription(entry.condition_id);
+    entry.provider = "openmeteo";
+    entry.condition_id =
+        entry.available_fields.contains("conditionId") ? static_cast<int>(forecastValue(daily, "weather_code", i)) : -1;
+    entry.condition = WeatherIconMapper::description("openmeteo", entry.condition_id);
     entry.icon_code = "01d";
     entry.pop = forecastValue(daily, "precipitation_probability_max", i) / 100.0;
     entry.uvi = forecastValue(daily, "uv_index_max", i);

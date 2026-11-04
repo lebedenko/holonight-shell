@@ -76,15 +76,14 @@ class WeatherService : public QObject, public IActivityGate {
   Q_INVOKABLE [[nodiscard]] double displayPressure(double hpa, const QString& unit = {}) const;
   Q_INVOKABLE [[nodiscard]] QString formatTemperature(double celsius, const QString& unit = {}) const;
 
+  // Retained exclusively for the unchanged topbar SVG presentation.
+  Q_INVOKABLE [[nodiscard]] QString iconPath(int condition_id, bool is_day) const;
+
   // Called by ShellApplication::startServices(). Loads cache, resolves location, begins polling.
   void start();
 
   // Re-reads config and recomputes `configured`. Exposed for tests.
   void applyConfig();
-
-  // Maps an OWM condition id + day/night flag to a bundled icon URL
-  // (qrc:/HolonightShell/weather/wsymbol_*.svg). Unknown ids fall back to the unknown icon.
-  Q_INVOKABLE [[nodiscard]] static QString iconPath(int condition_id, bool is_day);
 
  Q_SIGNALS:
   void preferencesChanged();

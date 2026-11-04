@@ -1,6 +1,7 @@
 #include "WeatherService.h"
 
 #include "ConfigService.h"
+#include "WeatherIconMapper.h"
 #include "WeatherProvider.h"
 
 #include <QCryptographicHash>
@@ -27,6 +28,8 @@ QJsonObject currentToJson(const CurrentWeather& cur) {
   obj.insert(QStringLiteral("feels"), cur.feels_like);
   obj.insert(QStringLiteral("cond"), cur.condition);
   obj.insert(QStringLiteral("cond_id"), cur.condition_id);
+  obj.insert("provider", cur.provider);
+  obj.insert("isDay", cur.is_day);
   obj.insert(QStringLiteral("humidity"), cur.humidity);
   obj.insert(QStringLiteral("wind"), cur.wind_speed);
   obj.insert(QStringLiteral("wind_deg"), cur.wind_direction);
@@ -57,6 +60,8 @@ CurrentWeather currentFromJson(const QJsonObject& obj) {
   cur.feels_like = obj.value(QStringLiteral("feels")).toDouble(0.0);
   cur.condition = obj.value(QStringLiteral("cond")).toString();
   cur.condition_id = obj.value(QStringLiteral("cond_id")).toInt(0);
+  cur.provider = obj.value("provider").toString();
+  cur.is_day = obj.value("isDay").toBool();
   cur.humidity = obj.value(QStringLiteral("humidity")).toInt(0);
   cur.wind_speed = obj.value(QStringLiteral("wind")).toInt(0);
   cur.wind_direction = obj.value(QStringLiteral("wind_deg")).toInt(0);
@@ -77,6 +82,8 @@ CurrentWeather currentFromJson(const QJsonObject& obj) {
   cur.no2 = obj.value(QStringLiteral("no2")).toDouble(0.0);
   cur.o3 = obj.value(QStringLiteral("o3")).toDouble(0.0);
   cur.so2 = obj.value(QStringLiteral("so2")).toDouble(0.0);
+  if (cur.provider == "openmeteo" && cur.available_fields.contains("conditionId"))
+    cur.condition = WeatherIconMapper::description(cur.provider, cur.condition_id);
   return cur;
 }
 
@@ -88,6 +95,8 @@ QJsonArray hourlyToJson(const QList<HourlyEntry>& hourly) {
     obj.insert(QStringLiteral("dt"), static_cast<double>(entry.timestamp));
     obj.insert(QStringLiteral("temp"), entry.temperature);
     obj.insert(QStringLiteral("cond_id"), entry.condition_id);
+    obj.insert("provider", entry.provider);
+    obj.insert("isDay", entry.is_day);
     obj.insert(QStringLiteral("precip"), entry.precipitation);
     obj.insert(QStringLiteral("icon"), entry.icon_code);
     obj.insert(QStringLiteral("cond"), entry.condition);
@@ -109,12 +118,16 @@ QList<HourlyEntry> hourlyFromJson(const QJsonArray& arr) {
     entry.timestamp = static_cast<qint64>(obj.value(QStringLiteral("dt")).toDouble(0.0));
     entry.temperature = obj.value(QStringLiteral("temp")).toDouble(0.0);
     entry.condition_id = obj.value(QStringLiteral("cond_id")).toInt(0);
+    entry.provider = obj.value("provider").toString();
+    entry.is_day = obj.value("isDay").toBool();
     entry.precipitation = obj.value(QStringLiteral("precip")).toDouble(0.0);
     entry.icon_code = obj.value(QStringLiteral("icon")).toString();
     entry.condition = obj.value(QStringLiteral("cond")).toString();
     entry.pop = obj.value(QStringLiteral("pop")).toDouble(0.0);
     entry.uvi = obj.value(QStringLiteral("uvi")).toDouble(0.0);
     entry.clouds = obj.value(QStringLiteral("clouds")).toInt(0);
+    if (entry.provider == "openmeteo" && entry.available_fields.contains("conditionId"))
+      entry.condition = WeatherIconMapper::description(entry.provider, entry.condition_id);
     out.append(entry);
   }
   return out;
@@ -129,6 +142,8 @@ QJsonArray dailyToJson(const QList<DailyEntry>& daily) {
     obj.insert(QStringLiteral("t_min"), entry.temp_min);
     obj.insert(QStringLiteral("t_max"), entry.temp_max);
     obj.insert(QStringLiteral("cond_id"), entry.condition_id);
+    obj.insert("provider", entry.provider);
+    obj.insert("isDay", entry.is_day);
     obj.insert(QStringLiteral("cond"), entry.condition);
     obj.insert(QStringLiteral("icon"), entry.icon_code);
     obj.insert(QStringLiteral("pop"), entry.pop);
@@ -153,6 +168,8 @@ QList<DailyEntry> dailyFromJson(const QJsonArray& arr) {
     entry.temp_min = obj.value(QStringLiteral("t_min")).toDouble(0.0);
     entry.temp_max = obj.value(QStringLiteral("t_max")).toDouble(0.0);
     entry.condition_id = obj.value(QStringLiteral("cond_id")).toInt(0);
+    entry.provider = obj.value("provider").toString();
+    entry.is_day = obj.value("isDay").toBool();
     entry.condition = obj.value(QStringLiteral("cond")).toString();
     entry.icon_code = obj.value(QStringLiteral("icon")).toString();
     entry.pop = obj.value(QStringLiteral("pop")).toDouble(0.0);
@@ -161,12 +178,72 @@ QList<DailyEntry> dailyFromJson(const QJsonArray& arr) {
     entry.summary = obj.value(QStringLiteral("summary")).toString();
     entry.sunrise = static_cast<qint64>(obj.value(QStringLiteral("sunrise")).toDouble(0.0));
     entry.sunset = static_cast<qint64>(obj.value(QStringLiteral("sunset")).toDouble(0.0));
+    if (entry.provider == "openmeteo" && entry.available_fields.contains("conditionId"))
+      entry.condition = WeatherIconMapper::description(entry.provider, entry.condition_id);
     out.append(entry);
   }
   return out;
 }
 
 // ---- Icon mapping ------------------------------------------------------------------------
+
+int legacyConditionFromWmo(int code) {
+  switch (code) {
+    case 0:
+      return 800;
+    case 1:
+      return 801;
+    case 2:
+      return 802;
+    case 3:
+      return 804;
+    case 45:
+    case 48:
+      return 741;
+    case 51:
+      return 300;
+    case 53:
+      return 301;
+    case 55:
+      return 302;
+    case 56:
+    case 57:
+      return 511;
+    case 61:
+      return 500;
+    case 63:
+      return 501;
+    case 65:
+      return 502;
+    case 66:
+    case 67:
+      return 511;
+    case 71:
+    case 77:
+      return 600;
+    case 73:
+      return 601;
+    case 75:
+      return 602;
+    case 80:
+      return 520;
+    case 81:
+      return 521;
+    case 82:
+      return 522;
+    case 85:
+      return 620;
+    case 86:
+      return 622;
+    case 95:
+      return 200;
+    case 96:
+    case 99:
+      return 201;
+    default:
+      return 0;
+  }
+}
 
 QString iconCode(int condition_id) {
   if (condition_id >= 200 && condition_id <= 299) {
@@ -607,9 +684,10 @@ void WeatherService::rebuildForecastVariants() {
   }
 }
 
-QString WeatherService::iconPath(int condition_id, bool is_day) {
-  const QString prefix = QStringLiteral("qrc:/HolonightShell/weather/");
-  return prefix + iconCode(condition_id) + (is_day ? QLatin1String("d.svg") : QLatin1String("n.svg"));
+QString WeatherService::iconPath(int condition_id, bool is_day) const {
+  if (current_.provider == "openmeteo") condition_id = legacyConditionFromWmo(condition_id);
+  return QStringLiteral("qrc:/HolonightShell/weather/") + iconCode(condition_id) +
+         (is_day ? QLatin1String("d.svg") : QLatin1String("n.svg"));
 }
 
 QString WeatherService::cachePath() {
@@ -632,7 +710,7 @@ void WeatherService::loadCache() {
     return;
   }
   const QJsonObject root = doc.object();
-  if (root.value("version").toInt() != 3 || root.value("identity").toString() != cacheIdentity()) {
+  if (root.value("version").toInt() != 4 || root.value("identity").toString() != cacheIdentity()) {
     return;
   }
   lat_ = root.value("latitude").toDouble();
@@ -663,7 +741,7 @@ void WeatherService::saveCache() const {
   root.insert(QStringLiteral("fetched_at"), static_cast<double>(fetched_at_));
   root.insert("latitude", lat_);
   root.insert("longitude", lon_);
-  root.insert("version", 3);
+  root.insert("version", 4);
   root.insert("identity", cacheIdentity());
   root.insert(QStringLiteral("current"), currentToJson(current_));
   root.insert(QStringLiteral("hourly"), hourlyToJson(hourly_));

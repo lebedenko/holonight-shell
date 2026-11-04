@@ -241,6 +241,8 @@ target_link_libraries(test_holonight_app PRIVATE
 holonight_add_test_exe(test_holonight_qml
   main.cpp
   test_media_artwork_assets.cpp
+  test_weather_assets.cpp
+  test_shell_runtime.cpp
   test_qml_smoke.cpp
   FakeQmlServices.h
 )
@@ -513,3 +515,6 @@ target_include_directories(test_bluetooth_presentation PRIVATE ${PROJECT_SOURCE_
 target_link_libraries(test_bluetooth_presentation PRIVATE HoloNightSystem::Bluetooth Qt6::Qml Qt6::Gui Qt6::Test GTest::gtest GTest::gmock)
 add_test(NAME bluetooth_presentation COMMAND test_bluetooth_presentation)
 set_tests_properties(bluetooth_presentation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+holonight_weather_resources(test_holonight_qml)
+holonight_weather_resources(test_holonight_qml_harness)

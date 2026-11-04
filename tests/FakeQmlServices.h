@@ -13,6 +13,7 @@
 #include "MprisDbus.h"
 #include "MprisService.h"
 #include "PowerProfilesService.h"
+#include "ShellRuntime.h"
 #include "StorageService.h"
 #include "SuspendInhibitorService.h"
 #include "TrayModel.h"
@@ -238,6 +239,8 @@ class FakeWeatherService : public QObject {
           {"timestamp", 1791118800 + (i * 3600)},
           {"temperature", 18 - i},
           {"conditionId", 801},
+          {"provider", "openweather"},
+          {"isDay", true},
           {"condition", "few clouds"},
           {"pop", 0.0},
           {"precipitation", 0.0},
@@ -256,6 +259,8 @@ class FakeWeatherService : public QObject {
           {"tempMax", 18 + i},
           {"tempMin", 7 + i},
           {"conditionId", 801},
+          {"provider", "openweather"},
+          {"isDay", true},
           {"condition", "few clouds"},
           {"pop", 0.0},
           {"moonPhase", 0.75},
@@ -284,6 +289,25 @@ class FakeWeatherService : public QObject {
     emit locationChanged();
   }
 
+  Q_INVOKABLE void setSunTimes(qint64 sunrise, qint64 sunset) {
+    auto map = current_.toMap();
+    map["sunrise"] = sunrise;
+    map["sunset"] = sunset;
+    current_ = map;
+    emit currentChanged();
+  }
+  Q_INVOKABLE void setConditionDescription(const QString& description) {
+    auto map = current_.toMap();
+    map["condition"] = description;
+    current_ = map;
+    emit currentChanged();
+  }
+  Q_INVOKABLE void setCondition(int code) {
+    auto map = current_.toMap();
+    map["conditionId"] = code;
+    current_ = map;
+    emit currentChanged();
+  }
   Q_INVOKABLE void setCurrentTemperature(double value) {
     QVariantMap map = current_.toMap();
     map[QStringLiteral("temperature")] = value;
@@ -348,6 +372,8 @@ class FakeWeatherService : public QObject {
       {QStringLiteral("feelsLike"), 17.0},
       {QStringLiteral("condition"), QStringLiteral("clear sky")},
       {QStringLiteral("conditionId"), 800},
+      {"provider", "openweather"},
+      {"isDay", true},
       {QStringLiteral("sunrise"), 0},
       {QStringLiteral("sunset"), QVariant::fromValue<qint64>(4102444800)},
   }};
@@ -1309,7 +1335,9 @@ class TestBluetoothBackend : public HoloNight::System::BluetoothBackend {
   }
   Q_INVOKABLE void manyDevices() { discovery(9); }
   Q_INVOKABLE void clear() { emit snapshotChanged({}, {}, false); }
-  Q_INVOKABLE void complete() { QTimer::singleShot(0, this, [this] { emit operationFinished(last_); }); }
+  Q_INVOKABLE void complete() {
+    QTimer::singleShot(0, this, [this] { emit operationFinished(last_); });
+  }
   Q_INVOKABLE void fail() {
     last_.errorName = QStringLiteral("org.bluez.Error.Failed");
     last_.errorMessage = QStringLiteral("Test Bluetooth error");
@@ -1740,7 +1768,10 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "MprisTestSeed", &mpris_test_seed_) >= 0 &&
            qmlRegisterSingletonType<WeatherIconBridge>(
                "HolonightShell", 1, 0, "WeatherIconBridge",
-               [](QQmlEngine* engine, QJSEngine*) -> QObject* { return new WeatherIconBridge(engine); }) >= 0;
+               [](QQmlEngine* engine, QJSEngine*) -> QObject* { return new WeatherIconBridge(engine); }) >= 0 &&
+           qmlRegisterSingletonType<ShellRuntime>(
+               "HolonightShell", 1, 0, "ShellRuntime",
+               [](QQmlEngine* engine, QJSEngine*) -> QObject* { return new ShellRuntime(engine); }) >= 0;
   }
 
   [[nodiscard]] FakeNotificationService& notifications() { return notifications_; }

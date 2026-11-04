@@ -4,6 +4,7 @@ add_library(holonight_app STATIC
     app/ControlCommandBuffer.h
     app/ControlServer.h
     app/ControlServer.cpp
+    app/ShellRuntime.h
     app/ShellApplication.h
     app/ShellApplication.cpp
     app/SettingsNavigationService.h

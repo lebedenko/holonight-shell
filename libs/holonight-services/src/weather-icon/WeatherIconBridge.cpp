@@ -3,11 +3,11 @@
 #include "MoonPhase.h"
 #include "WeatherIconMapper.h"
 
+#include <cmath>
+
 WeatherIconBridge::WeatherIconBridge(QObject* parent) : QObject(parent) {}
 
 namespace {
-
-constexpr int kHurricaneWindSpeedKmh = 119;
 
 // variantToMoonPhase() classifies an external 0..1 phase fraction (weather-API convention: 0/1 =
 // new moon, 0.5 = full). These are hand-tuned, NOT a uniform eighths split like
@@ -54,41 +54,24 @@ WeatherIconNs::MoonPhase variantToMoonPhase(const QVariant& moon_phase) {
   return moon_phase_val;
 }
 
-int presentationConditionCode(int condition_code, const QString& condition_description, int wind_speed_kmh) {
-  if (condition_description.contains(QStringLiteral("hail"), Qt::CaseInsensitive)) {
-    return WeatherIconMapper::kHailConditionCode;
-  }
-  if (wind_speed_kmh >= kHurricaneWindSpeedKmh) {
-    return WeatherIconMapper::kHurricaneConditionCode;
-  }
-  return condition_code;
-}
-
 }  // namespace
 
-QStringList WeatherIconBridge::layersFor(int condition_code, bool is_day, const QDateTime& date,
-                                         const QVariant& moon_phase) {
-  const WeatherIconNs::MoonPhase moon_phase_val =
-      is_day ? WeatherIconNs::MoonPhase::WaningCrescent : variantToMoonPhase(moon_phase);
-  return WeatherIconMapper::mapLayers(condition_code, is_day, moon_phase_val);
-}
-
-QStringList WeatherIconBridge::layersForWeather(int condition_code, bool is_day, const QDateTime& date,
-                                                const QString& condition_description, int wind_speed_kmh,
-                                                const QVariant& moon_phase) {
-  Q_UNUSED(date)
-  const WeatherIconNs::MoonPhase moon_phase_val =
-      is_day ? WeatherIconNs::MoonPhase::WaningCrescent : variantToMoonPhase(moon_phase);
-  const int effective_condition_code = presentationConditionCode(condition_code, condition_description, wind_speed_kmh);
-  return WeatherIconMapper::mapLayers(effective_condition_code, is_day, moon_phase_val);
-}
-
 QString WeatherIconBridge::moonPhaseIcon(const QVariant& moon_phase) {
+  bool valid = false;
+  const double value = moon_phase.toDouble(&valid);
+  if (!moon_phase.isValid() || moon_phase.isNull() || !valid || !std::isfinite(value) || value < 0 || value > 1)
+    return QStringLiteral("unavailable");
   const WeatherIconNs::MoonPhase moon_phase_val = variantToMoonPhase(moon_phase);
-  return WeatherIconMapper::moonLayerName(moon_phase_val);
+  static const QStringList names{"moon-new",  "moon-waxing-crescent", "moon-first-quarter", "moon-waxing-gibbous",
+                                 "moon-full", "moon-waning-gibbous",  "moon-last-quarter",  "moon-waning-crescent"};
+  return names.at(static_cast<int>(moon_phase_val));
 }
 
 QString WeatherIconBridge::moonPhaseDescription(const QVariant& moon_phase) {
+  bool valid = false;
+  const double value = moon_phase.toDouble(&valid);
+  if (!moon_phase.isValid() || moon_phase.isNull() || !valid || !std::isfinite(value) || value < 0 || value > 1)
+    return QStringLiteral("Unknown moon phase");
   using WeatherIconNs::MoonPhase;
   const WeatherIconNs::MoonPhase moon_phase_val = variantToMoonPhase(moon_phase);
   switch (moon_phase_val) {
@@ -110,4 +93,24 @@ QString WeatherIconBridge::moonPhaseDescription(const QVariant& moon_phase) {
       return QStringLiteral("Waning Crescent");
   }
   return QStringLiteral("New Moon");
+}
+
+QString WeatherIconBridge::iconFor(const QString& provider, int code, bool is_day, bool daylight_available) {
+  return "qrc:/HolonightShell/weather/" + WeatherIconMapper::icon(provider, code, is_day, daylight_available) + ".png";
+}
+QVariantList WeatherIconBridge::previewCatalogue() const {
+  QVariantList result;
+  for (const auto& entry : WeatherIconMapper::catalogue()) {
+    const bool variants = WeatherIconMapper::icon(entry.provider, entry.code, true) !=
+                          WeatherIconMapper::icon(entry.provider, entry.code, false);
+    for (int index = 0; index < (variants ? 2 : 1); ++index) {
+      result.append(QVariantMap{{"provider", entry.provider},
+                                {"providerName", entry.provider == "openweather" ? "OpenWeather" : "Open-Meteo"},
+                                {"code", entry.code},
+                                {"description", entry.description},
+                                {"isDay", index == 0},
+                                {"variant", variants ? (index == 0 ? "day" : "night") : "neutral"}});
+    }
+  }
+  return result;
 }

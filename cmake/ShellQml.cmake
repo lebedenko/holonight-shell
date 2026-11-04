@@ -1,3 +1,20 @@
+function(holonight_weather_resources target)
+  file(GLOB weather_files CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/assets/weather/*.png")
+  qt6_add_resources(${target} "weather_icons" PREFIX "/HolonightShell"
+      BASE "${PROJECT_SOURCE_DIR}/assets" FILES ${weather_files})
+  file(GLOB WEATHER_UI_FILES
+      LIST_DIRECTORIES false
+      CONFIGURE_DEPENDS
+      "${PROJECT_SOURCE_DIR}/assets/weather-ui/*.svg"
+  )
+  qt6_add_resources(${target} "weather_ui_assets"
+      PREFIX "/HolonightShell"
+      BASE "${PROJECT_SOURCE_DIR}/assets"
+      FILES ${WEATHER_UI_FILES}
+  )
+
+endfunction()
+
 function(holonight_shell_qml target)
   set(module_directory "${CMAKE_CURRENT_BINARY_DIR}/HolonightShell")
   if(NOT target STREQUAL "holonight-shell")
@@ -58,38 +75,10 @@ function(holonight_shell_qml target)
       FILES ${HOLONIGHT_QML_JS_FILES}
   )
 
-  file(GLOB WEATHER_SVG_FILES
-      LIST_DIRECTORIES false
-      CONFIGURE_DEPENDS
-      "${PROJECT_SOURCE_DIR}/assets/weather/*.svg"
-  )
-  qt6_add_resources(${target} "weather_icons"
-      PREFIX "/HolonightShell"
-      BASE "${PROJECT_SOURCE_DIR}/assets"
-      FILES ${WEATHER_SVG_FILES}
-  )
-
-  file(GLOB WEATHER_PNG_FILES
-      LIST_DIRECTORIES false
-      CONFIGURE_DEPENDS
-      "${PROJECT_SOURCE_DIR}/assets/weather-png/512x512/*.png"
-  )
-  qt6_add_resources(${target} "weather_png_icons"
-      PREFIX "/HolonightShell"
-      BASE "${PROJECT_SOURCE_DIR}/assets"
-      FILES ${WEATHER_PNG_FILES}
-  )
-
-  file(GLOB WEATHER_UI_FILES
-      LIST_DIRECTORIES false
-      CONFIGURE_DEPENDS
-      "${PROJECT_SOURCE_DIR}/assets/weather-ui/*.svg"
-  )
-  qt6_add_resources(${target} "weather_ui_assets"
-      PREFIX "/HolonightShell"
-      BASE "${PROJECT_SOURCE_DIR}/assets"
-      FILES ${WEATHER_UI_FILES}
-  )
+  holonight_weather_resources(${target})
+  file(GLOB weather_bar_files CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/assets/weather/*.svg")
+  qt6_add_resources(${target} "weather_bar_icons" PREFIX "/HolonightShell"
+      BASE "${PROJECT_SOURCE_DIR}/assets" FILES ${weather_bar_files})
 
   file(GLOB BAR_ICON_FILES
       LIST_DIRECTORIES false
