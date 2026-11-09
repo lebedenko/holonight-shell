@@ -1,7 +1,7 @@
 [
   {
     "name": "holonight-config",
-    "revision": "af669048de06bf449c07f66277ddf8dd14a7d56a"
+    "revision": "b115286c67561bcb34c8009da5098e3cb215f874"
   },
   {
     "name": "holonight-system-services",
@@ -9,6 +9,6 @@
   },
   {
     "name": "holonight-qt",
-    "revision": "21aebdda3d9de71c374f5f1f5e61df8a056c1b32"
+    "revision": "e9b5f79b9ab69a0d22ba6d326dc04f12055a45ab"
   }
 ]
