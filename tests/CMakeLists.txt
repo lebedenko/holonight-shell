@@ -147,6 +147,7 @@ holonight_add_test_exe(test_holonight_services
   test_application_launch_integration.cpp
   test_battery_service.cpp
   test_storage_service.cpp
+  test_package_updates_service.cpp
   test_calendar_integration.cpp
   test_http_sync_client.cpp
   test_network_service.cpp

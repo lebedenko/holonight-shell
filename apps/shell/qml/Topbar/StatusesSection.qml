@@ -39,6 +39,11 @@ BarSection {
         }
         spacing: 0
 
+        PackageUpdatesWidget {
+            barMonitorName: root.barMonitorName
+            Layout.alignment: Qt.AlignVCenter
+        }
+
         NetworkWidget {
             barMonitorName: root.barMonitorName
             Layout.alignment: Qt.AlignVCenter

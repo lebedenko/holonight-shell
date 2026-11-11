@@ -18,6 +18,7 @@ required_types=(
   "AppearanceService"
   "AudioService"
   "StorageService"
+  "PackageUpdatesService"
   "BluetoothService"
   "NotificationService"
   "CompositorService"

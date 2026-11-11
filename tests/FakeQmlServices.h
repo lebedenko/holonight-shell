@@ -14,6 +14,7 @@
 #include "MprisService.h"
 #include "PowerProfilesService.h"
 #include "ShellRuntime.h"
+#include "PackageUpdatesService.h"
 #include "StorageService.h"
 #include "SuspendInhibitorService.h"
 #include "TrayModel.h"
@@ -1736,6 +1737,7 @@ class FakeQmlServices {
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BatteryService", &battery_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "AudioService", &audio_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "StorageService", &storage_) >= 0 &&
+           qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PackageUpdatesService", &package_updates_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BluetoothService", &bluetooth_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "BluetoothTestSeed", &bluetooth_backend_) >= 0 &&
            qmlRegisterSingletonInstance("HolonightShell", 1, 0, "PopupTestSeed", &popup_test_seed_) >= 0 &&
@@ -1807,6 +1809,7 @@ class FakeQmlServices {
   NullStorageBackend storage_backend_;
   HoloNight::System::StorageController storage_controller_{&storage_backend_};
   StorageService storage_{&storage_controller_};
+  PackageUpdatesService package_updates_;
   PopupTestSeed popup_test_seed_{storage_backend_, audio_, battery_};
   PowerProfilesService power_profiles_;
   TrayModel tray_model_{&config_service_};

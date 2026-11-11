@@ -661,3 +661,10 @@ See [selection details](docs/sdd/weather-artwork-browser.md).
 Popup condition descriptions retain provider wording and meaning: OpenWeather response text,
 or Open-Meteo's documented description for its numeric weather code. Long descriptions wrap.
 Only the topbar applies its local short-description mapping to fit the available space.
+
+The topbar Packages indicator appears before Network when updates, package problems,
+or an active check need attention. Shell requests activation of the installed
+`holonight-packaged` session service once at startup; the service owns online scheduling.
+The indicator stays hidden when the service is absent or no updates/problems remain.
+Hover for exact counts, download size, timestamps and diagnostics; click to open
+HoloNight Packages. A `99+` badge still shows the exact count in the tooltip.

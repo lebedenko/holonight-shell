@@ -36,6 +36,7 @@
 #include "OsdController.h"
 #include "OsdSurface.h"
 #include "PortalService.h"
+#include "PackageUpdatesService.h"
 #include "StorageService.h"
 #include "WindowPresentation.h"
 #include "WindowSurface.h"
@@ -122,6 +123,7 @@ ShellApplication::ShellApplication(QObject* parent)
       battery_(new BatteryService(this)),
       audio_(new AudioService(this)),
       storage_(new StorageService(this)),
+      package_updates_(new PackageUpdatesService(this)),
       bluetooth_(new BluetoothService(this)),
       network_(new NetworkService(this)),
       power_profiles_(new PowerProfilesService(this)),
@@ -220,6 +222,7 @@ void ShellApplication::registerQmlTypes() {
   reg(battery_, "BatteryService");
   reg(audio_, "AudioService");
   reg(storage_, "StorageService");
+  reg(package_updates_, "PackageUpdatesService");
   reg(bluetooth_, "BluetoothService");
   reg(settings_navigation_service_, "SettingsNavigationService");
   reg(new ShellRuntime(this), "ShellRuntime");
@@ -257,6 +260,8 @@ void ShellApplication::startServices() {
   if (services_started_) {
     return;
   }
+
+  package_updates_->start();
 
   tray_model_->setMenuSurface(tray_menu_surface_);
   workspace_presentation_->setWorkspaceDisplayCount(config_service_->barWorkspaces().count);

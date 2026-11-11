@@ -25,6 +25,7 @@ class ConfigService;
 class ControlServer;
 class AudioService;
 class StorageService;
+class PackageUpdatesService;
 class BluetoothService;
 class BatteryService;
 class KeyboardLayoutService;
@@ -134,6 +135,7 @@ class ShellApplication : public QObject {
   BatteryService* battery_ = nullptr;
   AudioService* audio_ = nullptr;
   StorageService* storage_ = nullptr;
+  PackageUpdatesService* package_updates_ = nullptr;
   BluetoothService* bluetooth_ = nullptr;
   NetworkService* network_ = nullptr;
   PowerProfilesService* power_profiles_ = nullptr;
