@@ -161,10 +161,10 @@ TestCase {
         compare(BluetoothService.devices.length, 6);
         compare(findChild(popup, "bluetoothSummary").count, 2);
         waitForRendering(popup);
-        grabImage(popup).save(Qt.resolvedUrl("../../build/dev/bluetooth-popup-preview.png").toString().replace("file://", ""));
+        grabImage(popup).save(controlsEvidence.capturePath("bluetooth-popup-preview.png"));
         popup.expandedId = "headphones";
         waitForRendering(popup);
-        grabImage(popup).save(Qt.resolvedUrl("../../build/dev/bluetooth-popup-expanded-preview.png").toString().replace("file://", ""));
+        grabImage(popup).save(controlsEvidence.capturePath("bluetooth-popup-expanded-preview.png"));
         popup.height = 260;
         tryVerify(() => findChild(popup, "bluetoothDevices").interactive);
         verify(!popup.viewportItem.interactive);
@@ -219,6 +219,7 @@ TestCase {
         waitForRendering(row);
         const button = findChild(row, "device-tooltip");
         const label = findChild(row, "name-tooltip");
+        button.hoverEnabled = true;
         mouseMove(button, 30, 30);
         tryCompare(button, "hovered", true);
         verify(!label.truncated);

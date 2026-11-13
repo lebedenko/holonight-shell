@@ -88,6 +88,9 @@ class Setup : public QObject {
   // NOLINTBEGIN(readability-convert-member-functions-to-static)
   [[nodiscard]] Q_INVOKABLE QString expectedStyle() const { return qEnvironmentVariable("UQC_EXPECTED_STYLE"); }
   [[nodiscard]] Q_INVOKABLE QString selectedStyle() const { return QQuickStyle::name(); }
+  [[nodiscard]] Q_INVOKABLE QString capturePath(const QString& filename) const {
+    return QDir(QCoreApplication::applicationDirPath()).filePath(filename);
+  }
   Q_INVOKABLE bool hasOrigin(QObject* object, const QString& suffix) const {
     auto objects = object->findChildren<QObject*>();
     objects.prepend(object);

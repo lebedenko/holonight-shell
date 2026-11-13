@@ -127,13 +127,13 @@ TestCase {
         const captureDpr = normalImage.width / popup.width
         console.info("Weather capture DPR:", captureDpr)
         const suffix = Math.round(captureDpr)
-        savePopup(popup, Qt.resolvedUrl("../../build/dev/weather-normal-dpr" + suffix + ".png").toString().replace("file://", ""), captureDpr)
+        savePopup(popup, controlsEvidence.capturePath("weather-normal-dpr" + suffix + ".png"), captureDpr)
         if (!ShellRuntime.troubleshootEnabled) return
         const button = findChild(popup, "weatherTestButton")
         button.checked = true
         tryVerify(() => findChild(popup, "weatherPreviewCaption") !== null)
         waitForRendering(popup)
-        savePopup(popup, Qt.resolvedUrl("../../build/dev/weather-test-dpr" + suffix + ".png").toString().replace("file://", ""), captureDpr)
+        savePopup(popup, controlsEvidence.capturePath("weather-test-dpr" + suffix + ".png"), captureDpr)
     }
 
     function test_unavailable_and_constrained_layout() {
